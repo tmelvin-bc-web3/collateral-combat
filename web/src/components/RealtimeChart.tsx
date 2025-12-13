@@ -330,8 +330,7 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
           }
         }
         historyLoadedRef.current = true;
-      } catch (err) {
-        console.error('Failed to fetch price history:', err);
+      } catch {
         historyLoadedRef.current = true;
       }
     };

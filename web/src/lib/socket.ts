@@ -62,15 +62,15 @@ export function getSocket(): TypedSocket {
     }) as TypedSocket;
 
     socket.on('connect', () => {
-      console.log('Connected to server');
+      // Connection established
     });
 
     socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+      // Connection lost
     });
 
-    socket.on('error', (message) => {
-      console.error('Socket error:', message);
+    socket.on('error', () => {
+      // Socket error handled by context
     });
   }
 

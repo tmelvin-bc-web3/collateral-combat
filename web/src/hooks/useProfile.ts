@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserProfile, ProfilePictureType } from '@/types';
 import {
   saveOwnProfile,
@@ -39,8 +39,8 @@ export function useProfile(walletAddress: string | null) {
           setProfile(data);
           saveOwnProfile(data);
         }
-      } catch (err) {
-        console.error('Failed to fetch profile:', err);
+      } catch {
+        // Failed to fetch profile - using cached or default
       } finally {
         setIsLoading(false);
       }
@@ -101,8 +101,8 @@ export function useProfile(walletAddress: string | null) {
       await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
         method: 'DELETE',
       });
-    } catch (err) {
-      console.error('Failed to delete profile from backend:', err);
+    } catch {
+      // Delete failed - continue with local cleanup
     }
 
     // Clear localStorage

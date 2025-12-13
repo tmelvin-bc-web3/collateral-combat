@@ -22,8 +22,8 @@ export function FeaturedBattle() {
           const featured = battles.find((b: LiveBattle) => b.featured) || battles[0] || null;
           setFeaturedBattle(featured);
         }
-      } catch (err) {
-        console.error('Failed to fetch featured battle:', err);
+      } catch {
+        // Failed to fetch featured battle
       }
     };
 

@@ -17,7 +17,7 @@ export function usePrices() {
         setPrices(data.prices);
         setLastUpdate(data.lastUpdate);
       })
-      .catch(console.error);
+      .catch(() => {});
 
     // Subscribe to real-time updates
     const socket = getSocket();

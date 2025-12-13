@@ -30,9 +30,8 @@ export function ProfilePickerNFTs({
       try {
         const walletNFTs = await fetchWalletNFTs(publicKey.toBase58());
         setNfts(walletNFTs);
-      } catch (err) {
+      } catch {
         setError('Failed to load NFTs');
-        console.error(err);
       } finally {
         setIsLoading(false);
       }

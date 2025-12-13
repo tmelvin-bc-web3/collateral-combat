@@ -5,15 +5,12 @@ import Image from 'next/image';
 import { useProfileContext } from '@/contexts/ProfileContext';
 import { PRESET_PFPS } from '@/data/presetPFPs';
 import { PresetPFP } from '@/types';
-import { useWallet } from '@solana/wallet-adapter-react';
 
 interface ProfileSetupProps {
   onComplete: () => void;
 }
 
 export function ProfileSetup({ onComplete }: ProfileSetupProps) {
-  const { publicKey } = useWallet();
-  const walletAddress = publicKey?.toBase58() || '';
   const { updateProfile } = useProfileContext();
 
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
@@ -46,8 +43,8 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
         username: username || undefined,
       });
       onComplete();
-    } catch (err) {
-      console.error('Failed to save profile:', err);
+    } catch {
+      // Save failed
     } finally {
       setIsSaving(false);
     }
@@ -58,8 +55,8 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     try {
       await updateProfile({ pfpType: 'default' });
       onComplete();
-    } catch (err) {
-      console.error('Failed to save profile:', err);
+    } catch {
+      // Skip failed
     } finally {
       setIsSaving(false);
     }

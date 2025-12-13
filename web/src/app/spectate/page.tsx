@@ -31,8 +31,7 @@ export default function SpectatePage() {
           setLiveBattles(battles);
           setIsLoading(false);
         }
-      } catch (err) {
-        console.error('Failed to fetch live battles:', err);
+      } catch {
         setIsLoading(false);
       }
     };

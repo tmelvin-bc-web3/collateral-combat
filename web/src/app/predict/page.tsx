@@ -45,8 +45,8 @@ export default function PredictPage() {
         const priceData = await priceRes.json();
         setCurrentPrice(priceData.prices[asset] || 0);
       }
-    } catch (err) {
-      console.error('Failed to fetch prediction data:', err);
+    } catch {
+      // Failed to fetch prediction data
     }
   }, [asset]);
 

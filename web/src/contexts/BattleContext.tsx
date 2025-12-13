@@ -46,20 +46,17 @@ export function BattleProvider({
     const socket = getSocket();
 
     const handleBattleUpdate = (updatedBattle: Battle) => {
-      console.log('Battle update received:', updatedBattle.status);
       setBattle(updatedBattle);
       setIsLoading(false);
     };
 
     const handleBattleStarted = (startedBattle: Battle) => {
-      console.log('Battle started:', startedBattle.id);
       setBattle(startedBattle);
       setMatchmakingStatus({ inQueue: false, position: 0, estimated: 0 });
       setIsLoading(false);
     };
 
     const handleBattleEnded = (endedBattle: Battle) => {
-      console.log('Battle ended:', endedBattle.id);
       setBattle(endedBattle);
     };
 
@@ -72,10 +69,8 @@ export function BattleProvider({
     };
 
     const handleError = (message: string) => {
-      console.error('Socket error:', message);
       setError(message);
       setIsLoading(false);
-      // Clear error after 3 seconds
       setTimeout(() => setError(null), 3000);
     };
 
@@ -142,7 +137,6 @@ export function BattleProvider({
         setError('Wallet not connected');
         return;
       }
-      console.log('Starting solo practice...');
       setIsLoading(true);
       setError(null);
       const socket = getSocket();

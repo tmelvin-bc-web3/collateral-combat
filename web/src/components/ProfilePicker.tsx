@@ -18,7 +18,7 @@ type Tab = 'presets' | 'nfts';
 export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
-  const { ownProfile, updateProfile, resetProfile, isLoading } = useProfileContext();
+  const { ownProfile, updateProfile, resetProfile } = useProfileContext();
 
   const [activeTab, setActiveTab] = useState<Tab>('presets');
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
@@ -103,8 +103,8 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
         });
       }
       onClose();
-    } catch (err) {
-      console.error('Failed to save profile:', err);
+    } catch {
+      // Save failed
     } finally {
       setIsSaving(false);
     }
@@ -115,22 +115,21 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     try {
       await updateProfile({ pfpType: 'default' });
       onClose();
-    } catch (err) {
-      console.error('Failed to reset profile:', err);
+    } catch {
+      // Reset failed
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Full reset - clears from backend and localStorage (for testing)
   const handleFullReset = async () => {
     if (!confirm('This will completely delete your profile. Continue?')) return;
     setIsSaving(true);
     try {
       await resetProfile();
       onClose();
-    } catch (err) {
-      console.error('Failed to delete profile:', err);
+    } catch {
+      // Delete failed
     } finally {
       setIsSaving(false);
     }

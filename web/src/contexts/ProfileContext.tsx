@@ -133,8 +133,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           // Update localStorage cache
           setCachedProfiles(profiles);
         }
-      } catch (err) {
-        console.error('Failed to fetch profiles:', err);
+      } catch {
+        // Failed to fetch profiles
       }
     },
     [walletAddress, profileCache]

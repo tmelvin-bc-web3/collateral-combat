@@ -35,7 +35,6 @@ interface GetAssetsByOwnerResponse {
 
 export async function fetchWalletNFTs(walletAddress: string): Promise<NFTAsset[]> {
   if (!HELIUS_RPC_URL) {
-    console.warn('NEXT_PUBLIC_HELIUS_API_KEY not set, NFT fetching disabled');
     return [];
   }
 
@@ -105,8 +104,7 @@ export async function fetchWalletNFTs(walletAddress: string): Promise<NFTAsset[]
       });
 
     return nfts;
-  } catch (error) {
-    console.error('Failed to fetch NFTs:', error);
+  } catch {
     return [];
   }
 }
