@@ -18,7 +18,7 @@ type Tab = 'presets' | 'nfts';
 export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
-  const { ownProfile, updateProfile, resetProfile } = useProfileContext();
+  const { ownProfile, updateProfile } = useProfileContext();
 
   const [activeTab, setActiveTab] = useState<Tab>('presets');
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
@@ -122,18 +122,6 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     }
   };
 
-  const handleFullReset = async () => {
-    if (!confirm('This will completely delete your profile. Continue?')) return;
-    setIsSaving(true);
-    try {
-      await resetProfile();
-      onClose();
-    } catch {
-      // Delete failed
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const hasSelection = selectedPreset || selectedNFT;
   const usernameChanged = username !== (ownProfile?.username || '');
@@ -243,23 +231,13 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-border-primary bg-bg-tertiary/50">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleReset}
-              disabled={isSaving || ownProfile?.pfpType === 'default'}
-              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Reset to Default
-            </button>
-            <button
-              onClick={handleFullReset}
-              disabled={isSaving}
-              className="px-3 py-2 text-xs text-danger hover:text-danger/80 disabled:opacity-50 transition-colors"
-              title="Delete profile completely (for testing)"
-            >
-              Delete Profile
-            </button>
-          </div>
+          <button
+            onClick={handleReset}
+            disabled={isSaving || ownProfile?.pfpType === 'default'}
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Reset to Default
+          </button>
           <button
             onClick={handleSave}
             disabled={!canSave || isSaving}

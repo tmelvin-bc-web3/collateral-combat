@@ -28,3 +28,4 @@ yarn-error.log*
 
 # Data
 backend/data
+.vercel
