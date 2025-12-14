@@ -192,20 +192,20 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-accent">$1,000</div>
-            <div className="text-sm text-text-tertiary">Starting Balance</div>
+            <div className="text-3xl font-bold text-accent">4</div>
+            <div className="text-sm text-text-tertiary">Game Modes</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-success">20x</div>
-            <div className="text-sm text-text-tertiary">Max Leverage</div>
+            <div className="text-3xl font-bold text-success">$5+</div>
+            <div className="text-sm text-text-tertiary">Min Entry</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-text-primary">30s</div>
-            <div className="text-sm text-text-tertiary">Predict Rounds</div>
+            <div className="text-3xl font-bold text-warning">28+</div>
+            <div className="text-sm text-text-tertiary">Memecoins</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-danger">95%</div>
-            <div className="text-sm text-text-tertiary">Winner Payout</div>
+            <div className="text-3xl font-bold text-danger">90%</div>
+            <div className="text-sm text-text-tertiary">Prize Pool</div>
           </div>
         </div>
       </div>
