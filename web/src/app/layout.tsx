@@ -5,6 +5,7 @@ import { WalletProvider } from '@/components/WalletProvider';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { Header } from '@/components/Header';
 import { ProfileSetupWrapper } from '@/components/ProfileSetupWrapper';
+import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({
               <div className="max-w-7xl mx-auto">{children}</div>
             </main>
             <ProfileSetupWrapper />
+            <OnboardingTourWrapper />
           </ProfileProvider>
         </WalletProvider>
       </body>

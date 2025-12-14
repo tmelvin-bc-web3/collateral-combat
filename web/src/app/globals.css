@@ -565,3 +565,305 @@ input[type="number"] {
 .stagger-list > *:nth-child(8) { animation-delay: 0.4s; }
 .stagger-list > *:nth-child(9) { animation-delay: 0.45s; }
 .stagger-list > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* ==================== */
+/* Draft Page Animations */
+/* ==================== */
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+/* Confetti particles for celebration */
+@keyframes confettiDrop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confettiDrop 1.5s ease-out forwards;
+}
+
+/* Card flip effect */
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Sparkle effect */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle 1s ease-in-out infinite;
+}
+
+/* Score counter animation */
+@keyframes countUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-countUp {
+  animation: countUp 0.3s ease-out;
+}
+
+/* Power-up activation burst */
+@keyframes powerupBurst {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-powerupBurst {
+  animation: powerupBurst 0.6s ease-out forwards;
+}
+
+/* Coin selection ring */
+@keyframes selectionRing {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-selectionRing {
+  animation: selectionRing 1s ease-out infinite;
+}
+
+/* Draft card hover lift */
+.draft-card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.draft-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 212, 170, 0.15);
+}
+
+/* Frozen shimmer effect */
+@keyframes frozenShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.frozen-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 212, 170, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: frozenShimmer 2s ease-in-out infinite;
+}
+
+/* Boosted flame animation */
+@keyframes flame {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.1);
+  }
+}
+
+.animate-flame {
+  animation: flame 0.5s ease-in-out infinite;
+}
+
+/* Round number zoom */
+@keyframes roundZoom {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-roundZoom {
+  animation: roundZoom 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Price ticker animation */
+@keyframes priceTick {
+  0% {
+    color: inherit;
+  }
+  50% {
+    color: var(--accent);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
+.animate-priceTick {
+  animation: priceTick 0.3s ease;
+}
+
+/* Winner crown bounce */
+@keyframes crownBounce {
+  0%, 100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(5deg);
+  }
+}
+
+.animate-crownBounce {
+  animation: crownBounce 1s ease-in-out infinite;
+}
+
+/* Gradient border glow for selected cards */
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 212, 170, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 212, 170, 0.6);
+  }
+}
+
+.animate-borderGlow {
+  animation: borderGlow 1.5s ease-in-out infinite;
+}
+
+/* Shake animation for invalid actions */
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+  20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+.animate-shakeError {
+  animation: shakeError 0.6s ease-in-out;
+}
+
+/* Coin reveal cascade */
+@keyframes revealCascade {
+  0% {
+    transform: translateY(30px) rotateX(30deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-revealCascade {
+  animation: revealCascade 0.5s ease-out forwards;
+}
+
+/* Success checkmark draw */
+@keyframes checkDraw {
+  0% {
+    stroke-dashoffset: 50;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-checkDraw {
+  stroke-dasharray: 50;
+  animation: checkDraw 0.5s ease-out forwards;
+}
+
+/* Pulse ring for active picks */
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.animate-pulseRing {
+  animation: pulseRing 1.5s ease-out infinite;
+}
+
+/* Entry success animation */
+@keyframes entrySuccess {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-entrySuccess {
+  animation: entrySuccess 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

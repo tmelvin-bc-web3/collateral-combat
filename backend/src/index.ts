@@ -8,9 +8,11 @@ import { battleManager } from './services/battleManager';
 import { spectatorService } from './services/spectatorService';
 import { battleSimulator } from './services/battleSimulator';
 import { predictionService } from './services/predictionService';
+import { coinMarketCapService } from './services/coinMarketCapService';
+import { draftTournamentManager } from './services/draftTournamentManager';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, ProfilePictureType } from './db/database';
 import { WHITELISTED_TOKENS } from './tokens';
-import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide } from './types';
+import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier } from './types';
 
 const app = express();
 const httpServer = createServer(app);
@@ -210,6 +212,161 @@ app.post('/api/prediction/:asset/stop', (req, res) => {
   res.json({ status: 'stopped', asset: req.params.asset });
 });
 
+// ===================
+// Draft Tournament Endpoints
+// ===================
+
+// Get all active tournaments
+app.get('/api/draft/tournaments', (req, res) => {
+  res.json(draftTournamentManager.getAllActiveTournaments());
+});
+
+// Get tournament by tier (for current week)
+app.get('/api/draft/tournaments/tier/:tier', (req, res) => {
+  const tier = ('$' + req.params.tier) as DraftTournamentTier;
+  if (!['$5', '$25', '$100'].includes(tier)) {
+    return res.status(400).json({ error: 'Invalid tier. Use 5, 25, or 100' });
+  }
+  const tournament = draftTournamentManager.getTournamentForTier(tier);
+  res.json(tournament);
+});
+
+// Get specific tournament
+app.get('/api/draft/tournaments/:id', (req, res) => {
+  const tournament = draftTournamentManager.getTournament(req.params.id);
+  if (!tournament) {
+    return res.status(404).json({ error: 'Tournament not found' });
+  }
+  res.json(tournament);
+});
+
+// Get tournament leaderboard
+app.get('/api/draft/tournaments/:id/leaderboard', (req, res) => {
+  const tournament = draftTournamentManager.getTournament(req.params.id);
+  if (!tournament) {
+    return res.status(404).json({ error: 'Tournament not found' });
+  }
+  res.json(draftTournamentManager.getLeaderboard(req.params.id));
+});
+
+// Enter tournament
+app.post('/api/draft/tournaments/:id/enter', (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'walletAddress required' });
+    }
+    const entry = draftTournamentManager.enterTournament(req.params.id, walletAddress);
+    res.json(entry);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get entry by ID
+app.get('/api/draft/entries/:entryId', (req, res) => {
+  const entry = draftTournamentManager.getEntry(req.params.entryId);
+  if (!entry) {
+    return res.status(404).json({ error: 'Entry not found' });
+  }
+  res.json(entry);
+});
+
+// Get entries for wallet
+app.get('/api/draft/entries/wallet/:wallet', (req, res) => {
+  res.json(draftTournamentManager.getEntriesForWallet(req.params.wallet));
+});
+
+// Start draft session
+app.post('/api/draft/entries/:entryId/start', (req, res) => {
+  try {
+    const session = draftTournamentManager.startDraft(req.params.entryId);
+    res.json(session);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Make a draft pick
+app.post('/api/draft/entries/:entryId/pick', (req, res) => {
+  try {
+    const { roundNumber, coinId } = req.body;
+    if (!roundNumber || !coinId) {
+      return res.status(400).json({ error: 'roundNumber and coinId required' });
+    }
+    const pick = draftTournamentManager.makePick(req.params.entryId, roundNumber, coinId);
+    res.json(pick);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Initiate swap power-up
+app.post('/api/draft/entries/:entryId/powerup/swap', (req, res) => {
+  try {
+    const { pickId } = req.body;
+    if (!pickId) {
+      return res.status(400).json({ error: 'pickId required' });
+    }
+    const result = draftTournamentManager.useSwap(req.params.entryId, pickId);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Select coin for swap
+app.post('/api/draft/entries/:entryId/powerup/swap/select', (req, res) => {
+  try {
+    const { pickId, newCoinId } = req.body;
+    if (!pickId || !newCoinId) {
+      return res.status(400).json({ error: 'pickId and newCoinId required' });
+    }
+    const pick = draftTournamentManager.selectSwapCoin(req.params.entryId, pickId, newCoinId);
+    res.json(pick);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Use boost power-up
+app.post('/api/draft/entries/:entryId/powerup/boost', (req, res) => {
+  try {
+    const { pickId } = req.body;
+    if (!pickId) {
+      return res.status(400).json({ error: 'pickId required' });
+    }
+    const pick = draftTournamentManager.useBoost(req.params.entryId, pickId);
+    res.json(pick);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Use freeze power-up
+app.post('/api/draft/entries/:entryId/powerup/freeze', (req, res) => {
+  try {
+    const { pickId } = req.body;
+    if (!pickId) {
+      return res.status(400).json({ error: 'pickId required' });
+    }
+    const pick = draftTournamentManager.useFreeze(req.params.entryId, pickId);
+    res.json(pick);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get all memecoins
+app.get('/api/draft/memecoins', (req, res) => {
+  res.json(coinMarketCapService.getAllMemecoins());
+});
+
+// Get memecoin prices
+app.get('/api/draft/memecoins/prices', (req, res) => {
+  res.json(coinMarketCapService.getAllPrices());
+});
+
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -395,6 +552,108 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ===================
+  // Draft Tournament Events
+  // ===================
+
+  socket.on('join_draft_lobby', (tier: DraftTournamentTier) => {
+    socket.join(`draft_lobby_${tier}`);
+    const tournament = draftTournamentManager.getTournamentForTier(tier);
+    if (tournament) {
+      socket.emit('draft_tournament_update' as any, tournament);
+    }
+  });
+
+  socket.on('leave_draft_lobby', () => {
+    socket.leave('draft_lobby_$5');
+    socket.leave('draft_lobby_$25');
+    socket.leave('draft_lobby_$100');
+  });
+
+  socket.on('subscribe_draft_tournament', (tournamentId: string) => {
+    socket.join(`draft_tournament_${tournamentId}`);
+    const leaderboard = draftTournamentManager.getLeaderboard(tournamentId);
+    socket.emit('draft_leaderboard_update' as any, { tournamentId, leaderboard });
+  });
+
+  socket.on('unsubscribe_draft_tournament', (tournamentId: string) => {
+    socket.leave(`draft_tournament_${tournamentId}`);
+  });
+
+  socket.on('start_draft', (entryId: string) => {
+    try {
+      const session = draftTournamentManager.startDraft(entryId);
+      socket.emit('draft_session_update' as any, session);
+      // Send the current round options (not always round 0)
+      const currentRoundIndex = session.currentRound - 1;
+      if (session.rounds.length > currentRoundIndex && currentRoundIndex >= 0) {
+        socket.emit('draft_round_options' as any, session.rounds[currentRoundIndex]);
+      }
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
+  socket.on('make_draft_pick', (entryId: string, roundNumber: number, coinId: string) => {
+    try {
+      const pick = draftTournamentManager.makePick(entryId, roundNumber, coinId);
+      socket.emit('draft_pick_confirmed' as any, pick);
+
+      const session = draftTournamentManager.getDraftSession(entryId);
+      if (session) {
+        socket.emit('draft_session_update' as any, session);
+        if (session.status === 'in_progress' && session.rounds.length > roundNumber) {
+          socket.emit('draft_round_options' as any, session.rounds[roundNumber]);
+        }
+      }
+
+      if (roundNumber >= 6) {
+        const entry = draftTournamentManager.getEntry(entryId);
+        if (entry) {
+          socket.emit('draft_completed' as any, entry);
+        }
+      }
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
+  socket.on('use_powerup_swap', (entryId: string, pickId: string) => {
+    try {
+      const result = draftTournamentManager.useSwap(entryId, pickId);
+      socket.emit('draft_swap_options' as any, { pickId, options: result.options });
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
+  socket.on('select_swap_coin', (entryId: string, pickId: string, newCoinId: string) => {
+    try {
+      const pick = draftTournamentManager.selectSwapCoin(entryId, pickId, newCoinId);
+      socket.emit('powerup_used' as any, { entryId, type: 'swap', pick });
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
+  socket.on('use_powerup_boost', (entryId: string, pickId: string) => {
+    try {
+      const pick = draftTournamentManager.useBoost(entryId, pickId);
+      socket.emit('powerup_used' as any, { entryId, type: 'boost', pick });
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
+  socket.on('use_powerup_freeze', (entryId: string, pickId: string) => {
+    try {
+      const pick = draftTournamentManager.useFreeze(entryId, pickId);
+      socket.emit('powerup_used' as any, { entryId, type: 'freeze', pick });
+    } catch (error: any) {
+      socket.emit('draft_error' as any, error.message);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -468,12 +727,57 @@ predictionService.subscribe((event, data) => {
   }
 });
 
+// Subscribe to draft tournament events and broadcast
+draftTournamentManager.subscribe((event, data) => {
+  switch (event) {
+    case 'tournament_status_changed':
+      // Broadcast to all tier lobbies
+      io.to(`draft_lobby_${data.tier}`).emit('draft_tournament_update' as any, data);
+      io.to(`draft_tournament_${data.id}`).emit('draft_tournament_update' as any, data);
+      break;
+    case 'entry_created':
+      io.to(`draft_tournament_${data.tournamentId}`).emit('draft_tournament_update' as any,
+        draftTournamentManager.getTournament(data.tournamentId));
+      break;
+    case 'draft_completed':
+      io.to(`draft_tournament_${data.tournamentId}`).emit('draft_completed' as any, data);
+      break;
+    case 'score_update':
+      io.to(`draft_tournament_${data.tournamentId}`).emit('draft_score_update' as any, data);
+      break;
+    case 'leaderboard_update':
+      io.to(`draft_tournament_${data.tournamentId}`).emit('draft_leaderboard_update' as any, data);
+      break;
+    case 'powerup_used':
+      io.to(`draft_tournament_${data.entry?.tournamentId || ''}`).emit('powerup_used' as any, data);
+      break;
+    case 'tournament_settled':
+      io.to(`draft_tournament_${data.tournament.id}`).emit('draft_tournament_update' as any, data.tournament);
+      io.to(`draft_tournament_${data.tournament.id}`).emit('draft_leaderboard_update' as any, {
+        tournamentId: data.tournament.id,
+        leaderboard: data.leaderboard
+      });
+      break;
+  }
+});
+
+// Subscribe to memecoin price updates
+coinMarketCapService.subscribe((prices) => {
+  io.to('draft_prices').emit('memecoin_prices_update' as any, prices);
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
 async function start() {
   // Start price service
   await priceService.start(5000); // Update prices every 5 seconds
+
+  // Start CoinMarketCap service for memecoins
+  await coinMarketCapService.start();
+
+  // Start draft tournament manager
+  draftTournamentManager.start();
 
   httpServer.listen(PORT, () => {
     console.log(`

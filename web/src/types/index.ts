@@ -192,3 +192,107 @@ export interface NFTAsset {
   image: string;
   collection?: string;
 }
+
+// ===================
+// Memecoin Draft Types
+// ===================
+
+export type DraftTournamentTier = '$5' | '$25' | '$100';
+export type DraftTournamentStatus = 'upcoming' | 'drafting' | 'active' | 'completed';
+export type PowerUpType = 'swap' | 'boost' | 'freeze';
+
+export interface Memecoin {
+  id: string;
+  symbol: string;
+  name: string;
+  marketCapRank: number;
+  currentPrice: number;
+  priceChange24h?: number;
+  logoUrl?: string;
+  lastUpdated: number;
+}
+
+export interface DraftTournament {
+  id: string;
+  tier: DraftTournamentTier;
+  entryFeeUsd: number;
+  status: DraftTournamentStatus;
+  weekStartUtc: number;
+  weekEndUtc: number;
+  draftDeadlineUtc: number;
+  totalEntries: number;
+  prizePoolUsd: number;
+  createdAt: number;
+  settledAt?: number;
+}
+
+export interface DraftPick {
+  id: string;
+  entryId: string;
+  coinId: string;
+  coinSymbol: string;
+  coinName: string;
+  coinLogoUrl?: string;
+  pickOrder: number;
+  priceAtDraft: number;
+  priceAtEnd?: number;
+  percentChange?: number;
+  boostMultiplier: number;
+  isFrozen: boolean;
+  frozenAtPrice?: number;
+  frozenPercentChange?: number;
+  createdAt: number;
+}
+
+export interface DraftEntry {
+  id: string;
+  tournamentId: string;
+  walletAddress: string;
+  entryFeePaid: number;
+  draftCompleted: boolean;
+  picks: DraftPick[];
+  powerUpsUsed: PowerUpUsage[];
+  finalScore?: number;
+  finalRank?: number;
+  payoutUsd?: number;
+  createdAt: number;
+}
+
+export interface PowerUpUsage {
+  id: string;
+  entryId: string;
+  powerupType: PowerUpType;
+  usedAt: number;
+  targetPickId?: string;
+  details?: string;
+}
+
+export interface DraftRound {
+  roundNumber: number;
+  options: Memecoin[];
+  timeLimit: number;
+  selectedCoinId?: string;
+}
+
+export interface DraftSession {
+  entryId: string;
+  tournamentId: string;
+  currentRound: number;
+  rounds: DraftRound[];
+  status: 'in_progress' | 'completed';
+  startedAt: number;
+}
+
+export interface DraftLeaderboardEntry {
+  rank: number;
+  walletAddress: string;
+  username?: string;
+  totalScore: number;
+  picks: {
+    coinSymbol: string;
+    percentChange: number;
+    isBoosted: boolean;
+    isFrozen: boolean;
+  }[];
+  payout?: number;
+}

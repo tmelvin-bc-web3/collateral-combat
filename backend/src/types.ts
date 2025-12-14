@@ -209,4 +209,134 @@ export interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
+  // Draft events
+  join_draft_lobby: (tier: DraftTournamentTier) => void;
+  leave_draft_lobby: () => void;
+  subscribe_draft_tournament: (tournamentId: string) => void;
+  unsubscribe_draft_tournament: (tournamentId: string) => void;
+  start_draft: (entryId: string) => void;
+  make_draft_pick: (entryId: string, roundNumber: number, coinId: string) => void;
+  use_powerup_swap: (entryId: string, pickId: string) => void;
+  select_swap_coin: (entryId: string, pickId: string, newCoinId: string) => void;
+  use_powerup_boost: (entryId: string, pickId: string) => void;
+  use_powerup_freeze: (entryId: string, pickId: string) => void;
+}
+
+// ===================
+// Memecoin Draft Types
+// ===================
+
+export type DraftTournamentTier = '$5' | '$25' | '$100';
+export type DraftTournamentStatus = 'upcoming' | 'drafting' | 'active' | 'completed';
+export type PowerUpType = 'swap' | 'boost' | 'freeze';
+
+export interface Memecoin {
+  id: string;
+  symbol: string;
+  name: string;
+  marketCapRank: number;
+  currentPrice: number;
+  priceChange24h?: number;
+  logoUrl?: string;
+  lastUpdated: number;
+}
+
+export interface DraftTournament {
+  id: string;
+  tier: DraftTournamentTier;
+  entryFeeUsd: number;
+  status: DraftTournamentStatus;
+  weekStartUtc: number;
+  weekEndUtc: number;
+  draftDeadlineUtc: number;
+  totalEntries: number;
+  prizePoolUsd: number;
+  createdAt: number;
+  settledAt?: number;
+}
+
+export interface DraftPick {
+  id: string;
+  entryId: string;
+  coinId: string;
+  coinSymbol: string;
+  coinName: string;
+  coinLogoUrl?: string;
+  pickOrder: number;
+  priceAtDraft: number;
+  priceAtEnd?: number;
+  percentChange?: number;
+  boostMultiplier: number;
+  isFrozen: boolean;
+  frozenAtPrice?: number;
+  frozenPercentChange?: number;
+  createdAt: number;
+}
+
+export interface DraftEntry {
+  id: string;
+  tournamentId: string;
+  walletAddress: string;
+  entryFeePaid: number;
+  draftCompleted: boolean;
+  picks: DraftPick[];
+  powerUpsUsed: PowerUpUsage[];
+  finalScore?: number;
+  finalRank?: number;
+  payoutUsd?: number;
+  createdAt: number;
+}
+
+export interface PowerUpUsage {
+  id: string;
+  entryId: string;
+  powerupType: PowerUpType;
+  usedAt: number;
+  targetPickId?: string;
+  details?: string;
+}
+
+export interface DraftRound {
+  roundNumber: number;
+  options: Memecoin[];
+  timeLimit: number;
+  selectedCoinId?: string;
+}
+
+export interface DraftSession {
+  entryId: string;
+  tournamentId: string;
+  currentRound: number;
+  rounds: DraftRound[];
+  status: 'in_progress' | 'completed';
+  startedAt: number;
+}
+
+export interface DraftLeaderboardEntry {
+  rank: number;
+  walletAddress: string;
+  username?: string;
+  totalScore: number;
+  picks: {
+    coinSymbol: string;
+    percentChange: number;
+    isBoosted: boolean;
+    isFrozen: boolean;
+  }[];
+  payout?: number;
+}
+
+// Draft WebSocket events (add to ServerToClientEvents)
+export interface DraftServerToClientEvents {
+  draft_tournament_update: (tournament: DraftTournament) => void;
+  draft_session_update: (session: DraftSession) => void;
+  draft_round_options: (round: DraftRound) => void;
+  draft_pick_confirmed: (pick: DraftPick) => void;
+  draft_completed: (entry: DraftEntry) => void;
+  draft_leaderboard_update: (data: { tournamentId: string; leaderboard: DraftLeaderboardEntry[] }) => void;
+  draft_score_update: (data: { entryId: string; currentScore: number }) => void;
+  draft_swap_options: (data: { pickId: string; options: Memecoin[] }) => void;
+  powerup_used: (usage: PowerUpUsage) => void;
+  memecoin_prices_update: (prices: Record<string, number>) => void;
+  draft_error: (message: string) => void;
 }

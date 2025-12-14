@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -24,6 +24,18 @@ interface ServerToClientEvents {
   prediction_history: (rounds: PredictionRound[]) => void;
   prediction_settled: (round: PredictionRound) => void;
   prediction_bet_placed: (bet: PredictionBet) => void;
+  // Draft events
+  draft_tournament_update: (tournament: DraftTournament) => void;
+  draft_session_update: (session: DraftSession) => void;
+  draft_round_options: (round: DraftRound) => void;
+  draft_pick_confirmed: (pick: DraftPick) => void;
+  draft_completed: (entry: DraftEntry) => void;
+  draft_leaderboard_update: (data: { tournamentId: string; leaderboard: DraftLeaderboardEntry[] }) => void;
+  draft_score_update: (data: { entryId: string; currentScore: number }) => void;
+  draft_swap_options: (data: { pickId: string; options: Memecoin[] }) => void;
+  powerup_used: (usage: PowerUpUsage) => void;
+  memecoin_prices_update: (prices: Record<string, number>) => void;
+  draft_error: (message: string) => void;
 }
 
 interface ClientToServerEvents {
@@ -46,6 +58,15 @@ interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
+  // Draft events
+  start_draft: (entryId: string) => void;
+  make_draft_pick: (entryId: string, roundNumber: number, coinId: string) => void;
+  use_powerup_swap: (entryId: string, pickId: string) => void;
+  select_swap_coin: (entryId: string, pickId: string, coinId: string) => void;
+  use_powerup_boost: (entryId: string, pickId: string) => void;
+  use_powerup_freeze: (entryId: string, pickId: string) => void;
+  subscribe_draft_tournament: (tournamentId: string) => void;
+  unsubscribe_draft_tournament: (tournamentId: string) => void;
 }
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
