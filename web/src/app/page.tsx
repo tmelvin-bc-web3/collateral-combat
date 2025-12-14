@@ -14,17 +14,17 @@ const GAME_MODES = [
   {
     id: 'predict',
     href: '/predict',
-    title: 'UP or DOWN',
-    subtitle: 'Predict SOL price movement',
-    description: 'Bet on whether SOL goes up or down in the next 30 seconds. Fast rounds, winner takes all.',
+    title: 'The Oracle',
+    subtitle: 'Predict or Perish',
+    description: 'SOL goes up or down in 30 seconds. Call it right or get rekt. No second chances.',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
       </svg>
     ),
     stats: [
-      { label: 'Round Time', value: '30s' },
-      { label: 'Min Bet', value: '$5' },
+      { label: 'Round', value: '30s' },
+      { label: 'Entry', value: '$5' },
     ],
     color: 'accent',
     live: true,
@@ -32,9 +32,9 @@ const GAME_MODES = [
   {
     id: 'battle',
     href: '/battle',
-    title: 'Battle Arena',
-    subtitle: '1v1 Leveraged Trading',
-    description: 'Enter head-to-head trading battles. Trade with up to 20x leverage. Best P&L wins the pot.',
+    title: 'The Arena',
+    subtitle: '1v1 Deathmatch',
+    description: 'Two degens enter, one leaves with the loot. Trade with 20x leverage. Best P&L survives.',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -42,7 +42,7 @@ const GAME_MODES = [
     ),
     stats: [
       { label: 'Duration', value: '30 min' },
-      { label: 'Max Leverage', value: '20x' },
+      { label: 'Leverage', value: '20x' },
     ],
     color: 'success',
     live: true,
@@ -50,17 +50,17 @@ const GAME_MODES = [
   {
     id: 'draft',
     href: '/draft',
-    title: 'Memecoin Draft',
-    subtitle: 'Weekly Tournament',
-    description: 'Build a team of 6 memecoins. Best performance over the week wins. Use power-ups strategically!',
+    title: 'War Party',
+    subtitle: 'Assemble Your Squad',
+    description: 'Draft 6 memecoins for your war party. Best gains over the week claims the throne.',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
       </svg>
     ),
     stats: [
-      { label: 'Entry Tiers', value: '$5-$100' },
-      { label: 'Duration', value: 'Weekly' },
+      { label: 'Entry', value: '$5-$100' },
+      { label: 'Season', value: 'Weekly' },
     ],
     color: 'warning',
     live: true,
@@ -68,9 +68,9 @@ const GAME_MODES = [
   {
     id: 'spectate',
     href: '/spectate',
-    title: 'Watch & Bet',
-    subtitle: 'Spectate Live Battles',
-    description: 'Watch traders compete in real-time and place bets on who you think will win.',
+    title: 'The Stands',
+    subtitle: 'Watch & Wager',
+    description: 'Witness the carnage from the stands. Back your champion. Collect the spoils.',
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -106,25 +106,25 @@ export default function Home() {
     <div className="max-w-5xl mx-auto animate-fadeIn">
       {/* Hero */}
       <div className="text-center py-12 md:py-20">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning/10 border border-warning/30 text-warning text-sm font-bold uppercase tracking-wider mb-6">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
           </span>
-          Live on Solana Mainnet
+          The Dome is Open
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4">
-          Trade PvP.
+        <h1 className="text-4xl md:text-7xl font-black tracking-tighter mb-4" style={{ fontFamily: 'Impact, sans-serif' }}>
+          TWO DEGENS ENTER.
           <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-success">
-            Winner Takes All.
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-warning via-fire to-danger">
+            ONE PROFITS.
           </span>
         </h1>
 
         <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
-          The ultimate trading arena on Solana. Predict price movements, battle other traders,
-          or watch and bet on live competitions.
+          Welcome to the wasteland&apos;s premier trading arena. Predict. Battle. Draft. Survive.
+          Only the strongest degens claim the loot.
         </p>
 
         {!publicKey && (
@@ -186,48 +186,48 @@ export default function Home() {
       </div>
 
       {/* Quick Stats */}
-      <div className="card bg-gradient-to-br from-bg-secondary to-bg-tertiary border border-border-primary mb-16">
+      <div className="card bg-gradient-to-br from-bg-secondary to-bg-tertiary border border-warning/20 mb-16">
         <div className="text-center mb-6">
-          <h2 className="text-lg font-semibold">Platform Stats</h2>
+          <h2 className="text-lg font-bold uppercase tracking-wider text-warning">Dome Statistics</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-accent">4</div>
-            <div className="text-sm text-text-tertiary">Game Modes</div>
+            <div className="text-3xl font-black text-accent">4</div>
+            <div className="text-sm text-text-tertiary uppercase tracking-wide">Battle Modes</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-success">30s</div>
-            <div className="text-sm text-text-tertiary">Fastest Rounds</div>
+            <div className="text-3xl font-black text-success">30s</div>
+            <div className="text-sm text-text-tertiary uppercase tracking-wide">Speed Rounds</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-warning">Instant</div>
-            <div className="text-sm text-text-tertiary">Payouts</div>
+            <div className="text-3xl font-black text-warning">Instant</div>
+            <div className="text-sm text-text-tertiary uppercase tracking-wide">Loot Drops</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-danger">24/7</div>
-            <div className="text-sm text-text-tertiary">Live Games</div>
+            <div className="text-3xl font-black text-danger">24/7</div>
+            <div className="text-sm text-text-tertiary uppercase tracking-wide">Always Open</div>
           </div>
         </div>
       </div>
 
       {/* How It Works */}
       <div className="mb-16">
-        <h2 className="text-2xl font-bold text-center mb-8">How It Works</h2>
+        <h2 className="text-2xl font-black text-center mb-8 uppercase tracking-wider">Rules of the Dome</h2>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-4">1</div>
-            <h3 className="font-semibold mb-2">Connect Wallet</h3>
-            <p className="text-sm text-text-secondary">Connect your Solana wallet to get started. No deposits required for practice mode.</p>
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">1</div>
+            <h3 className="font-bold mb-2 uppercase">Enter the Dome</h3>
+            <p className="text-sm text-text-secondary">Connect your Solana wallet to join the wasteland. Your identity. Your destiny.</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-4">2</div>
-            <h3 className="font-semibold mb-2">Choose Your Game</h3>
-            <p className="text-sm text-text-secondary">Predict price movements, enter 1v1 battles, or spectate and bet on others.</p>
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">2</div>
+            <h3 className="font-bold mb-2 uppercase">Choose Your Fate</h3>
+            <p className="text-sm text-text-secondary">Oracle predictions. Arena battles. War party drafts. Pick your path to glory.</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-4">3</div>
-            <h3 className="font-semibold mb-2">Win & Earn</h3>
-            <p className="text-sm text-text-secondary">Best performance wins. Payouts are instant and automatically sent to your wallet.</p>
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">3</div>
+            <h3 className="font-bold mb-2 uppercase">Claim the Spoils</h3>
+            <p className="text-sm text-text-secondary">Winners take all. Loot drops instantly to your wallet. No mercy. No delays.</p>
           </div>
         </div>
       </div>

@@ -19,12 +19,12 @@ const WalletMultiButton = dynamic(
 );
 
 const NAV_LINKS = [
-  { href: '/', label: 'Home', icon: 'home' },
-  { href: '/predict', label: 'Predict', icon: 'predict' },
-  { href: '/battle', label: 'Battle', icon: 'battle' },
+  { href: '/', label: 'Dome', icon: 'home' },
+  { href: '/predict', label: 'Oracle', icon: 'predict' },
+  { href: '/battle', label: 'Arena', icon: 'battle' },
   { href: '/draft', label: 'Draft', icon: 'draft' },
-  { href: '/spectate', label: 'Spectate', icon: 'spectate' },
-  { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard' },
+  { href: '/spectate', label: 'Watch', icon: 'spectate' },
+  { href: '/leaderboard', label: 'Warlords', icon: 'leaderboard' },
 ];
 
 const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
@@ -85,16 +85,22 @@ export function Header() {
         {/* Logo - Left */}
         <Link href="/" className="flex items-center gap-3 group justify-self-start" data-tour="logo">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center shadow-lg shadow-accent/20 group-hover:shadow-accent/40 transition-shadow">
-              <svg className="w-5 h-5 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            {/* Dome icon with fire glow */}
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-warning to-fire flex items-center justify-center shadow-lg shadow-warning/30 group-hover:shadow-warning/50 transition-all group-hover:scale-105 border border-warning/30">
+              {/* Dome/cage icon */}
+              <svg className="w-6 h-6 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3C7.03 3 3 7.03 3 12v9h18v-9c0-4.97-4.03-9-9-9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 21v-9M12 21V8M17 21v-9" />
               </svg>
             </div>
-            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-success border-2 border-bg-primary" />
+            {/* Live indicator - fire style */}
+            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-danger border-2 border-bg-primary animate-pulse" />
           </div>
           <div className="hidden sm:block">
-            <div className="font-bold text-text-primary tracking-tight">Collateral Combat</div>
-            <div className="text-[10px] text-text-tertiary uppercase tracking-wider">PvP Trading Arena</div>
+            <div className="font-black text-text-primary tracking-tight text-lg" style={{ fontFamily: 'Impact, sans-serif' }}>
+              DEGEN<span className="text-warning">DOME</span>
+            </div>
+            <div className="text-[10px] text-warning uppercase tracking-widest">Two Enter. One Profits.</div>
           </div>
         </Link>
 

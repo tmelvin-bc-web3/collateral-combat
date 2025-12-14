@@ -15,48 +15,48 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     target: '[data-tour="logo"]',
-    title: 'Welcome to Collateral Combat!',
-    description: 'A PvP trading arena where you compete head-to-head. Let me show you around.',
+    title: 'Welcome to the DegenDome',
+    description: 'The wasteland\'s premier PvP trading arena. Two degens enter, one profits. Let me show you around.',
     position: 'bottom',
   },
   {
     id: 'predict',
     target: '[data-tour="predict"]',
-    title: 'UP or DOWN',
-    description: 'Predict if SOL will go up or down in the next 30 seconds. Simple, fast, and exciting!',
+    title: 'The Oracle',
+    description: 'Predict if SOL goes up or down in 30 seconds. Call it right or get rekt. No second chances.',
     position: 'bottom',
   },
   {
     id: 'battle',
     target: '[data-tour="battle"]',
-    title: 'Battle Arena',
-    description: 'Enter 1v1 trading battles. Trade with leverage, best P&L wins the pot!',
+    title: 'The Arena',
+    description: '1v1 leveraged trading battles. Best P&L survives and claims the loot.',
     position: 'bottom',
   },
   {
     id: 'draft',
     target: '[data-tour="draft"]',
-    title: 'Memecoin Draft',
-    description: 'Build a team of 6 memecoins in weekly tournaments. Use power-ups strategically to boost your score!',
+    title: 'War Party',
+    description: 'Draft 6 memecoins for your war party. Best gains over the week claims the throne.',
     position: 'bottom',
   },
   {
     id: 'spectate',
     target: '[data-tour="spectate"]',
-    title: 'Watch & Bet',
-    description: 'Spectate live battles and place bets on who you think will win.',
+    title: 'The Stands',
+    description: 'Watch the carnage unfold. Back your champion. Collect the spoils.',
     position: 'bottom',
   },
   {
     id: 'wallet',
     target: '[data-tour="wallet"]',
-    title: 'Connect Your Wallet',
-    description: 'Connect your Solana wallet to start playing. Your profile and stats will be saved.',
+    title: 'Enter the Dome',
+    description: 'Connect your Solana wallet to join the wasteland. Your identity. Your destiny.',
     position: 'bottom',
   },
 ];
 
-const STORAGE_KEY = 'collateral-combat-tour-completed';
+const STORAGE_KEY = 'degendome-tour-completed';
 
 export function OnboardingTour() {
   const [isActive, setIsActive] = useState(false);

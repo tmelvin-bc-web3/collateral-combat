@@ -10,8 +10,8 @@ import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Collateral Combat - PvP Perp Trading Arena',
-  description: 'Compete head-to-head in leveraged trading battles on Solana. Best P&L wins.',
+  title: 'DegenDome - Two Enter. One Profits.',
+  description: 'The wasteland\'s premier PvP trading arena on Solana. Predict. Battle. Draft. Survive. Only the strongest degens claim the loot.',
 };
 
 export default function RootLayout({
