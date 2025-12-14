@@ -196,16 +196,16 @@ export default function Home() {
             <div className="text-sm text-text-tertiary">Game Modes</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-success">$5+</div>
-            <div className="text-sm text-text-tertiary">Min Entry</div>
+            <div className="text-3xl font-bold text-success">30s</div>
+            <div className="text-sm text-text-tertiary">Fastest Rounds</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-warning">28+</div>
-            <div className="text-sm text-text-tertiary">Memecoins</div>
+            <div className="text-3xl font-bold text-warning">Instant</div>
+            <div className="text-sm text-text-tertiary">Payouts</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-danger">90%</div>
-            <div className="text-sm text-text-tertiary">Prize Pool</div>
+            <div className="text-3xl font-bold text-danger">24/7</div>
+            <div className="text-sm text-text-tertiary">Live Games</div>
           </div>
         </div>
       </div>
