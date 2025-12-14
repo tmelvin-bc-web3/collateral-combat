@@ -34,6 +34,13 @@ const TOUR_STEPS: TourStep[] = [
     position: 'bottom',
   },
   {
+    id: 'draft',
+    target: '[data-tour="draft"]',
+    title: 'Memecoin Draft',
+    description: 'Build a team of 6 memecoins in weekly tournaments. Use power-ups strategically to boost your score!',
+    position: 'bottom',
+  },
+  {
     id: 'spectate',
     target: '[data-tour="spectate"]',
     title: 'Watch & Bet',

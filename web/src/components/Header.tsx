@@ -104,6 +104,7 @@ export function Header() {
             const isActive = pathname === link.href;
             const tourId = link.icon === 'battle' ? 'battle' :
                           link.icon === 'predict' ? 'predict' :
+                          link.icon === 'draft' ? 'draft' :
                           link.icon === 'spectate' ? 'spectate' : undefined;
             return (
               <Link
