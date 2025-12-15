@@ -94,7 +94,7 @@ export function Header() {
               alt="Degen Dome"
               width={48}
               height={48}
-              className="rounded-full group-hover:scale-105 transition-transform"
+              className="group-hover:scale-105 transition-transform"
             />
             {/* Live indicator - fire style */}
             <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-fire border-2 border-bg-primary animate-pulse" />
