@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useProfileContext } from '@/contexts/ProfileContext';
 import { ProfilePickerPresets } from './ProfilePickerPresets';
 import { ProfilePickerNFTs } from './ProfilePickerNFTs';
@@ -20,12 +21,18 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const walletAddress = publicKey?.toBase58() || '';
   const { ownProfile, updateProfile } = useProfileContext();
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('presets');
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [selectedNFT, setSelectedNFT] = useState<NFTAsset | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  // Handle client-side mounting for portal
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Reset selection when modal opens
   useEffect(() => {
@@ -44,7 +51,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     }
   }, [isOpen, ownProfile]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handlePresetSelect = (preset: PresetPFP) => {
     setSelectedPreset(preset);
@@ -127,8 +134,8 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const usernameChanged = username !== (ownProfile?.username || '');
   const canSave = (hasSelection || usernameChanged) && !usernameError;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm"
@@ -249,4 +256,6 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
