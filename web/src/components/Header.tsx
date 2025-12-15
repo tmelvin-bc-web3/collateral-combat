@@ -89,13 +89,15 @@ export function Header() {
         {/* Logo - Left */}
         <Link href="/" className="flex items-center gap-3 group justify-self-start" data-tour="logo">
           <div className="relative">
-            <Image
-              src="/logo.png"
-              alt="Degen Dome"
-              width={48}
-              height={48}
-              className="group-hover:scale-105 transition-transform"
-            />
+            <div className="w-12 h-12 rounded-full overflow-hidden group-hover:scale-105 transition-transform">
+              <Image
+                src="/logo.png"
+                alt="Degen Dome"
+                width={48}
+                height={48}
+                className="w-full h-full object-cover scale-110"
+              />
+            </div>
             {/* Live indicator - fire style */}
             <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-fire border-2 border-bg-primary animate-pulse" />
           </div>
