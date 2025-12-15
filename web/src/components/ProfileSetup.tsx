@@ -98,6 +98,9 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
           {!usernameError && username && (
             <p className="text-sm text-text-tertiary mt-2">{username.length}/20 characters</p>
           )}
+          <p className="text-xs text-warning mt-2">
+            Warning: Usernames cannot be changed once set
+          </p>
         </div>
 
         {/* Profile Picture Selection */}

@@ -174,25 +174,34 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           </div>
           <div className="w-full px-4">
             <label className="block text-xs text-text-tertiary mb-1">
-              Username (optional)
+              Username {ownProfile?.username ? '' : '(optional)'}
             </label>
-            <input
-              type="text"
-              value={username}
-              onChange={handleUsernameChange}
-              placeholder="Enter username..."
-              maxLength={20}
-              className={`w-full px-3 py-2 bg-bg-tertiary border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${
-                usernameError
-                  ? 'border-danger focus:ring-danger/50'
-                  : 'border-border-primary focus:ring-accent/50'
-              }`}
-            />
-            {usernameError && (
-              <p className="text-xs text-danger mt-1">{usernameError}</p>
-            )}
-            {!usernameError && username && (
-              <p className="text-xs text-text-tertiary mt-1">{username.length}/20</p>
+            {ownProfile?.username ? (
+              <div className="w-full px-3 py-2 bg-bg-tertiary border border-border-primary rounded-lg text-sm text-text-secondary">
+                {ownProfile.username}
+                <p className="text-xs text-text-tertiary mt-1">Username cannot be changed</p>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={handleUsernameChange}
+                  placeholder="Enter username..."
+                  maxLength={20}
+                  className={`w-full px-3 py-2 bg-bg-tertiary border rounded-lg text-sm focus:outline-none focus:ring-2 transition-colors ${
+                    usernameError
+                      ? 'border-danger focus:ring-danger/50'
+                      : 'border-border-primary focus:ring-accent/50'
+                  }`}
+                />
+                {usernameError && (
+                  <p className="text-xs text-danger mt-1">{usernameError}</p>
+                )}
+                {!usernameError && username && (
+                  <p className="text-xs text-text-tertiary mt-1">{username.length}/20</p>
+                )}
+              </>
             )}
           </div>
         </div>
