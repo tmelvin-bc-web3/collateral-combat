@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import dynamic from 'next/dynamic';
@@ -88,14 +89,13 @@ export function Header() {
         {/* Logo - Left */}
         <Link href="/" className="flex items-center gap-3 group justify-self-start" data-tour="logo">
           <div className="relative">
-            {/* Dome icon with fire glow - more industrial */}
-            <div className="w-10 h-10 rounded bg-gradient-to-b from-rust to-rust-dark flex items-center justify-center shadow-fire-sm group-hover:shadow-fire transition-all border border-rust-light/30">
-              {/* Skull/dome icon for more Mad Max feel */}
-              <svg className="w-6 h-6 text-sand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3C7.03 3 3 7.03 3 12v9h18v-9c0-4.97-4.03-9-9-9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 21v-9M12 21V8M17 21v-9" />
-              </svg>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Degen Dome"
+              width={48}
+              height={48}
+              className="rounded-full group-hover:scale-105 transition-transform"
+            />
             {/* Live indicator - fire style */}
             <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-fire border-2 border-bg-primary animate-pulse" />
           </div>
