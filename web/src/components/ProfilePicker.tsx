@@ -128,15 +128,15 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const canSave = (hasSelection || usernameChanged) && !usernameError;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-bg-secondary border border-border-primary rounded-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-bg-secondary border border-border-primary rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-primary">
           <h2 className="text-lg font-semibold">Choose Profile Picture</h2>
