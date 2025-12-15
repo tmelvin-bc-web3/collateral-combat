@@ -105,79 +105,87 @@ export default function Home() {
   return (
     <div className="max-w-5xl mx-auto animate-fadeIn">
       {/* Hero */}
-      <div className="text-center py-12 md:py-20">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning/10 border border-warning/30 text-warning text-sm font-bold uppercase tracking-wider mb-6">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
-          </span>
-          The Dome is Open
-        </div>
+      <div className="text-center py-12 md:py-20 relative">
+        {/* Decorative rust lines */}
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-rust/30 to-transparent" />
 
-        <h1 className="text-4xl md:text-7xl font-black tracking-tighter mb-4" style={{ fontFamily: 'Impact, sans-serif' }}>
-          TWO DEGENS ENTER.
-          <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-warning via-fire to-danger">
-            ONE PROFITS.
-          </span>
-        </h1>
-
-        <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
-          Welcome to the wasteland&apos;s premier trading arena. Predict. Battle. Draft. Survive.
-          Only the strongest degens claim the loot.
-        </p>
-
-        {!publicKey && (
-          <div className="flex justify-center">
-            <WalletMultiButton />
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded bg-rust/20 border border-rust/40 text-fire text-xs font-bold uppercase tracking-[3px] mb-6">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fire opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-fire"></span>
+            </span>
+            The Dome is Open
           </div>
-        )}
+
+          <h1 className="text-4xl md:text-7xl font-black tracking-wider mb-4" style={{ fontFamily: 'Impact, sans-serif', letterSpacing: '4px' }}>
+            TWO DEGENS ENTER.
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-fire via-danger to-blood">
+              ONE PROFITS.
+            </span>
+          </h1>
+
+          <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
+            Welcome to the wasteland&apos;s premier trading arena. Predict. Battle. Draft. Survive.
+            Only the strongest degens claim the loot.
+          </p>
+
+          {!publicKey && (
+            <div className="flex justify-center">
+              <WalletMultiButton />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Game Modes */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
         {GAME_MODES.map((mode) => (
           <Link
             key={mode.id}
             href={mode.href}
-            className={`group relative card border-2 border-transparent hover:border-${mode.color}/30 transition-all duration-300 hover:shadow-lg hover:shadow-${mode.color}/5`}
+            className="group relative card border border-rust/20 hover:border-rust/50 transition-all duration-300 hover:shadow-rust"
           >
+            {/* Top rust accent */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rust to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+
             {/* Live Badge */}
             {mode.live && (
               <div className="absolute top-4 right-4">
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full bg-${mode.color}/10 border border-${mode.color}/20`}>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-fire/20 border border-fire/30">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-${mode.color} opacity-75`}></span>
-                    <span className={`relative inline-flex rounded-full h-1.5 w-1.5 bg-${mode.color}`}></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fire opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-fire"></span>
                   </span>
-                  <span className={`text-[10px] font-bold text-${mode.color} uppercase`}>Live</span>
+                  <span className="text-[10px] font-bold text-fire uppercase tracking-wider">Live</span>
                 </div>
               </div>
             )}
 
             {/* Icon */}
-            <div className={`w-14 h-14 rounded-xl bg-${mode.color}/10 flex items-center justify-center text-${mode.color} mb-4 group-hover:scale-110 transition-transform`}>
+            <div className="w-12 h-12 rounded bg-rust/20 border border-rust/30 flex items-center justify-center text-fire mb-4 group-hover:bg-rust/30 transition-colors">
               {mode.icon}
             </div>
 
             {/* Content */}
-            <h2 className="text-xl font-bold mb-1">{mode.title}</h2>
-            <p className="text-sm text-text-tertiary mb-3">{mode.subtitle}</p>
+            <h2 className="text-lg font-black mb-1 uppercase tracking-wide">{mode.title}</h2>
+            <p className="text-xs text-rust-light mb-3 uppercase tracking-wider">{mode.subtitle}</p>
             <p className="text-sm text-text-secondary mb-4">{mode.description}</p>
 
             {/* Stats */}
-            <div className="flex gap-4 pt-4 border-t border-border-primary">
+            <div className="flex gap-4 pt-4 border-t border-rust/20">
               {mode.stats.map((stat) => (
                 <div key={stat.label}>
-                  <div className="text-xs text-text-tertiary">{stat.label}</div>
-                  <div className="font-semibold">{stat.value}</div>
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider">{stat.label}</div>
+                  <div className="font-bold text-sand">{stat.value}</div>
                 </div>
               ))}
             </div>
 
             {/* Arrow */}
-            <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg className={`w-5 h-5 text-${mode.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-5 h-5 text-fire" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </div>
@@ -186,48 +194,60 @@ export default function Home() {
       </div>
 
       {/* Quick Stats */}
-      <div className="card bg-gradient-to-br from-bg-secondary to-bg-tertiary border border-warning/20 mb-16">
+      <div className="card border border-rust/30 mb-16 relative overflow-hidden">
+        {/* Industrial corner accents */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-rust/50" />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-rust/50" />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-rust/50" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-rust/50" />
+
         <div className="text-center mb-6">
-          <h2 className="text-lg font-bold uppercase tracking-wider text-warning">Dome Statistics</h2>
+          <h2 className="text-sm font-black uppercase tracking-[4px] text-rust-light">Dome Statistics</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="text-3xl font-black text-accent">4</div>
-            <div className="text-sm text-text-tertiary uppercase tracking-wide">Battle Modes</div>
+            <div className="text-3xl font-black text-fire">4</div>
+            <div className="text-[10px] text-text-tertiary uppercase tracking-[2px]">Battle Modes</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-black text-success">30s</div>
-            <div className="text-sm text-text-tertiary uppercase tracking-wide">Speed Rounds</div>
+            <div className="text-[10px] text-text-tertiary uppercase tracking-[2px]">Speed Rounds</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-black text-warning">Instant</div>
-            <div className="text-sm text-text-tertiary uppercase tracking-wide">Loot Drops</div>
+            <div className="text-3xl font-black text-sand">Instant</div>
+            <div className="text-[10px] text-text-tertiary uppercase tracking-[2px]">Loot Drops</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-black text-danger">24/7</div>
-            <div className="text-sm text-text-tertiary uppercase tracking-wide">Always Open</div>
+            <div className="text-[10px] text-text-tertiary uppercase tracking-[2px]">Always Open</div>
           </div>
         </div>
       </div>
 
       {/* How It Works */}
       <div className="mb-16">
-        <h2 className="text-2xl font-black text-center mb-8 uppercase tracking-wider">Rules of the Dome</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">1</div>
-            <h3 className="font-bold mb-2 uppercase">Enter the Dome</h3>
-            <p className="text-sm text-text-secondary">Connect your Solana wallet to join the wasteland. Your identity. Your destiny.</p>
+        <h2 className="text-xl font-black text-center mb-8 uppercase tracking-[4px] text-text-primary">Rules of the Dome</h2>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="card border border-rust/20 text-center relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">1</div>
+            <div className="pt-4">
+              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Enter the Dome</h3>
+              <p className="text-sm text-text-secondary">Connect your Solana wallet to join the wasteland. Your identity. Your destiny.</p>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">2</div>
-            <h3 className="font-bold mb-2 uppercase">Choose Your Fate</h3>
-            <p className="text-sm text-text-secondary">Oracle predictions. Arena battles. War party drafts. Pick your path to glory.</p>
+          <div className="card border border-rust/20 text-center relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">2</div>
+            <div className="pt-4">
+              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Choose Your Fate</h3>
+              <p className="text-sm text-text-secondary">Oracle predictions. Arena battles. War party drafts. Pick your path to glory.</p>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-4 border border-warning/30">3</div>
-            <h3 className="font-bold mb-2 uppercase">Claim the Spoils</h3>
-            <p className="text-sm text-text-secondary">Winners take all. Loot drops instantly to your wallet. No mercy. No delays.</p>
+          <div className="card border border-rust/20 text-center relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">3</div>
+            <div className="pt-4">
+              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Claim the Spoils</h3>
+              <p className="text-sm text-text-secondary">Winners take all. Loot drops instantly to your wallet. No mercy. No delays.</p>
+            </div>
           </div>
         </div>
       </div>

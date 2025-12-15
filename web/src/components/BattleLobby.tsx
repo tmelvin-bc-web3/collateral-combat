@@ -14,16 +14,16 @@ const DURATION_OPTIONS: { value: BattleDuration; label: string; icon: string }[]
 ];
 
 const ENTRY_FEE_OPTIONS = [
-  { value: 0.1, label: '0.1 SOL', tier: 'Bronze' },
-  { value: 0.5, label: '0.5 SOL', tier: 'Silver' },
-  { value: 1, label: '1 SOL', tier: 'Gold' },
-  { value: 5, label: '5 SOL', tier: 'Diamond' },
+  { value: 0.1, label: '0.1 SOL', tier: 'Scavenger' },
+  { value: 0.5, label: '0.5 SOL', tier: 'Raider' },
+  { value: 1, label: '1 SOL', tier: 'Warlord' },
+  { value: 5, label: '5 SOL', tier: 'Immortan' },
 ];
 
 const STEPS = [
   {
-    title: 'Match',
-    description: 'Find an opponent with the same entry fee. Both start with $1,000 paper balance.',
+    title: 'Enter the Cage',
+    description: 'Find a challenger with the same blood price. Both start with $1,000 war chest.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -31,8 +31,8 @@ const STEPS = [
     ),
   },
   {
-    title: 'Trade',
-    description: 'Long or short any asset with up to 20x leverage. Real prices, paper money.',
+    title: 'Fight',
+    description: 'Long or short with 20x leverage. Real prices. No mercy.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -40,8 +40,8 @@ const STEPS = [
     ),
   },
   {
-    title: 'Win',
-    description: 'Highest P&L % when time runs out takes the entire prize pool.',
+    title: 'Claim the Spoils',
+    description: 'Best P&L when the bell rings takes the entire loot pile.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -125,16 +125,16 @@ export function BattleLobby() {
             </div>
 
             {/* Main heading */}
-            <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
-              <span className="block text-text-primary">Trade PvP.</span>
-              <span className="block bg-gradient-to-r from-accent via-purple-400 to-accent bg-clip-text text-transparent">
-                Winner Takes All.
+            <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter" style={{ fontFamily: 'Impact, sans-serif' }}>
+              <span className="block text-text-primary">THE ARENA</span>
+              <span className="block bg-gradient-to-r from-warning via-fire to-danger bg-clip-text text-transparent">
+                TWO ENTER. ONE PROFITS.
               </span>
             </h1>
 
             <p className="text-xl text-text-secondary max-w-2xl mx-auto mb-8">
-              Enter head-to-head trading battles with real opponents.
-              Trade with up to 20x leverage on paper money. Best P&L wins the prize pool.
+              Enter the cage and face your challenger.
+              Trade with 20x leverage. Best P&L survives and claims the loot.
             </p>
 
             {/* CTA */}
@@ -142,21 +142,21 @@ export function BattleLobby() {
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-accent to-purple-500 rounded-xl blur opacity-40 group-hover:opacity-70 transition-opacity" />
                 <button
-                  className="relative px-8 py-4 bg-gradient-to-r from-accent to-accent/90 text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-accent/30 transition-all"
+                  className="relative px-8 py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide"
                   onClick={() => {
                     // Trigger wallet modal - find the wallet button and click it
                     const walletBtn = document.querySelector('.wallet-adapter-button') as HTMLButtonElement;
                     if (walletBtn) walletBtn.click();
                   }}
                 >
-                  Connect Wallet to Battle
+                  Enter the Dome
                 </button>
               </div>
               <a
                 href="/spectate"
-                className="px-8 py-4 bg-bg-tertiary border border-border-primary text-text-secondary font-semibold rounded-xl hover:bg-bg-hover hover:text-text-primary hover:border-border-secondary transition-all"
+                className="px-8 py-4 bg-bg-tertiary border border-warning/30 text-warning font-semibold rounded-xl hover:bg-warning/10 hover:text-warning hover:border-warning/50 transition-all uppercase tracking-wide"
               >
-                Watch Live Battles
+                Watch the Carnage
               </a>
             </div>
           </div>
@@ -165,29 +165,28 @@ export function BattleLobby() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16 max-w-4xl mx-auto">
           {[
-            { value: '$1,000', label: 'Starting Balance', icon: '💰' },
-            { value: '20x', label: 'Max Leverage', icon: '📈' },
-            { value: '30 min', label: 'Battle Duration', icon: '⏱️' },
-            { value: '95%', label: 'Winner Payout', icon: '🏆' },
+            { value: '$1,000', label: 'War Chest', color: 'text-warning' },
+            { value: '20x', label: 'Max Leverage', color: 'text-danger' },
+            { value: '30 min', label: 'Fight Duration', color: 'text-accent' },
+            { value: '95%', label: 'Survivor Loot', color: 'text-success' },
           ].map((stat) => (
-            <div key={stat.label} className="card text-center p-6 hover:border-accent/30 transition-colors">
-              <div className="text-3xl mb-2">{stat.icon}</div>
-              <div className="text-2xl font-bold text-accent mb-1">{stat.value}</div>
-              <div className="text-sm text-text-tertiary">{stat.label}</div>
+            <div key={stat.label} className="card text-center p-6 hover:border-warning/30 transition-colors border-warning/10">
+              <div className={`text-2xl font-black mb-1 ${stat.color}`}>{stat.value}</div>
+              <div className="text-sm text-text-tertiary uppercase tracking-wide">{stat.label}</div>
             </div>
           ))}
         </div>
 
         {/* How it Works */}
         <div className="max-w-4xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-wider" style={{ fontFamily: 'Impact, sans-serif' }}>Rules of the <span className="text-warning">Arena</span></h2>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 step: '01',
-                title: 'Enter a Battle',
-                description: 'Choose your entry fee and get matched with an opponent. Both players start with $1,000 paper balance.',
+                title: 'Enter the Cage',
+                description: 'Pay your blood price and face your challenger. Both degens start with $1,000 war chest.',
                 icon: (
                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -196,8 +195,8 @@ export function BattleLobby() {
               },
               {
                 step: '02',
-                title: 'Trade to Win',
-                description: 'Go long or short on SOL, ETH, BTC and more. Use up to 20x leverage. Real-time prices, zero risk to your capital.',
+                title: 'Fight to Survive',
+                description: 'Long or short with 20x leverage. Real prices. No mercy. Only skill decides who walks out.',
                 icon: (
                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -206,8 +205,8 @@ export function BattleLobby() {
               },
               {
                 step: '03',
-                title: 'Claim Victory',
-                description: 'When time runs out, the trader with the highest P&L percentage wins the entire prize pool. Winner takes all.',
+                title: 'Claim the Spoils',
+                description: 'When the bell rings, best P&L takes the entire loot pile. Winner. Takes. All.',
                 icon: (
                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
@@ -216,15 +215,15 @@ export function BattleLobby() {
               },
             ].map((item) => (
               <div key={item.step} className="relative">
-                <div className="card h-full p-8 hover:border-accent/30 transition-all group">
-                  <div className="absolute -top-4 -left-2 text-6xl font-black text-accent/10 group-hover:text-accent/20 transition-colors">
+                <div className="card h-full p-8 hover:border-warning/30 transition-all group border-warning/10">
+                  <div className="absolute -top-4 -left-2 text-6xl font-black text-warning/10 group-hover:text-warning/20 transition-colors">
                     {item.step}
                   </div>
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent/20 to-purple-500/20 border border-accent/30 flex items-center justify-center text-accent mb-4 group-hover:scale-110 transition-transform">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-warning/20 to-danger/20 border border-warning/30 flex items-center justify-center text-warning mb-4 group-hover:scale-110 transition-transform">
                       {item.icon}
                     </div>
-                    <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                    <h3 className="text-xl font-bold mb-3 uppercase">{item.title}</h3>
                     <p className="text-text-secondary leading-relaxed">{item.description}</p>
                   </div>
                 </div>
@@ -256,19 +255,19 @@ export function BattleLobby() {
 
         {/* Final CTA */}
         <div className="max-w-2xl mx-auto text-center mb-16">
-          <div className="card p-8 bg-gradient-to-br from-accent/5 via-bg-secondary to-purple-500/5 border-accent/20">
-            <h2 className="text-2xl font-bold mb-4">Ready to Prove Your Skills?</h2>
+          <div className="card p-8 bg-gradient-to-br from-warning/5 via-bg-secondary to-danger/5 border-warning/20">
+            <h2 className="text-2xl font-black mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>Ready to <span className="text-warning">Enter the Dome?</span></h2>
             <p className="text-text-secondary mb-6">
-              Connect your wallet and enter the arena. No risk to your real funds - just pure trading competition.
+              Connect your wallet and face your challenger. No risk to your real funds - just pure degen combat.
             </p>
             <button
-              className="px-8 py-4 bg-gradient-to-r from-accent to-accent/90 text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-accent/30 transition-all"
+              className="px-8 py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide"
               onClick={() => {
                 const walletBtn = document.querySelector('.wallet-adapter-button') as HTMLButtonElement;
                 if (walletBtn) walletBtn.click();
               }}
             >
-              Connect Wallet
+              Enter the Dome
             </button>
           </div>
         </div>
@@ -299,9 +298,9 @@ export function BattleLobby() {
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold mb-2">Searching for Opponent</h2>
+              <h2 className="text-2xl font-bold mb-2 uppercase">Searching for Prey</h2>
               <p className="text-text-secondary mb-6">
-                Scanning the arena for worthy challengers...
+                Scanning the wasteland for worthy challengers...
               </p>
 
               <div className="flex items-center justify-center gap-4 mb-6">
@@ -359,9 +358,9 @@ export function BattleLobby() {
                 </div>
               </div>
 
-              <h2 className="text-xl font-bold mb-2">Opponent Joining...</h2>
+              <h2 className="text-xl font-bold mb-2 uppercase">Challenger Approaching...</h2>
               <p className="text-text-secondary text-sm mb-4">
-                Battle room created! Waiting for your challenger.
+                The cage is set. Waiting for your prey to enter.
               </p>
 
               <div className="flex items-center justify-center gap-3 mb-6">
@@ -416,13 +415,13 @@ export function BattleLobby() {
             <span className="text-sm font-semibold text-accent">Paper Trading Mode</span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">
-            <span className="bg-gradient-to-r from-text-primary via-accent to-text-primary bg-clip-text text-transparent" style={{ backgroundSize: '200% 100%', animation: 'shimmer 3s linear infinite' }}>
-              Enter the Arena
+          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
+            <span className="bg-gradient-to-r from-warning via-fire to-danger bg-clip-text text-transparent">
+              The Arena Awaits
             </span>
           </h1>
           <p className="text-lg text-text-secondary max-w-lg mx-auto">
-            Trade head-to-head against real opponents. Best P&L % wins the entire prize pool.
+            Face your challenger. Best P&L survives and claims all the loot.
           </p>
         </div>
       </div>

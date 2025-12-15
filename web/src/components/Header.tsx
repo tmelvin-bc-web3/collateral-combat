@@ -80,32 +80,35 @@ export function Header() {
   const walletAddress = publicKey?.toBase58();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/80 backdrop-blur-xl border-b border-border-primary">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-sm border-b border-rust/30">
+      {/* Rust accent line at top */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rust to-transparent opacity-60" />
+
       <div className="max-w-7xl mx-auto px-4 h-16 grid grid-cols-3 items-center">
         {/* Logo - Left */}
         <Link href="/" className="flex items-center gap-3 group justify-self-start" data-tour="logo">
           <div className="relative">
-            {/* Dome icon with fire glow */}
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-warning to-fire flex items-center justify-center shadow-lg shadow-warning/30 group-hover:shadow-warning/50 transition-all group-hover:scale-105 border border-warning/30">
-              {/* Dome/cage icon */}
-              <svg className="w-6 h-6 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            {/* Dome icon with fire glow - more industrial */}
+            <div className="w-10 h-10 rounded bg-gradient-to-b from-rust to-rust-dark flex items-center justify-center shadow-fire-sm group-hover:shadow-fire transition-all border border-rust-light/30">
+              {/* Skull/dome icon for more Mad Max feel */}
+              <svg className="w-6 h-6 text-sand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3C7.03 3 3 7.03 3 12v9h18v-9c0-4.97-4.03-9-9-9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 21v-9M12 21V8M17 21v-9" />
               </svg>
             </div>
             {/* Live indicator - fire style */}
-            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-danger border-2 border-bg-primary animate-pulse" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-fire border-2 border-bg-primary animate-pulse" />
           </div>
           <div className="hidden sm:block">
-            <div className="font-black text-text-primary tracking-tight text-lg" style={{ fontFamily: 'Impact, sans-serif' }}>
-              DEGEN<span className="text-warning">DOME</span>
+            <div className="font-black text-text-primary tracking-wider text-xl" style={{ fontFamily: 'Impact, sans-serif', letterSpacing: '2px' }}>
+              DEGEN<span className="text-fire">DOME</span>
             </div>
-            <div className="text-[10px] text-warning uppercase tracking-widest">Two Enter. One Profits.</div>
+            <div className="text-[9px] text-rust-light uppercase tracking-[3px]">Two Enter. One Profits.</div>
           </div>
         </Link>
 
         {/* Nav - Center */}
-        <nav className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-bg-secondary/50 border border-border-primary justify-self-center">
+        <nav className="hidden md:flex items-center gap-0.5 p-1 rounded bg-bg-secondary/80 border border-rust/20 justify-self-center">
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
             const tourId = link.icon === 'battle' ? 'battle' :
@@ -117,10 +120,10 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 data-tour={tourId}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all ${
                   isActive
-                    ? 'text-text-primary bg-bg-tertiary shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary/50'
+                    ? 'text-fire bg-rust/20 border border-rust/40'
+                    : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
                 }`}
               >
                 <NavIcon type={link.icon} active={isActive} />
