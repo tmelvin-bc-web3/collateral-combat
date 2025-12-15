@@ -187,6 +187,12 @@ export interface ServerToClientEvents {
   prediction_history: (rounds: PredictionRound[]) => void;
   prediction_settled: (round: PredictionRound) => void;
   prediction_bet_placed: (bet: PredictionBet) => void;
+  // Progression events
+  progression_update: (progression: UserProgression) => void;
+  xp_gained: (data: XpGainEvent) => void;
+  level_up: (data: LevelUpResult & { walletAddress: string }) => void;
+  perk_activated: (perk: UserPerk) => void;
+  perk_expired: (data: { perkId: number }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -220,6 +226,9 @@ export interface ClientToServerEvents {
   select_swap_coin: (entryId: string, pickId: string, newCoinId: string) => void;
   use_powerup_boost: (entryId: string, pickId: string) => void;
   use_powerup_freeze: (entryId: string, pickId: string) => void;
+  // Progression events
+  subscribe_progression: (walletAddress: string) => void;
+  unsubscribe_progression: (walletAddress: string) => void;
 }
 
 // ===================
