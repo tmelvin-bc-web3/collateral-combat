@@ -340,3 +340,78 @@ export interface DraftServerToClientEvents {
   memecoin_prices_update: (prices: Record<string, number>) => void;
   draft_error: (message: string) => void;
 }
+
+// ===================
+// Progression System Types
+// ===================
+
+export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
+export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7';
+export type CosmeticType = 'border' | 'pfp' | 'title';
+
+export interface UserProgression {
+  walletAddress: string;
+  totalXp: number;
+  currentLevel: number;
+  xpToNextLevel: number;
+  xpProgress: number; // percentage 0-100
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface XpHistoryEntry {
+  id: number;
+  walletAddress: string;
+  xpAmount: number;
+  source: XpSource;
+  sourceId?: string;
+  description?: string;
+  createdAt: number;
+}
+
+export interface UserPerk {
+  id: number;
+  walletAddress: string;
+  perkType: ProgressionPerkType;
+  unlockLevel: number;
+  isUsed: boolean;
+  activatedAt?: number;
+  expiresAt?: number;
+  createdAt: number;
+}
+
+export interface UserCosmetic {
+  id: number;
+  walletAddress: string;
+  cosmeticType: CosmeticType;
+  cosmeticId: string;
+  unlockLevel: number;
+  createdAt: number;
+}
+
+export interface LevelUpResult {
+  previousLevel: number;
+  newLevel: number;
+  unlockedPerks: UserPerk[];
+  unlockedCosmetics: UserCosmetic[];
+  newTitle: string | null;
+}
+
+export interface XpGainEvent {
+  walletAddress: string;
+  amount: number;
+  source: XpSource;
+  sourceId?: string;
+  description: string;
+  newTotalXp: number;
+  levelUp?: LevelUpResult;
+}
+
+// Progression WebSocket events
+export interface ProgressionServerToClientEvents {
+  xp_gained: (data: XpGainEvent) => void;
+  level_up: (data: LevelUpResult & { walletAddress: string }) => void;
+  perk_activated: (perk: UserPerk) => void;
+  perk_expired: (data: { perkId: number; walletAddress: string }) => void;
+}

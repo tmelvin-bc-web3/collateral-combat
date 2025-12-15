@@ -10,6 +10,7 @@ import { battleSimulator } from './services/battleSimulator';
 import { predictionService } from './services/predictionService';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
+import { progressionService } from './services/progressionService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier } from './types';
@@ -389,6 +390,58 @@ app.get('/api/draft/memecoins/prices', (req, res) => {
   res.json(coinMarketCapService.getAllPrices());
 });
 
+// ===================
+// Progression Endpoints
+// ===================
+
+// Get user progression (level, XP, title)
+app.get('/api/progression/:wallet', (req, res) => {
+  const progression = progressionService.getProgression(req.params.wallet);
+  res.json(progression);
+});
+
+// Get XP history
+app.get('/api/progression/:wallet/history', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 20;
+  const history = progressionService.getXpHistory(req.params.wallet, limit);
+  res.json(history);
+});
+
+// Get available & active perks
+app.get('/api/progression/:wallet/perks', (req, res) => {
+  const perks = progressionService.getAvailablePerks(req.params.wallet);
+  res.json(perks);
+});
+
+// Activate a perk
+app.post('/api/progression/:wallet/perks/:id/activate', (req, res) => {
+  try {
+    const perkId = parseInt(req.params.id);
+    if (isNaN(perkId)) {
+      return res.status(400).json({ error: 'Invalid perk ID' });
+    }
+    const perk = progressionService.activatePerk(req.params.wallet, perkId);
+    if (!perk) {
+      return res.status(404).json({ error: 'Perk not found or already used' });
+    }
+    res.json(perk);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get unlocked cosmetics
+app.get('/api/progression/:wallet/cosmetics', (req, res) => {
+  const cosmetics = progressionService.getUnlockedCosmetics(req.params.wallet);
+  res.json(cosmetics);
+});
+
+// Get current rake % for user
+app.get('/api/progression/:wallet/rake', (req, res) => {
+  const rake = progressionService.getActiveRakeReduction(req.params.wallet);
+  res.json({ rakePercent: rake });
+});
+
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -676,6 +729,22 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ===================
+  // Progression Events
+  // ===================
+
+  socket.on('subscribe_progression', (wallet: string) => {
+    walletAddress = wallet;
+    socket.join(`progression_${wallet}`);
+    // Send current progression state
+    const progression = progressionService.getProgression(wallet);
+    socket.emit('progression_update' as any, progression);
+  });
+
+  socket.on('unsubscribe_progression', (wallet: string) => {
+    socket.leave(`progression_${wallet}`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -786,6 +855,37 @@ draftTournamentManager.subscribe((event, data) => {
 // Subscribe to memecoin price updates
 coinMarketCapService.subscribe((prices) => {
   io.to('draft_prices').emit('memecoin_prices_update' as any, prices);
+});
+
+// Subscribe to progression events and broadcast to user
+progressionService.subscribe((event, data) => {
+  switch (event) {
+    case 'xp_gained':
+      // Broadcast to the specific user's progression room
+      io.to(`progression_${data.walletAddress}`).emit('xp_gained' as any, {
+        amount: data.amount,
+        newTotal: data.newTotal,
+        source: data.source,
+        description: data.description
+      });
+      break;
+    case 'level_up':
+      // Broadcast level up celebration to the specific user
+      io.to(`progression_${data.walletAddress}`).emit('level_up' as any, {
+        previousLevel: data.previousLevel,
+        newLevel: data.newLevel,
+        newTitle: data.newTitle,
+        unlockedPerks: data.unlockedPerks,
+        unlockedCosmetics: data.unlockedCosmetics
+      });
+      break;
+    case 'perk_activated':
+      io.to(`progression_${data.walletAddress}`).emit('perk_activated' as any, data.perk);
+      break;
+    case 'perk_expired':
+      io.to(`progression_${data.walletAddress}`).emit('perk_expired' as any, { perkId: data.perkId });
+      break;
+  }
 });
 
 // Start server

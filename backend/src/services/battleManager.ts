@@ -11,6 +11,7 @@ import {
   Leverage,
 } from '../types';
 import { priceService } from './priceService';
+import { progressionService } from './progressionService';
 
 const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
@@ -397,6 +398,43 @@ class BattleManager {
 
     console.log(`Battle ${battleId} ended! Winner: ${battle.winnerId}`);
     this.notifyListeners(battle);
+
+    // Award XP to participants
+    this.awardBattleXp(battle);
+  }
+
+  // Award XP based on battle results
+  private awardBattleXp(battle: Battle): void {
+    const wager = battle.config.entryFee;
+
+    battle.players.forEach(player => {
+      const isWinner = player.rank === 1;
+      const opponent = battle.players.find(p => p.walletAddress !== player.walletAddress);
+      const opponentWallet = opponent?.walletAddress || 'opponent';
+      const truncatedOpponent = opponentWallet.slice(0, 4) + '...' + opponentWallet.slice(-4);
+
+      if (isWinner) {
+        // Winner: 100 XP + (wager × 0.1)
+        const xpAmount = 100 + Math.floor(wager * 0.1);
+        progressionService.awardXp(
+          player.walletAddress,
+          xpAmount,
+          'battle',
+          battle.id,
+          `Won battle vs ${truncatedOpponent}`
+        );
+      } else {
+        // Loser: 25 XP + (wager × 0.05)
+        const xpAmount = 25 + Math.floor(wager * 0.05);
+        progressionService.awardXp(
+          player.walletAddress,
+          xpAmount,
+          'battle',
+          battle.id,
+          `Battle vs ${truncatedOpponent}`
+        );
+      }
+    });
   }
 
   // Queue for matchmaking

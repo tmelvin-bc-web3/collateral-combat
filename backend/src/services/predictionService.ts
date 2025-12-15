@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PredictionRound, PredictionBet, PredictionSide, RoundStatus, PredictionStats } from '../types';
 import { priceService } from './priceService';
+import { progressionService } from './progressionService';
 
 const ROUND_DURATION = 30; // 30 seconds per round
 const LOCK_BEFORE_END = 5; // Stop accepting bets 5 seconds before end
@@ -201,6 +202,42 @@ class PredictionService {
     losingBets.forEach(bet => {
       bet.status = 'lost';
       bet.payout = 0;
+    });
+
+    // Award XP to all participants
+    this.awardPredictionXp(round, winningBets, losingBets);
+  }
+
+  // Award XP based on prediction results
+  private awardPredictionXp(
+    round: PredictionRound,
+    winningBets: PredictionBet[],
+    losingBets: PredictionBet[]
+  ): void {
+    // Award XP to winners
+    winningBets.forEach(bet => {
+      // Winner: 50 XP + (stake × 0.1)
+      const xpAmount = 50 + Math.floor(bet.amount * 0.1);
+      progressionService.awardXp(
+        bet.bettor,
+        xpAmount,
+        'prediction',
+        round.id,
+        `Correct ${bet.side} prediction on ${round.asset}`
+      );
+    });
+
+    // Award XP to losers
+    losingBets.forEach(bet => {
+      // Loser: 10 XP + (stake × 0.02)
+      const xpAmount = 10 + Math.floor(bet.amount * 0.02);
+      progressionService.awardXp(
+        bet.bettor,
+        xpAmount,
+        'prediction',
+        round.id,
+        `${bet.side} prediction on ${round.asset}`
+      );
     });
   }
 

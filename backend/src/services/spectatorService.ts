@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Battle, LiveBattle, BattleOdds, SpectatorBet, BetStatus } from '../types';
 import { battleManager } from './battleManager';
+import { progressionService } from './progressionService';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
 const MAX_BET = 10; // Maximum bet in SOL
@@ -238,9 +239,29 @@ class SpectatorService {
       if (bet.backedPlayer === battle.winnerId) {
         bet.status = 'won';
         console.log(`Bet won: ${bet.bettor} won ${bet.potentialPayout.toFixed(2)} SOL`);
+
+        // Award XP for winning spectator bet: 30 XP + (bet × 0.1)
+        const xpAmount = 30 + Math.floor(bet.amount * 0.1);
+        progressionService.awardXp(
+          bet.bettor,
+          xpAmount,
+          'spectator',
+          battleId,
+          'Won spectator bet'
+        );
       } else {
         bet.status = 'lost';
         console.log(`Bet lost: ${bet.bettor} lost ${bet.amount} SOL`);
+
+        // Award XP for losing spectator bet: 10 XP + (bet × 0.02)
+        const xpAmount = 10 + Math.floor(bet.amount * 0.02);
+        progressionService.awardXp(
+          bet.bettor,
+          xpAmount,
+          'spectator',
+          battleId,
+          'Spectator bet'
+        );
       }
       bet.settledAt = Date.now();
       this.notifyListeners('bet_settled', bet);

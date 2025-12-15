@@ -13,6 +13,7 @@ import {
 } from '../types';
 import * as db from '../db/draftDatabase';
 import { coinMarketCapService } from './coinMarketCapService';
+import { progressionService } from './progressionService';
 
 // In-memory state for active draft sessions
 interface ActiveDraftSession {
@@ -190,6 +191,15 @@ class DraftTournamentManager {
     }
 
     const entry = db.createEntry(tournamentId, walletAddress, tournament.entryFeeUsd);
+
+    // Award XP for entering: 50 XP
+    progressionService.awardXp(
+      walletAddress,
+      50,
+      'draft',
+      entry.id,
+      `Entered ${tournament.tier} tournament`
+    );
 
     // Notify
     this.notify('entry_created', entry);
@@ -581,6 +591,9 @@ class DraftTournamentManager {
 
     this.distributePayouts(rankedEntries, topCount, prizePool);
 
+    // Award XP based on placement
+    this.awardTournamentXp(rankedEntries, topCount, tournament);
+
     // Mark tournament as settled
     db.settleTournament(tournamentId);
 
@@ -627,6 +640,48 @@ class DraftTournamentManager {
     // Set ranks for non-winning entries
     for (let i = topCount; i < rankedEntries.length; i++) {
       db.setEntryRankAndPayout(rankedEntries[i].id, i + 1, 0);
+    }
+  }
+
+  // Award XP based on tournament placement
+  private awardTournamentXp(
+    rankedEntries: DraftEntry[],
+    topCount: number,
+    tournament: DraftTournament
+  ): void {
+    const entryFee = tournament.entryFeeUsd;
+
+    for (let i = 0; i < rankedEntries.length; i++) {
+      const entry = rankedEntries[i];
+      const rank = i + 1;
+
+      let xpAmount: number;
+      let description: string;
+
+      if (rank === 1) {
+        // Winner: 1000 XP + (entry × 10)
+        xpAmount = 1000 + Math.floor(entryFee * 10);
+        description = 'Won tournament!';
+      } else if (rank <= 3) {
+        // Top 3: 500 XP + (entry × 5)
+        xpAmount = 500 + Math.floor(entryFee * 5);
+        description = `Top 3 finish (#${rank})`;
+      } else if (rank <= topCount) {
+        // Top 10%: 200 XP + (entry × 2)
+        xpAmount = 200 + Math.floor(entryFee * 2);
+        description = `Top 10% finish (#${rank})`;
+      } else {
+        // Participated but didn't place: minimal XP (already got 50 XP for entering)
+        continue; // No additional XP for non-placing entries
+      }
+
+      progressionService.awardXp(
+        entry.walletAddress,
+        xpAmount,
+        'draft',
+        entry.id,
+        description
+      );
     }
   }
 
