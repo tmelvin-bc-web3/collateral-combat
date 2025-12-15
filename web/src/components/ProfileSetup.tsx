@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useProfileContext } from '@/contexts/ProfileContext';
 import { PRESET_PFPS } from '@/data/presetPFPs';
 import { PresetPFP } from '@/types';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface ProfileSetupProps {
   onComplete: () => void;
@@ -16,7 +18,9 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const validateUsername = (value: string): string | null => {
     if (!value) return null;
@@ -25,11 +29,52 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     return null;
   };
 
+  const checkUsernameAvailability = async (value: string) => {
+    if (!value || validateUsername(value)) return;
+
+    setIsCheckingUsername(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/username/check/${encodeURIComponent(value)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.available) {
+          setUsernameError('Username is already taken');
+        }
+      }
+    } catch {
+      // Failed to check - allow save attempt which will catch duplicates server-side
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setUsername(value);
-    setUsernameError(validateUsername(value));
+    const validationError = validateUsername(value);
+    setUsernameError(validationError);
+
+    // Clear any pending check
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
+
+    // Debounce the availability check
+    if (value && !validationError) {
+      checkTimeoutRef.current = setTimeout(() => {
+        checkUsernameAvailability(value);
+      }, 500);
+    }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
     if (usernameError) return;
@@ -159,10 +204,10 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || !!usernameError}
+            disabled={isSaving || !!usernameError || isCheckingUsername}
             className="btn btn-primary px-8 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Continue'}
+            {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Continue'}
           </button>
         </div>
       </div>

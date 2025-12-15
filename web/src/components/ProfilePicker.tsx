@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useProfileContext } from '@/contexts/ProfileContext';
 import { ProfilePickerPresets } from './ProfilePickerPresets';
@@ -8,6 +8,8 @@ import { ProfilePickerNFTs } from './ProfilePickerNFTs';
 import { UserAvatar } from './UserAvatar';
 import { PresetPFP, NFTAsset } from '@/types';
 import { useWallet } from '@solana/wallet-adapter-react';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface ProfilePickerProps {
   isOpen: boolean;
@@ -28,6 +30,8 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle client-side mounting for portal
   useEffect(() => {
@@ -70,11 +74,52 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     return null;
   };
 
+  const checkUsernameAvailability = async (value: string) => {
+    if (!value || validateUsername(value)) return;
+
+    setIsCheckingUsername(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/username/check/${encodeURIComponent(value)}?wallet=${walletAddress}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.available) {
+          setUsernameError('Username is already taken');
+        }
+      }
+    } catch {
+      // Failed to check - allow save attempt which will catch duplicates server-side
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setUsername(value);
-    setUsernameError(validateUsername(value));
+    const validationError = validateUsername(value);
+    setUsernameError(validationError);
+
+    // Clear any pending check
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+    }
+
+    // Debounce the availability check
+    if (value && !validationError) {
+      checkTimeoutRef.current = setTimeout(() => {
+        checkUsernameAvailability(value);
+      }, 500);
+    }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
     // Can save if we have a selection OR if username changed
@@ -132,7 +177,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
 
   const hasSelection = selectedPreset || selectedNFT;
   const usernameChanged = username !== (ownProfile?.username || '');
-  const canSave = (hasSelection || usernameChanged) && !usernameError;
+  const canSave = (hasSelection || usernameChanged) && !usernameError && !isCheckingUsername;
 
   const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -259,7 +304,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
             disabled={!canSave || isSaving}
             className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
           </button>
         </div>
       </div>

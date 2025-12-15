@@ -84,3 +84,19 @@ export function deleteProfile(walletAddress: string): boolean {
   }
   return false;
 }
+
+export function isUsernameTaken(username: string, excludeWallet?: string): boolean {
+  const data = loadProfiles();
+  const lowerUsername = username.toLowerCase();
+
+  for (const [wallet, profile] of Object.entries(data.profiles)) {
+    if (profile.username && profile.username.toLowerCase() === lowerUsername) {
+      // If we're excluding a wallet (for updates), skip it
+      if (excludeWallet && wallet === excludeWallet) {
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}

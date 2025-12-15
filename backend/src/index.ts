@@ -10,7 +10,7 @@ import { battleSimulator } from './services/battleSimulator';
 import { predictionService } from './services/predictionService';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
-import { getProfile, upsertProfile, getProfiles, deleteProfile, ProfilePictureType } from './db/database';
+import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier } from './types';
 
@@ -94,6 +94,24 @@ app.get('/api/health', (req, res) => {
 });
 
 // Profile endpoints
+
+// Check if username is available
+app.get('/api/username/check/:username', (req, res) => {
+  const username = req.params.username;
+  const excludeWallet = req.query.wallet as string | undefined;
+
+  if (!username || username.length > 20) {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+  }
+
+  const taken = isUsernameTaken(username, excludeWallet);
+  res.json({ available: !taken, username });
+});
+
 app.get('/api/profile/:wallet', (req, res) => {
   const profile = getProfile(req.params.wallet);
   if (!profile) {
@@ -129,6 +147,10 @@ app.put('/api/profile/:wallet', (req, res) => {
       }
       if (!/^[a-zA-Z0-9_]+$/.test(username)) {
         return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+      }
+      // Check if username is already taken by another user
+      if (isUsernameTaken(username, req.params.wallet)) {
+        return res.status(409).json({ error: 'Username is already taken' });
       }
     }
 
