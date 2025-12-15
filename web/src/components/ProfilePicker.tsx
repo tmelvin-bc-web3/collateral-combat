@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useProfileContext } from '@/contexts/ProfileContext';
+import { useProgressionContext } from '@/contexts/ProgressionContext';
 import { ProfilePickerPresets } from './ProfilePickerPresets';
 import { ProfilePickerNFTs } from './ProfilePickerNFTs';
+import { ProgressionStats } from './progression';
 import { UserAvatar } from './UserAvatar';
 import { PresetPFP, NFTAsset } from '@/types';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -16,12 +18,22 @@ interface ProfilePickerProps {
   onClose: () => void;
 }
 
-type Tab = 'presets' | 'nfts';
+type Tab = 'presets' | 'nfts' | 'stats';
 
 export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
   const { ownProfile, updateProfile } = useProfileContext();
+  const {
+    progression,
+    perks,
+    cosmetics,
+    xpHistory,
+    activeRake,
+    isLoading: progressionLoading,
+    fetchXpHistory,
+    activatePerk,
+  } = useProgressionContext();
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('presets');
@@ -55,17 +67,14 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     }
   }, [isOpen, ownProfile]);
 
-  if (!isOpen || !mounted) return null;
-
-  const handlePresetSelect = (preset: PresetPFP) => {
-    setSelectedPreset(preset);
-    setSelectedNFT(null);
-  };
-
-  const handleNFTSelect = (nft: NFTAsset) => {
-    setSelectedNFT(nft);
-    setSelectedPreset(null);
-  };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const validateUsername = (value: string): string | null => {
     if (!value) return null; // Empty is allowed
@@ -112,14 +121,18 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     }
   };
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (checkTimeoutRef.current) {
-        clearTimeout(checkTimeoutRef.current);
-      }
-    };
-  }, []);
+  const handlePresetSelect = (preset: PresetPFP) => {
+    setSelectedPreset(preset);
+    setSelectedNFT(null);
+  };
+
+  const handleNFTSelect = (nft: NFTAsset) => {
+    setSelectedNFT(nft);
+    setSelectedPreset(null);
+  };
+
+  // Early return AFTER all hooks
+  if (!isOpen || !mounted) return null;
 
   const handleSave = async () => {
     // Can save if we have a selection OR if username changed
@@ -273,6 +286,16 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           >
             My NFTs
           </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'stats'
+                ? 'text-accent border-b-2 border-accent'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Stats
+          </button>
         </div>
 
         {/* Content */}
@@ -282,31 +305,44 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
               selectedId={selectedPreset?.id || (ownProfile?.pfpType === 'preset' ? ownProfile.presetId : null) || null}
               onSelect={handlePresetSelect}
             />
-          ) : (
+          ) : activeTab === 'nfts' ? (
             <ProfilePickerNFTs
               selectedMint={selectedNFT?.mint || (ownProfile?.pfpType === 'nft' ? ownProfile.nftMint : null) || null}
               onSelect={handleNFTSelect}
             />
+          ) : (
+            <ProgressionStats
+              progression={progression}
+              perks={perks}
+              cosmetics={cosmetics}
+              xpHistory={xpHistory}
+              activeRake={activeRake}
+              isLoading={progressionLoading}
+              onActivatePerk={activatePerk}
+              onFetchHistory={fetchXpHistory}
+            />
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-border-primary bg-bg-tertiary/50">
-          <button
-            onClick={handleReset}
-            disabled={isSaving || ownProfile?.pfpType === 'default'}
-            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Reset to Default
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!canSave || isSaving}
-            className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
-          </button>
-        </div>
+        {/* Footer - hide on stats tab */}
+        {activeTab !== 'stats' && (
+          <div className="flex items-center justify-between p-4 border-t border-border-primary bg-bg-tertiary/50">
+            <button
+              onClick={handleReset}
+              disabled={isSaving || ownProfile?.pfpType === 'default'}
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Reset to Default
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!canSave || isSaving}
+              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

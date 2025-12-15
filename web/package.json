@@ -26,12 +26,14 @@
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
     "@tailwindcss/postcss": "^4.1.18",
+    "clsx": "^2.1.1",
     "lightweight-charts": "^5.0.9",
     "lucide-react": "^0.561.0",
     "next": "^16.0.10",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^25.0.1",

@@ -8,6 +8,8 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import dynamic from 'next/dynamic';
 import { UserAvatar } from './UserAvatar';
 import { ProfilePicker } from './ProfilePicker';
+import { LevelBadge } from './progression';
+import { useProgressionContext } from '@/contexts/ProgressionContext';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -79,6 +81,7 @@ export function Header() {
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
   const walletAddress = publicKey?.toBase58();
+  const { progression } = useProgressionContext();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-sm border-b border-rust/30">
@@ -137,14 +140,23 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-3 justify-self-end">
-          {/* Profile Avatar with Name */}
+          {/* Level Badge & Profile Avatar with Name */}
           {walletAddress && (
-            <UserAvatar
-              walletAddress={walletAddress}
-              size="md"
-              showName
-              onClick={() => setIsProfilePickerOpen(true)}
-            />
+            <div className="flex items-center gap-2">
+              {progression && (
+                <LevelBadge
+                  level={progression.currentLevel}
+                  size="sm"
+                  className="cursor-pointer hover:scale-110 transition-transform"
+                />
+              )}
+              <UserAvatar
+                walletAddress={walletAddress}
+                size="md"
+                showName
+                onClick={() => setIsProfilePickerOpen(true)}
+              />
+            </div>
           )}
 
           {/* Wallet */}
