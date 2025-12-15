@@ -6,6 +6,44 @@ import { DraftProvider, useDraftContext } from '@/contexts/DraftContext';
 import { DraftTournamentTier, DraftTournament } from '@/types';
 import Link from 'next/link';
 
+const TIER_CONFIG: Record<DraftTournamentTier, {
+  name: string;
+  description: string;
+  iconBg: string;
+  iconText: string;
+  priceText: string;
+  hoverBorder: string;
+  hoverShadow: string;
+}> = {
+  '$5': {
+    name: 'Scavenger',
+    description: 'Low stakes, high hopes. Perfect for fresh blood.',
+    iconBg: 'bg-accent/10',
+    iconText: 'text-accent',
+    priceText: 'text-accent',
+    hoverBorder: 'hover:border-accent/30',
+    hoverShadow: 'hover:shadow-accent/10',
+  },
+  '$25': {
+    name: 'Raider',
+    description: 'Prove your worth in the mid-tier wasteland.',
+    iconBg: 'bg-success/10',
+    iconText: 'text-success',
+    priceText: 'text-success',
+    hoverBorder: 'hover:border-success/30',
+    hoverShadow: 'hover:shadow-success/10',
+  },
+  '$100': {
+    name: 'Warlord',
+    description: 'Only the ruthless survive at this level.',
+    iconBg: 'bg-warning/10',
+    iconText: 'text-warning',
+    priceText: 'text-warning',
+    hoverBorder: 'hover:border-warning/30',
+    hoverShadow: 'hover:shadow-warning/10',
+  },
+};
+
 function TierCard({
   tier,
   tournament,
@@ -21,50 +59,45 @@ function TierCard({
   const prizePool = tournament?.prizePoolUsd || 0;
   const entries = tournament?.totalEntries || 0;
 
-  const tierColors: Record<DraftTournamentTier, string> = {
-    '$5': 'accent',
-    '$25': 'success',
-    '$100': 'warning',
-  };
-
-  const color = tierColors[tier];
+  const config = TIER_CONFIG[tier];
 
   return (
     <button
       onClick={onSelect}
-      className={`relative card border-2 border-transparent hover:border-${color}/30 transition-all duration-300 hover:shadow-lg hover:shadow-${color}/10 text-left w-full`}
+      className={`relative card border-2 border-transparent ${config.hoverBorder} transition-all duration-300 hover:shadow-lg ${config.hoverShadow} text-left w-full h-full`}
     >
       {hasEntry && (
         <div className="absolute top-4 right-4">
-          <div className="px-2 py-1 rounded-full bg-success/20 border border-success/30 text-success text-xs font-bold">
-            Entered
+          <div className="px-2 py-1 rounded-full bg-success/20 border border-success/30 text-success text-xs font-bold uppercase tracking-wider">
+            Enlisted
           </div>
         </div>
       )}
 
-      <div className={`w-14 h-14 rounded-xl bg-${color}/10 flex items-center justify-center text-${color} mb-4`}>
+      <div className={`w-14 h-14 rounded-xl ${config.iconBg} flex items-center justify-center ${config.iconText} mb-4`}>
         <span className="text-2xl font-black">{tier}</span>
       </div>
 
-      <h3 className="text-xl font-bold mb-2">{tier} Tournament</h3>
+      <h3 className="text-xl font-bold mb-1 uppercase tracking-wide">{config.name}</h3>
+      <p className="text-xs text-text-tertiary mb-2">{tier} Entry</p>
       <p className="text-sm text-text-secondary mb-4">
-        Draft 6 memecoins and compete for the week. Top 10% win prizes!
+        {config.description}
       </p>
 
       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-primary">
         <div>
-          <div className="text-xs text-text-tertiary">Prize Pool</div>
+          <div className="text-xs text-text-tertiary uppercase tracking-wider">War Chest</div>
           <div className="font-bold text-lg">${prizePool.toFixed(0)}</div>
         </div>
         <div>
-          <div className="text-xs text-text-tertiary">Entries</div>
+          <div className="text-xs text-text-tertiary uppercase tracking-wider">Warriors</div>
           <div className="font-bold text-lg">{entries}</div>
         </div>
       </div>
 
       <div className="mt-4 pt-4 border-t border-border-primary">
-        <div className="text-xs text-text-tertiary mb-1">Entry Fee</div>
-        <div className={`text-2xl font-black text-${color}`}>${entryFee}</div>
+        <div className="text-xs text-text-tertiary mb-1 uppercase tracking-wider">Blood Price</div>
+        <div className={`text-2xl font-black ${config.priceText}`}>${entryFee}</div>
       </div>
     </button>
   );
@@ -139,21 +172,21 @@ function DraftLobbyContent() {
     <div className="max-w-5xl mx-auto animate-fadeIn">
       {/* Header */}
       <div className="text-center py-12">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning/10 border border-warning/30 text-warning text-sm font-bold uppercase tracking-wider mb-6">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
           </span>
-          Weekly Tournament
+          Weekly War
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-          Memecoin Draft
+        <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
+          WAR <span className="text-warning">PARTY</span>
         </h1>
 
         <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-6">
-          Build your team of 6 memecoins. Best performance over the week wins.
-          Use power-ups to swap, boost, or freeze your picks!
+          Assemble your squad of 6 memecoins. Best gains over the week claims the throne.
+          Use power-ups to dominate the wasteland!
         </p>
 
         {anyTournament && (
@@ -214,81 +247,81 @@ function DraftLobbyContent() {
       )}
 
       {/* How It Works */}
-      <div className="card mb-12">
-        <h2 className="text-xl font-bold mb-6 text-center">How It Works</h2>
+      <div className="card mb-12 border border-warning/20">
+        <h2 className="text-xl font-bold mb-6 text-center uppercase tracking-wider text-warning">Rules of War</h2>
         <div className="grid md:grid-cols-4 gap-6">
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-3">
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-3 border border-warning/30">
               1
             </div>
-            <h3 className="font-semibold mb-1">Enter Tournament</h3>
-            <p className="text-sm text-text-secondary">Choose your entry tier and pay the fee</p>
+            <h3 className="font-bold mb-1 uppercase">Pay the Blood Price</h3>
+            <p className="text-sm text-text-secondary">Choose your tier and pay the entry fee to join the war.</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-3">
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-3 border border-warning/30">
               2
             </div>
-            <h3 className="font-semibold mb-1">Draft Your Team</h3>
-            <p className="text-sm text-text-secondary">Pick 6 memecoins from random options</p>
+            <h3 className="font-bold mb-1 uppercase">Assemble Your Squad</h3>
+            <p className="text-sm text-text-secondary">Draft 6 memecoins for your war party from random options.</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-3">
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-3 border border-warning/30">
               3
             </div>
-            <h3 className="font-semibold mb-1">Use Power-ups</h3>
-            <p className="text-sm text-text-secondary">Swap, boost, or freeze your picks</p>
+            <h3 className="font-bold mb-1 uppercase">Deploy Power-ups</h3>
+            <p className="text-sm text-text-secondary">Swap, boost, or freeze your picks strategically.</p>
           </div>
           <div className="text-center">
-            <div className="w-12 h-12 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xl font-bold mx-auto mb-3">
+            <div className="w-12 h-12 rounded-lg bg-warning/20 text-warning flex items-center justify-center text-xl font-black mx-auto mb-3 border border-warning/30">
               4
             </div>
-            <h3 className="font-semibold mb-1">Win Prizes</h3>
-            <p className="text-sm text-text-secondary">Top 10% split the prize pool</p>
+            <h3 className="font-bold mb-1 uppercase">Claim the Spoils</h3>
+            <p className="text-sm text-text-secondary">Top 10% of warriors split the war chest.</p>
           </div>
         </div>
       </div>
 
       {/* Power-ups Explanation */}
-      <div className="card">
-        <h2 className="text-xl font-bold mb-6 text-center">Power-ups</h2>
+      <div className="card border border-accent/20">
+        <h2 className="text-xl font-bold mb-6 text-center uppercase tracking-wider text-accent">Wasteland Weapons</h2>
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="p-4 rounded-xl bg-bg-tertiary">
+          <div className="p-4 rounded-xl bg-bg-tertiary border border-warning/20">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center border border-warning/30">
                 <svg className="w-5 h-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
               </div>
-              <h3 className="font-bold">Swap</h3>
+              <h3 className="font-bold uppercase">Swap</h3>
             </div>
             <p className="text-sm text-text-secondary">
-              Replace one underperforming coin with a new pick from 3 random options. Use once per tournament.
+              Exile a weak warrior and recruit a new one from 3 random options. One use per war.
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-bg-tertiary">
+          <div className="p-4 rounded-xl bg-bg-tertiary border border-success/20">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center border border-success/30">
                 <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <h3 className="font-bold">2x Boost</h3>
+              <h3 className="font-bold uppercase">2x Rage</h3>
             </div>
             <p className="text-sm text-text-secondary">
-              Double the score contribution of one coin. Lock in your best performer!
+              Unleash fury on your champion. Double the score from your strongest warrior!
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-bg-tertiary">
+          <div className="p-4 rounded-xl bg-bg-tertiary border border-accent/20">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center border border-accent/30">
                 <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
                 </svg>
               </div>
-              <h3 className="font-bold">Freeze</h3>
+              <h3 className="font-bold uppercase">Freeze</h3>
             </div>
             <p className="text-sm text-text-secondary">
-              Lock in current gains. The coin can't go negative from that point forward.
+              Lock in current gains. Protected from the wasteland&apos;s harsh winds.
             </p>
           </div>
         </div>
@@ -327,11 +360,12 @@ function EntryModal({
   };
 
   const entryFee = parseInt(tier.replace('$', ''));
+  const config = TIER_CONFIG[tier];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-bg-secondary border border-border-primary rounded-2xl p-6 max-w-md w-full animate-fadeIn">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-bg-secondary border border-warning/30 rounded-2xl p-6 max-w-md w-full animate-fadeIn">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
@@ -341,32 +375,33 @@ function EntryModal({
           </svg>
         </button>
 
-        <h2 className="text-2xl font-bold mb-4">Enter {tier} Tournament</h2>
+        <h2 className="text-2xl font-bold mb-2 uppercase tracking-wide">Join the {config.name} War</h2>
+        <p className="text-sm text-text-tertiary mb-4">{tier} Entry Tier</p>
 
         {!walletAddress ? (
           <div className="text-center py-6">
-            <p className="text-text-secondary mb-4">Connect your wallet to enter</p>
+            <p className="text-text-secondary mb-4">Connect your wallet to enter the war</p>
           </div>
         ) : (
           <>
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary">
-                <span className="text-text-secondary">Entry Fee</span>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+                <span className="text-text-secondary text-sm uppercase tracking-wider">Blood Price</span>
                 <span className="font-bold">${entryFee}</span>
               </div>
-              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary">
-                <span className="text-text-secondary">Prize Pool</span>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+                <span className="text-text-secondary text-sm uppercase tracking-wider">War Chest</span>
                 <span className="font-bold">${tournament?.prizePoolUsd || 0}</span>
               </div>
-              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary">
-                <span className="text-text-secondary">Current Entries</span>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+                <span className="text-text-secondary text-sm uppercase tracking-wider">Warriors Enlisted</span>
                 <span className="font-bold">{tournament?.totalEntries || 0}</span>
               </div>
             </div>
 
             <p className="text-sm text-text-tertiary mb-6">
-              After entering, you'll draft 6 memecoins. Your score is the total % change
-              of your picks over the week. Top 10% win!
+              After enlisting, you&apos;ll draft 6 memecoins for your war party. Your score is the total % change
+              of your picks over the week. Top 10% of warriors claim the spoils!
             </p>
 
             {error && (
@@ -378,9 +413,13 @@ function EntryModal({
             <button
               onClick={handleEnter}
               disabled={entering || isLoading}
-              className="w-full py-3 px-6 rounded-xl bg-accent text-bg-primary font-bold hover:bg-accent/90 transition-colors disabled:opacity-50"
+              className="w-full py-3 px-6 rounded-xl font-bold uppercase tracking-wider transition-all disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(135deg, #ff6b00 0%, #ff4500 50%, #ff3131 100%)',
+                boxShadow: '0 0 20px rgba(255, 107, 0, 0.3)',
+              }}
             >
-              {entering ? 'Entering...' : `Pay $${entryFee} & Enter`}
+              {entering ? 'Enlisting...' : `Pay $${entryFee} & Enlist`}
             </button>
           </>
         )}
