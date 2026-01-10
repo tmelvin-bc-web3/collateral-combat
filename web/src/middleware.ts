@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Coming soon mode - set to false when ready to go live
-const COMING_SOON_MODE = true;
+// Coming soon mode - uses env var, defaults to true in production
+const COMING_SOON_MODE = process.env.NEXT_PUBLIC_COMING_SOON !== 'false';
 
 export function middleware(request: NextRequest) {
   // If not in coming soon mode, allow all routes
