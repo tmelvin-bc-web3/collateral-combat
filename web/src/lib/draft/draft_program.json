@@ -1,0 +1,1189 @@
+{
+  "address": "7s485zYhL2U1xAPvpEygkNMNm9UFwXJ4HAinM1BXP81z",
+  "metadata": {
+    "name": "draft_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "cancel_draft",
+      "docs": [
+        "Cancel draft (only if still open and no players)"
+      ],
+      "discriminator": [
+        234,
+        193,
+        92,
+        79,
+        29,
+        206,
+        188,
+        175
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_winnings",
+      "docs": [
+        "Claim winnings (top 3 positions)"
+      ],
+      "discriminator": [
+        161,
+        215,
+        24,
+        59,
+        14,
+        236,
+        242,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_draft",
+      "docs": [
+        "Create a new draft tournament"
+      ],
+      "discriminator": [
+        163,
+        20,
+        96,
+        16,
+        176,
+        38,
+        78,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.total_drafts",
+                "account": "Config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "entry_fee",
+          "type": "u64"
+        },
+        {
+          "name": "max_players",
+          "type": "u8"
+        },
+        {
+          "name": "num_picks",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Initialize global config (one-time)"
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "join_draft",
+      "docs": [
+        "Join a draft tournament"
+      ],
+      "discriminator": [
+        173,
+        177,
+        148,
+        4,
+        246,
+        52,
+        53,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "picks",
+          "type": {
+            "vec": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "lock_draft",
+      "docs": [
+        "Lock the draft (no more entries, waiting for results)"
+      ],
+      "discriminator": [
+        230,
+        170,
+        123,
+        88,
+        249,
+        148,
+        137,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_entry",
+      "docs": [
+        "Refund entry if draft cancelled or not enough players"
+      ],
+      "discriminator": [
+        214,
+        5,
+        136,
+        23,
+        253,
+        7,
+        230,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle_draft",
+      "docs": [
+        "Settle the draft with final rankings"
+      ],
+      "discriminator": [
+        17,
+        44,
+        98,
+        225,
+        100,
+        209,
+        234,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "rankings",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "start_draft",
+      "docs": [
+        "Start the draft (when enough players or triggered)"
+      ],
+      "discriminator": [
+        176,
+        35,
+        183,
+        108,
+        118,
+        124,
+        216,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_score",
+      "docs": [
+        "Submit player score (backend submits after draft ends)"
+      ],
+      "discriminator": [
+        212,
+        128,
+        45,
+        22,
+        112,
+        82,
+        85,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              },
+              {
+                "kind": "account",
+                "path": "entry.player",
+                "account": "DraftEntry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "score",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "update_rank",
+      "docs": [
+        "Update entry rank after settlement"
+      ],
+      "discriminator": [
+        223,
+        91,
+        94,
+        175,
+        15,
+        30,
+        215,
+        148
+      ],
+      "accounts": [
+        {
+          "name": "draft",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  114,
+                  97,
+                  102,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              }
+            ]
+          }
+        },
+        {
+          "name": "entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "draft.id",
+                "account": "Draft"
+              },
+              {
+                "kind": "account",
+                "path": "entry.player",
+                "account": "DraftEntry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "caller",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "rank",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_fees",
+      "docs": [
+        "Withdraw collected fees (authority only)"
+      ],
+      "discriminator": [
+        198,
+        212,
+        171,
+        109,
+        144,
+        215,
+        174,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "fee_vault",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Draft",
+      "discriminator": [
+        220,
+        65,
+        90,
+        193,
+        49,
+        181,
+        224,
+        227
+      ]
+    },
+    {
+      "name": "DraftEntry",
+      "discriminator": [
+        199,
+        119,
+        147,
+        179,
+        115,
+        171,
+        115,
+        189
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "EntryFeeTooLow",
+      "msg": "Entry fee is below minimum (0.05 SOL)"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidPlayerCount",
+      "msg": "Invalid player count (3-100)"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidPickCount",
+      "msg": "Invalid pick count (1-5)"
+    },
+    {
+      "code": 6003,
+      "name": "DraftNotOpen",
+      "msg": "Draft is not open"
+    },
+    {
+      "code": 6004,
+      "name": "DraftFull",
+      "msg": "Draft is full"
+    },
+    {
+      "code": 6005,
+      "name": "PickTooLong",
+      "msg": "Pick symbol too long (max 32 chars)"
+    },
+    {
+      "code": 6006,
+      "name": "NotEnoughPlayers",
+      "msg": "Not enough players to start"
+    },
+    {
+      "code": 6007,
+      "name": "DraftNotActive",
+      "msg": "Draft is not active"
+    },
+    {
+      "code": 6008,
+      "name": "DraftNotEnded",
+      "msg": "Draft has not ended yet"
+    },
+    {
+      "code": 6009,
+      "name": "DraftNotLocked",
+      "msg": "Draft is not locked"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidRankings",
+      "msg": "Invalid rankings"
+    },
+    {
+      "code": 6011,
+      "name": "DraftNotSettled",
+      "msg": "Draft is not settled"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidRank",
+      "msg": "Invalid rank"
+    },
+    {
+      "code": 6013,
+      "name": "AlreadyClaimed",
+      "msg": "Already claimed"
+    },
+    {
+      "code": 6014,
+      "name": "NotEntryOwner",
+      "msg": "Not the entry owner"
+    },
+    {
+      "code": 6015,
+      "name": "NotInMoney",
+      "msg": "Not in the money (top 3)"
+    },
+    {
+      "code": 6016,
+      "name": "CannotCancel",
+      "msg": "Cannot cancel - draft has started or has players"
+    },
+    {
+      "code": 6017,
+      "name": "HasPlayers",
+      "msg": "Draft has players"
+    },
+    {
+      "code": 6018,
+      "name": "NotCreator",
+      "msg": "Not the draft creator"
+    },
+    {
+      "code": 6019,
+      "name": "CannotRefund",
+      "msg": "Cannot refund - draft not cancelled or still valid"
+    },
+    {
+      "code": 6020,
+      "name": "InsufficientFees",
+      "msg": "Insufficient fees to withdraw"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_drafts",
+            "type": "u64"
+          },
+          {
+            "name": "total_volume",
+            "type": "u64"
+          },
+          {
+            "name": "total_fees_collected",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Draft",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "max_players",
+            "type": "u8"
+          },
+          {
+            "name": "num_picks",
+            "type": "u8"
+          },
+          {
+            "name": "current_players",
+            "type": "u8"
+          },
+          {
+            "name": "total_pool",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "DraftStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "started_at",
+            "type": "i64"
+          },
+          {
+            "name": "ends_at",
+            "type": "i64"
+          },
+          {
+            "name": "first_place",
+            "type": "pubkey"
+          },
+          {
+            "name": "second_place",
+            "type": "pubkey"
+          },
+          {
+            "name": "third_place",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DraftEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "draft_id",
+            "type": "u64"
+          },
+          {
+            "name": "picks",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "score",
+            "type": "i64"
+          },
+          {
+            "name": "final_rank",
+            "type": "u8"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "joined_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DraftStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Locked"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    }
+  ]
+}
