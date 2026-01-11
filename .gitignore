@@ -29,3 +29,10 @@ yarn-error.log*
 # Data
 backend/data
 .vercel
+
+# Solana/Anchor
+test-ledger/
+**/target/
+**/*.so
+handoff/
+handoff.zip
