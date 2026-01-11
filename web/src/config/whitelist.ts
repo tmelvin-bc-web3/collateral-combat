@@ -2,8 +2,8 @@
 // Add wallet addresses here to grant early access
 
 export const WHITELISTED_WALLETS: string[] = [
-  // Add your wallet addresses here (one per line)
-  // Example: 'YourWalletAddressHere123456789abcdefghijk'
+  // Add wallet addresses here (one per line)
+  'GxjjUmgTR9uR63b1xgmnv5RweZgLu3FKrLspY9pCZdEN', // Tayler
 ];
 
 // Check if a wallet is whitelisted
