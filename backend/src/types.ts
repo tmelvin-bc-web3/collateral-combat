@@ -193,6 +193,9 @@ export interface ServerToClientEvents {
   level_up: (data: LevelUpResult & { walletAddress: string }) => void;
   perk_activated: (perk: UserPerk) => void;
   perk_expired: (data: { perkId: number }) => void;
+  // Notification events
+  notification: (notification: Notification) => void;
+  notification_count: (count: number) => void;
 }
 
 export interface ClientToServerEvents {
@@ -229,6 +232,9 @@ export interface ClientToServerEvents {
   // Progression events
   subscribe_progression: (walletAddress: string) => void;
   unsubscribe_progression: (walletAddress: string) => void;
+  // Notification events
+  subscribe_notifications: (walletAddress: string) => void;
+  unsubscribe_notifications: (walletAddress: string) => void;
 }
 
 // ===================
@@ -509,4 +515,40 @@ export interface StatsLeaderboardEntry {
   winRate: number;
   totalProfitLoss: number;
   totalWagered: number;
+}
+
+// ===================
+// Notification Types
+// ===================
+
+export type NotificationType =
+  | 'wager_won'
+  | 'wager_lost'
+  | 'wager_push'
+  | 'level_up'
+  | 'perk_unlocked'
+  | 'perk_expiring'
+  | 'streak_bonus'
+  | 'streak_lost'
+  | 'free_wager_earned'
+  | 'leaderboard_rank_change'
+  | 'achievement_unlocked'
+  | 'system';
+
+export interface Notification {
+  id: number;
+  walletAddress: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  isRead: boolean;
+  createdAt: number;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  unreadCount: number;
+  limit: number;
+  offset: number;
 }
