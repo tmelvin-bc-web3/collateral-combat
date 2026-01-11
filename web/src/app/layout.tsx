@@ -7,6 +7,7 @@ import { ProgressionProvider } from '@/contexts/ProgressionContext';
 import { Header } from '@/components/Header';
 import { ProfileSetupWrapper } from '@/components/ProfileSetupWrapper';
 import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
+import { WhitelistLayoutWrapper } from '@/components/WhitelistLayoutWrapper';
 import { COMING_SOON_MODE } from '@/config/siteConfig';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -41,11 +42,11 @@ export default function RootLayout({
         <div className="dome-heat" aria-hidden="true" />
 
         {COMING_SOON_MODE ? (
-          // Coming Soon Mode - wallet connect enabled for whitelist check
+          // Coming Soon Mode - whitelisted wallets get full layout
           <WalletProvider>
-            <main className="min-h-screen relative z-10">
+            <WhitelistLayoutWrapper>
               {children}
-            </main>
+            </WhitelistLayoutWrapper>
           </WalletProvider>
         ) : (
           // Live Mode - full layout with navigation
