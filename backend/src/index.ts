@@ -13,6 +13,7 @@ import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
+import * as notificationDb from './db/notificationDatabase';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 
@@ -573,6 +574,67 @@ app.get('/api/stats/:wallet/rank', (req, res) => {
   });
 });
 
+// ===================
+// Notification Endpoints
+// ===================
+
+// Get notifications for a user
+app.get('/api/notifications/:wallet', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+  const unreadOnly = req.query.unreadOnly === 'true';
+
+  const result = notificationDb.getNotifications(req.params.wallet, {
+    limit,
+    offset,
+    unreadOnly,
+  });
+
+  res.json(result);
+});
+
+// Get unread notification count
+app.get('/api/notifications/:wallet/count', (req, res) => {
+  const count = notificationDb.getUnreadCount(req.params.wallet);
+  res.json({ count });
+});
+
+// Mark a notification as read
+app.post('/api/notifications/:wallet/:id/read', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid notification ID' });
+  }
+
+  const success = notificationDb.markNotificationRead(id, req.params.wallet);
+  if (!success) {
+    return res.status(404).json({ error: 'Notification not found' });
+  }
+
+  res.json({ success: true });
+});
+
+// Mark all notifications as read
+app.post('/api/notifications/:wallet/read-all', (req, res) => {
+  const count = notificationDb.markAllNotificationsRead(req.params.wallet);
+  res.json({ success: true, count });
+});
+
+// Delete a notification
+app.delete('/api/notifications/:wallet/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid notification ID' });
+  }
+
+  const success = notificationDb.deleteNotificationById(id, req.params.wallet);
+  if (!success) {
+    return res.status(404).json({ error: 'Notification not found' });
+  }
+
+  res.json({ success: true });
+});
+
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -876,6 +938,21 @@ io.on('connection', (socket) => {
     socket.leave(`progression_${wallet}`);
   });
 
+  // ===================
+  // Notification Events
+  // ===================
+
+  socket.on('subscribe_notifications', (wallet: string) => {
+    socket.join(`notifications_${wallet}`);
+    // Send current unread count
+    const count = notificationDb.getUnreadCount(wallet);
+    socket.emit('notification_count' as any, { count });
+  });
+
+  socket.on('unsubscribe_notifications', (wallet: string) => {
+    socket.leave(`notifications_${wallet}`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -1008,6 +1085,17 @@ progressionService.subscribe((event, data) => {
         newTitle: data.newTitle,
         unlockedPerks: data.unlockedPerks,
         unlockedCosmetics: data.unlockedCosmetics
+      });
+      // Create and broadcast notification for level up
+      const levelUpNotification = notificationDb.notifyLevelUp(
+        data.walletAddress,
+        data.previousLevel,
+        data.newLevel,
+        data.newTitle
+      );
+      io.to(`notifications_${data.walletAddress}`).emit('notification' as any, levelUpNotification);
+      io.to(`notifications_${data.walletAddress}`).emit('notification_count' as any, {
+        count: notificationDb.getUnreadCount(data.walletAddress)
       });
       break;
     case 'perk_activated':
