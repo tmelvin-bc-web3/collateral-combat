@@ -461,3 +461,52 @@ export interface ProgressionServerToClientEvents {
   free_bet_earned: (data: { walletAddress: string; count: number; description?: string; newBalance: number }) => void;
   free_bet_used: (data: { walletAddress: string; gameMode: GameMode; newBalance: number }) => void;
 }
+
+// ===================
+// User Stats Types
+// ===================
+
+export type WagerType = 'spectator' | 'prediction' | 'battle' | 'draft';
+export type WagerOutcome = 'won' | 'lost' | 'push' | 'cancelled';
+
+export interface UserWager {
+  id: number;
+  walletAddress: string;
+  wagerType: WagerType;
+  amount: number;
+  outcome: WagerOutcome;
+  profitLoss: number;
+  gameId?: string;
+  createdAt: number;
+}
+
+export interface UserStats {
+  walletAddress: string;
+  totalWagers: number;
+  totalWins: number;
+  totalLosses: number;
+  totalPushes: number;
+  totalWagered: number;
+  totalProfitLoss: number;
+  winRate: number;
+  bestStreak: number;
+  currentStreak: number;
+  lastWagerAt: number | null;
+}
+
+export interface WagerHistoryResponse {
+  wagers: UserWager[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface StatsLeaderboardEntry {
+  rank: number;
+  walletAddress: string;
+  totalWagers: number;
+  totalWins: number;
+  winRate: number;
+  totalProfitLoss: number;
+  totalWagered: number;
+}

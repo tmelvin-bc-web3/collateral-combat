@@ -12,8 +12,9 @@ import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
+import * as userStatsDb from './db/userStatsDatabase';
 import { WHITELISTED_TOKENS } from './tokens';
-import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier } from './types';
+import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 
 const app = express();
 const httpServer = createServer(app);
@@ -500,6 +501,78 @@ app.get('/api/progression/:wallet/streak', (req, res) => {
   });
 });
 
+// ===================
+// User Stats Endpoints
+// ===================
+
+// Get user stats (total wagers, win rate, profit/loss, best streak)
+app.get('/api/stats/:wallet', (req, res) => {
+  const stats = userStatsDb.getUserStats(req.params.wallet);
+  res.json(stats);
+});
+
+// Get user wager history with pagination and filtering
+app.get('/api/stats/:wallet/history', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+  const wagerType = req.query.type as WagerType | undefined;
+  const startDate = req.query.startDate ? parseInt(req.query.startDate as string) : undefined;
+  const endDate = req.query.endDate ? parseInt(req.query.endDate as string) : undefined;
+
+  // Validate wagerType if provided
+  if (wagerType && !['spectator', 'prediction', 'battle', 'draft'].includes(wagerType)) {
+    return res.status(400).json({ error: 'Invalid wager type. Use: spectator, prediction, battle, or draft' });
+  }
+
+  const result = userStatsDb.getWagerHistory(req.params.wallet, {
+    limit,
+    offset,
+    wagerType,
+    startDate,
+    endDate,
+  });
+
+  res.json({
+    wagers: result.wagers,
+    total: result.total,
+    limit,
+    offset,
+  });
+});
+
+// Get stats leaderboard
+app.get('/api/stats/leaderboard/:metric', (req, res) => {
+  const metric = req.params.metric as 'profit' | 'winRate' | 'volume';
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+  if (!['profit', 'winRate', 'volume'].includes(metric)) {
+    return res.status(400).json({ error: 'Invalid metric. Use: profit, winRate, or volume' });
+  }
+
+  const leaderboard = userStatsDb.getStatsLeaderboard(metric, limit);
+
+  // Add rank to each entry
+  const rankedLeaderboard = leaderboard.map((entry, index) => ({
+    rank: index + 1,
+    ...entry,
+  }));
+
+  res.json(rankedLeaderboard);
+});
+
+// Get user's rank in leaderboard
+app.get('/api/stats/:wallet/rank', (req, res) => {
+  const rank = userStatsDb.getUserRankByProfit(req.params.wallet);
+  const stats = userStatsDb.getUserStats(req.params.wallet);
+
+  res.json({
+    walletAddress: req.params.wallet,
+    rank: rank || null,
+    totalProfitLoss: stats.totalProfitLoss,
+    totalWagers: stats.totalWagers,
+  });
+});
+
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -973,6 +1046,7 @@ async function start() {
 ║    GET  /api/prices         - Current prices              ║
 ║    GET  /api/battles        - Active battles              ║
 ║    GET  /api/battles/live   - Live battles (spectator)    ║
+║    GET  /api/stats/:wallet  - User wager stats            ║
 ║    GET  /api/health         - Health check                ║
 ║    POST /api/simulator/start - Start battle simulator     ║
 ║    POST /api/simulator/stop  - Stop battle simulator      ║
