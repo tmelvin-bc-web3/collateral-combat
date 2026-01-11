@@ -6,6 +6,7 @@ import { getSocket } from '@/lib/socket';
 import { LiveBattle, SpectatorBet } from '@/types';
 import { LiveBattleCard } from '@/components/LiveBattleCard';
 import { SpectatorView } from '@/components/SpectatorView';
+import { SkeletonBattleCard, PageLoading } from '@/components/ui/skeleton';
 
 type Tab = 'live' | 'my-wagers';
 
@@ -81,11 +82,7 @@ export default function SpectatePage() {
   };
 
   if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 spinner" />
-      </div>
-    );
+    return <PageLoading message="Entering the stands..." />;
   }
 
   if (selectedBattle) {
@@ -149,8 +146,14 @@ export default function SpectatePage() {
       {activeTab === 'live' && (
         <>
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-2 border-danger border-t-transparent rounded-full animate-spin" />
+            <div className="space-y-6">
+              <div className="text-xs font-bold text-danger uppercase tracking-wider mb-3">Featured Combat</div>
+              <SkeletonBattleCard className="mb-8" />
+              <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">All Battles</div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <SkeletonBattleCard />
+                <SkeletonBattleCard />
+              </div>
             </div>
           ) : liveBattles.length === 0 ? (
             <div className="card text-center py-12 border border-danger/20">

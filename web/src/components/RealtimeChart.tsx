@@ -90,7 +90,12 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
     const currentDisplayPrice = visiblePoints[visiblePoints.length - 1].displayPrice;
     const startPrice = startPriceRef.current ?? currentDisplayPrice;
     const priceChange = startPrice > 0 ? ((currentDisplayPrice - startPrice) / startPrice) * 100 : 0;
-    const isUp = priceChange >= 0;
+
+    // Color logic: Use lock price if available, otherwise use start of visible window
+    const currentLockPrice = lockPriceRef.current;
+    const isUp = currentLockPrice
+      ? currentDisplayPrice >= currentLockPrice
+      : priceChange >= 0;
     const lineColor = isUp ? UP_COLOR : DOWN_COLOR;
 
     // Calculate target price range from displayed prices
@@ -246,7 +251,6 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
     }
 
     // Lock price line (if provided)
-    const currentLockPrice = lockPriceRef.current;
     if (currentLockPrice) {
       const lockY = priceToY(currentLockPrice);
       const clampedY = Math.max(padding.top, Math.min(padding.top + chartH, lockY));

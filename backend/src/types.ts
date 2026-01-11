@@ -552,3 +552,44 @@ export interface NotificationListResponse {
   limit: number;
   offset: number;
 }
+
+// ===================
+// Achievement Types
+// ===================
+
+export type AchievementCategory =
+  | 'wager'
+  | 'win'
+  | 'streak'
+  | 'level'
+  | 'social'
+  | 'special';
+
+export type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  category: AchievementCategory;
+  iconUrl: string;
+  xpReward: number;
+  rarity: AchievementRarity;
+  requirement: number;
+  requirementType: string;
+  isHidden: boolean;
+  createdAt: number;
+}
+
+export interface AchievementProgress {
+  achievement: Achievement;
+  progress: number;
+  isUnlocked: boolean;
+  unlockedAt: number | null;
+}
+
+export interface AchievementListResponse {
+  achievements: AchievementProgress[];
+  totalUnlocked: number;
+  totalAchievements: number;
+}

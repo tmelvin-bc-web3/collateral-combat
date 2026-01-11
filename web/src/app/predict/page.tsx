@@ -6,6 +6,7 @@ import { getSocket } from '@/lib/socket';
 import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
+import { PageLoading } from '@/components/ui/skeleton';
 
 // SOL bet amounts (in SOL, not USD)
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
@@ -310,11 +311,7 @@ export default function PredictPage() {
   const streakInfo = getStreak();
 
   if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 spinner" />
-      </div>
-    );
+    return <PageLoading message="Consulting the Oracle..." />;
   }
 
   const isBettingOpen = currentRound?.status === 'betting';

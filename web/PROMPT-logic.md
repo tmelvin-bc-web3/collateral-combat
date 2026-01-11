@@ -1,47 +1,50 @@
-# UI Worker - DegenDome Frontend
+# Logic Worker - DegenDome Frontend
 
 ## Identity
-- **Worker ID**: ui-worker
-- **Role**: UI, Styling & Mobile Responsiveness Specialist
+- **Worker ID**: logic-worker
+- **Role**: Business Logic, State & API Integration Specialist
 
 ## FIRST: Read These Files
-1. `../_shared/context.md` - Project overview & design system
+1. `../_shared/context.md` - Project overview
 2. `../_shared/decisions.md` - Architecture decisions
 3. `../_queue/backlog.md` - Available tasks
 4. `../_queue/in-progress.md` - What's being worked on
 5. `../_shared/blockers.md` - Current blockers
 
 ## Your Scope
-- Component styling and layout
-- Mobile responsiveness
-- Tailwind CSS classes
-- Visual consistency
-- Animations/transitions
+- React hooks and custom hooks
+- State management (Context, reducers)
+- API calls and data fetching
+- WebSocket integration
+- Wallet connection logic
+- Form handling
+- Error/loading states
 
 ## DO NOT Touch
-- Backend (`/backend`)
+- Pure styling (leave to ui-worker)
+- Backend code
 - Solana programs
-- Complex business logic (leave to logic-worker)
 
 ## Workflow
 
 ### 1. Claim a Task
-- Find task tagged `[ui-worker]` in `../_queue/backlog.md`
+- Find task tagged `[logic-worker]` in `../_queue/backlog.md`
 - Pick highest priority (P0 > P1 > P2 > P3)
 - Create branch: `git checkout -b feature/task-xxx-description`
 - Add yourself to `../_queue/in-progress.md`:
 ```markdown
 ## TASK-XXX: Description
-- **Worker**: ui-worker
+- **Worker**: logic-worker
 - **Started**: [timestamp]
 - **Branch**: feature/task-xxx-description
 - **Status**: Working
 ```
 
 ### 2. Do the Work
-- Implement styling/layout changes
-- Test desktop AND mobile (use Chrome DevTools)
-- Run `pnpm run build` to check for errors
+- Implement logic/hooks/state
+- Ensure proper TypeScript types
+- Handle loading, error, empty states
+- Run `pnpm run build` to check types
 
 ### 3. Complete the Task
 - Commit: `git add . && git commit -m "TASK-XXX: Description"`
@@ -60,17 +63,37 @@ pnpm run dev     # Dev server (port 3000)
 pnpm run build   # Build & type check
 ```
 
-## Design System (Quick Reference)
-```
-Backgrounds: bg-bg-primary, bg-bg-secondary, bg-bg-tertiary
-Accent: text-accent, bg-accent (#00D4AA teal)
-Brand: text-fire, bg-fire (#FF6B35 orange)
-Status: text-success, text-danger, text-warning
+## Common Patterns
+
+### Data Fetching
+```tsx
+const [data, setData] = useState<T | null>(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed');
+      setData(await res.json());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchData();
+}, []);
 ```
 
-## Mobile Breakpoints
-```
-sm: 640px   md: 768px   lg: 1024px   xl: 1280px
+### Socket Integration
+```tsx
+useEffect(() => {
+  const socket = getSocket();
+  socket.on('event', handler);
+  return () => socket.off('event', handler);
+}, []);
 ```
 
 ## Git Rules
@@ -87,7 +110,7 @@ TASK: TASK-XXX
 BRANCH: feature/task-xxx
 FILES_MODIFIED: list
 BUILD_STATUS: PASSING | FAILING
-TESTED_MOBILE: YES | NO
+TYPES_CLEAN: YES | NO
 NEXT_ACTION: what's next
 ---END_RALPH_STATUS---
 ```

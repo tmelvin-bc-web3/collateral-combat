@@ -14,6 +14,7 @@ import { progressionService } from './services/progressionService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
+import * as achievementDb from './db/achievementDatabase';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 
@@ -633,6 +634,79 @@ app.delete('/api/notifications/:wallet/:id', (req, res) => {
   }
 
   res.json({ success: true });
+});
+
+// ===================
+// Achievement Endpoints
+// ===================
+
+// Get all achievements with user progress
+app.get('/api/achievements/:wallet', (req, res) => {
+  const progress = achievementDb.getAchievementProgress(req.params.wallet);
+  const totalUnlocked = progress.filter(p => p.isUnlocked).length;
+
+  res.json({
+    achievements: progress,
+    totalUnlocked,
+    totalAchievements: progress.length,
+  });
+});
+
+// Get only unlocked achievements for a user
+app.get('/api/achievements/:wallet/unlocked', (req, res) => {
+  const unlocked = achievementDb.getUserUnlockedAchievements(req.params.wallet);
+  res.json({
+    achievements: unlocked,
+    count: unlocked.length,
+  });
+});
+
+// Get unnotified achievements (for toast notifications)
+app.get('/api/achievements/:wallet/unnotified', (req, res) => {
+  const unnotified = achievementDb.getUnnotified(req.params.wallet);
+  res.json({
+    achievements: unnotified,
+    count: unnotified.length,
+  });
+});
+
+// Mark achievement as notified
+app.post('/api/achievements/:wallet/:id/notified', (req, res) => {
+  const success = achievementDb.markAsNotified(req.params.wallet, req.params.id);
+  res.json({ success });
+});
+
+// Check and update achievements based on stats (called after game events)
+app.post('/api/achievements/:wallet/check', (req, res) => {
+  const { totalWagers, totalWins, currentStreak, level, totalProfit } = req.body;
+
+  const unlocked = achievementDb.checkAndUpdateAchievements(req.params.wallet, {
+    totalWagers,
+    totalWins,
+    currentStreak,
+    level,
+    totalProfit,
+  });
+
+  // Create notifications for newly unlocked achievements
+  for (const achievement of unlocked) {
+    notificationDb.createNotification({
+      walletAddress: req.params.wallet,
+      type: 'achievement_unlocked',
+      title: 'Achievement Unlocked!',
+      message: `You earned "${achievement.name}" - ${achievement.description}`,
+      data: {
+        achievementId: achievement.id,
+        xpReward: achievement.xpReward,
+        rarity: achievement.rarity,
+      },
+    });
+  }
+
+  res.json({
+    newlyUnlocked: unlocked,
+    count: unlocked.length,
+  });
 });
 
 // WebSocket handling
