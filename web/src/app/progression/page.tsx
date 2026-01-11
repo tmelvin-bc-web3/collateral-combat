@@ -4,6 +4,16 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
 
+// Reward type definition
+interface LevelReward {
+  type: string;
+  name: string;
+  icon: string;
+  gameType?: string;
+  count?: number;
+  permanent?: boolean;
+}
+
 // Level tier data
 const LEVEL_TIERS = [
   { minLevel: 1, maxLevel: 5, title: 'Rookie', color: 'from-gray-500 to-slate-600', textColor: 'text-gray-400' },
@@ -73,7 +83,7 @@ const XP_SOURCES = [
 ];
 
 // Level rewards
-const LEVEL_REWARDS = [
+const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
   { level: 5, rewards: [
     { type: 'freebet', name: '1 Free Bet', icon: '🎁', count: 1 },
   ]},
