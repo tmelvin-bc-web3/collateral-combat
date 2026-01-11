@@ -1,29 +1,30 @@
 # Backend Fix Plan
 
-## STATUS: PAUSED
+## High Priority
+- [ ] User stats endpoint - total bets, win rate, profit/loss, best streak
+- [ ] Bet history endpoint with pagination and date filtering
+- [ ] Leaderboard caching - weekly/monthly/all-time
+- [ ] User rank lookup endpoint (get user's position in leaderboard)
 
-No urgent backend work needed. Current services are working.
+## Medium Priority
+- [ ] Notification system - store and retrieve user notifications
+- [ ] Referral tracking - link referrals to users, track bonus distribution
+- [ ] Analytics events - track user actions for insights
+- [ ] Leaderboard by different metrics (profit, win rate, volume)
 
-When you see this, immediately output:
-```
----RALPH_STATUS---
-STATUS: COMPLETE
-TASKS_COMPLETED_THIS_LOOP: 0
-FILES_MODIFIED: 0
-TESTS_STATUS: NOT_RUN
-WORK_TYPE: DOCUMENTATION
-EXIT_SIGNAL: true
-RECOMMENDATION: Backend paused - no work needed
----END_RALPH_STATUS---
-```
+## Low Priority
+- [ ] Admin dashboard endpoints for monitoring
+- [ ] Rate limiting on sensitive endpoints
+- [ ] Database query optimization
+- [ ] Better error logging and monitoring
 
-## Completed
-- [x] Progression service (XP, levels, perks)
-- [x] Streak system
-- [x] Free bet system
-- [x] Database operations
+## Guidelines
+- All endpoints should return proper error messages
+- Use pagination for list endpoints (default 20, max 100)
+- Cache frequently accessed data
+- Write TypeScript types for all responses
 
-## Future Work (when needed)
-- User profile endpoints
-- Analytics/stats tracking
-- Performance optimization
+## Notes
+- Focus on user-facing features first
+- Keep socket emissions efficient
+- Test endpoints before marking complete
