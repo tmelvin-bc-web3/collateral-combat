@@ -242,6 +242,7 @@ export default function PredictPage() {
     } else {
       // Off-chain betting (legacy mode for testing)
       const socket = getSocket();
+      const usdAmount = selectedAmountSol * currentPrice;
       socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58());
       setTimeout(() => setIsPlacing(false), 500);
     }
