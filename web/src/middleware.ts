@@ -25,9 +25,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Redirect home to coming-soon page in coming soon mode
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/coming-soon', request.url));
+  }
+
   // Allow these paths in coming soon mode
   const allowedPaths = [
-    '/',
     '/coming-soon',
     '/api/waitlist',
     '/progression',
