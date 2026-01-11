@@ -54,7 +54,13 @@ vercel --prod --yes
 2. Implement one feature per loop
 3. Ensure `pnpm run build` passes
 4. Test at localhost:3000
-5. Commit and push changes
+5. Commit changes locally with descriptive messages
+
+## Git Rules (IMPORTANT)
+- ONLY commit locally: `git add . && git commit -m "message"`
+- DO NOT push: No `git push` commands
+- A separate manager handles all pushes to avoid conflicts
+- Always pull before starting work: `git pull origin main`
 
 ## Status Reporting
 ```

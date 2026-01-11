@@ -52,7 +52,13 @@ pnpm run build  # Verify no errors
 2. Make one visual improvement per loop
 3. Test on different screen sizes
 4. Ensure contrast and accessibility
-5. Commit with descriptive messages
+5. Commit changes locally with descriptive messages
+
+## Git Rules (IMPORTANT)
+- ONLY commit locally: `git add . && git commit -m "message"`
+- DO NOT push: No `git push` commands
+- A separate manager handles all pushes to avoid conflicts
+- Always pull before starting work: `git pull origin main`
 
 ## Status Reporting
 ```

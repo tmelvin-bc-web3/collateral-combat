@@ -58,7 +58,13 @@ npm run build
 2. Implement one task per loop
 3. Ensure database migrations are handled
 4. Test endpoints work correctly
-5. Commit changes with descriptive messages
+5. Commit changes locally with descriptive messages
+
+## Git Rules (IMPORTANT)
+- ONLY commit locally: `git add . && git commit -m "message"`
+- DO NOT push: No `git push` commands
+- A separate manager handles all pushes to avoid conflicts
+- Always pull before starting work: `git pull origin main`
 
 ## Status Reporting
 At the end of your response, include:
