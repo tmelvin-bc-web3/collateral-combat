@@ -2,16 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { isWhitelisted } from '@/config/whitelist';
 
 export default function ComingSoon() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [mounted, setMounted] = useState(false);
+  const { publicKey, connected } = useWallet();
+
+  const walletAddress = publicKey?.toBase58();
+  const hasAccess = isWhitelisted(walletAddress);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Redirect whitelisted users to the full app
+  useEffect(() => {
+    if (hasAccess && mounted) {
+      // Set a cookie to bypass middleware for whitelisted users
+      document.cookie = `whitelist_access=${walletAddress};path=/;max-age=86400`;
+      window.location.href = '/predict';
+    }
+  }, [hasAccess, mounted, walletAddress]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,11 +155,64 @@ export default function ComingSoon() {
         </p>
 
         {/* Description */}
-        <p className="text-[#8a7f72] text-lg md:text-xl text-center max-w-lg mb-12 leading-relaxed">
+        <p className="text-[#8a7f72] text-lg md:text-xl text-center max-w-lg mb-8 leading-relaxed">
           The wasteland&apos;s premier trading arena.
           <span className="text-[#e8dfd4]"> Predict. Battle. Draft. </span>
           Survive.
         </p>
+
+        {/* Early Access - Wallet Connect */}
+        <div className="w-full max-w-md mb-8">
+          <div className="relative bg-[#0d0b09]/80 backdrop-blur-xl rounded-xl border border-[#8b4513]/30 p-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold text-[#e8dfd4] mb-1">Early Access</h3>
+              <p className="text-sm text-[#5c5348]">
+                {connected
+                  ? hasAccess
+                    ? 'Access granted! Redirecting...'
+                    : 'Wallet not on whitelist'
+                  : 'Connect wallet to check whitelist status'
+                }
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <WalletMultiButton
+                style={{
+                  background: 'linear-gradient(180deg, #151210 0%, #0d0b09 100%)',
+                  border: '1px solid #8b4513',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  height: '44px',
+                  padding: '0 20px',
+                }}
+              />
+            </div>
+
+            {connected && !hasAccess && (
+              <p className="text-xs text-[#5c5348] text-center mt-4">
+                Join the waitlist below for access when we launch
+              </p>
+            )}
+
+            {connected && hasAccess && (
+              <div className="flex items-center justify-center gap-2 mt-4 text-[#7fba00]">
+                <div className="w-5 h-5 border-2 border-[#7fba00] border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-semibold">Loading DegenDome...</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="w-full max-w-md flex items-center gap-4 mb-8">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#8b4513]/30" />
+          <span className="text-xs text-[#5c5348] uppercase tracking-widest">or</span>
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[#8b4513]/30" />
+        </div>
 
         {/* Email signup card */}
         <div className="w-full max-w-md relative">

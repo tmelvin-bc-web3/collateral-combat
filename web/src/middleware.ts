@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { WHITELISTED_WALLETS } from '@/config/whitelist';
 
 // Coming soon mode - uses env var, defaults to true in production
 const COMING_SOON_MODE = process.env.NEXT_PUBLIC_COMING_SOON !== 'false';
@@ -11,6 +12,18 @@ export function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  // Check for whitelist cookie - grants full access
+  const whitelistCookie = request.cookies.get('whitelist_access');
+  if (whitelistCookie) {
+    const walletAddress = whitelistCookie.value;
+    const isWhitelisted = WHITELISTED_WALLETS.some(
+      (addr) => addr.toLowerCase() === walletAddress.toLowerCase()
+    );
+    if (isWhitelisted) {
+      return NextResponse.next();
+    }
+  }
 
   // Allow these paths in coming soon mode
   const allowedPaths = [

@@ -41,10 +41,12 @@ export default function RootLayout({
         <div className="dome-heat" aria-hidden="true" />
 
         {COMING_SOON_MODE ? (
-          // Coming Soon Mode - minimal layout
-          <main className="min-h-screen relative z-10">
-            {children}
-          </main>
+          // Coming Soon Mode - wallet connect enabled for whitelist check
+          <WalletProvider>
+            <main className="min-h-screen relative z-10">
+              {children}
+            </main>
+          </WalletProvider>
         ) : (
           // Live Mode - full layout with navigation
           <WalletProvider>
