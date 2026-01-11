@@ -10,6 +10,7 @@ import { UserAvatar } from './UserAvatar';
 import { ProfilePicker } from './ProfilePicker';
 import { LevelBadge } from './progression';
 import { useProgressionContext } from '@/contexts/ProgressionContext';
+import { UserStreak } from '@/types';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -92,9 +93,33 @@ export function Header() {
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [streak, setStreak] = useState<UserStreak | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const walletAddress = publicKey?.toBase58();
   const { progression } = useProgressionContext();
+
+  // Fetch streak data
+  useEffect(() => {
+    if (!walletAddress) {
+      setStreak(null);
+      return;
+    }
+
+    const fetchStreak = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+        const res = await fetch(`${backendUrl}/api/progression/${walletAddress}/streak`);
+        if (res.ok) {
+          const data = await res.json();
+          setStreak(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch streak:', error);
+      }
+    };
+
+    fetchStreak();
+  }, [walletAddress]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -216,7 +241,7 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-3 justify-self-end">
-          {/* Level Badge & Profile Avatar with Name */}
+          {/* Level Badge, Streak & Profile Avatar with Name */}
           {walletAddress && (
             <div className="flex items-center gap-2">
               {progression && (
@@ -226,6 +251,23 @@ export function Header() {
                     size="sm"
                     className="cursor-pointer hover:scale-110 transition-transform"
                   />
+                </Link>
+              )}
+              {/* Streak Display */}
+              {streak && streak.currentStreak > 0 && (
+                <Link
+                  href="/progression"
+                  title={`${streak.currentStreak} day streak${streak.bonusPercent > 0 ? ` (+${streak.bonusPercent}% XP)` : ''}`}
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-bg-secondary/80 border border-fire/30 hover:border-fire/50 transition-all"
+                >
+                  <span className="text-fire text-sm">🔥</span>
+                  <span className="text-fire font-bold text-xs">{streak.currentStreak}</span>
+                  {streak.bonusPercent > 0 && (
+                    <span className="text-[10px] text-accent font-medium">+{streak.bonusPercent}%</span>
+                  )}
+                  {streak.atRisk && (
+                    <span className="text-yellow-500 text-[10px]" title="Bet today to keep your streak!">⚠️</span>
+                  )}
                 </Link>
               )}
               <UserAvatar

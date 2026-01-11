@@ -483,6 +483,23 @@ app.post('/api/progression/:wallet/free-bets/use', (req, res) => {
   res.json({ success: true, balance: result.balance });
 });
 
+// ===================
+// Streak Endpoints
+// ===================
+
+// Get user streak info
+app.get('/api/progression/:wallet/streak', (req, res) => {
+  const streak = progressionService.getStreak(req.params.wallet);
+  const bonusPercent = Math.round(progressionService.getStreakBonus(streak.currentStreak) * 100);
+  const atRisk = progressionService.isStreakAtRisk(req.params.wallet);
+
+  res.json({
+    ...streak,
+    bonusPercent,
+    atRisk,
+  });
+});
+
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);

@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
+import { UserStreak, STREAK_BONUSES } from '@/types';
 
 // Reward type definition
 interface LevelReward {
@@ -132,6 +134,32 @@ const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
 
 export default function ProgressionPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'rewards' | 'perks'>('overview');
+  const [streak, setStreak] = useState<UserStreak | null>(null);
+  const { publicKey } = useWallet();
+  const walletAddress = publicKey?.toBase58();
+
+  // Fetch streak data
+  useEffect(() => {
+    if (!walletAddress) {
+      setStreak(null);
+      return;
+    }
+
+    const fetchStreak = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+        const res = await fetch(`${backendUrl}/api/progression/${walletAddress}/streak`);
+        if (res.ok) {
+          const data = await res.json();
+          setStreak(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch streak:', error);
+      }
+    };
+
+    fetchStreak();
+  }, [walletAddress]);
 
   return (
     <div className="max-w-5xl mx-auto animate-fadeIn">
@@ -217,7 +245,7 @@ export default function ProgressionPage() {
                   className="text-center p-4 rounded-lg bg-bg-tertiary border border-rust/20"
                 >
                   <div className="flex justify-center mb-2">
-                    <LevelBadge level={tier.minLevel} size="lg" />
+                    <LevelBadge level={tier.maxLevel} size="lg" />
                   </div>
                   <h3 className={cn('font-bold text-sm', tier.textColor)}>{tier.title}</h3>
                   <p className="text-xs text-text-tertiary mt-1">
@@ -235,12 +263,104 @@ export default function ProgressionPage() {
               <div className="text-sm text-text-secondary uppercase tracking-wider">Max Level</div>
             </div>
             <div className="card border border-rust/30 text-center">
-              <div className="text-4xl font-black text-success mb-2">30%</div>
-              <div className="text-sm text-text-secondary uppercase tracking-wider">Max Rake Discount</div>
+              <div className="text-4xl font-black text-success mb-2">7%</div>
+              <div className="text-sm text-text-secondary uppercase tracking-wider">Lowest Rake</div>
             </div>
             <div className="card border border-rust/30 text-center">
               <div className="text-4xl font-black text-warning mb-2">7</div>
               <div className="text-sm text-text-secondary uppercase tracking-wider">Reward Milestones</div>
+            </div>
+          </div>
+
+          {/* Streak Bonuses */}
+          <div className="card border border-fire/30 bg-fire/5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-fire/20 flex items-center justify-center">
+                <span className="text-xl">🔥</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-fire uppercase tracking-wide">Daily Streak Bonuses</h2>
+                <p className="text-xs text-text-tertiary">Play daily to earn bonus XP</p>
+              </div>
+            </div>
+
+            <p className="text-text-secondary text-sm mb-6">
+              Place at least one bet every day to build your streak. The longer your streak, the more bonus XP you earn!
+            </p>
+
+            {/* Current Streak Status */}
+            {walletAddress && streak && (
+              <div className="mb-6 p-4 rounded-lg bg-bg-tertiary border border-fire/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Your Current Streak</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-3xl font-black text-fire">{streak.currentStreak}</span>
+                      <span className="text-text-secondary">days</span>
+                      {streak.bonusPercent > 0 && (
+                        <span className="px-2 py-1 rounded bg-fire/20 text-fire text-sm font-bold">
+                          +{streak.bonusPercent}% XP
+                        </span>
+                      )}
+                    </div>
+                    {streak.atRisk && (
+                      <p className="text-yellow-500 text-xs mt-2 flex items-center gap-1">
+                        <span>⚠️</span> Bet today to keep your streak!
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Longest Streak</p>
+                    <span className="text-2xl font-bold text-text-secondary">{streak.longestStreak}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Streak Tiers */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {STREAK_BONUSES.slice().reverse().map((tier, idx) => {
+                const isActive = streak && streak.currentStreak >= tier.minDays;
+                const isCurrentTier = streak &&
+                  streak.currentStreak >= tier.minDays &&
+                  (idx === 0 || streak.currentStreak < STREAK_BONUSES.slice().reverse()[idx - 1].minDays);
+
+                return (
+                  <div
+                    key={tier.minDays}
+                    className={cn(
+                      'text-center p-4 rounded-lg border transition-all',
+                      isCurrentTier
+                        ? 'bg-fire/20 border-fire shadow-lg shadow-fire/20'
+                        : isActive
+                        ? 'bg-fire/10 border-fire/40'
+                        : 'bg-bg-tertiary border-rust/20'
+                    )}
+                  >
+                    <div className={cn(
+                      'text-2xl font-black mb-1',
+                      isActive ? 'text-fire' : 'text-text-tertiary'
+                    )}>
+                      +{tier.bonus}%
+                    </div>
+                    <div className={cn(
+                      'text-xs',
+                      isActive ? 'text-fire/80' : 'text-text-tertiary'
+                    )}>
+                      {tier.minDays}+ days
+                    </div>
+                    {isCurrentTier && (
+                      <div className="mt-2 text-[10px] text-fire font-bold uppercase">Current</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 p-3 rounded-lg bg-fire/10 border border-fire/20">
+              <p className="text-xs text-fire">
+                <strong>Pro tip:</strong> Missing a day resets your streak to 0! Set a reminder to place at least one bet daily.
+              </p>
             </div>
           </div>
         </div>

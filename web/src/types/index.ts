@@ -392,3 +392,23 @@ export interface FreeBetTransaction {
   description?: string;
   createdAt: number;
 }
+
+// Streak types
+export interface UserStreak {
+  walletAddress: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string | null;
+  updatedAt: number;
+  bonusPercent: number;
+  atRisk: boolean;
+}
+
+// Streak bonus thresholds
+export const STREAK_BONUSES = [
+  { minDays: 31, bonus: 100 },
+  { minDays: 15, bonus: 75 },
+  { minDays: 8, bonus: 50 },
+  { minDays: 4, bonus: 25 },
+  { minDays: 2, bonus: 10 },
+] as const;

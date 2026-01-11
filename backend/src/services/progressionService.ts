@@ -15,6 +15,10 @@ import {
   addFreeBetCredit,
   useFreeBetCredit,
   getFreeBetHistory,
+  getOrCreateStreak,
+  recordActivity,
+  getStreakBonusMultiplier,
+  isStreakAtRisk,
   XpSource,
   PerkType,
   CosmeticType,
@@ -23,6 +27,7 @@ import {
   UserCosmetic,
   FreeBetBalance,
   FreeBetTransaction,
+  UserStreak,
 } from '../db/progressionDatabase';
 import {
   UserProgression,
@@ -261,18 +266,31 @@ class ProgressionService {
     sourceId: string,
     description: string
   ): Promise<XpGainEvent> {
+    // Record activity for streak tracking
+    const streak = recordActivity(walletAddress);
+    const streakBonus = getStreakBonusMultiplier(streak.currentStreak);
+
+    // Apply streak bonus to XP
+    const bonusXp = Math.floor(amount * streakBonus);
+    const totalXpGained = amount + bonusXp;
+
     // Get or create progression
     const progression = getOrCreateProgression(walletAddress);
     const previousLevel = progression.currentLevel;
     const previousXp = progression.totalXp;
 
     // Calculate new XP and level
-    const newTotalXp = previousXp + amount;
+    const newTotalXp = previousXp + totalXpGained;
     const newLevel = this.calculateLevel(newTotalXp);
+
+    // Create description with streak info
+    const finalDescription = streakBonus > 0
+      ? `${description} (+${Math.round(streakBonus * 100)}% streak bonus)`
+      : description;
 
     // Update database
     updateUserProgression(walletAddress, newTotalXp, newLevel);
-    addXpHistoryEntry(walletAddress, amount, source, sourceId, description);
+    addXpHistoryEntry(walletAddress, totalXpGained, source, sourceId, finalDescription);
 
     // Check for level up and process rewards
     let levelUpResult: LevelUpResult | undefined;
@@ -283,10 +301,13 @@ class ProgressionService {
     // Create event
     const event: XpGainEvent = {
       walletAddress,
-      amount,
+      amount: totalXpGained,
+      baseAmount: amount,
+      streakBonus: bonusXp,
+      streakDays: streak.currentStreak,
       source,
       sourceId,
-      description,
+      description: finalDescription,
       newTotalXp,
       levelUp: levelUpResult,
     };
@@ -512,6 +533,22 @@ class ProgressionService {
 
   getFreeBetTransactionHistory(walletAddress: string, limit: number = 50): FreeBetTransaction[] {
     return getFreeBetHistory(walletAddress, limit);
+  }
+
+  // ===================
+  // Streaks
+  // ===================
+
+  getStreak(walletAddress: string): UserStreak {
+    return getOrCreateStreak(walletAddress);
+  }
+
+  getStreakBonus(streak: number): number {
+    return getStreakBonusMultiplier(streak);
+  }
+
+  isStreakAtRisk(walletAddress: string): boolean {
+    return isStreakAtRisk(walletAddress);
   }
 
   // ===================

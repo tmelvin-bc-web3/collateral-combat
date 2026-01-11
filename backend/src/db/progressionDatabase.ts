@@ -79,6 +79,15 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  -- User streaks
+  CREATE TABLE IF NOT EXISTS user_streaks (
+    wallet_address TEXT PRIMARY KEY,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_activity_date TEXT,
+    updated_at INTEGER NOT NULL
+  );
+
   -- Indexes for performance
   CREATE INDEX IF NOT EXISTS idx_xp_history_wallet ON xp_history(wallet_address);
   CREATE INDEX IF NOT EXISTS idx_xp_history_created ON xp_history(created_at);
@@ -96,6 +105,14 @@ export type PerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4
 export type CosmeticType = 'border' | 'pfp' | 'title';
 export type FreeBetTransactionType = 'earned' | 'used';
 export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
+
+export interface UserStreak {
+  walletAddress: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string | null;
+  updatedAt: number;
+}
 
 export interface UserProgressionData {
   walletAddress: string;
@@ -550,5 +567,140 @@ function mapFreeBetHistoryRow(row: any): FreeBetTransaction {
     gameMode: row.game_mode as GameMode | undefined,
     description: row.description || undefined,
     createdAt: row.created_at,
+  };
+}
+
+// ===================
+// Streak Operations
+// ===================
+
+const getStreakByWallet = db.prepare(`
+  SELECT * FROM user_streaks WHERE wallet_address = ?
+`);
+
+const insertStreak = db.prepare(`
+  INSERT INTO user_streaks (wallet_address, current_streak, longest_streak, last_activity_date, updated_at)
+  VALUES (?, 1, 1, ?, ?)
+`);
+
+const updateStreak = db.prepare(`
+  UPDATE user_streaks
+  SET current_streak = ?, longest_streak = ?, last_activity_date = ?, updated_at = ?
+  WHERE wallet_address = ?
+`);
+
+// Get today's date in YYYY-MM-DD format (UTC)
+function getTodayDateString(): string {
+  const now = new Date();
+  return now.toISOString().split('T')[0];
+}
+
+// Get yesterday's date in YYYY-MM-DD format (UTC)
+function getYesterdayDateString(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
+export function getStreak(walletAddress: string): UserStreak | null {
+  const row = getStreakByWallet.get(walletAddress) as any;
+  if (!row) return null;
+  return mapStreakRow(row);
+}
+
+export function getOrCreateStreak(walletAddress: string): UserStreak {
+  let streak = getStreak(walletAddress);
+  if (!streak) {
+    // Create new streak record (but don't count as day 1 yet - that happens on activity)
+    const now = Date.now();
+    return {
+      walletAddress,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastActivityDate: null,
+      updatedAt: now,
+    };
+  }
+  return streak;
+}
+
+// Call this when user does any qualifying activity (bet, prediction, etc.)
+export function recordActivity(walletAddress: string): UserStreak {
+  const now = Date.now();
+  const today = getTodayDateString();
+  const yesterday = getYesterdayDateString();
+
+  const existing = getStreak(walletAddress);
+
+  if (!existing) {
+    // First ever activity - start streak at 1
+    insertStreak.run(walletAddress, today, now);
+    return {
+      walletAddress,
+      currentStreak: 1,
+      longestStreak: 1,
+      lastActivityDate: today,
+      updatedAt: now,
+    };
+  }
+
+  // Already played today - no change needed
+  if (existing.lastActivityDate === today) {
+    return existing;
+  }
+
+  let newStreak: number;
+  let newLongest: number;
+
+  if (existing.lastActivityDate === yesterday) {
+    // Played yesterday - increment streak
+    newStreak = existing.currentStreak + 1;
+    newLongest = Math.max(existing.longestStreak, newStreak);
+  } else {
+    // Missed a day (or first activity) - reset to 1
+    newStreak = 1;
+    newLongest = Math.max(existing.longestStreak, 1);
+  }
+
+  updateStreak.run(newStreak, newLongest, today, now, walletAddress);
+
+  return {
+    walletAddress,
+    currentStreak: newStreak,
+    longestStreak: newLongest,
+    lastActivityDate: today,
+    updatedAt: now,
+  };
+}
+
+// Get streak bonus multiplier (returns decimal, e.g., 0.25 for 25% bonus)
+export function getStreakBonusMultiplier(streak: number): number {
+  if (streak >= 31) return 1.0;   // 100% bonus
+  if (streak >= 15) return 0.75;  // 75% bonus
+  if (streak >= 8) return 0.5;    // 50% bonus
+  if (streak >= 4) return 0.25;   // 25% bonus
+  if (streak >= 2) return 0.1;    // 10% bonus
+  return 0;                        // No bonus
+}
+
+// Check if streak is at risk (played yesterday but not today)
+export function isStreakAtRisk(walletAddress: string): boolean {
+  const streak = getStreak(walletAddress);
+  if (!streak || streak.currentStreak === 0) return false;
+
+  const today = getTodayDateString();
+  const yesterday = getYesterdayDateString();
+
+  // Streak is at risk if last activity was yesterday (not today)
+  return streak.lastActivityDate === yesterday;
+}
+
+function mapStreakRow(row: any): UserStreak {
+  return {
+    walletAddress: row.wallet_address,
+    currentStreak: row.current_streak,
+    longestStreak: row.longest_streak,
+    lastActivityDate: row.last_activity_date,
+    updatedAt: row.updated_at,
   };
 }

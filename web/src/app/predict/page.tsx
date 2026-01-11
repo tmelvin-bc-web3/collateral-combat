@@ -348,9 +348,9 @@ export default function PredictPage() {
       )}
 
       {/* Header */}
-      <div className="mb-6 mt-8 flex items-center justify-between">
+      <div className="mb-4 mt-6 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-black tracking-tight uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
               THE <span className="text-warning">ORACLE</span>
             </h1>
@@ -372,18 +372,17 @@ export default function PredictPage() {
 
         {/* Streak Badge */}
         {streakInfo.streak >= 2 && (
-          <div className={`px-4 py-3 rounded-xl ${streakInfo.side === 'long' ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
-            <div className="text-xs text-text-secondary mb-1 uppercase tracking-wider">Streak</div>
+          <div className={`px-3 py-2 rounded-lg ${streakInfo.side === 'long' ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
             <div className="flex items-center gap-2">
-              <span className={`text-2xl font-bold tabular-nums ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
+              <span className={`text-xl font-bold tabular-nums ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
                 {streakInfo.streak}x
               </span>
               {streakInfo.side === 'long' ? (
-                <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               )}
@@ -393,12 +392,12 @@ export default function PredictPage() {
       </div>
 
       {/* Results Strip */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-medium text-text-secondary uppercase tracking-wider">Recent Results</span>
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Recent</span>
           <div className="flex-1 h-px bg-gradient-to-r from-border-primary to-transparent" />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {recentRounds.slice(0, 10).map((round, idx) => {
             const change = round.endPrice && round.startPrice
               ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
@@ -408,7 +407,7 @@ export default function PredictPage() {
             return (
               <div
                 key={round.id}
-                className={`flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center ${
+                className={`flex-shrink-0 w-10 h-10 rounded-md flex flex-col items-center justify-center ${
                   isLong
                     ? 'bg-success/10 border border-success/30'
                     : isShort
@@ -417,37 +416,37 @@ export default function PredictPage() {
                 }`}
               >
                 {isLong ? (
-                  <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                   </svg>
                 ) : isShort ? (
-                  <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 ) : (
-                  <div className="w-4 h-4 flex items-center justify-center">
-                    <div className="w-2 h-0.5 bg-text-tertiary rounded-full" />
+                  <div className="w-3 h-3 flex items-center justify-center">
+                    <div className="w-1.5 h-0.5 bg-text-tertiary rounded-full" />
                   </div>
                 )}
-                <span className={`text-[9px] font-mono font-medium mt-0.5 ${
+                <span className={`text-[8px] font-mono font-medium ${
                   isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
                 }`}>
-                  {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                  {change >= 0 ? '+' : ''}{change.toFixed(1)}%
                 </span>
               </div>
             );
           })}
           {recentRounds.length === 0 && (
-            <div className="text-text-tertiary text-sm py-2">Waiting for first round...</div>
+            <div className="text-text-tertiary text-xs py-1">Waiting for first round...</div>
           )}
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4">
         {/* Main Game Area */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-3">
           {/* Timer & Price Display */}
-          <div className={`card relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
+          <div className={`card py-4 px-5 relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
             {isLocked && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
             )}
@@ -466,7 +465,7 @@ export default function PredictPage() {
               </div>
 
               <div className="text-right">
-                <div className={`text-xs font-semibold mb-2 uppercase tracking-wider ${
+                <div className={`text-xs font-semibold mb-1 uppercase tracking-wider ${
                   isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
                 }`}>
                   {isBettingOpen ? 'Place your bets' : isLocked ? 'Locked' : 'Starting...'}
@@ -483,7 +482,7 @@ export default function PredictPage() {
 
             {/* Progress Bar */}
             {currentRound && (
-              <div className="mt-4 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="mt-3 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-100 rounded-full ${
                     isLocked ? 'bg-accent' : 'bg-success'
@@ -498,34 +497,34 @@ export default function PredictPage() {
           <div className="card p-0 overflow-hidden">
             <RealtimeChart
               symbol={asset}
-              height={280}
+              height={240}
               lockPrice={currentRound?.startPrice}
             />
           </div>
 
           {/* Betting Buttons */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {/* Long Button */}
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative p-6 rounded-xl border-2 transition-all duration-200 ${
+              className={`group relative p-5 rounded-xl border-2 transition-all duration-200 ${
                 isBettingOpen
                   ? 'border-success bg-success/5 hover:bg-success/10 hover:border-success hover:shadow-[0_0_30px_rgba(34,197,94,0.15)] cursor-pointer active:scale-[0.98]'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               <div className="flex flex-col items-center">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-all ${
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
                   isBettingOpen ? 'bg-success/20 group-hover:bg-success/30' : 'bg-bg-tertiary'
                 }`}>
-                  <svg className={`w-7 h-7 transition-transform ${isBettingOpen ? 'text-success group-hover:-translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className={`w-6 h-6 transition-transform ${isBettingOpen ? 'text-success group-hover:-translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                   </svg>
                 </div>
-                <div className={`text-2xl font-bold mb-1 ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>LONG</div>
+                <div className={`text-2xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>LONG</div>
                 <div className={`font-mono text-xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>{getOdds('long')}x</div>
-                <div className="text-text-secondary text-xs mt-2">
+                <div className="text-text-secondary text-xs mt-1">
                   Pool: <span className="font-mono font-semibold">${currentRound?.longPool.toFixed(0) || 0}</span>
                 </div>
               </div>
@@ -535,23 +534,23 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative p-6 rounded-xl border-2 transition-all duration-200 ${
+              className={`group relative p-5 rounded-xl border-2 transition-all duration-200 ${
                 isBettingOpen
                   ? 'border-danger bg-danger/5 hover:bg-danger/10 hover:border-danger hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] cursor-pointer active:scale-[0.98]'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               <div className="flex flex-col items-center">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-all ${
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
                   isBettingOpen ? 'bg-danger/20 group-hover:bg-danger/30' : 'bg-bg-tertiary'
                 }`}>
-                  <svg className={`w-7 h-7 transition-transform ${isBettingOpen ? 'text-danger group-hover:translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className={`w-6 h-6 transition-transform ${isBettingOpen ? 'text-danger group-hover:translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </div>
-                <div className={`text-2xl font-bold mb-1 ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>SHORT</div>
+                <div className={`text-2xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>SHORT</div>
                 <div className={`font-mono text-xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>{getOdds('short')}x</div>
-                <div className="text-text-secondary text-xs mt-2">
+                <div className="text-text-secondary text-xs mt-1">
                   Pool: <span className="font-mono font-semibold">${currentRound?.shortPool.toFixed(0) || 0}</span>
                 </div>
               </div>
@@ -626,7 +625,7 @@ export default function PredictPage() {
         <div className="space-y-4">
           {/* Bet Amount */}
           <div className="card">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-secondary">
+            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-text-secondary">
               Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
             </h3>
             <div className="grid grid-cols-5 gap-2 mb-4">
@@ -634,7 +633,7 @@ export default function PredictPage() {
                 <button
                   key={amount}
                   onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-3 rounded-lg text-sm font-semibold transition-all ${
+                  className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     selectedAmountSol === amount
                       ? 'bg-accent text-bg-primary shadow-lg'
                       : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -678,11 +677,6 @@ export default function PredictPage() {
                   </div>
                   {useFreeBet ? 'Using Free Bet!' : 'Use Free Bet (0.01 SOL)'}
                 </button>
-                {useFreeBet && (
-                  <p className="text-xs text-warning/70 mt-2 text-center">
-                    0.01 SOL bet - keep winnings only if you win!
-                  </p>
-                )}
               </div>
             )}
 
@@ -714,9 +708,9 @@ export default function PredictPage() {
 
           {/* Round Stats */}
           <div className="card">
-            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-text-secondary">This Round</h3>
+            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-text-secondary">This Round</h3>
             {currentRound && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center py-2 border-b border-border-primary">
                   <span className="text-text-secondary text-sm">Total Pool</span>
                   <span className="font-mono font-bold text-accent">
@@ -741,17 +735,17 @@ export default function PredictPage() {
 
           {/* How it Works */}
           <div className="card border-warning/20">
-            <h3 className="font-bold mb-4 text-sm uppercase tracking-wider text-warning">Rules of the Oracle</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-3">
+            <h3 className="font-bold mb-3 text-sm uppercase tracking-wider text-warning">Rules of the Oracle</h3>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
                 <span className="text-text-secondary">Choose your fate: Long or Short</span>
               </div>
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
                 <span className="text-text-secondary">30 seconds. No turning back.</span>
               </div>
-              <div className="flex items-start gap-3">
+              <div className="flex items-center gap-3">
                 <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
                 <span className="text-text-secondary">Survivors claim the loot</span>
               </div>

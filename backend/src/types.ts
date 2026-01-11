@@ -411,11 +411,23 @@ export interface LevelUpResult {
 export interface XpGainEvent {
   walletAddress: string;
   amount: number;
+  baseAmount?: number;
+  streakBonus?: number;
+  streakDays?: number;
   source: XpSource;
   sourceId?: string;
   description: string;
   newTotalXp: number;
   levelUp?: LevelUpResult;
+}
+
+// Streak types
+export interface UserStreak {
+  walletAddress: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string | null;
+  updatedAt: number;
 }
 
 // Free Bet types
