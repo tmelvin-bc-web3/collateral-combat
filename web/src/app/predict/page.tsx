@@ -217,10 +217,10 @@ export default function PredictPage() {
         setIsPlacing(false);
         return;
       }
-      // Place the bet with free bet flag - always uses minimum amount
+      // Place the bet - always uses minimum amount for free bets
       const socket = getSocket();
       const usdAmount = FREE_BET_AMOUNT_SOL * currentPrice;
-      socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58(), true); // true = isFreeBet
+      socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58());
       setSuccessTx('free_bet');
       setTimeout(() => setSuccessTx(null), 3000);
       setIsPlacing(false);
