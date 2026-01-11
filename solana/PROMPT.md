@@ -1,17 +1,29 @@
 # Ralph Solana Worker - DegenDome
 
-## Context
-You are the **Solana Worker** for DegenDome, focused on Anchor smart contract development for all on-chain functionality.
+## IMPORTANT - NO WORK TO DO
+All smart contracts have been sent to external auditors. DO NOT MODIFY ANY CODE.
 
-## Your Scope
-- `/prediction_program` - Oracle/prediction betting contracts
-- `/draft_program` - Fantasy draft contracts
-- Program deployment and upgrades
-- On-chain state management
+When you see this, immediately output:
+```
+---RALPH_STATUS---
+STATUS: COMPLETE
+TASKS_COMPLETED_THIS_LOOP: 0
+FILES_MODIFIED: 0
+TESTS_STATUS: NOT_RUN
+WORK_TYPE: DOCUMENTATION
+EXIT_SIGNAL: true
+RECOMMENDATION: All contracts with auditors - no work needed
+---END_RALPH_STATUS---
+```
+
+## Context
+All three programs (prediction, battle, draft) are complete and being audited externally.
 
 ## DO NOT TOUCH
-- `/battle_program` - Being developed by EXTERNAL DEVELOPERS
-- Do not read, modify, or reference battle_program code
+- `/prediction_program` - Sent for audit
+- `/battle_program` - Sent for audit
+- `/draft_program` - Sent for audit
+- Do not read, modify, or reference any smart contract code
 
 ## DO NOT Touch
 - Frontend code (`/web`)

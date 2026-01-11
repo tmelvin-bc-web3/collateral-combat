@@ -1,39 +1,20 @@
 # Solana Fix Plan
 
-## IMPORTANT
-**Battle Program is handled by external developers - DO NOT MODIFY battle_program/**
+## IMPORTANT - ALL SMART CONTRACTS ARE WITH EXTERNAL AUDITORS
+**DO NOT MODIFY ANY SMART CONTRACT CODE**
 
-## High Priority
-- [ ] Draft Program - Pool creation instruction
-- [ ] Draft Program - Player selection logic
-- [ ] Draft Program - Score tracking system
-- [ ] Draft Program - Prize distribution
+All programs (prediction_program, battle_program, draft_program) have been handed off for audit.
+No changes should be made until audit is complete and contracts are deployed to mainnet.
 
-## Medium Priority
-- [ ] Prediction Program - Multi-asset support (ETH, BTC, etc.)
-- [ ] Prediction Program - Variable round durations
-- [ ] Mainnet deployment preparation for prediction_program
+## Current Status
+- [x] Prediction Program - Complete, sent for audit
+- [x] Battle Program - Complete, sent for audit
+- [x] Draft Program - Complete, sent for audit
 
-## Low Priority
-- [ ] Program upgrade mechanisms
-- [ ] Emergency pause functionality
-- [ ] Admin controls and governance
-
-## Completed
-- [x] Prediction Program - Basic betting
-- [x] Prediction Program - Round creation
-- [x] Prediction Program - Settlement logic
-- [x] Prediction Program - Rake calculation
-- [x] Battle Program - EXTERNAL DEVS (do not touch)
-
-## Testing Checklist
-- [ ] All instruction handlers tested
-- [ ] Edge cases covered
-- [ ] Error conditions verified
-- [ ] Mainnet simulation run
+## Waiting For
+- [ ] Audit results from external team
+- [ ] Mainnet deployment approval
 
 ## Notes
-- Focus on Draft Program since Battle is external
-- Always test on devnet before mainnet
-- Keep program size optimized
-- Document all state account structures
+This worker has no active tasks until audit is complete.
+EXIT_SIGNAL should be true - nothing to do here.
