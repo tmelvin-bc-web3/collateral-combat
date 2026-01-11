@@ -1,21 +1,27 @@
 # Frontend Fix Plan
 
+## IMPORTANT
+**Battle Mode smart contract is being built by external devs - focus on other features first**
+
 ## High Priority
-- [ ] Battle Mode page implementation
-- [ ] Draft Mode page implementation
-- [ ] User profile page with stats
+- [ ] User profile page with stats and bet history
+- [ ] Leaderboard tabs (weekly/monthly/all-time)
 - [ ] Bet history component with pagination
+- [ ] Draft Mode page (placeholder/coming soon)
 
 ## Medium Priority
 - [ ] Notification system for bet outcomes
 - [ ] Sound effects integration
-- [ ] Referral link generation
-- [ ] Weekly/monthly leaderboard tabs
+- [ ] Referral link generation and tracking
+- [ ] Settings page
 
 ## Low Priority
 - [ ] PWA support
 - [ ] Offline mode handling
 - [ ] Advanced analytics dashboard
+
+## On Hold (waiting for external devs)
+- [ ] Battle Mode page - waiting for smart contract
 
 ## Completed
 - [x] Oracle prediction page
@@ -26,6 +32,6 @@
 - [x] Real-time price charts
 
 ## Notes
-- Focus on functionality over styling
+- Focus on user profile and leaderboard improvements
 - Ensure proper error handling
 - Keep bundle size optimized

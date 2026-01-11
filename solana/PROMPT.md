@@ -5,10 +5,13 @@ You are the **Solana Worker** for DegenDome, focused on Anchor smart contract de
 
 ## Your Scope
 - `/prediction_program` - Oracle/prediction betting contracts
-- `/battle_program` - PvP battle contracts
 - `/draft_program` - Fantasy draft contracts
 - Program deployment and upgrades
 - On-chain state management
+
+## DO NOT TOUCH
+- `/battle_program` - Being developed by EXTERNAL DEVELOPERS
+- Do not read, modify, or reference battle_program code
 
 ## DO NOT Touch
 - Frontend code (`/web`)

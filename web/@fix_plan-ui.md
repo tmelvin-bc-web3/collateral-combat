@@ -1,10 +1,13 @@
 # UI Fix Plan
 
+## IMPORTANT
+**Battle Mode is on hold - focus on existing pages and mobile responsiveness**
+
 ## High Priority
 - [ ] Mobile responsiveness for Oracle page
 - [ ] Mobile responsiveness for Progression page
-- [ ] Battle Mode UI design
-- [ ] Draft Mode UI design
+- [ ] User profile page styling (when Frontend builds it)
+- [ ] Leaderboard page improvements
 
 ## Medium Priority
 - [ ] Loading state animations
@@ -18,6 +21,10 @@
 - [ ] Micro-animations (confetti on wins, etc.)
 - [ ] Custom scrollbar styling
 - [ ] Skeleton loading states
+
+## On Hold
+- [ ] Battle Mode UI design - waiting for smart contract
+- [ ] Draft Mode UI design - waiting for page to be built
 
 ## Completed
 - [x] Oracle page layout optimization

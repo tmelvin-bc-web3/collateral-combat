@@ -1,29 +1,30 @@
 # Solana Fix Plan
 
+## IMPORTANT
+**Battle Program is handled by external developers - DO NOT MODIFY battle_program/**
+
 ## High Priority
-- [ ] Battle Program - Player matching logic
-- [ ] Battle Program - Collateral locking
-- [ ] Battle Program - Winner determination
-- [ ] Battle Program - Payout distribution
+- [ ] Draft Program - Pool creation instruction
+- [ ] Draft Program - Player selection logic
+- [ ] Draft Program - Score tracking system
+- [ ] Draft Program - Prize distribution
 
 ## Medium Priority
-- [ ] Draft Program - Pool creation
-- [ ] Draft Program - Player selection
-- [ ] Draft Program - Score tracking
-- [ ] Prediction Program - Multi-asset support
-- [ ] Mainnet deployment preparation
+- [ ] Prediction Program - Multi-asset support (ETH, BTC, etc.)
+- [ ] Prediction Program - Variable round durations
+- [ ] Mainnet deployment preparation for prediction_program
 
 ## Low Priority
 - [ ] Program upgrade mechanisms
 - [ ] Emergency pause functionality
 - [ ] Admin controls and governance
-- [ ] Cross-program invocations
 
 ## Completed
 - [x] Prediction Program - Basic betting
 - [x] Prediction Program - Round creation
 - [x] Prediction Program - Settlement logic
 - [x] Prediction Program - Rake calculation
+- [x] Battle Program - EXTERNAL DEVS (do not touch)
 
 ## Testing Checklist
 - [ ] All instruction handlers tested
@@ -31,14 +32,8 @@
 - [ ] Error conditions verified
 - [ ] Mainnet simulation run
 
-## Security Audit Items
-- [ ] Account validation
-- [ ] Signer checks
-- [ ] PDA seed verification
-- [ ] Arithmetic overflow protection
-
 ## Notes
+- Focus on Draft Program since Battle is external
 - Always test on devnet before mainnet
 - Keep program size optimized
 - Document all state account structures
-- Maintain backwards compatibility
