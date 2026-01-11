@@ -605,7 +605,7 @@ export default function PredictPage() {
                   <button
                     onClick={handleClaim}
                     disabled={isPlacing}
-                    className="px-4 py-2 bg-accent text-bg-primary font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="px-4 py-2 bg-accent text-white font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {isPlacing ? 'Claiming...' : 'Claim Winnings'}
                   </button>
@@ -635,7 +635,7 @@ export default function PredictPage() {
                   onClick={() => setSelectedAmountSol(amount)}
                   className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
                     selectedAmountSol === amount
-                      ? 'bg-accent text-bg-primary shadow-lg'
+                      ? 'bg-accent text-white shadow-lg'
                       : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                   }`}
                 >
@@ -662,7 +662,7 @@ export default function PredictPage() {
                   onClick={() => setUseFreeBet(!useFreeBet)}
                   className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                     useFreeBet
-                      ? 'bg-warning text-bg-primary'
+                      ? 'bg-warning text-black'
                       : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
                   }`}
                 >
