@@ -173,10 +173,10 @@ export function FeaturedBattle() {
       {/* Footer */}
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-border-primary">
         <div className="text-sm text-text-secondary">
-          Watch live and place bets on the winner
+          Watch live and place wagers on the winner
         </div>
         <Link href={`/spectate`} className="btn btn-primary">
-          Watch & Bet
+          Watch & Wager
         </Link>
       </div>
     </div>

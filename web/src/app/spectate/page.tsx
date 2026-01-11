@@ -7,7 +7,7 @@ import { LiveBattle, SpectatorBet } from '@/types';
 import { LiveBattleCard } from '@/components/LiveBattleCard';
 import { SpectatorView } from '@/components/SpectatorView';
 
-type Tab = 'live' | 'my-bets';
+type Tab = 'live' | 'my-wagers';
 
 export default function SpectatePage() {
   const { publicKey } = useWallet();
@@ -135,9 +135,9 @@ export default function SpectatePage() {
           Live Now
         </button>
         <button
-          onClick={() => setActiveTab('my-bets')}
+          onClick={() => setActiveTab('my-wagers')}
           className={`px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
-            activeTab === 'my-bets'
+            activeTab === 'my-wagers'
               ? 'bg-danger text-white'
               : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-primary'
           }`}
@@ -197,7 +197,7 @@ export default function SpectatePage() {
         </>
       )}
 
-      {activeTab === 'my-bets' && (
+      {activeTab === 'my-wagers' && (
         <div className="card border border-danger/20">
           {!publicKey ? (
             <div className="text-center py-12">

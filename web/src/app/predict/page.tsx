@@ -468,7 +468,7 @@ export default function PredictPage() {
                 <div className={`text-xs font-semibold mb-1 uppercase tracking-wider ${
                   isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
                 }`}>
-                  {isBettingOpen ? 'Place your bets' : isLocked ? 'Locked' : 'Starting...'}
+                  {isBettingOpen ? 'Place your wager' : isLocked ? 'Locked' : 'Starting...'}
                 </div>
                 <div className={`text-6xl font-black font-mono tabular-nums leading-none ${
                   timeRemaining <= 5 ? 'text-danger animate-pulse' :
@@ -568,7 +568,7 @@ export default function PredictPage() {
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{successTx === 'free_bet' ? 'Free bet placed!' : 'Bet placed on-chain!'}</span>
+                <span>{successTx === 'free_bet' ? 'Free wager placed!' : 'Wager placed on-chain!'}</span>
               </div>
               {successTx === 'free_bet' ? (
                 <p className="text-xs mt-1 opacity-80">Good luck! Winnings will be credited if you win.</p>

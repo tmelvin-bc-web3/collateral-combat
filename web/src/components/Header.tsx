@@ -31,7 +31,7 @@ const PRIMARY_NAV = [
 
 // Secondary nav - in dropdown
 const SECONDARY_NAV = [
-  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & bet on battles' },
+  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & wager on battles' },
   { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', description: 'Top warriors' },
   { href: '/progression', label: 'Ranks & Perks', icon: 'progression', description: 'Level up rewards' },
 ];
@@ -266,7 +266,7 @@ export function Header() {
                     <span className="text-[10px] text-accent font-medium">+{streak.bonusPercent}%</span>
                   )}
                   {streak.atRisk && (
-                    <span className="text-yellow-500 text-[10px]" title="Bet today to keep your streak!">⚠️</span>
+                    <span className="text-yellow-500 text-[10px]" title="Wager today to keep your streak!">⚠️</span>
                   )}
                 </Link>
               )}

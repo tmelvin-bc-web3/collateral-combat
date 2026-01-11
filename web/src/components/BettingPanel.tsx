@@ -46,7 +46,7 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
 
   const handlePlaceBet = async () => {
     if (!walletAddress) {
-      setError('Connect wallet to place bets');
+      setError('Connect wallet to place wagers');
       return;
     }
     if (!selectedPlayer) {
@@ -56,7 +56,7 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
 
     const amount = customAmount ? parseFloat(customAmount) : betAmount;
     if (isNaN(amount) || amount <= 0) {
-      setError('Enter a valid bet amount');
+      setError('Enter a valid wager amount');
       return;
     }
 
@@ -104,7 +104,7 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
           </svg>
         </div>
         <div>
-          <h2 className="font-bold text-lg">Place Your Bet</h2>
+          <h2 className="font-bold text-lg">Place Your Wager</h2>
           <p className="text-text-tertiary text-xs">Back your champion</p>
         </div>
       </div>
@@ -225,13 +225,13 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
         </div>
       </div>
 
-      {/* Bet Amount */}
+      {/* Wager Amount */}
       <div className="mb-5">
         <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-3">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          Bet Amount (SOL)
+          Wager Amount (SOL)
         </label>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {BET_AMOUNTS.map((amount) => (

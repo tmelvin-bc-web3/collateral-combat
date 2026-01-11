@@ -70,7 +70,7 @@ const XP_SOURCES = [
   },
   {
     name: 'Spectator Betting',
-    description: 'Watch battles and bet on the outcome',
+    description: 'Watch battles and wager on the outcome',
     xpRange: '25-100 XP',
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
@@ -87,18 +87,18 @@ const XP_SOURCES = [
 // Level rewards
 const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
   { level: 5, rewards: [
-    { type: 'freebet', name: '1 Free Bet', icon: '🎁', count: 1 },
+    { type: 'freebet', name: '1 Free Wager', icon: '🎁', count: 1 },
   ]},
   { level: 10, rewards: [
     { type: 'cosmetic', name: 'Bronze Border', icon: '🥉' },
-    { type: 'freebet', name: '2 Free Bets', icon: '🎁', count: 2 },
+    { type: 'freebet', name: '2 Free Wagers', icon: '🎁', count: 2 },
   ]},
   { level: 15, rewards: [
     { type: 'perk', name: '9% Draft Rake', icon: '📉', gameType: 'draft' },
     { type: 'perk', name: '4.5% Oracle Rake', icon: '🔮', gameType: 'oracle' },
   ]},
   { level: 20, rewards: [
-    { type: 'freebet', name: '3 Free Bets', icon: '🎁', count: 3 },
+    { type: 'freebet', name: '3 Free Wagers', icon: '🎁', count: 3 },
   ]},
   { level: 25, rewards: [
     { type: 'perk', name: '9% Draft Rake', icon: '📉', gameType: 'draft' },
@@ -106,7 +106,7 @@ const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
     { type: 'cosmetic', name: 'Silver Border', icon: '🥈' },
   ]},
   { level: 35, rewards: [
-    { type: 'freebet', name: '3 Free Bets', icon: '🎁', count: 3 },
+    { type: 'freebet', name: '3 Free Wagers', icon: '🎁', count: 3 },
   ]},
   { level: 40, rewards: [
     { type: 'perk', name: '8% Draft Rake', icon: '📉', gameType: 'draft' },
@@ -116,19 +116,19 @@ const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
     { type: 'perk', name: '8% Draft Rake', icon: '📉', gameType: 'draft' },
     { type: 'perk', name: '4% Oracle Rake', icon: '🔮', gameType: 'oracle' },
     { type: 'cosmetic', name: 'Gold Border', icon: '🥇' },
-    { type: 'freebet', name: '5 Free Bets', icon: '🎁', count: 5 },
+    { type: 'freebet', name: '5 Free Wagers', icon: '🎁', count: 5 },
   ]},
   { level: 75, rewards: [
     { type: 'perk', name: '7% Draft Rake', icon: '📉', gameType: 'draft' },
     { type: 'perk', name: '3.5% Oracle Rake', icon: '🔮', gameType: 'oracle' },
     { type: 'cosmetic', name: 'Platinum Border', icon: '💎' },
-    { type: 'freebet', name: '5 Free Bets', icon: '🎁', count: 5 },
+    { type: 'freebet', name: '5 Free Wagers', icon: '🎁', count: 5 },
   ]},
   { level: 100, rewards: [
     { type: 'perk', name: '7% Draft Rake (Permanent)', icon: '📉', gameType: 'draft', permanent: true },
     { type: 'perk', name: '3.5% Oracle Rake (Permanent)', icon: '🔮', gameType: 'oracle', permanent: true },
     { type: 'cosmetic', name: 'Mythic Border', icon: '👑' },
-    { type: 'freebet', name: '10 Free Bets', icon: '🎁', count: 10 },
+    { type: 'freebet', name: '10 Free Wagers', icon: '🎁', count: 10 },
   ]},
 ];
 
@@ -285,7 +285,7 @@ export default function ProgressionPage() {
             </div>
 
             <p className="text-text-secondary text-sm mb-6">
-              Place at least one bet every day to build your streak. The longer your streak, the more bonus XP you earn!
+              Place at least one wager every day to build your streak. The longer your streak, the more bonus XP you earn!
             </p>
 
             {/* Current Streak Status */}
@@ -359,7 +359,7 @@ export default function ProgressionPage() {
 
             <div className="mt-4 p-3 rounded-lg bg-fire/10 border border-fire/20">
               <p className="text-xs text-fire">
-                <strong>Pro tip:</strong> Missing a day resets your streak to 0! Set a reminder to place at least one bet daily.
+                <strong>Pro tip:</strong> Missing a day resets your streak to 0! Set a reminder to place at least one wager daily.
               </p>
             </div>
           </div>
@@ -489,20 +489,20 @@ export default function ProgressionPage() {
             </div>
           </div>
 
-          {/* Free Bets */}
+          {/* Free Wagers */}
           <div className="card border border-green-500/30 bg-green-500/5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
                 <span className="text-xl">🎁</span>
               </div>
               <div>
-                <h2 className="text-lg font-black text-green-400 uppercase">Free Bets</h2>
+                <h2 className="text-lg font-black text-green-400 uppercase">Free Wagers</h2>
                 <p className="text-xs text-text-tertiary">Bonus predictions at milestones</p>
               </div>
             </div>
 
             <p className="text-text-secondary text-sm mb-4">
-              Earn free Oracle predictions as you level up. Each free bet is a 0.01 SOL prediction - if you win, you keep the winnings!
+              Earn free Oracle predictions as you level up. Each free wager is a 0.01 SOL prediction - if you win, you keep the winnings!
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -526,7 +526,7 @@ export default function ProgressionPage() {
 
             <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
               <p className="text-xs text-green-400">
-                <strong>Note:</strong> Free bets are &quot;winnings only&quot; - you keep the profit but not the original stake. Total: <strong>29 free bets</strong> by Level 100!
+                <strong>Note:</strong> Free bets are &quot;winnings only&quot; - you keep the profit but not the original stake. Total: <strong>29 free wagers</strong> by Level 100!
               </p>
             </div>
           </div>

@@ -213,7 +213,7 @@ export function LiveBattleCard({ battle, featured, onWatch }: LiveBattleCardProp
             </div>
             {battle.totalBetPool !== undefined && battle.totalBetPool > 0 && (
               <div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-wider">Bet Pool</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wider">Wager Pool</div>
                 <div className="font-bold">{battle.totalBetPool.toFixed(2)} SOL</div>
               </div>
             )}
