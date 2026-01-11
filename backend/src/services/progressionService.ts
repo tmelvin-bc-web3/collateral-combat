@@ -11,11 +11,18 @@ import {
   getPerk,
   createCosmetic,
   getCosmeticsForWallet,
+  getOrCreateFreeBetBalance,
+  addFreeBetCredit,
+  useFreeBetCredit,
+  getFreeBetHistory,
   XpSource,
   PerkType,
   CosmeticType,
+  GameMode,
   UserPerk,
   UserCosmetic,
+  FreeBetBalance,
+  FreeBetTransaction,
 } from '../db/progressionDatabase';
 import {
   UserProgression,
@@ -148,26 +155,47 @@ const TITLES: { minLevel: number; maxLevel: number; title: string }[] = [
 interface LevelReward {
   perks?: { type: PerkType; permanent?: boolean }[];
   cosmetics?: { type: CosmeticType; id: string }[];
+  freeBets?: number;
 }
 
 const LEVEL_REWARDS: Record<number, LevelReward> = {
-  10: { cosmetics: [{ type: 'border', id: 'bronze' }] },
-  15: { perks: [{ type: 'rake_9' }] },
-  25: { perks: [{ type: 'rake_9' }], cosmetics: [{ type: 'border', id: 'silver' }] },
-  40: { perks: [{ type: 'rake_8' }] },
-  50: { perks: [{ type: 'rake_8' }], cosmetics: [{ type: 'border', id: 'gold' }] },
-  75: { perks: [{ type: 'rake_7' }], cosmetics: [{ type: 'border', id: 'platinum' }] },
-  100: { perks: [{ type: 'rake_7', permanent: true }], cosmetics: [{ type: 'border', id: 'mythic' }] },
+  // Level 5: First free bet
+  5: { freeBets: 1 },
+  // Level 10: Bronze border + free bets
+  10: { cosmetics: [{ type: 'border', id: 'bronze' }], freeBets: 2 },
+  // Level 15: Draft 9% rake + Oracle 4.5% rake
+  15: { perks: [{ type: 'rake_9' }, { type: 'oracle_4_5' }] },
+  // Level 20: Free bets
+  20: { freeBets: 3 },
+  // Level 25: Draft 9% rake + Oracle 4.5% rake + Silver border
+  25: { perks: [{ type: 'rake_9' }, { type: 'oracle_4_5' }], cosmetics: [{ type: 'border', id: 'silver' }] },
+  // Level 35: Free bets
+  35: { freeBets: 3 },
+  // Level 40: Draft 8% rake + Oracle 4% rake
+  40: { perks: [{ type: 'rake_8' }, { type: 'oracle_4' }] },
+  // Level 50: Draft 8% rake + Oracle 4% rake + Gold border + free bets
+  50: { perks: [{ type: 'rake_8' }, { type: 'oracle_4' }], cosmetics: [{ type: 'border', id: 'gold' }], freeBets: 5 },
+  // Level 75: Draft 7% rake + Oracle 3.5% rake + Platinum border + free bets
+  75: { perks: [{ type: 'rake_7' }, { type: 'oracle_3_5' }], cosmetics: [{ type: 'border', id: 'platinum' }], freeBets: 5 },
+  // Level 100: Permanent perks + Mythic border + free bets
+  100: { perks: [{ type: 'rake_7', permanent: true }, { type: 'oracle_3_5', permanent: true }], cosmetics: [{ type: 'border', id: 'mythic' }], freeBets: 10 },
 };
 
 // Perk duration: 1 week in milliseconds
 const PERK_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Rake percentages for each perk type
+// Draft perks (10% baseline): rake_9, rake_8, rake_7
+// Oracle perks (5% baseline): oracle_4_5, oracle_4, oracle_3_5
 const RAKE_PERCENTAGES: Record<PerkType, number> = {
+  // Draft perks (for 10% baseline games)
   rake_9: 9,
   rake_8: 8,
   rake_7: 7,
+  // Oracle perks (for 5% baseline games)
+  oracle_4_5: 4.5,
+  oracle_4: 4,
+  oracle_3_5: 3.5,
 };
 
 // ===================
@@ -280,6 +308,7 @@ class ProgressionService {
     const unlockedPerks: UserPerk[] = [];
     const unlockedCosmetics: UserCosmetic[] = [];
     let newTitle: string | null = null;
+    let freeBetEarned: number = 0;
 
     // Check each level for rewards
     for (let level = previousLevel + 1; level <= newLevel; level++) {
@@ -307,6 +336,16 @@ class ProgressionService {
             }
           }
         }
+
+        // Grant free bets
+        if (rewards.freeBets) {
+          addFreeBetCredit(
+            walletAddress,
+            rewards.freeBets,
+            `Level ${level} milestone reward`
+          );
+          freeBetEarned += rewards.freeBets;
+        }
       }
 
       // Check for title change
@@ -323,6 +362,7 @@ class ProgressionService {
       unlockedPerks,
       unlockedCosmetics,
       newTitle,
+      freeBetsEarned: freeBetEarned > 0 ? freeBetEarned : undefined,
     };
   }
 
@@ -397,12 +437,30 @@ class ProgressionService {
     } : null;
   }
 
+  // Get active rake reduction for Draft (10% baseline)
   getActiveRakeReduction(walletAddress: string): number {
     const activePerk = getActivePerk(walletAddress);
     if (!activePerk) {
-      return 10; // Default 10% rake
+      return 10; // Default 10% rake for Draft
     }
-    return RAKE_PERCENTAGES[activePerk.perkType] || 10;
+    // Only return Draft perks (rake_9, rake_8, rake_7)
+    if (activePerk.perkType.startsWith('rake_')) {
+      return RAKE_PERCENTAGES[activePerk.perkType] || 10;
+    }
+    return 10;
+  }
+
+  // Get active rake reduction for Oracle (5% baseline)
+  getActiveOracleRakeReduction(walletAddress: string): number {
+    const activePerk = getActivePerk(walletAddress);
+    if (!activePerk) {
+      return 5; // Default 5% rake for Oracle
+    }
+    // Only return Oracle perks (oracle_4_5, oracle_4, oracle_3_5)
+    if (activePerk.perkType.startsWith('oracle_')) {
+      return RAKE_PERCENTAGES[activePerk.perkType] || 5;
+    }
+    return 5;
   }
 
   // ===================
@@ -414,6 +472,46 @@ class ProgressionService {
       ...cosmetic,
       cosmeticType: cosmetic.cosmeticType as CosmeticType,
     }));
+  }
+
+  // ===================
+  // Free Bets
+  // ===================
+
+  getFreeBetBalance(walletAddress: string): FreeBetBalance {
+    return getOrCreateFreeBetBalance(walletAddress);
+  }
+
+  addFreeBetCredit(walletAddress: string, count: number, description?: string): FreeBetBalance {
+    const balance = addFreeBetCredit(walletAddress, count, description);
+    this.notifyListeners('free_bet_earned', {
+      walletAddress,
+      count,
+      description,
+      newBalance: balance.balance,
+    });
+    return balance;
+  }
+
+  useFreeBetCredit(
+    walletAddress: string,
+    gameMode: GameMode,
+    description?: string
+  ): { success: boolean; balance: FreeBetBalance } {
+    const result = useFreeBetCredit(walletAddress, gameMode, description);
+    if (result.success) {
+      this.notifyListeners('free_bet_used', {
+        walletAddress,
+        gameMode,
+        description,
+        newBalance: result.balance.balance,
+      });
+    }
+    return result;
+  }
+
+  getFreeBetTransactionHistory(walletAddress: string, limit: number = 50): FreeBetTransaction[] {
+    return getFreeBetHistory(walletAddress, limit);
   }
 
   // ===================

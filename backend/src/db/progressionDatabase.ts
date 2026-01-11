@@ -59,11 +59,32 @@ db.exec(`
     UNIQUE(wallet_address, cosmetic_type, cosmetic_id)
   );
 
+  -- Free bet credits (count-based, not USD)
+  CREATE TABLE IF NOT EXISTS free_bet_credits (
+    wallet_address TEXT PRIMARY KEY,
+    balance INTEGER DEFAULT 0,
+    lifetime_earned INTEGER DEFAULT 0,
+    lifetime_used INTEGER DEFAULT 0,
+    updated_at INTEGER NOT NULL
+  );
+
+  -- Free bet transaction history
+  CREATE TABLE IF NOT EXISTS free_bet_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    transaction_type TEXT NOT NULL,
+    game_mode TEXT,
+    description TEXT,
+    created_at INTEGER NOT NULL
+  );
+
   -- Indexes for performance
   CREATE INDEX IF NOT EXISTS idx_xp_history_wallet ON xp_history(wallet_address);
   CREATE INDEX IF NOT EXISTS idx_xp_history_created ON xp_history(created_at);
   CREATE INDEX IF NOT EXISTS idx_user_perks_wallet ON user_perks(wallet_address);
   CREATE INDEX IF NOT EXISTS idx_user_cosmetics_wallet ON user_cosmetics(wallet_address);
+  CREATE INDEX IF NOT EXISTS idx_free_bet_history_wallet ON free_bet_history(wallet_address);
 `);
 
 // ===================
@@ -71,8 +92,10 @@ db.exec(`
 // ===================
 
 export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
-export type PerkType = 'rake_9' | 'rake_8' | 'rake_7';
+export type PerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
 export type CosmeticType = 'border' | 'pfp' | 'title';
+export type FreeBetTransactionType = 'earned' | 'used';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
 
 export interface UserProgressionData {
   walletAddress: string;
@@ -109,6 +132,24 @@ export interface UserCosmetic {
   cosmeticType: CosmeticType;
   cosmeticId: string;
   unlockLevel: number;
+  createdAt: number;
+}
+
+export interface FreeBetBalance {
+  walletAddress: string;
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeUsed: number;
+  updatedAt: number;
+}
+
+export interface FreeBetTransaction {
+  id: number;
+  walletAddress: string;
+  amount: number;
+  transactionType: FreeBetTransactionType;
+  gameMode?: GameMode;
+  description?: string;
   createdAt: number;
 }
 
@@ -391,6 +432,123 @@ function mapCosmeticRow(row: any): UserCosmetic {
     cosmeticType: row.cosmetic_type as CosmeticType,
     cosmeticId: row.cosmetic_id,
     unlockLevel: row.unlock_level,
+    createdAt: row.created_at,
+  };
+}
+
+// ===================
+// Free Bet Operations
+// ===================
+
+const getFreeBetBalance = db.prepare(`
+  SELECT * FROM free_bet_credits WHERE wallet_address = ?
+`);
+
+const insertFreeBetBalance = db.prepare(`
+  INSERT INTO free_bet_credits (wallet_address, balance, lifetime_earned, lifetime_used, updated_at)
+  VALUES (?, 0, 0, 0, ?)
+`);
+
+const updateFreeBetBalanceAdd = db.prepare(`
+  UPDATE free_bet_credits
+  SET balance = balance + ?, lifetime_earned = lifetime_earned + ?, updated_at = ?
+  WHERE wallet_address = ?
+`);
+
+const updateFreeBetBalanceUse = db.prepare(`
+  UPDATE free_bet_credits
+  SET balance = balance - ?, lifetime_used = lifetime_used + ?, updated_at = ?
+  WHERE wallet_address = ?
+`);
+
+const insertFreeBetHistory = db.prepare(`
+  INSERT INTO free_bet_history (wallet_address, amount, transaction_type, game_mode, description, created_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+
+const getFreeBetHistoryByWallet = db.prepare(`
+  SELECT * FROM free_bet_history WHERE wallet_address = ? ORDER BY created_at DESC LIMIT ?
+`);
+
+export function getOrCreateFreeBetBalance(walletAddress: string): FreeBetBalance {
+  let row = getFreeBetBalance.get(walletAddress) as any;
+  if (!row) {
+    const now = Date.now();
+    insertFreeBetBalance.run(walletAddress, now);
+    return {
+      walletAddress,
+      balance: 0,
+      lifetimeEarned: 0,
+      lifetimeUsed: 0,
+      updatedAt: now,
+    };
+  }
+  return mapFreeBetBalanceRow(row);
+}
+
+export function addFreeBetCredit(
+  walletAddress: string,
+  count: number,
+  description?: string
+): FreeBetBalance {
+  const now = Date.now();
+
+  // Ensure account exists
+  getOrCreateFreeBetBalance(walletAddress);
+
+  // Add to balance
+  updateFreeBetBalanceAdd.run(count, count, now, walletAddress);
+
+  // Log the transaction
+  insertFreeBetHistory.run(walletAddress, count, 'earned', null, description || null, now);
+
+  return getOrCreateFreeBetBalance(walletAddress);
+}
+
+export function useFreeBetCredit(
+  walletAddress: string,
+  gameMode: GameMode,
+  description?: string
+): { success: boolean; balance: FreeBetBalance } {
+  const now = Date.now();
+  const balance = getOrCreateFreeBetBalance(walletAddress);
+
+  if (balance.balance < 1) {
+    return { success: false, balance };
+  }
+
+  // Deduct 1 from balance
+  updateFreeBetBalanceUse.run(1, 1, now, walletAddress);
+
+  // Log the transaction
+  insertFreeBetHistory.run(walletAddress, 1, 'used', gameMode, description || null, now);
+
+  return { success: true, balance: getOrCreateFreeBetBalance(walletAddress) };
+}
+
+export function getFreeBetHistory(walletAddress: string, limit: number = 50): FreeBetTransaction[] {
+  const rows = getFreeBetHistoryByWallet.all(walletAddress, limit) as any[];
+  return rows.map(mapFreeBetHistoryRow);
+}
+
+function mapFreeBetBalanceRow(row: any): FreeBetBalance {
+  return {
+    walletAddress: row.wallet_address,
+    balance: row.balance,
+    lifetimeEarned: row.lifetime_earned,
+    lifetimeUsed: row.lifetime_used,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapFreeBetHistoryRow(row: any): FreeBetTransaction {
+  return {
+    id: row.id,
+    walletAddress: row.wallet_address,
+    amount: row.amount,
+    transactionType: row.transaction_type as FreeBetTransactionType,
+    gameMode: row.game_mode as GameMode | undefined,
+    description: row.description || undefined,
     createdAt: row.created_at,
   };
 }

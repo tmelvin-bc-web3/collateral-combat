@@ -16,6 +16,17 @@ export const metadata: Metadata = {
   description: 'The wasteland\'s premier PvP trading arena on Solana. Predict. Battle. Draft. Survive. Only the strongest degens claim the loot.',
 };
 
+// Floating ember particles component
+function DomeEmbers() {
+  return (
+    <div className="dome-embers" aria-hidden="true">
+      {[...Array(15)].map((_, i) => (
+        <div key={i} className="ember" />
+      ))}
+    </div>
+  );
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -23,10 +34,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      {/* Add dome-bg class to body for enhanced background. Remove to revert. */}
+      <body className={`${inter.className} dome-bg`}>
+        {/* Animated background elements */}
+        <DomeEmbers />
+        <div className="dome-heat" aria-hidden="true" />
+
         {COMING_SOON_MODE ? (
           // Coming Soon Mode - minimal layout
-          <main className="min-h-screen">
+          <main className="min-h-screen relative z-10">
             {children}
           </main>
         ) : (
@@ -35,7 +51,7 @@ export default function RootLayout({
             <ProfileProvider>
               <ProgressionProvider>
                 <Header />
-                <main className="pt-24 pb-12 px-4 min-h-screen">
+                <main className="pt-24 pb-12 px-4 min-h-screen relative z-10">
                   <div className="max-w-7xl mx-auto">{children}</div>
                 </main>
                 <ProfileSetupWrapper />

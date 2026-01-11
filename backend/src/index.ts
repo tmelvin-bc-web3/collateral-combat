@@ -436,10 +436,51 @@ app.get('/api/progression/:wallet/cosmetics', (req, res) => {
   res.json(cosmetics);
 });
 
-// Get current rake % for user
+// Get current rake % for user (returns both Draft and Oracle rates)
 app.get('/api/progression/:wallet/rake', (req, res) => {
-  const rake = progressionService.getActiveRakeReduction(req.params.wallet);
-  res.json({ rakePercent: rake });
+  const draftRake = progressionService.getActiveRakeReduction(req.params.wallet);
+  const oracleRake = progressionService.getActiveOracleRakeReduction(req.params.wallet);
+  res.json({
+    rakePercent: draftRake,  // Legacy: Draft rake
+    draftRakePercent: draftRake,
+    oracleRakePercent: oracleRake
+  });
+});
+
+// ============= Free Bet Endpoints =============
+
+// Get free bet balance
+app.get('/api/progression/:wallet/free-bets', (req, res) => {
+  const balance = progressionService.getFreeBetBalance(req.params.wallet);
+  res.json(balance);
+});
+
+// Get free bet transaction history
+app.get('/api/progression/:wallet/free-bets/history', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  const history = progressionService.getFreeBetTransactionHistory(req.params.wallet, limit);
+  res.json(history);
+});
+
+// Use free bet credit (for Oracle predictions)
+app.post('/api/progression/:wallet/free-bets/use', (req, res) => {
+  const { gameMode, description } = req.body;
+
+  if (!gameMode || !['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
+    return res.status(400).json({ error: 'Invalid game mode' });
+  }
+
+  const result = progressionService.useFreeBetCredit(
+    req.params.wallet,
+    gameMode,
+    description
+  );
+
+  if (!result.success) {
+    return res.status(400).json({ error: 'No free bets available', balance: result.balance });
+  }
+
+  res.json({ success: true, balance: result.balance });
 });
 
 // WebSocket handling

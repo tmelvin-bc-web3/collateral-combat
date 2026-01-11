@@ -59,6 +59,132 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ==================== */
+/* Enhanced Background  */
+/* Remove .dome-bg class from layout.tsx to revert */
+/* ==================== */
+
+.dome-bg {
+  position: relative;
+  background:
+    /* Radial gradient - fire glow from corners */
+    radial-gradient(ellipse at 0% 0%, rgba(139, 69, 19, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 0%, rgba(230, 57, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(139, 69, 19, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 100%, rgba(255, 85, 0, 0.08) 0%, transparent 50%),
+    /* Center subtle vignette */
+    radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(0, 0, 0, 0.4) 100%),
+    /* Base color */
+    var(--bg-primary);
+}
+
+/* Grid overlay - industrial warehouse feel */
+.dome-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(139, 69, 19, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 69, 19, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Noise texture overlay for grit */
+.dome-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Floating ember particles */
+.dome-embers {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ember {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--fire);
+  border-radius: 50%;
+  opacity: 0;
+  animation: emberFloat 15s ease-in-out infinite;
+  box-shadow: 0 0 6px 2px rgba(230, 57, 0, 0.4);
+}
+
+.ember:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 18s; }
+.ember:nth-child(2) { left: 20%; animation-delay: 2s; animation-duration: 15s; }
+.ember:nth-child(3) { left: 30%; animation-delay: 4s; animation-duration: 20s; }
+.ember:nth-child(4) { left: 40%; animation-delay: 1s; animation-duration: 17s; }
+.ember:nth-child(5) { left: 50%; animation-delay: 3s; animation-duration: 14s; }
+.ember:nth-child(6) { left: 60%; animation-delay: 5s; animation-duration: 19s; }
+.ember:nth-child(7) { left: 70%; animation-delay: 2.5s; animation-duration: 16s; }
+.ember:nth-child(8) { left: 80%; animation-delay: 0.5s; animation-duration: 21s; }
+.ember:nth-child(9) { left: 90%; animation-delay: 4.5s; animation-duration: 13s; }
+.ember:nth-child(10) { left: 15%; animation-delay: 6s; animation-duration: 18s; }
+.ember:nth-child(11) { left: 35%; animation-delay: 7s; animation-duration: 15s; }
+.ember:nth-child(12) { left: 55%; animation-delay: 8s; animation-duration: 17s; }
+.ember:nth-child(13) { left: 75%; animation-delay: 9s; animation-duration: 14s; }
+.ember:nth-child(14) { left: 95%; animation-delay: 10s; animation-duration: 20s; }
+.ember:nth-child(15) { left: 5%; animation-delay: 11s; animation-duration: 16s; }
+
+@keyframes emberFloat {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+    transform: translateY(90vh) translateX(10px) scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: translateY(50vh) translateX(-20px) scale(0.8);
+  }
+  90% {
+    opacity: 0.6;
+    transform: translateY(10vh) translateX(15px) scale(0.6);
+  }
+  100% {
+    transform: translateY(-10vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Subtle moving heat wave distortion at bottom */
+.dome-heat {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to top, rgba(230, 57, 0, 0.05), transparent);
+  pointer-events: none;
+  z-index: 0;
+  animation: heatWave 8s ease-in-out infinite;
+}
+
+@keyframes heatWave {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scaleY(1.1);
+  }
+}
+
 /* Clean scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -951,4 +1077,73 @@ input[type="number"] {
 
 .animate-entrySuccess {
   animation: entrySuccess 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

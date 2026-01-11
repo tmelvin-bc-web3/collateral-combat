@@ -3,13 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
-import { PredictionRound, PredictionSide, QuickBetAmount } from '@/types';
+import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
 
 // SOL bet amounts (in SOL, not USD)
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
 type BetAmountSol = typeof BET_AMOUNTS_SOL[number];
+
+// Free bet is always the minimum amount
+const FREE_BET_AMOUNT_SOL = 0.01;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -32,6 +35,10 @@ export default function PredictPage() {
   const [showWinnerAnimation, setShowWinnerAnimation] = useState(false);
   const [priceChange, setPriceChange] = useState(0);
 
+  // Free bet state
+  const [freeBetBalance, setFreeBetBalance] = useState<FreeBetBalance | null>(null);
+  const [useFreeBet, setUseFreeBet] = useState(false);
+
   // On-chain prediction hook
   const {
     currentRound: onChainRound,
@@ -45,6 +52,46 @@ export default function PredictPage() {
   } = usePrediction();
 
   const asset = 'SOL';
+
+  // Fetch free bet balance
+  const fetchFreeBetBalance = useCallback(async () => {
+    if (!publicKey) {
+      setFreeBetBalance(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/progression/${publicKey.toBase58()}/free-bets`);
+      if (res.ok) {
+        const balance = await res.json();
+        setFreeBetBalance(balance);
+      }
+    } catch {
+      // Failed to fetch free bet balance
+    }
+  }, [publicKey]);
+
+  // Use free bet credit via API
+  const useFreeBetCredit = async (): Promise<boolean> => {
+    if (!publicKey) return false;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/progression/${publicKey.toBase58()}/free-bets/use`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameMode: 'oracle',
+          description: `Oracle prediction - ${asset}`
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFreeBetBalance(data.balance);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -121,6 +168,11 @@ export default function PredictPage() {
     };
   }, [asset, fetchData]);
 
+  // Fetch free bet balance when wallet connects
+  useEffect(() => {
+    fetchFreeBetBalance();
+  }, [fetchFreeBetBalance]);
+
   useEffect(() => {
     if (!currentRound) return;
 
@@ -157,6 +209,24 @@ export default function PredictPage() {
     setError(null);
     setSuccessTx(null);
 
+    // Handle free bet usage (always uses minimum bet amount)
+    if (useFreeBet && freeBetBalance && freeBetBalance.balance > 0) {
+      const success = await useFreeBetCredit();
+      if (!success) {
+        setError('Failed to use free bet');
+        setIsPlacing(false);
+        return;
+      }
+      // Place the bet with free bet flag - always uses minimum amount
+      const socket = getSocket();
+      const usdAmount = FREE_BET_AMOUNT_SOL * currentPrice;
+      socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58(), true); // true = isFreeBet
+      setSuccessTx('free_bet');
+      setTimeout(() => setSuccessTx(null), 3000);
+      setIsPlacing(false);
+      return;
+    }
+
     if (USE_ON_CHAIN_BETTING) {
       // On-chain betting with real SOL
       const onChainSide = side === 'long' ? 'up' : 'down';
@@ -172,8 +242,6 @@ export default function PredictPage() {
     } else {
       // Off-chain betting (legacy mode for testing)
       const socket = getSocket();
-      // Convert SOL amount to USD equivalent for off-chain mode
-      const usdAmount = selectedAmountSol * currentPrice;
       socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58());
       setTimeout(() => setIsPlacing(false), 500);
     }
@@ -491,21 +559,29 @@ export default function PredictPage() {
 
           {/* Success Message */}
           {successTx && (
-            <div className="p-4 rounded-xl bg-success/10 border border-success/30 text-success text-center font-medium">
+            <div className={`p-4 rounded-xl text-center font-medium ${
+              successTx === 'free_bet'
+                ? 'bg-warning/10 border border-warning/30 text-warning'
+                : 'bg-success/10 border border-success/30 text-success'
+            }`}>
               <div className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Bet placed on-chain!</span>
+                <span>{successTx === 'free_bet' ? 'Free bet placed!' : 'Bet placed on-chain!'}</span>
               </div>
-              <a
-                href={`https://explorer.solana.com/tx/${successTx}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs underline mt-1 block opacity-80 hover:opacity-100"
-              >
-                View transaction
-              </a>
+              {successTx === 'free_bet' ? (
+                <p className="text-xs mt-1 opacity-80">Good luck! Winnings will be credited if you win.</p>
+              ) : (
+                <a
+                  href={`https://explorer.solana.com/tx/${successTx}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs underline mt-1 block opacity-80 hover:opacity-100"
+                >
+                  View transaction
+                </a>
+              )}
             </div>
           )}
 
@@ -567,6 +643,47 @@ export default function PredictPage() {
                 </button>
               ))}
             </div>
+
+            {/* Free Bet Balance */}
+            {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
+              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                    <span className="text-sm font-semibold text-warning">Free Bets</span>
+                  </div>
+                  <span className="font-mono font-bold text-warning text-lg">
+                    {freeBetBalance.balance}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setUseFreeBet(!useFreeBet)}
+                  className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    useFreeBet
+                      ? 'bg-warning text-bg-primary'
+                      : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                    useFreeBet ? 'bg-bg-primary border-bg-primary' : 'border-warning'
+                  }`}>
+                    {useFreeBet && (
+                      <svg className="w-3 h-3 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  {useFreeBet ? 'Using Free Bet!' : 'Use Free Bet (0.01 SOL)'}
+                </button>
+                {useFreeBet && (
+                  <p className="text-xs text-warning/70 mt-2 text-center">
+                    0.01 SOL bet - keep winnings only if you win!
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Potential Winnings */}
             <div className="p-4 rounded-xl bg-bg-tertiary border border-border-primary">

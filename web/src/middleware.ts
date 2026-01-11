@@ -15,7 +15,9 @@ export function middleware(request: NextRequest) {
   // Allow these paths in coming soon mode
   const allowedPaths = [
     '/',
+    '/coming-soon',
     '/api/waitlist',
+    '/progression',
   ];
 
   // Allow static files and Next.js internals

@@ -66,9 +66,9 @@ export function DraftProvider({
 }) {
   // Tournament state
   const [tournaments, setTournaments] = useState<Record<DraftTournamentTier, DraftTournament | null>>({
-    '$5': null,
-    '$25': null,
-    '$100': null,
+    '0.1 SOL': null,
+    '0.5 SOL': null,
+    '1 SOL': null,
   });
   const [currentTournament, setCurrentTournament] = useState<DraftTournament | null>(null);
   const [leaderboard, setLeaderboard] = useState<DraftLeaderboardEntry[]>([]);
@@ -227,9 +227,9 @@ export function DraftProvider({
       if (response.ok) {
         const data: DraftTournament[] = await response.json();
         const tournamentsByTier: Record<DraftTournamentTier, DraftTournament | null> = {
-          '$5': null,
-          '$25': null,
-          '$100': null,
+          '0.1 SOL': null,
+          '0.5 SOL': null,
+          '1 SOL': null,
         };
         for (const tournament of data) {
           tournamentsByTier[tournament.tier] = tournament;

@@ -197,7 +197,7 @@ export interface NFTAsset {
 // Memecoin Draft Types
 // ===================
 
-export type DraftTournamentTier = '$5' | '$25' | '$100';
+export type DraftTournamentTier = '0.1 SOL' | '0.5 SOL' | '1 SOL';
 export type DraftTournamentStatus = 'upcoming' | 'drafting' | 'active' | 'completed';
 export type PowerUpType = 'swap' | 'boost' | 'freeze';
 
@@ -302,7 +302,7 @@ export interface DraftLeaderboardEntry {
 // ===================
 
 export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
-export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7';
+export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
 export type CosmeticType = 'border' | 'pfp' | 'title';
 
 export interface UserProgression {
@@ -352,6 +352,7 @@ export interface LevelUpResult {
   unlockedPerks: UserPerk[];
   unlockedCosmetics: UserCosmetic[];
   newTitle: string | null;
+  freeBetsEarned?: number;
 }
 
 export interface XpGainEvent {
@@ -367,4 +368,27 @@ export interface LevelUpEvent {
   newTitle: string | null;
   unlockedPerks: UserPerk[];
   unlockedCosmetics: UserCosmetic[];
+  freeBetsEarned?: number;
+}
+
+// Free Bet types
+export type FreeBetTransactionType = 'earned' | 'used';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
+
+export interface FreeBetBalance {
+  walletAddress: string;
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeUsed: number;
+  updatedAt: number;
+}
+
+export interface FreeBetTransaction {
+  id: number;
+  walletAddress: string;
+  amount: number;
+  transactionType: FreeBetTransactionType;
+  gameMode?: GameMode;
+  description?: string;
+  createdAt: number;
 }

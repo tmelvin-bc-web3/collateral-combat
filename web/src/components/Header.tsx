@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -21,13 +21,18 @@ const WalletMultiButton = dynamic(
   }
 );
 
-const NAV_LINKS = [
-  { href: '/', label: 'Dome', icon: 'home' },
+// Primary nav - main game modes
+const PRIMARY_NAV = [
   { href: '/predict', label: 'Oracle', icon: 'predict' },
   { href: '/battle', label: 'Arena', icon: 'battle' },
   { href: '/draft', label: 'Draft', icon: 'draft' },
-  { href: '/spectate', label: 'Watch', icon: 'spectate' },
-  { href: '/leaderboard', label: 'Warlords', icon: 'leaderboard' },
+];
+
+// Secondary nav - in dropdown
+const SECONDARY_NAV = [
+  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & bet on battles' },
+  { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', description: 'Top warriors' },
+  { href: '/progression', label: 'Ranks & Perks', icon: 'progression', description: 'Level up rewards' },
 ];
 
 const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
@@ -71,6 +76,12 @@ const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
       );
+    case 'progression':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -80,8 +91,24 @@ export function Header() {
   const pathname = usePathname();
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const walletAddress = publicKey?.toBase58();
   const { progression } = useProgressionContext();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Check if any secondary nav item is active
+  const isSecondaryActive = SECONDARY_NAV.some(link => pathname === link.href);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-sm border-b border-rust/30">
@@ -114,12 +141,12 @@ export function Header() {
 
         {/* Nav - Center */}
         <nav className="hidden md:flex items-center gap-0.5 p-1 rounded bg-bg-secondary/80 border border-rust/20 justify-self-center">
-          {NAV_LINKS.map((link) => {
+          {/* Primary nav items */}
+          {PRIMARY_NAV.map((link) => {
             const isActive = pathname === link.href;
             const tourId = link.icon === 'battle' ? 'battle' :
                           link.icon === 'predict' ? 'predict' :
-                          link.icon === 'draft' ? 'draft' :
-                          link.icon === 'spectate' ? 'spectate' : undefined;
+                          link.icon === 'draft' ? 'draft' : undefined;
             return (
               <Link
                 key={link.href}
@@ -136,6 +163,55 @@ export function Header() {
               </Link>
             );
           })}
+
+          {/* More dropdown */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+                isSecondaryActive || isMoreMenuOpen
+                  ? 'text-fire bg-rust/20 border border-rust/40'
+                  : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
+              }`}
+            >
+              <svg className={`w-4 h-4 ${isSecondaryActive || isMoreMenuOpen ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+              </svg>
+              More
+              <svg className={`w-3 h-3 transition-transform ${isMoreMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {isMoreMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-bg-secondary border border-rust/30 rounded-lg shadow-xl overflow-hidden z-50">
+                {SECONDARY_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                      className={`flex items-start gap-3 px-4 py-3 transition-all ${
+                        isActive
+                          ? 'bg-rust/20 text-fire'
+                          : 'hover:bg-rust/10 text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <div className="mt-0.5">
+                        <NavIcon type={link.icon} active={isActive} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{link.label}</div>
+                        <div className="text-xs text-text-tertiary">{link.description}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Right side */}
@@ -144,11 +220,13 @@ export function Header() {
           {walletAddress && (
             <div className="flex items-center gap-2">
               {progression && (
-                <LevelBadge
-                  level={progression.currentLevel}
-                  size="sm"
-                  className="cursor-pointer hover:scale-110 transition-transform"
-                />
+                <Link href="/progression" title="View Progression">
+                  <LevelBadge
+                    level={progression.currentLevel}
+                    size="sm"
+                    className="cursor-pointer hover:scale-110 transition-transform"
+                  />
+                </Link>
               )}
               <UserAvatar
                 walletAddress={walletAddress}

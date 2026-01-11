@@ -14,8 +14,9 @@ const TIER_CONFIG: Record<DraftTournamentTier, {
   priceText: string;
   hoverBorder: string;
   hoverShadow: string;
+  solAmount: number;
 }> = {
-  '$5': {
+  '0.1 SOL': {
     name: 'Scavenger',
     description: 'Low stakes, high hopes. Perfect for fresh blood.',
     iconBg: 'bg-accent/10',
@@ -23,8 +24,9 @@ const TIER_CONFIG: Record<DraftTournamentTier, {
     priceText: 'text-accent',
     hoverBorder: 'hover:border-accent/30',
     hoverShadow: 'hover:shadow-accent/10',
+    solAmount: 0.1,
   },
-  '$25': {
+  '0.5 SOL': {
     name: 'Raider',
     description: 'Prove your worth in the mid-tier wasteland.',
     iconBg: 'bg-success/10',
@@ -32,8 +34,9 @@ const TIER_CONFIG: Record<DraftTournamentTier, {
     priceText: 'text-success',
     hoverBorder: 'hover:border-success/30',
     hoverShadow: 'hover:shadow-success/10',
+    solAmount: 0.5,
   },
-  '$100': {
+  '1 SOL': {
     name: 'Warlord',
     description: 'Only the ruthless survive at this level.',
     iconBg: 'bg-warning/10',
@@ -41,6 +44,7 @@ const TIER_CONFIG: Record<DraftTournamentTier, {
     priceText: 'text-warning',
     hoverBorder: 'hover:border-warning/30',
     hoverShadow: 'hover:shadow-warning/10',
+    solAmount: 1,
   },
 };
 
@@ -55,11 +59,9 @@ function TierCard({
   onSelect: () => void;
   hasEntry: boolean;
 }) {
-  const entryFee = parseInt(tier.replace('$', ''));
+  const config = TIER_CONFIG[tier];
   const prizePool = tournament?.prizePoolUsd || 0;
   const entries = tournament?.totalEntries || 0;
-
-  const config = TIER_CONFIG[tier];
 
   return (
     <button
@@ -75,7 +77,7 @@ function TierCard({
       )}
 
       <div className={`w-14 h-14 rounded-xl ${config.iconBg} flex items-center justify-center ${config.iconText} mb-4`}>
-        <span className="text-2xl font-black">{tier}</span>
+        <span className="text-lg font-black">{config.solAmount}</span>
       </div>
 
       <h3 className="text-xl font-bold mb-1 uppercase tracking-wide">{config.name}</h3>
@@ -87,7 +89,7 @@ function TierCard({
       <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-primary">
         <div>
           <div className="text-xs text-text-tertiary uppercase tracking-wider">War Chest</div>
-          <div className="font-bold text-lg">${prizePool.toFixed(0)}</div>
+          <div className="font-bold text-lg">{prizePool.toFixed(1)} SOL</div>
         </div>
         <div>
           <div className="text-xs text-text-tertiary uppercase tracking-wider">Warriors</div>
@@ -97,7 +99,7 @@ function TierCard({
 
       <div className="mt-4 pt-4 border-t border-border-primary">
         <div className="text-xs text-text-tertiary mb-1 uppercase tracking-wider">Blood Price</div>
-        <div className={`text-2xl font-black ${config.priceText}`}>${entryFee}</div>
+        <div className={`text-2xl font-black ${config.priceText}`}>{tier}</div>
       </div>
     </button>
   );
@@ -166,7 +168,7 @@ function DraftLobbyContent() {
   };
 
   // Get any active tournament for countdown
-  const anyTournament = tournaments['$5'] || tournaments['$25'] || tournaments['$100'];
+  const anyTournament = tournaments['0.1 SOL'] || tournaments['0.5 SOL'] || tournaments['1 SOL'];
 
   return (
     <div className="max-w-5xl mx-auto animate-fadeIn">
@@ -204,7 +206,7 @@ function DraftLobbyContent() {
 
       {/* Tier Selection */}
       <div className="grid md:grid-cols-3 gap-6 mb-12">
-        {(['$5', '$25', '$100'] as DraftTournamentTier[]).map((tier) => {
+        {(['0.1 SOL', '0.5 SOL', '1 SOL'] as DraftTournamentTier[]).map((tier) => {
           const tournament = tournaments[tier];
           const hasEntry = hasEntryForTier(tier);
           const entry = getEntryForTier(tier);
@@ -359,7 +361,6 @@ function EntryModal({
     }
   };
 
-  const entryFee = parseInt(tier.replace('$', ''));
   const config = TIER_CONFIG[tier];
 
   return (
@@ -387,11 +388,11 @@ function EntryModal({
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
                 <span className="text-text-secondary text-sm uppercase tracking-wider">Blood Price</span>
-                <span className="font-bold">${entryFee}</span>
+                <span className="font-bold">{tier}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
                 <span className="text-text-secondary text-sm uppercase tracking-wider">War Chest</span>
-                <span className="font-bold">${tournament?.prizePoolUsd || 0}</span>
+                <span className="font-bold">{(tournament?.prizePoolUsd || 0).toFixed(1)} SOL</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-bg-tertiary border border-border-primary">
                 <span className="text-text-secondary text-sm uppercase tracking-wider">Warriors Enlisted</span>
@@ -419,7 +420,7 @@ function EntryModal({
                 boxShadow: '0 0 20px rgba(255, 107, 0, 0.3)',
               }}
             >
-              {entering ? 'Enlisting...' : `Pay $${entryFee} & Enlist`}
+              {entering ? 'Enlisting...' : `Pay ${tier} & Enlist`}
             </button>
           </>
         )}

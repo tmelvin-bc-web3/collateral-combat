@@ -355,7 +355,7 @@ export interface DraftServerToClientEvents {
 // ===================
 
 export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
-export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7';
+export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
 export type CosmeticType = 'border' | 'pfp' | 'title';
 
 export interface UserProgression {
@@ -405,6 +405,7 @@ export interface LevelUpResult {
   unlockedPerks: UserPerk[];
   unlockedCosmetics: UserCosmetic[];
   newTitle: string | null;
+  freeBetsEarned?: number;
 }
 
 export interface XpGainEvent {
@@ -417,10 +418,34 @@ export interface XpGainEvent {
   levelUp?: LevelUpResult;
 }
 
+// Free Bet types
+export type FreeBetTransactionType = 'earned' | 'used';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
+
+export interface FreeBetBalance {
+  walletAddress: string;
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeUsed: number;
+  updatedAt: number;
+}
+
+export interface FreeBetTransaction {
+  id: number;
+  walletAddress: string;
+  amount: number;
+  transactionType: FreeBetTransactionType;
+  gameMode?: GameMode;
+  description?: string;
+  createdAt: number;
+}
+
 // Progression WebSocket events
 export interface ProgressionServerToClientEvents {
   xp_gained: (data: XpGainEvent) => void;
   level_up: (data: LevelUpResult & { walletAddress: string }) => void;
   perk_activated: (perk: UserPerk) => void;
   perk_expired: (data: { perkId: number; walletAddress: string }) => void;
+  free_bet_earned: (data: { walletAddress: string; count: number; description?: string; newBalance: number }) => void;
+  free_bet_used: (data: { walletAddress: string; gameMode: GameMode; newBalance: number }) => void;
 }
