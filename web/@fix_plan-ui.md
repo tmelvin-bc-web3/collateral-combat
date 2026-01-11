@@ -1,40 +1,24 @@
 # UI Fix Plan
 
-## IMPORTANT
-**Battle Mode is on hold - focus on existing pages and mobile responsiveness**
+## Focus: Mobile Responsiveness
+
+Make the entire site work beautifully on mobile devices.
 
 ## High Priority
-- [ ] Mobile responsiveness for Oracle page
-- [ ] Mobile responsiveness for Progression page
-- [ ] User profile page styling (when Frontend builds it)
-- [ ] Leaderboard page improvements
+- [ ] Oracle page - full mobile responsiveness
+- [ ] Progression page - mobile layout
+- [ ] Leaderboard page - mobile layout
+- [ ] Navigation/header - mobile menu
+- [ ] Coming soon page - mobile layout
 
-## Medium Priority
-- [ ] Loading state animations
-- [ ] Hover effects consistency
-- [ ] Button press feedback
-- [ ] Toast notifications styling
-- [ ] Modal/dialog designs
-
-## Low Priority
-- [ ] Dark/light theme toggle
-- [ ] Micro-animations (confetti on wins, etc.)
-- [ ] Custom scrollbar styling
-- [ ] Skeleton loading states
-
-## On Hold
-- [ ] Battle Mode UI design - waiting for smart contract
-- [ ] Draft Mode UI design - waiting for page to be built
-
-## Completed
-- [x] Oracle page layout optimization
-- [x] Button visibility fixes (contrast)
-- [x] Progression page styling
-- [x] Coming soon page design
-- [x] Sidebar and rules section sizing
+## Guidelines
+- Test at 375px width (iPhone SE)
+- Test at 390px width (iPhone 14)
+- Touch-friendly buttons (min 44px tap targets)
+- Readable text without zooming
+- No horizontal scrolling
 
 ## Notes
 - Mobile-first approach
-- Maintain visual hierarchy
-- Keep animations subtle and performant
+- Keep all functionality accessible on mobile
 - Test on real devices when possible

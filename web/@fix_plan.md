@@ -1,37 +1,35 @@
 # Frontend Fix Plan
 
-## IMPORTANT
-**Battle Mode smart contract is being built by external devs - focus on other features first**
+## Focus: Professional Polish & Visual Consistency
+
+Make the entire site look sleek, clean, and professional. Create visual uniformity across all pages.
 
 ## High Priority
-- [ ] User profile page with stats and bet history
-- [ ] Leaderboard tabs (weekly/monthly/all-time)
-- [ ] Bet history component with pagination
-- [ ] Draft Mode page (placeholder/coming soon)
+- [ ] Audit all pages for visual consistency
+- [ ] Standardize spacing, padding, margins across pages
+- [ ] Unify button styles, sizes, and hover effects
+- [ ] Consistent typography (font sizes, weights, line heights)
+- [ ] Clean up color usage - ensure consistent use of theme colors
+- [ ] Polish card designs and borders
+- [ ] Improve transitions and micro-interactions
 
-## Medium Priority
-- [ ] Notification system for bet outcomes
-- [ ] Sound effects integration
-- [ ] Referral link generation and tracking
-- [ ] Settings page
+## Pages to Polish
+- [ ] Oracle/Predict page
+- [ ] Progression page
+- [ ] Leaderboard page
+- [ ] Coming soon page
+- [ ] Navigation/header
+- [ ] Wallet connection UI
 
-## Low Priority
-- [ ] PWA support
-- [ ] Offline mode handling
-- [ ] Advanced analytics dashboard
-
-## On Hold (waiting for external devs)
-- [ ] Battle Mode page - waiting for smart contract
-
-## Completed
-- [x] Oracle prediction page
-- [x] Progression page with ranks/perks
-- [x] Wallet connection
-- [x] Whitelist access control
-- [x] Coming soon page
-- [x] Real-time price charts
+## Guidelines
+- Professional, modern aesthetic
+- Clean lines and generous whitespace
+- Subtle shadows and gradients
+- Consistent border radius across components
+- Smooth animations (300ms ease)
+- No clutter - less is more
 
 ## Notes
-- Focus on user profile and leaderboard improvements
-- Ensure proper error handling
-- Keep bundle size optimized
+- Focus on desktop first (UI worker handles mobile)
+- Keep the dark theme cohesive
+- Make it feel like a premium product
