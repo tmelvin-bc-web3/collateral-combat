@@ -555,7 +555,7 @@ export default function ProgressionPage() {
                 <div>
                   <h3 className="font-bold text-text-primary mb-1">Activate When Ready</h3>
                   <p className="text-sm text-text-secondary">
-                    Perks are stored in your inventory. Activate them whenever you want - they last for 7 days once activated.
+                    Perks are stored in your inventory. Activate them whenever you want - they last for 50 bets once activated.
                   </p>
                 </div>
               </div>

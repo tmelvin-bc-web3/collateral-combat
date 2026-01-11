@@ -42,107 +42,113 @@ import {
 // ===================
 
 // XP thresholds for each level (index = level - 1)
+// Balanced to ensure profitability before perks unlock
+// ~25 XP per bet average, 0.005 SOL rake per 0.1 SOL bet
+// Level 15 perks: ~200 bets = ~1 SOL rake paid
+// Level 40 perks: ~4,000 bets = ~20 SOL rake paid
+// Level 75 perks: ~24,000 bets = ~120 SOL rake paid
+// Level 100 perks: ~60,000 bets = ~300 SOL rake paid
 const LEVEL_THRESHOLDS: number[] = [
   0,       // Level 1
-  100,     // Level 2
-  200,     // Level 3
-  300,     // Level 4
-  400,     // Level 5
+  50,      // Level 2
+  125,     // Level 3
+  225,     // Level 4
+  350,     // Level 5 - 1 free bet (~14 bets)
   500,     // Level 6
-  650,     // Level 7
-  850,     // Level 8
-  1100,    // Level 9
-  2000,    // Level 10 - Contender
-  2500,    // Level 11
-  3000,    // Level 12
-  3500,    // Level 13
-  4000,    // Level 14
-  5000,    // Level 15 - First perk
-  6000,    // Level 16
-  7000,    // Level 17
-  8000,    // Level 18
-  9000,    // Level 19
-  10000,   // Level 20 - Warrior
-  12000,   // Level 21
-  14000,   // Level 22
-  16000,   // Level 23
-  18000,   // Level 24
-  20000,   // Level 25 - Silver border + perk
-  23000,   // Level 26
-  26000,   // Level 27
-  29000,   // Level 28
-  32000,   // Level 29
+  700,     // Level 7
+  950,     // Level 8
+  1250,    // Level 9
+  1600,    // Level 10 - Contender + border (~64 bets, ~0.32 SOL rake)
+  2000,    // Level 11
+  2500,    // Level 12
+  3100,    // Level 13
+  3800,    // Level 14
+  4600,    // Level 15 - First perks: 4.5%/9% (~184 bets, ~0.92 SOL rake)
+  5500,    // Level 16
+  6500,    // Level 17
+  7600,    // Level 18
+  8800,    // Level 19
+  10000,   // Level 20 - Warrior + free bets (~400 bets, ~2 SOL rake)
+  11500,   // Level 21
+  13200,   // Level 22
+  15100,   // Level 23
+  17200,   // Level 24
+  19500,   // Level 25 - Silver + perks (~780 bets, ~3.9 SOL rake)
+  22000,   // Level 26
+  24800,   // Level 27
+  27900,   // Level 28
+  31300,   // Level 29
   35000,   // Level 30
-  38000,   // Level 31
-  42000,   // Level 32
-  46000,   // Level 33
-  50000,   // Level 34
-  55000,   // Level 35 - Veteran
-  60000,   // Level 36
-  66000,   // Level 37
-  72000,   // Level 38
-  78000,   // Level 39
-  85000,   // Level 40 - 8% rake perk
-  92000,   // Level 41
-  100000,  // Level 42
-  108000,  // Level 43
-  117000,  // Level 44
-  126000,  // Level 45
-  136000,  // Level 46
-  146000,  // Level 47
-  157000,  // Level 48
-  168000,  // Level 49
-  150000,  // Level 50 - Champion + gold border + perk
-  165000,  // Level 51 - Legend
-  180000,  // Level 52
-  196000,  // Level 53
-  213000,  // Level 54
-  231000,  // Level 55
-  250000,  // Level 56
-  270000,  // Level 57
-  291000,  // Level 58
-  313000,  // Level 59
-  336000,  // Level 60
-  360000,  // Level 61
-  385000,  // Level 62
-  411000,  // Level 63
-  438000,  // Level 64
-  466000,  // Level 65
-  495000,  // Level 66
-  525000,  // Level 67
-  556000,  // Level 68
-  588000,  // Level 69
-  621000,  // Level 70
-  655000,  // Level 71
-  690000,  // Level 72
-  726000,  // Level 73
-  763000,  // Level 74
-  500000,  // Level 75 - 7% rake perk + platinum border
-  540000,  // Level 76 - Mythic
-  582000,  // Level 77
-  626000,  // Level 78
-  672000,  // Level 79
-  720000,  // Level 80
-  770000,  // Level 81
-  822000,  // Level 82
-  876000,  // Level 83
-  932000,  // Level 84
-  990000,  // Level 85
-  1050000, // Level 86
-  1112000, // Level 87
-  1176000, // Level 88
-  1242000, // Level 89
-  1310000, // Level 90
-  1380000, // Level 91
-  1452000, // Level 92
-  1526000, // Level 93
-  1602000, // Level 94
-  1680000, // Level 95
-  1760000, // Level 96
-  1842000, // Level 97
-  1926000, // Level 98
-  2012000, // Level 99
-  1500000, // Level 100 - Permanent 7% rake + mythic border
+  39000,   // Level 31
+  43500,   // Level 32
+  48500,   // Level 33
+  54000,   // Level 34
+  60000,   // Level 35 - Veteran + free bets (~2,400 bets, ~12 SOL rake)
+  67000,   // Level 36
+  75000,   // Level 37
+  84000,   // Level 38
+  94000,   // Level 39
+  105000,  // Level 40 - 8%/4% perks (~4,200 bets, ~21 SOL rake)
+  117000,  // Level 41
+  130000,  // Level 42
+  145000,  // Level 43
+  162000,  // Level 44
+  180000,  // Level 45
+  200000,  // Level 46
+  222000,  // Level 47
+  246000,  // Level 48
+  272000,  // Level 49
+  300000,  // Level 50 - Champion + gold + perks (~12,000 bets, ~60 SOL rake)
+  330000,  // Level 51 - Legend
+  363000,  // Level 52
+  399000,  // Level 53
+  438000,  // Level 54
+  480000,  // Level 55
+  525000,  // Level 56
+  573000,  // Level 57
+  624000,  // Level 58
+  678000,  // Level 59
+  735000,  // Level 60
+  795000,  // Level 61
+  858000,  // Level 62
+  924000,  // Level 63
+  993000,  // Level 64
+  1065000, // Level 65
+  1140000, // Level 66
+  1218000, // Level 67
+  1299000, // Level 68
+  1383000, // Level 69
+  1470000, // Level 70
+  1560000, // Level 71
+  1653000, // Level 72
+  1749000, // Level 73
+  1848000, // Level 74
+  1950000, // Level 75 - 7%/3.5% perks + platinum (~78,000 bets, ~390 SOL rake)
+  2055000, // Level 76 - Mythic
+  2163000, // Level 77
+  2274000, // Level 78
+  2388000, // Level 79
+  2505000, // Level 80
+  2625000, // Level 81
+  2748000, // Level 82
+  2874000, // Level 83
+  3003000, // Level 84
+  3135000, // Level 85
+  3270000, // Level 86
+  3408000, // Level 87
+  3549000, // Level 88
+  3693000, // Level 89
+  3840000, // Level 90
+  3990000, // Level 91
+  4143000, // Level 92
+  4299000, // Level 93
+  4458000, // Level 94
+  4620000, // Level 95
+  4785000, // Level 96
+  4953000, // Level 97
+  5124000, // Level 98
+  5298000, // Level 99
+  5475000, // Level 100 - PERMANENT 7%/3.5% perks + mythic (~219,000 bets, ~1,095 SOL rake)
 ];
 
 // Title configuration
