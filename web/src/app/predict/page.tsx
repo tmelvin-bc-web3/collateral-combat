@@ -578,11 +578,11 @@ export default function PredictPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-3">
+      <div className="grid lg:grid-cols-3 gap-3 oracle-commitment-container">
         {/* Main Game Area - Flow: See (Chart) → Decide (Countdown) → Click (Buttons) */}
         <div className="lg:col-span-2 space-y-3">
           {/* 1. SEE: Chart - First thing user sees to assess the trend */}
-          <div className="card p-0 overflow-hidden">
+          <div className="card p-0 overflow-hidden oracle-dimmable">
             <div className="hidden md:block">
               <RealtimeChart
                 symbol={asset}
@@ -604,7 +604,7 @@ export default function PredictPage() {
           </div>
 
           {/* 2. DECIDE: Timer & Price Display - Countdown creates urgency */}
-          <div className={`card py-3 md:py-4 px-4 md:px-5 relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
+          <div className={`card py-3 md:py-4 px-4 md:px-5 relative overflow-hidden transition-all oracle-dimmable ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
             {isLocked && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
             )}
@@ -662,7 +662,7 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`oracle-btn-long group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
                   ? 'border-success bg-success/10 hover:bg-success/20 hover:border-success shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_50px_rgba(34,197,94,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
@@ -706,7 +706,7 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`oracle-btn-short group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
                   ? 'border-danger bg-danger/10 hover:bg-danger/20 hover:border-danger shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_50px_rgba(239,68,68,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
@@ -812,7 +812,7 @@ export default function PredictPage() {
         </div>
 
         {/* Sidebar - Reduced padding for tighter layout */}
-        <div className="space-y-3">
+        <div className="space-y-3 oracle-dimmable">
           {/* Bet Amount */}
           <div className="card p-3 md:p-4">
             <h3 className="font-semibold mb-2 text-xs md:text-sm uppercase tracking-wider text-text-secondary">

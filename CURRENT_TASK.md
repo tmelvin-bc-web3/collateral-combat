@@ -1,7 +1,7 @@
-# Current Task: T062
+# Current Task: T063
 
 ## Description
-Oracle Long/Short buttons bet-to-win format
+Oracle hover commitment effect
 
 ## Scope
 web/src/app/predict/
@@ -10,7 +10,7 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
+hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
 
 ## Worker
 w1 (Attempt 1 of 3)

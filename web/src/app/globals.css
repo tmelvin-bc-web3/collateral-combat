@@ -1315,6 +1315,42 @@ input[type="number"] {
   animation: oracleWinnerFlashShort 350ms ease-out forwards;
 }
 
+/* ==================== */
+/* Oracle Hover Commitment Effect */
+/* ==================== */
+
+/* Container for the betting buttons - enables CSS-only hover detection */
+.oracle-commitment-container {
+  position: relative;
+}
+
+/* When hovering a Long button, dim everything except Long */
+.oracle-commitment-container:has(.oracle-btn-long:hover) .oracle-dimmable {
+  opacity: 0.7;
+  transition: opacity 150ms ease-out;
+}
+
+.oracle-commitment-container:has(.oracle-btn-long:hover) .oracle-btn-long {
+  opacity: 1 !important;
+  transition: opacity 150ms ease-out;
+}
+
+/* When hovering a Short button, dim everything except Short */
+.oracle-commitment-container:has(.oracle-btn-short:hover) .oracle-dimmable {
+  opacity: 0.7;
+  transition: opacity 150ms ease-out;
+}
+
+.oracle-commitment-container:has(.oracle-btn-short:hover) .oracle-btn-short {
+  opacity: 1 !important;
+  transition: opacity 150ms ease-out;
+}
+
+/* Default transition for smooth fade-back */
+.oracle-dimmable {
+  transition: opacity 150ms ease-out;
+}
+
 /* Prefers reduced motion - disable all animations */
 @media (prefers-reduced-motion: reduce) {
   .oracle-round-end-dim,
@@ -1340,6 +1376,13 @@ input[type="number"] {
 
   .oracle-winner-flash-short {
     filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
+  }
+
+  /* Disable hover commitment effect for reduced motion */
+  .oracle-commitment-container:has(.oracle-btn-long:hover) .oracle-dimmable,
+  .oracle-commitment-container:has(.oracle-btn-short:hover) .oracle-dimmable {
+    opacity: 1;
+    transition: none;
   }
 }
 

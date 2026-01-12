@@ -70,9 +70,17 @@ The dev servers are running - use them to verify your changes:
 - **Backend**: http://localhost:3002 (Express API)
 - **Oracle Page**: http://localhost:3000/predict
 
-**Verification Tips:**
-- Use `WebFetch` tool to fetch pages and check your changes rendered correctly
-- For CSS/layout changes, fetch the page and verify classes/structure in HTML
+**Visual Verification with Puppeteer:**
+The `puppeteer` MCP server is available for browser automation:
+- Take screenshots to verify visual changes
+- Navigate pages and interact with elements
+- Check responsive layouts at different viewports
+- Verify animations and hover states
+
+Example: Screenshot the Oracle page to verify your layout changes rendered correctly.
+
+**Other Verification Tips:**
+- Use `WebFetch` tool to fetch pages and check HTML structure
 - For API changes, use `curl http://localhost:3002/api/...` via Bash
 - The frontend hot-reloads, so changes appear immediately
 

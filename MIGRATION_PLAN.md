@@ -137,12 +137,12 @@
   - Verify: countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
-- [@w1] T062 Oracle Long/Short buttons bet-to-win format
+- [x] T062 Oracle Long/Short buttons bet-to-win format
   - Scope: web/src/app/predict/
   - Verify: buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T063 Oracle hover commitment effect
+- [@w1] T063 Oracle hover commitment effect
   - Scope: web/src/app/predict/
   - Verify: hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
