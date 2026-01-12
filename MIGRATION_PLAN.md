@@ -79,7 +79,7 @@
   - Verify: lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w2] T043 Oracle last tick direction indicator
+- [x] T043 Oracle last tick direction indicator
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: arrow at right edge of chart (↑ green if positive, ↓ red if negative)
   - Files: web/src/components/RealtimeChart.tsx
@@ -89,7 +89,7 @@
   - Verify: buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T045 Oracle bet amount selector improvements
+- [@w2] T045 Oracle bet amount selector improvements
   - Scope: web/src/app/predict/
   - Verify: selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

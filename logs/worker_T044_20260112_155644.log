@@ -1,0 +1,21 @@
+```
+---TASK_COMPLETE---
+Task: T044
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+
+Changes made:
+1. **Buttons 15-20% taller**: Changed from `p-3 md:p-5` to `py-4 px-3 md:py-6 md:px-5` (increased vertical padding)
+2. **New "LONG ↑ Win: X.XX SOL" format**: Redesigned button layout with horizontal flex layout showing:
+   - Large arrow icon on left
+   - "LONG ↑" / "SHORT ↓" with directional arrow in text
+   - "Win: X.XX SOL" showing potential winnings
+   - Pool and odds info at bottom
+3. **Hover glow + arrow nudge (±2px)**: Enhanced hover shadow from 30px to 40px with increased opacity (0.25), arrow nudge via `group-hover:-translate-y-0.5` / `group-hover:translate-y-0.5` (2px)
+4. **Click flash + scale(0.98→1)**: Added `active:scale-[0.98]`, `active:brightness-125`, and absolute positioned flash overlay with `group-active:bg-success/20` / `group-active:bg-danger/20` transition
+
+Typecheck: PASS
+Build: PASS
+---END_TASK---
+```

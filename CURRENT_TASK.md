@@ -1,7 +1,7 @@
-# Current Task: T044
+# Current Task: T045
 
 ## Description
-Oracle Long/Short button redesign
+Oracle bet amount selector improvements
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
+selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
