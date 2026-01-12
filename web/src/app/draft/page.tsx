@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { DraftProvider, useDraftContext } from '@/contexts/DraftContext';
 import { DraftTournamentTier, DraftTournament } from '@/types';
+import { PageLoading } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 const TIER_CONFIG: Record<DraftTournamentTier, {
@@ -448,11 +449,7 @@ export default function DraftPage() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoading message="Loading Draft Tournaments..." />;
   }
 
   return <DraftLobbyWithWallet />;

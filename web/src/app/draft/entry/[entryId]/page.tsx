@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { DraftProvider, useDraftContext } from '@/contexts/DraftContext';
 import { DraftPick, Memecoin } from '@/types';
+import { PageLoading } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -848,14 +849,7 @@ function DraftEntryContent() {
   };
 
   if (localLoading || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <div className="text-text-secondary">Loading your draft...</div>
-        </div>
-      </div>
-    );
+    return <PageLoading message="Loading your draft..." />;
   }
 
   if (!currentEntry) {
@@ -1153,11 +1147,7 @@ export default function DraftEntryPage() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoading message="Preparing Draft Room..." />;
   }
 
   return <DraftEntryWithWallet />;
