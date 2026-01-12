@@ -1,0 +1,35 @@
+```
+---TASK_COMPLETE---
+Task: T002
+Status: DONE
+Files modified:
+- backend/src/middleware/auth.ts (created)
+- backend/src/index.ts (modified to add auth middleware)
+
+Verification: PASS (auth middleware files compile without errors; pre-existing error in referralService.ts is out of scope)
+
+Summary of changes:
+1. Created auth middleware (backend/src/middleware/auth.ts) with:
+   - requireAuth() - validates wallet address header
+   - requireWalletOwnership() - ensures authenticated wallet matches :wallet param
+   - requireOwnWallet - combined middleware array for wallet-owned resources
+   - requireAdmin() - checks wallet against ADMIN_WALLETS env var
+   - requireEntryOwnership() - validates draft entry ownership
+   - optionalAuth() - extracts wallet if provided but doesn't require it
+
+2. Protected the following endpoints with auth middleware:
+   - PUT /api/profile/:wallet (requireOwnWallet)
+   - DELETE /api/profile/:wallet (requireOwnWallet)
+   - POST /api/simulator/start|stop, GET status (requireAdmin)
+   - POST /api/prediction/:asset/start|stop (requireAdmin)
+   - POST /api/draft/tournaments/:id/enter (requireAuth + wallet match)
+   - POST /api/draft/entries/:entryId/start|pick|powerup/* (requireDraftEntryOwnership)
+   - POST /api/progression/:wallet/perks/:id/activate (requireOwnWallet)
+   - GET/POST /api/progression/:wallet/free-bets/* (requireOwnWallet)
+   - GET /api/stats/:wallet/history (requireOwnWallet)
+   - All /api/notifications/:wallet/* endpoints (requireOwnWallet)
+   - GET /api/achievements/:wallet/unnotified (requireOwnWallet)
+   - POST /api/achievements/:wallet/:id/notified (requireOwnWallet)
+   - POST /api/achievements/:wallet/check (requireOwnWallet)
+---END_TASK---
+```

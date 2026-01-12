@@ -1,0 +1,33 @@
+All verifications pass. Let me provide a summary:
+
+## Summary
+
+**Task T001: Scan codebase for exposed API keys and secrets**
+
+### Findings:
+
+1. **Source code files (.ts, .tsx, .js)**: No hardcoded secrets found. All API keys are properly loaded from environment variables:
+   - `backend/src/services/coinMarketCapService.ts` uses `process.env.CMC_API_KEY`
+   - `web/src/lib/nftApi.ts` uses `process.env.NEXT_PUBLIC_HELIUS_API_KEY`
+
+2. **Environment files**: Properly gitignored
+   - `backend/.env` - contains CMC_API_KEY (gitignored)
+   - `web/.env.local` - contains HELIUS_API_KEY (gitignored)
+
+3. **Issue Found & Fixed**: `.telegram_config` file containing a Telegram bot token was NOT in `.gitignore`. This file could have been accidentally committed to git.
+
+### Action Taken:
+- Added `.telegram_config` to `.gitignore` to prevent accidental commit of Telegram credentials
+
+### Non-issues:
+- Solana public keys (program IDs, wallet addresses) in source code are public by design
+- Mock/simulation wallet addresses in `battleSimulator.ts` are test data, not real secrets
+
+```
+---TASK_COMPLETE---
+Task: T001
+Status: DONE
+Files modified: .gitignore (added .telegram_config to prevent accidental secret exposure)
+Verification: PASS
+---END_TASK---
+```

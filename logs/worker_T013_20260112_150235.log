@@ -1,0 +1,14 @@
+The CURRENT_TASK.md file shows Task T013, but the task details are empty - there is no Description, Scope, Files to Modify, or Verification commands specified.
+
+I cannot proceed with an empty task definition. I have no:
+- Description of what to do
+- Scope of work
+- Files I'm allowed to modify
+- Verification commands to run
+
+```
+---TASK_BLOCKED---
+Task: T013
+Reason: Task definition is empty. No description, scope, files to modify, or verification commands are specified in CURRENT_TASK.md. Cannot proceed without knowing what work needs to be done.
+---END_TASK---
+```

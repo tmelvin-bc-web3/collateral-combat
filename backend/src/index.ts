@@ -16,8 +16,10 @@ import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
 import * as achievementDb from './db/achievementDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
+import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
+import { Request, Response } from 'express';
 
 const app = express();
 const httpServer = createServer(app);
@@ -38,6 +40,15 @@ app.use(express.json());
 
 // Apply global rate limiting to all API routes
 app.use('/api', globalLimiter);
+
+// Helper function to get wallet address from draft entry
+const getEntryWallet = (entryId: string): string | null => {
+  const entry = draftTournamentManager.getEntry(entryId);
+  return entry?.walletAddress || null;
+};
+
+// Create reusable entry ownership middleware
+const requireDraftEntryOwnership = [requireAuth(), requireEntryOwnership(getEntryWallet)];
 
 // REST API Routes
 
@@ -132,7 +143,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', writeLimiter, (req, res) => {
+app.put('/api/profile/:wallet', requireOwnWallet, writeLimiter, (req: Request, res: Response) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
@@ -192,24 +203,24 @@ app.get('/api/profiles', (req, res) => {
   res.json(profiles);
 });
 
-app.delete('/api/profile/:wallet', (req, res) => {
+app.delete('/api/profile/:wallet', requireOwnWallet, (req: Request, res: Response) => {
   const deleted = deleteProfile(req.params.wallet);
   res.json({ deleted });
 });
 
-// Simulator endpoints (for testing)
-app.post('/api/simulator/start', (req, res) => {
+// Simulator endpoints (admin only)
+app.post('/api/simulator/start', requireAdmin(), (req: Request, res: Response) => {
   const numBattles = parseInt(req.query.battles as string) || 3;
   battleSimulator.start(numBattles);
   res.json({ status: 'started', battles: numBattles });
 });
 
-app.post('/api/simulator/stop', (req, res) => {
+app.post('/api/simulator/stop', requireAdmin(), (req: Request, res: Response) => {
   battleSimulator.stop();
   res.json({ status: 'stopped' });
 });
 
-app.get('/api/simulator/status', (req, res) => {
+app.get('/api/simulator/status', requireAdmin(), (req: Request, res: Response) => {
   res.json(battleSimulator.getStatus());
 });
 
@@ -232,12 +243,12 @@ app.get('/api/prediction/assets', (req, res) => {
   res.json(predictionService.getActiveAssets());
 });
 
-app.post('/api/prediction/:asset/start', (req, res) => {
+app.post('/api/prediction/:asset/start', requireAdmin(), (req: Request, res: Response) => {
   predictionService.start(req.params.asset);
   res.json({ status: 'started', asset: req.params.asset });
 });
 
-app.post('/api/prediction/:asset/stop', (req, res) => {
+app.post('/api/prediction/:asset/stop', requireAdmin(), (req: Request, res: Response) => {
   predictionService.stop(req.params.asset);
   res.json({ status: 'stopped', asset: req.params.asset });
 });
@@ -279,17 +290,22 @@ app.get('/api/draft/tournaments/:id/leaderboard', (req, res) => {
   res.json(draftTournamentManager.getLeaderboard(req.params.id));
 });
 
-// Enter tournament
-app.post('/api/draft/tournaments/:id/enter', strictLimiter, (req, res) => {
+// Enter tournament (requires auth, wallet in body must match authenticated wallet)
+app.post('/api/draft/tournaments/:id/enter', requireAuth(), strictLimiter, (req: Request, res: Response) => {
   try {
     const { walletAddress } = req.body;
     if (!walletAddress) {
       return res.status(400).json({ error: 'walletAddress required' });
     }
+    // Ensure wallet in body matches authenticated wallet
+    if (walletAddress !== req.authenticatedWallet) {
+      return res.status(403).json({ error: 'Wallet address does not match authenticated wallet', code: 'FORBIDDEN' });
+    }
     const entry = draftTournamentManager.enterTournament(req.params.id, walletAddress);
     res.json(entry);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
@@ -307,18 +323,19 @@ app.get('/api/draft/entries/wallet/:wallet', (req, res) => {
   res.json(draftTournamentManager.getEntriesForWallet(req.params.wallet));
 });
 
-// Start draft session
-app.post('/api/draft/entries/:entryId/start', (req, res) => {
+// Start draft session (requires entry ownership)
+app.post('/api/draft/entries/:entryId/start', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const session = draftTournamentManager.startDraft(req.params.entryId);
     res.json(session);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
-// Make a draft pick
-app.post('/api/draft/entries/:entryId/pick', (req, res) => {
+// Make a draft pick (requires entry ownership)
+app.post('/api/draft/entries/:entryId/pick', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const { roundNumber, coinId } = req.body;
     if (!roundNumber || !coinId) {
@@ -326,13 +343,14 @@ app.post('/api/draft/entries/:entryId/pick', (req, res) => {
     }
     const pick = draftTournamentManager.makePick(req.params.entryId, roundNumber, coinId);
     res.json(pick);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
-// Initiate swap power-up
-app.post('/api/draft/entries/:entryId/powerup/swap', (req, res) => {
+// Initiate swap power-up (requires entry ownership)
+app.post('/api/draft/entries/:entryId/powerup/swap', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const { pickId } = req.body;
     if (!pickId) {
@@ -340,13 +358,14 @@ app.post('/api/draft/entries/:entryId/powerup/swap', (req, res) => {
     }
     const result = draftTournamentManager.useSwap(req.params.entryId, pickId);
     res.json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
-// Select coin for swap
-app.post('/api/draft/entries/:entryId/powerup/swap/select', (req, res) => {
+// Select coin for swap (requires entry ownership)
+app.post('/api/draft/entries/:entryId/powerup/swap/select', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const { pickId, newCoinId } = req.body;
     if (!pickId || !newCoinId) {
@@ -354,13 +373,14 @@ app.post('/api/draft/entries/:entryId/powerup/swap/select', (req, res) => {
     }
     const pick = draftTournamentManager.selectSwapCoin(req.params.entryId, pickId, newCoinId);
     res.json(pick);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
-// Use boost power-up
-app.post('/api/draft/entries/:entryId/powerup/boost', (req, res) => {
+// Use boost power-up (requires entry ownership)
+app.post('/api/draft/entries/:entryId/powerup/boost', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const { pickId } = req.body;
     if (!pickId) {
@@ -368,13 +388,14 @@ app.post('/api/draft/entries/:entryId/powerup/boost', (req, res) => {
     }
     const pick = draftTournamentManager.useBoost(req.params.entryId, pickId);
     res.json(pick);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
-// Use freeze power-up
-app.post('/api/draft/entries/:entryId/powerup/freeze', (req, res) => {
+// Use freeze power-up (requires entry ownership)
+app.post('/api/draft/entries/:entryId/powerup/freeze', requireDraftEntryOwnership, (req: Request, res: Response) => {
   try {
     const { pickId } = req.body;
     if (!pickId) {
@@ -382,8 +403,9 @@ app.post('/api/draft/entries/:entryId/powerup/freeze', (req, res) => {
     }
     const pick = draftTournamentManager.useFreeze(req.params.entryId, pickId);
     res.json(pick);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
@@ -420,8 +442,8 @@ app.get('/api/progression/:wallet/perks', (req, res) => {
   res.json(perks);
 });
 
-// Activate a perk
-app.post('/api/progression/:wallet/perks/:id/activate', strictLimiter, (req, res) => {
+// Activate a perk (requires wallet ownership)
+app.post('/api/progression/:wallet/perks/:id/activate', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
   try {
     const perkId = parseInt(req.params.id);
     if (isNaN(perkId)) {
@@ -432,8 +454,9 @@ app.post('/api/progression/:wallet/perks/:id/activate', strictLimiter, (req, res
       return res.status(404).json({ error: 'Perk not found or already used' });
     }
     res.json(perk);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
   }
 });
 
@@ -456,21 +479,21 @@ app.get('/api/progression/:wallet/rake', (req, res) => {
 
 // ============= Free Bet Endpoints =============
 
-// Get free bet balance
-app.get('/api/progression/:wallet/free-bets', (req, res) => {
+// Get free bet balance (requires wallet ownership - sensitive data)
+app.get('/api/progression/:wallet/free-bets', requireOwnWallet, (req: Request, res: Response) => {
   const balance = progressionService.getFreeBetBalance(req.params.wallet);
   res.json(balance);
 });
 
-// Get free bet transaction history
-app.get('/api/progression/:wallet/free-bets/history', (req, res) => {
+// Get free bet transaction history (requires wallet ownership - sensitive data)
+app.get('/api/progression/:wallet/free-bets/history', requireOwnWallet, (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const history = progressionService.getFreeBetTransactionHistory(req.params.wallet, limit);
   res.json(history);
 });
 
-// Use free bet credit (for Oracle predictions)
-app.post('/api/progression/:wallet/free-bets/use', strictLimiter, (req, res) => {
+// Use free bet credit (requires wallet ownership)
+app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
   const { gameMode, description } = req.body;
 
   if (!gameMode || !['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
@@ -517,8 +540,8 @@ app.get('/api/stats/:wallet', (req, res) => {
   res.json(stats);
 });
 
-// Get user wager history with pagination and filtering
-app.get('/api/stats/:wallet/history', (req, res) => {
+// Get user wager history with pagination and filtering (requires wallet ownership - sensitive data)
+app.get('/api/stats/:wallet/history', requireOwnWallet, (req: Request, res: Response) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
   const offset = parseInt(req.query.offset as string) || 0;
   const wagerType = req.query.type as WagerType | undefined;
@@ -580,11 +603,11 @@ app.get('/api/stats/:wallet/rank', (req, res) => {
 });
 
 // ===================
-// Notification Endpoints
+// Notification Endpoints (all require wallet ownership)
 // ===================
 
 // Get notifications for a user
-app.get('/api/notifications/:wallet', (req, res) => {
+app.get('/api/notifications/:wallet', requireOwnWallet, (req: Request, res: Response) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
   const offset = parseInt(req.query.offset as string) || 0;
   const unreadOnly = req.query.unreadOnly === 'true';
@@ -599,13 +622,13 @@ app.get('/api/notifications/:wallet', (req, res) => {
 });
 
 // Get unread notification count
-app.get('/api/notifications/:wallet/count', (req, res) => {
+app.get('/api/notifications/:wallet/count', requireOwnWallet, (req: Request, res: Response) => {
   const count = notificationDb.getUnreadCount(req.params.wallet);
   res.json({ count });
 });
 
 // Mark a notification as read
-app.post('/api/notifications/:wallet/:id/read', (req, res) => {
+app.post('/api/notifications/:wallet/:id/read', requireOwnWallet, (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.status(400).json({ error: 'Invalid notification ID' });
@@ -620,13 +643,13 @@ app.post('/api/notifications/:wallet/:id/read', (req, res) => {
 });
 
 // Mark all notifications as read
-app.post('/api/notifications/:wallet/read-all', (req, res) => {
+app.post('/api/notifications/:wallet/read-all', requireOwnWallet, (req: Request, res: Response) => {
   const count = notificationDb.markAllNotificationsRead(req.params.wallet);
   res.json({ success: true, count });
 });
 
 // Delete a notification
-app.delete('/api/notifications/:wallet/:id', (req, res) => {
+app.delete('/api/notifications/:wallet/:id', requireOwnWallet, (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.status(400).json({ error: 'Invalid notification ID' });
@@ -665,8 +688,8 @@ app.get('/api/achievements/:wallet/unlocked', (req, res) => {
   });
 });
 
-// Get unnotified achievements (for toast notifications)
-app.get('/api/achievements/:wallet/unnotified', (req, res) => {
+// Get unnotified achievements (for toast notifications - requires wallet ownership)
+app.get('/api/achievements/:wallet/unnotified', requireOwnWallet, (req: Request, res: Response) => {
   const unnotified = achievementDb.getUnnotified(req.params.wallet);
   res.json({
     achievements: unnotified,
@@ -674,14 +697,14 @@ app.get('/api/achievements/:wallet/unnotified', (req, res) => {
   });
 });
 
-// Mark achievement as notified
-app.post('/api/achievements/:wallet/:id/notified', (req, res) => {
+// Mark achievement as notified (requires wallet ownership)
+app.post('/api/achievements/:wallet/:id/notified', requireOwnWallet, (req: Request, res: Response) => {
   const success = achievementDb.markAsNotified(req.params.wallet, req.params.id);
   res.json({ success });
 });
 
-// Check and update achievements based on stats (called after game events)
-app.post('/api/achievements/:wallet/check', (req, res) => {
+// Check and update achievements based on stats (requires wallet ownership)
+app.post('/api/achievements/:wallet/check', requireOwnWallet, (req: Request, res: Response) => {
   const { totalWagers, totalWins, currentStreak, level, totalProfit } = req.body;
 
   const unlocked = achievementDb.checkAndUpdateAchievements(req.params.wallet, {
