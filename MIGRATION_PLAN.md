@@ -162,7 +162,7 @@
   - Verify: remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T067 Oracle bet amount de-emphasis
+- [x] T067 Oracle bet amount de-emphasis
   - Scope: web/src/app/predict/
   - Verify: bet amount selector below Long/Short buttons, reduced glow/contrast, smaller container, feels secondary to direction choice
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -209,6 +209,60 @@
   - Scope: web/src/components/
   - Verify: confetti triggers on level milestone
   - Files: web/src/components/Confetti.tsx
+
+---
+
+## P0.5 - Oracle Corrective Pass (CRITICAL - REMOVAL FOCUSED)
+
+> **CORE RULE**: ONE dominant focal point. If it duplicates info, DELETE it.
+> **PRODUCT TRUTH**: This is not a trading interface. It is a timed decision trap.
+> **WORKER MANDATE**: REMOVE elements, do NOT add. Strip everything non-essential.
+> This UI should feel DANGEROUS, not helpful. Withhold information. Force instinct.
+
+- [@w1] T070 Oracle remove duplicate countdowns - DELETION TASK
+  - Scope: web/src/app/predict/, web/src/components/
+  - Verify: ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
+  - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
+
+- [@w2] T071 Oracle delete narrative UI blocks - DELETION TASK
+  - Scope: web/src/app/predict/
+  - Verify: DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T072 Oracle strip chart to bare essentials - DELETION TASK
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: chart shows ONLY price line + lock price + current price, DELETE all banners/status text/captions, chart must feel QUIET
+  - Files: web/src/components/RealtimeChart.tsx
+
+- [ ] T073 Oracle single price consolidation - DELETION TASK
+  - Scope: web/src/app/predict/
+  - Verify: ONE price display only ("$142.52" with optional "SOL/USD" above), DELETE all duplicate price readouts, DELETE "from $X" helper text
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T074 Oracle Long/Short strict 3-line format
+  - Scope: web/src/app/predict/
+  - Verify: buttons show EXACTLY: line1="↑ LONG" line2="0.1 SOL → Win 0.20 SOL" line3="2.00× odds", tall buttons, strong glow, NO surrounding explanation text
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T075 Oracle remove duplicate win displays - DELETION TASK
+  - Scope: web/src/app/predict/
+  - Verify: win amount ONLY inside Long/Short buttons, DELETE standalone "Potential Return" card, DELETE any other win amount displays
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T076 Oracle remove or gut right column - DELETION TASK
+  - Scope: web/src/app/predict/
+  - Verify: right column REMOVED or shows ONLY wallet balance + bet amount, DELETE pools/counts/rules during betting phase
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T077 Oracle strip all instructional copy - DELETION TASK
+  - Scope: web/src/app/predict/
+  - Verify: KEEP ONLY "Predict or perish." + "30 seconds. No second chances.", DELETE "Ready to bet"/"Betting open"/any instructional prose
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T078 Oracle fix countdown positioning - must not obscure chart
+  - Scope: web/src/app/predict/, web/src/components/RealtimeChart.tsx
+  - Verify: countdown positioned so it does NOT overlap/obscure price line or chart data, place OUTSIDE chart or in corner that doesn't block info, countdown smaller than price display
+  - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
 ---
 

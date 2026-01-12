@@ -615,8 +615,8 @@ export default function PredictPage() {
             </div>
           </div>
 
-          {/* 2. DECIDE: Timer & Price Display - Countdown creates urgency */}
-          <div className={`card py-3 md:py-4 px-4 md:px-5 relative overflow-hidden transition-all oracle-dimmable ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
+          {/* 2. Price Display - Simple price info (countdown is in chart) */}
+          <div className={`card py-2 md:py-3 px-4 md:px-5 relative overflow-hidden transition-all oracle-dimmable ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
             {isLocked && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
             )}
@@ -635,29 +635,17 @@ export default function PredictPage() {
               </div>
 
               <div className="text-right flex-shrink-0">
-                <div className={`text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider ${
+                <div className={`text-[10px] md:text-xs font-semibold uppercase tracking-wider ${
                   isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
                 }`}>
                   {isBettingOpen ? 'Betting Open' : isLocked ? 'Locked' : 'Starting...'}
-                </div>
-                {isBettingOpen && (
-                  <div className="text-[9px] md:text-[10px] text-text-tertiary">
-                    Final price decides.
-                  </div>
-                )}
-                <div className={`text-5xl md:text-8xl font-black font-mono tabular-nums leading-none oracle-countdown-glow ${
-                  timeRemaining <= 5 ? 'text-danger animate-pulse' :
-                  timeRemaining <= 10 ? 'text-accent' :
-                  'text-warning'
-                }`}>
-                  {timeRemaining}
                 </div>
               </div>
             </div>
 
             {/* Progress Bar */}
             {currentRound && (
-              <div className="mt-3 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+              <div className="mt-2 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-100 rounded-full ${
                     isLocked ? 'bg-accent' : 'bg-success'
@@ -878,43 +866,8 @@ export default function PredictPage() {
           )}
         </div>
 
-        {/* Sidebar - Pre/Post-bet states */}
+        {/* Sidebar - Post-bet stats only */}
         <div className="space-y-3 oracle-dimmable">
-          {/* PRE-BET STATE: Minimal info - just rules */}
-          {!hasBetThisRound && (
-            <div className="space-y-3 transition-all duration-300 ease-out">
-              {/* Minimal Status Card */}
-              <div className="card p-3 border-accent/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <h3 className="font-medium text-[10px] uppercase tracking-wider text-accent">Ready to Bet</h3>
-                </div>
-                <p className="text-[10px] text-text-tertiary leading-relaxed">
-                  Pick your side below and lock in your prediction before time runs out.
-                </p>
-              </div>
-
-              {/* How it Works */}
-              <div className="card p-3 border-warning/20">
-                <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-warning">Rules of the Oracle</h3>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
-                    <span className="text-text-secondary">Choose your fate: Long or Short</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
-                    <span className="text-text-secondary">30 seconds. No turning back.</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
-                    <span className="text-text-secondary">Survivors claim the loot</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* POST-BET STATE: Full stats revealed */}
           {hasBetThisRound && (
             <div className="space-y-3 animate-fadeIn">
