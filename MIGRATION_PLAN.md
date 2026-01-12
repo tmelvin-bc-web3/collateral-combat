@@ -104,7 +104,7 @@
   - Verify: "This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T048 Oracle copy/text clarity updates
+- [x] T048 Oracle copy/text clarity updates
   - Scope: web/src/app/predict/
   - Verify: "PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -114,7 +114,7 @@
   - Verify: price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T050 Oracle layout flow optimization
+- [@w1] T050 Oracle layout flow optimization
   - Scope: web/src/app/predict/
   - Verify: reduced right column padding, visual stack order is Chart → Countdown → Long/Short, clear see→decide→click flow
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

@@ -1,12 +1,86 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
 import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
+
+// Animation constants
+const PRICE_INTERPOLATION_MS = 150; // 120-180ms range
+const WINNER_FLASH_MS = 350; // 300-400ms range
+
+// Hook for prefers-reduced-motion
+function usePrefersReducedMotion(): boolean {
+  const [prefersReduced, setPrefersReduced] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReduced(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  return prefersReduced;
+}
+
+// Hook for smooth price interpolation
+function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolean): number {
+  const [displayPrice, setDisplayPrice] = useState(targetPrice);
+  const animationRef = useRef<number | null>(null);
+  const startPriceRef = useRef(targetPrice);
+  const startTimeRef = useRef<number | null>(null);
+  const prevTargetRef = useRef(targetPrice);
+
+  useEffect(() => {
+    // Skip animation if disabled or price is 0 or same as previous
+    if (!enabled || targetPrice === 0 || targetPrice === prevTargetRef.current) {
+      if (targetPrice !== 0) {
+        setDisplayPrice(targetPrice);
+        prevTargetRef.current = targetPrice;
+      }
+      return;
+    }
+
+    // Cancel any existing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    startPriceRef.current = displayPrice;
+    startTimeRef.current = performance.now();
+    prevTargetRef.current = targetPrice;
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - (startTimeRef.current || 0);
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease out cubic for smooth deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const newPrice = startPriceRef.current + (targetPrice - startPriceRef.current) * eased;
+
+      setDisplayPrice(newPrice);
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [targetPrice, duration, enabled, displayPrice]);
+
+  return displayPrice;
+}
 
 // SOL bet amounts (in SOL, not USD)
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
@@ -35,6 +109,17 @@ export default function PredictPage() {
   const [lastWinner, setLastWinner] = useState<PredictionSide | 'push' | null>(null);
   const [showWinnerAnimation, setShowWinnerAnimation] = useState(false);
   const [priceChange, setPriceChange] = useState(0);
+  const [showRoundEndDim, setShowRoundEndDim] = useState(false);
+
+  // Motion preferences
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Animated price display (respects reduced motion)
+  const animatedPrice = useAnimatedPrice(
+    currentPrice,
+    PRICE_INTERPOLATION_MS,
+    !prefersReducedMotion
+  );
 
   // Free bet state
   const [freeBetBalance, setFreeBetBalance] = useState<FreeBetBalance | null>(null);
@@ -143,7 +228,11 @@ export default function PredictPage() {
           ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
           : 0
         );
+        // Show dim overlay and winner animation
+        setShowRoundEndDim(true);
         setShowWinnerAnimation(true);
+        // Hide dim after flash duration, winner text stays longer
+        setTimeout(() => setShowRoundEndDim(false), WINNER_FLASH_MS);
         setTimeout(() => setShowWinnerAnimation(false), 3000);
       }
     });
@@ -319,21 +408,48 @@ export default function PredictPage() {
 
   return (
     <div className="max-w-5xl mx-auto animate-fadeIn relative">
+      {/* Round End Dim Overlay */}
+      {showRoundEndDim && (
+        <div
+          className={`fixed inset-0 z-40 bg-black pointer-events-none ${
+            prefersReducedMotion ? '' : 'oracle-round-end-dim'
+          }`}
+          style={{ opacity: prefersReducedMotion ? 0.5 : undefined }}
+        />
+      )}
+
       {/* Winner Announcement Overlay */}
       {showWinnerAnimation && lastWinner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className={`text-center winner-announcement ${lastWinner === 'long' ? 'winner-long' : 'winner-short'}`}>
+          <div className={`text-center ${prefersReducedMotion ? '' : 'winner-announcement'} ${lastWinner === 'long' ? 'winner-long' : 'winner-short'}`}>
             <div className="flex items-center justify-center gap-4 mb-4">
               {lastWinner === 'long' ? (
-                <svg className="w-16 h-16 md:w-24 md:h-24 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg
+                  className={`w-16 h-16 md:w-24 md:h-24 text-success ${prefersReducedMotion ? '' : 'oracle-winner-flash-long'}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               ) : (
-                <svg className="w-16 h-16 md:w-24 md:h-24 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg
+                  className={`w-16 h-16 md:w-24 md:h-24 text-danger ${prefersReducedMotion ? '' : 'oracle-winner-flash-short'}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               )}
-              <span className={`text-5xl md:text-7xl font-black tracking-tight ${lastWinner === 'long' ? 'text-success' : 'text-danger'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+              <span
+                className={`text-5xl md:text-7xl font-black tracking-tight ${lastWinner === 'long' ? 'text-success' : 'text-danger'} ${
+                  prefersReducedMotion ? '' : (lastWinner === 'long' ? 'oracle-winner-flash-long' : 'oracle-winner-flash-short')
+                }`}
+                style={{ fontFamily: 'Impact, sans-serif' }}
+              >
                 {lastWinner === 'long' ? 'LONGS SURVIVE' : 'SHORTS SURVIVE'}
               </span>
             </div>
@@ -462,10 +578,28 @@ export default function PredictPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* Main Game Area */}
+      <div className="grid lg:grid-cols-3 gap-3">
+        {/* Main Game Area - Flow: See (Chart) → Decide (Countdown) → Click (Buttons) */}
         <div className="lg:col-span-2 space-y-3">
-          {/* Timer & Price Display */}
+          {/* 1. SEE: Chart - First thing user sees to assess the trend */}
+          <div className="card p-0 overflow-hidden">
+            <div className="hidden md:block">
+              <RealtimeChart
+                symbol={asset}
+                height={240}
+                lockPrice={currentRound?.startPrice}
+              />
+            </div>
+            <div className="block md:hidden">
+              <RealtimeChart
+                symbol={asset}
+                height={180}
+                lockPrice={currentRound?.startPrice}
+              />
+            </div>
+          </div>
+
+          {/* 2. DECIDE: Timer & Price Display - Countdown creates urgency */}
           <div className={`card py-3 md:py-4 px-4 md:px-5 relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
             {isLocked && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
@@ -481,7 +615,7 @@ export default function PredictPage() {
                     </span>
                   )}
                 </div>
-                <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${currentPrice.toFixed(2)}</div>
+                <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${animatedPrice.toFixed(2)}</div>
               </div>
 
               <div className="text-right flex-shrink-0">
@@ -518,25 +652,7 @@ export default function PredictPage() {
             )}
           </div>
 
-          {/* Chart */}
-          <div className="card p-0 overflow-hidden">
-            <div className="hidden md:block">
-              <RealtimeChart
-                symbol={asset}
-                height={240}
-                lockPrice={currentRound?.startPrice}
-              />
-            </div>
-            <div className="block md:hidden">
-              <RealtimeChart
-                symbol={asset}
-                height={180}
-                lockPrice={currentRound?.startPrice}
-              />
-            </div>
-          </div>
-
-          {/* Betting Buttons */}
+          {/* 3. CLICK: Betting Buttons - Action after seeing chart and countdown */}
           <div className="grid grid-cols-2 gap-2 md:gap-3">
             {/* Long Button */}
             <button

@@ -1254,7 +1254,94 @@ input[type="number"] {
   animation: entrySuccess 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ==================== */
+/* Oracle Motion & Feedback */
+/* ==================== */
 
+/* Round end screen dim (300-400ms) */
+@keyframes oracleRoundEndDim {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.oracle-round-end-dim {
+  animation: oracleRoundEndDim 350ms ease-out forwards;
+}
+
+/* Winner flash effect - Long (green) */
+@keyframes oracleWinnerFlashLong {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(34, 197, 94, 0));
+  }
+  20% {
+    filter: brightness(1.5) drop-shadow(0 0 30px rgba(34, 197, 94, 0.8));
+  }
+  40% {
+    filter: brightness(1.2) drop-shadow(0 0 20px rgba(34, 197, 94, 0.5));
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 10px rgba(34, 197, 94, 0.3));
+  }
+}
+
+.oracle-winner-flash-long {
+  animation: oracleWinnerFlashLong 350ms ease-out forwards;
+}
+
+/* Winner flash effect - Short (red) */
+@keyframes oracleWinnerFlashShort {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(239, 68, 68, 0));
+  }
+  20% {
+    filter: brightness(1.5) drop-shadow(0 0 30px rgba(239, 68, 68, 0.8));
+  }
+  40% {
+    filter: brightness(1.2) drop-shadow(0 0 20px rgba(239, 68, 68, 0.5));
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
+  }
+}
+
+.oracle-winner-flash-short {
+  animation: oracleWinnerFlashShort 350ms ease-out forwards;
+}
+
+/* Prefers reduced motion - disable all animations */
+@media (prefers-reduced-motion: reduce) {
+  .oracle-round-end-dim,
+  .oracle-winner-flash-long,
+  .oracle-winner-flash-short,
+  .winner-announcement,
+  .oracle-countdown-glow,
+  .animate-shimmer,
+  .animate-pulse,
+  .animate-ping {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Keep static appearance for reduced motion */
+  .oracle-round-end-dim {
+    opacity: 0.5;
+  }
+
+  .oracle-winner-flash-long {
+    filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.3));
+  }
+
+  .oracle-winner-flash-short {
+    filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.3));
+  }
+}
 
 @layer base {
   :root {

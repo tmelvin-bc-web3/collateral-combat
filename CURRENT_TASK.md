@@ -1,7 +1,7 @@
-# Current Task: T049
+# Current Task: T050
 
 ## Description
-Oracle motion and feedback polish
+Oracle layout flow optimization
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
+reduced right column padding, visual stack order is Chart → Countdown → Long/Short, clear see→decide→click flow
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

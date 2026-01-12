@@ -1,0 +1,27 @@
+Build passes successfully. All implementations are complete.
+
+```
+---TASK_COMPLETE---
+Task: T049
+Status: DONE
+Files modified: 
+- web/src/app/predict/page.tsx
+- web/src/app/globals.css
+Verification: PASS
+---END_TASK---
+```
+
+## Summary of Changes
+
+### web/src/app/predict/page.tsx
+1. **Added smooth price interpolation (120-180ms)**: Created `useAnimatedPrice` hook that smoothly interpolates price changes using requestAnimationFrame with ease-out cubic easing (150ms duration)
+2. **Added `usePrefersReducedMotion` hook**: Detects user's motion preferences via `prefers-reduced-motion` media query
+3. **Added round end screen dim**: New `showRoundEndDim` state triggers a black overlay that dims the screen during round settlement
+4. **Updated winner animation**: Winner text and icons now use flash animations that respect reduced motion preferences
+5. **Price display uses animated value**: The main price ticker now uses `animatedPrice` instead of raw `currentPrice`
+
+### web/src/app/globals.css
+1. **Added `oracleRoundEndDim` animation**: 350ms animation that dims screen to 60% opacity then fades out
+2. **Added `oracleWinnerFlashLong` animation**: 350ms green flash/glow effect for long winners
+3. **Added `oracleWinnerFlashShort` animation**: 350ms red flash/glow effect for short winners
+4. **Added `@media (prefers-reduced-motion: reduce)`**: Disables all Oracle animations when user prefers reduced motion, with static fallback appearances
