@@ -114,7 +114,7 @@
   - Verify: price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T050 Oracle layout flow optimization
+- [x] T050 Oracle layout flow optimization
   - Scope: web/src/app/predict/
   - Verify: reduced right column padding, visual stack order is Chart → Countdown → Long/Short, clear see→decide→click flow
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -128,7 +128,7 @@
   - Verify: smooth bezier curves, cleaner colors, no jank
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T020 Micro-interactions and hover feedback
+- [@w1] T020 Micro-interactions and hover feedback
   - Scope: web/src/components/
   - Verify: buttons have hover states, transitions smooth
   - Files: web/src/components/ui/*.tsx

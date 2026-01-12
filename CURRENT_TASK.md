@@ -1,19 +1,19 @@
-# Current Task: T014
+# Current Task: T020
 
 ## Description
-Oracle chart polish and animations
+Micro-interactions and hover feedback
 
 ## Scope
-web/src/components/RealtimeChart.tsx
+web/src/components/
 
 ## Files to Modify
-web/src/components/RealtimeChart.tsx
+web/src/components/ui/*.tsx
 
 ## Verification
-smooth bezier curves, cleaner colors, no jank
+buttons have hover states, transitions smooth
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

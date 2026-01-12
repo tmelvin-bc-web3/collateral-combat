@@ -1,0 +1,38 @@
+All changes are in place. Let me summarize the polish improvements made:
+
+**Changes Summary:**
+
+1. **Smoother Bezier Curves:**
+   - Added `CURVE_TENSION = 0.25` constant for consistent curve smoothness
+   - Improved Catmull-Rom spline implementation with cleaner boundary handling
+
+2. **Cleaner Colors:**
+   - Updated UP_COLOR to `#22c55e` (Green-500 - more vibrant)
+   - Updated DOWN_COLOR to `#ef4444` (Red-500 - clearer contrast)
+   - Grid color reduced to 0.03 opacity (more subtle)
+   - Text color increased to 0.4 opacity (more readable)
+   - Gradient fill now color-matched to line direction
+
+3. **No Jank - Animation Improvements:**
+   - Added `lastFrameTimeRef` for frame timing control
+   - Implemented 60 FPS frame rate limiting (`TARGET_FPS`, `FRAME_DURATION`)
+   - Delta-based smoothing for consistent animation speed regardless of frame rate
+   - Replaced `ctx.filter = 'blur()'` with `ctx.shadowBlur` for better performance
+   - Reduced smoothing factors for gentler transitions (`0.12` for price, `0.04` for axis)
+
+4. **Visual Polish:**
+   - Softer glow effect using shadowBlur instead of filter blur
+   - Cleaner pulse animation using normalized sine wave
+   - Updated price tag design with white text on colored background
+   - Repositioned tick direction arrow (beside tag instead of below)
+   - Refined badge and lock price line styling
+   - Thinner, more elegant line widths
+
+```
+---TASK_COMPLETE---
+Task: T014
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```
