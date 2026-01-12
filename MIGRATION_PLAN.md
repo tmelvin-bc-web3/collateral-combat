@@ -229,12 +229,12 @@
   - Verify: DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T072 Oracle strip chart to bare essentials - DELETION TASK
+- [x] T072 Oracle strip chart to bare essentials - DELETION TASK
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: chart shows ONLY price line + lock price + current price, DELETE all banners/status text/captions, chart must feel QUIET
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T073 Oracle single price consolidation - DELETION TASK
+- [@w1] T073 Oracle single price consolidation - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: ONE price display only ("$142.52" with optional "SOL/USD" above), DELETE all duplicate price readouts, DELETE "from $X" helper text
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
