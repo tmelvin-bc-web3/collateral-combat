@@ -1,0 +1,14 @@
+Both the smart contract (500 BPS = 5%) and backend (5%) now match.
+
+```
+---TASK_COMPLETE---
+Task: T081
+Status: DONE
+Files modified: handoff/prediction_program/lib.rs
+Verification: PASS
+- PLATFORM_FEE_BPS updated from 1000 (10%) to 500 (5%)
+- Updated doc comments from "10% fee" to "5% fee"
+- Matches backend PLATFORM_FEE_PERCENT = 5
+- Note: prediction_program/programs/prediction_program/src/lib.rs does not exist; source is only in handoff/
+---END_TASK---
+```

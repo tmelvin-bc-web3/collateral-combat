@@ -177,3 +177,5 @@
 2026-01-12 16:41:20 | === Manager stopped (completed: 5) ===
 2026-01-12 16:43:07 | === Manager started (worker: w1) ===
 2026-01-12 16:43:07 | FOUND: T071
+2026-01-12 18:27:49 | COMPLETE: No more tasks
+2026-01-12 18:27:49 | === Manager stopped (completed: 0) ===

@@ -1,0 +1,17 @@
+Verification passed. Let me create a summary of what was done:
+
+```
+---TASK_COMPLETE---
+Task: T080
+Status: DONE
+Files modified: 
+- web/src/lib/prediction/constants.ts (created)
+- web/src/lib/prediction/index.ts (updated to export constants)
+- backend/src/services/predictionService.ts (updated constants with BETTING_WINDOW, LOCK_PERIOD naming)
+Verification: PASS
+  - ROUND_DURATION = 30 (frontend & backend match)
+  - BETTING_WINDOW = 25 (frontend & backend match)
+  - LOCK_PERIOD = 5 (frontend & backend match)
+  - Frontend imports from constants file via index.ts re-export
+---END_TASK---
+```
