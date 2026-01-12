@@ -1,19 +1,19 @@
-# Current Task: T043
+# Current Task: T044
 
 ## Description
-Oracle last tick direction indicator
+Oracle Long/Short button redesign
 
 ## Scope
-web/src/components/RealtimeChart.tsx
+web/src/app/predict/
 
 ## Files to Modify
-web/src/components/RealtimeChart.tsx
+web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-arrow at right edge of chart (↑ green if positive, ↓ red if negative)
+buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

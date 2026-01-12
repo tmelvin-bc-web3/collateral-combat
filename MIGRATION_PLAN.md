@@ -74,7 +74,7 @@
   - Verify: line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w1] T042 Oracle lock price line styling
+- [x] T042 Oracle lock price line styling
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
   - Files: web/src/components/RealtimeChart.tsx
@@ -84,7 +84,7 @@
   - Verify: arrow at right edge of chart (↑ green if positive, ↓ red if negative)
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T044 Oracle Long/Short button redesign
+- [@w1] T044 Oracle Long/Short button redesign
   - Scope: web/src/app/predict/
   - Verify: buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
