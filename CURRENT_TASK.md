@@ -1,19 +1,19 @@
-# Current Task: T071
+# Current Task: T070
 
 ## Description
-Oracle delete narrative UI blocks - DELETION TASK
+Oracle remove duplicate countdowns - DELETION TASK
 
 ## Scope
-web/src/app/predict/
+web/src/app/predict/, web/src/components/
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
 ## Verification
-DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
+ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 2 of 3)
 
 ## Rules
 1. ONLY modify files listed above
