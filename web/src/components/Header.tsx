@@ -93,8 +93,10 @@ export function Header() {
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [streak, setStreak] = useState<UserStreak | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const walletAddress = publicKey?.toBase58();
   const { progression } = useProgressionContext();
 
@@ -127,10 +129,18 @@ export function Header() {
       if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
         setIsMoreMenuOpen(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   // Check if any secondary nav item is active
   const isSecondaryActive = SECONDARY_NAV.some(link => pathname === link.href);
@@ -238,6 +248,78 @@ export function Header() {
             )}
           </div>
         </nav>
+
+        {/* Mobile hamburger button */}
+        <div className="md:hidden flex items-center justify-self-center" ref={mobileMenuRef}>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded text-text-secondary hover:text-fire hover:bg-rust/10 transition-all"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {isMobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
+          {/* Mobile menu dropdown */}
+          {isMobileMenuOpen && (
+            <div className="absolute top-full left-0 right-0 bg-bg-secondary border-b border-rust/30 shadow-xl z-50">
+              <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
+                {/* Primary nav items */}
+                {PRIMARY_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-center gap-3 px-4 py-3 rounded text-sm font-bold uppercase tracking-wider transition-all ${
+                        isActive
+                          ? 'text-fire bg-rust/20 border border-rust/40'
+                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
+                      }`}
+                    >
+                      <NavIcon type={link.icon} active={isActive} />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+
+                {/* Divider */}
+                <div className="h-px bg-rust/20 my-2" />
+
+                {/* Secondary nav items */}
+                {SECONDARY_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-start gap-3 px-4 py-3 rounded transition-all ${
+                        isActive
+                          ? 'bg-rust/20 text-fire'
+                          : 'hover:bg-rust/10 text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <div className="mt-0.5">
+                        <NavIcon type={link.icon} active={isActive} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{link.label}</div>
+                        <div className="text-xs text-text-tertiary">{link.description}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Right side */}
         <div className="flex items-center gap-3 justify-self-end">

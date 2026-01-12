@@ -93,9 +93,9 @@ export default function LeaderboardPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
 
   return (
-    <div className="max-w-5xl mx-auto animate-fadeIn">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 animate-fadeIn">
       {/* Hero Section */}
-      <div className="text-center py-12">
+      <div className="text-center py-8 sm:py-12">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warning/10 border border-warning/30 text-warning text-sm font-bold uppercase tracking-wider mb-6">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -103,115 +103,115 @@ export default function LeaderboardPage() {
           Greatest Warriors
         </div>
 
-        <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
           HALL OF <span className="text-warning">WARLORDS</span>
         </h1>
 
-        <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-6">
+        <p className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto mb-6 px-2">
           The deadliest degens in the wasteland. Legends forged in fire and blood. Will you claim your throne among them?
         </p>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="relative card overflow-hidden border border-warning/20">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
+        <div className="relative card overflow-hidden border border-warning/20 p-3 sm:p-4">
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-warning/20 flex items-center justify-center border border-warning/30">
-                <svg className="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-warning/20 flex items-center justify-center border border-warning/30">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <span className="text-xs text-text-tertiary uppercase tracking-wider">Total Battles</span>
+              <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Total Battles</span>
             </div>
-            <div className="text-2xl font-black">2,847</div>
+            <div className="text-xl sm:text-2xl font-black">2,847</div>
           </div>
         </div>
 
-        <div className="relative card overflow-hidden border border-success/20">
+        <div className="relative card overflow-hidden border border-success/20 p-3 sm:p-4">
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-success/20 flex items-center justify-center border border-success/30">
-                <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/20 flex items-center justify-center border border-success/30">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <span className="text-xs text-text-tertiary uppercase tracking-wider">Total Loot</span>
+              <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Total Loot</span>
             </div>
-            <div className="text-2xl font-black">15,234 SOL</div>
+            <div className="text-lg sm:text-2xl font-black">15,234 SOL</div>
           </div>
         </div>
 
-        <div className="relative card overflow-hidden border border-accent/20">
+        <div className="relative card overflow-hidden border border-accent/20 p-3 sm:p-4">
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center border border-accent/30">
-                <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/20 flex items-center justify-center border border-accent/30">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <span className="text-xs text-text-tertiary uppercase tracking-wider">Active Warriors</span>
+              <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Active Warriors</span>
             </div>
-            <div className="text-2xl font-black">892</div>
+            <div className="text-xl sm:text-2xl font-black">892</div>
           </div>
         </div>
 
-        <div className="relative card overflow-hidden border border-danger/20">
+        <div className="relative card overflow-hidden border border-danger/20 p-3 sm:p-4">
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-danger/20 flex items-center justify-center border border-danger/30">
-                <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-danger/20 flex items-center justify-center border border-danger/30">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
                 </svg>
               </div>
-              <span className="text-xs text-text-tertiary uppercase tracking-wider">Kill Streaks</span>
+              <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Kill Streaks</span>
             </div>
-            <div className="text-2xl font-black">127</div>
+            <div className="text-xl sm:text-2xl font-black">127</div>
           </div>
         </div>
       </div>
 
       {/* Time Filter */}
-      <div className="flex items-center gap-2 mb-8 p-1.5 rounded-xl bg-bg-secondary border border-warning/20 inline-flex">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-8 p-1.5 rounded-xl bg-bg-secondary border border-warning/20 w-full sm:w-auto overflow-x-auto">
         {TIME_FILTERS.map((filter) => (
           <button
             key={filter.value}
             onClick={() => setTimeFilter(filter.value)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap flex-1 sm:flex-none ${
               timeFilter === filter.value
                 ? 'bg-warning text-bg-primary'
                 : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
             }`}
           >
             {filter.icon}
-            {filter.label}
+            <span className="hidden xs:inline sm:inline">{filter.label}</span>
           </button>
         ))}
       </div>
 
       {/* Top 3 Podium */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-8">
         {/* 2nd Place */}
         <div className="order-2 md:order-1 relative">
           <div className="card overflow-hidden border-2 border-gray-500/30">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 to-gray-500" />
-            <div className="p-5 text-center">
+            <div className="p-4 sm:p-5 text-center">
               {getRankBadge(2)}
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
                 <div className="px-2 py-1 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-bold uppercase tracking-wider">
                   Lieutenant
                 </div>
               </div>
-              <div className="mt-4 font-mono font-semibold">{MOCK_LEADERBOARD[1].address}</div>
-              <div className="mt-3 flex items-center justify-center gap-4">
+              <div className="mt-3 sm:mt-4 font-mono font-semibold text-sm sm:text-base">{MOCK_LEADERBOARD[1].address}</div>
+              <div className="mt-3 flex items-center justify-center gap-3 sm:gap-4">
                 <div>
-                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Kill Rate</div>
-                  <div className="font-bold text-success">{MOCK_LEADERBOARD[1].winRate}%</div>
+                  <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Kill Rate</div>
+                  <div className="font-bold text-success text-sm sm:text-base">{MOCK_LEADERBOARD[1].winRate}%</div>
                 </div>
                 <div className="w-px h-8 bg-border-primary" />
                 <div>
-                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Loot</div>
-                  <div className="font-mono font-bold text-success">+{MOCK_LEADERBOARD[1].totalPnl.toFixed(2)}</div>
+                  <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Loot</div>
+                  <div className="font-mono font-bold text-success text-sm sm:text-base">+{MOCK_LEADERBOARD[1].totalPnl.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -223,26 +223,26 @@ export default function LeaderboardPage() {
           <div className="card overflow-hidden border-2 border-warning/50 shadow-lg shadow-warning/10">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-warning via-fire to-danger" />
             <div className="absolute inset-0 bg-gradient-to-b from-warning/5 to-transparent" />
-            <div className="relative p-6 text-center">
+            <div className="relative p-4 sm:p-6 text-center">
               {getRankBadge(1)}
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
                 <div className="px-2 py-1 rounded-full bg-warning/20 text-warning text-[10px] font-bold uppercase tracking-wider">
                   Warlord
                 </div>
               </div>
-              <div className="mt-4 font-mono text-lg font-bold">{MOCK_LEADERBOARD[0].address}</div>
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-bg-tertiary border border-border-primary">
-                  <div className="text-xs text-text-tertiary mb-1 uppercase tracking-wider">Kill Rate</div>
-                  <div className="text-xl font-bold text-success">{MOCK_LEADERBOARD[0].winRate}%</div>
+              <div className="mt-3 sm:mt-4 font-mono text-base sm:text-lg font-bold">{MOCK_LEADERBOARD[0].address}</div>
+              <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+                  <div className="text-[10px] sm:text-xs text-text-tertiary mb-1 uppercase tracking-wider">Kill Rate</div>
+                  <div className="text-lg sm:text-xl font-bold text-success">{MOCK_LEADERBOARD[0].winRate}%</div>
                 </div>
-                <div className="p-3 rounded-lg bg-bg-tertiary border border-border-primary">
-                  <div className="text-xs text-text-tertiary mb-1 uppercase tracking-wider">Total Loot</div>
-                  <div className="text-xl font-mono font-bold text-success">+{MOCK_LEADERBOARD[0].totalPnl.toFixed(2)}</div>
+                <div className="p-2 sm:p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+                  <div className="text-[10px] sm:text-xs text-text-tertiary mb-1 uppercase tracking-wider">Total Loot</div>
+                  <div className="text-lg sm:text-xl font-mono font-bold text-success">+{MOCK_LEADERBOARD[0].totalPnl.toFixed(2)}</div>
                 </div>
               </div>
               {MOCK_LEADERBOARD[0].streak > 0 && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+                <div className="mt-3 sm:mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm">
                   <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
                   </svg>
@@ -257,23 +257,23 @@ export default function LeaderboardPage() {
         <div className="order-3 relative">
           <div className="card overflow-hidden border-2 border-amber-700/30">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-700 to-amber-800" />
-            <div className="p-5 text-center">
+            <div className="p-4 sm:p-5 text-center">
               {getRankBadge(3)}
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
                 <div className="px-2 py-1 rounded-full bg-amber-700/20 text-amber-600 text-[10px] font-bold uppercase tracking-wider">
                   Sergeant
                 </div>
               </div>
-              <div className="mt-4 font-mono font-semibold">{MOCK_LEADERBOARD[2].address}</div>
-              <div className="mt-3 flex items-center justify-center gap-4">
+              <div className="mt-3 sm:mt-4 font-mono font-semibold text-sm sm:text-base">{MOCK_LEADERBOARD[2].address}</div>
+              <div className="mt-3 flex items-center justify-center gap-3 sm:gap-4">
                 <div>
-                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Kill Rate</div>
-                  <div className="font-bold text-success">{MOCK_LEADERBOARD[2].winRate}%</div>
+                  <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Kill Rate</div>
+                  <div className="font-bold text-success text-sm sm:text-base">{MOCK_LEADERBOARD[2].winRate}%</div>
                 </div>
                 <div className="w-px h-8 bg-border-primary" />
                 <div>
-                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Loot</div>
-                  <div className="font-mono font-bold text-success">+{MOCK_LEADERBOARD[2].totalPnl.toFixed(2)}</div>
+                  <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Loot</div>
+                  <div className="font-mono font-bold text-success text-sm sm:text-base">+{MOCK_LEADERBOARD[2].totalPnl.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -281,8 +281,8 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {/* Full Leaderboard Table */}
-      <div className="card p-0 overflow-hidden border border-warning/20">
+      {/* Full Leaderboard Table - Desktop */}
+      <div className="hidden md:block card p-0 overflow-hidden border border-warning/20">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-5 py-4 bg-bg-tertiary border-b border-warning/20 text-text-tertiary text-xs font-bold uppercase tracking-wider">
           <div className="col-span-1">Rank</div>
@@ -336,6 +336,50 @@ export default function LeaderboardPage() {
             </div>
             <div className="col-span-2 text-right">
               <span className="font-mono text-text-secondary">+{trader.avgPnl.toFixed(2)}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Full Leaderboard - Mobile Cards */}
+      <div className="md:hidden space-y-3">
+        {MOCK_LEADERBOARD.slice(3).map((trader) => (
+          <div
+            key={trader.rank}
+            className="card p-4 border border-warning/20"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              {getRankBadge(trader.rank)}
+              <div className="flex-1 min-w-0">
+                <div className="font-mono font-semibold truncate">{trader.address}</div>
+                <div className="text-xs text-text-tertiary">
+                  <span className="text-success font-bold">{trader.wins}K</span>
+                  <span className="mx-1">/</span>
+                  <span className="text-danger font-bold">{trader.losses}D</span>
+                </div>
+              </div>
+              {trader.streak >= 3 && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/10 border border-danger/30">
+                  <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  </svg>
+                  <span className="text-[10px] font-bold text-danger">{trader.streak}</span>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2 rounded-lg bg-bg-tertiary">
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-0.5">Kill Rate</div>
+                <div className="font-mono font-bold text-success text-sm">{trader.winRate}%</div>
+              </div>
+              <div className="p-2 rounded-lg bg-bg-tertiary">
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-0.5">Total Loot</div>
+                <div className="font-mono font-bold text-success text-sm">+{trader.totalPnl.toFixed(2)}</div>
+              </div>
+              <div className="p-2 rounded-lg bg-bg-tertiary">
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-0.5">Avg Loot</div>
+                <div className="font-mono text-text-secondary text-sm">+{trader.avgPnl.toFixed(2)}%</div>
+              </div>
             </div>
           </div>
         ))}

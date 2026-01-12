@@ -1,0 +1,15 @@
+All tasks completed. The implementation includes:
+
+1. **Mobile hamburger button** - Shows on screens smaller than `md` breakpoint (768px), with a hamburger icon that toggles to an X icon when menu is open
+2. **Mobile menu dropdown** - Full-width dropdown below the header with all primary and secondary nav items styled consistently with the desktop design
+3. **Close on navigation** - `useEffect` that watches `pathname` changes and closes the mobile menu when user navigates
+4. **Click outside to close** - Extended the existing click-outside handler to also close the mobile menu
+
+```
+---TASK_COMPLETE---
+Task: T012
+Status: DONE
+Files modified: web/src/components/Header.tsx
+Verification: PASS
+---END_TASK---
+```

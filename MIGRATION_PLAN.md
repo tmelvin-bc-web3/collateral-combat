@@ -42,12 +42,12 @@
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx
 
-- [ ] T011 Leaderboard page mobile layout
+- [@w1] T011 Leaderboard page mobile layout
   - Scope: web/src/app/leaderboard/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/leaderboard/page.tsx
 
-- [ ] T012 Header mobile menu implementation
+- [@w1] T012 Header mobile menu implementation
   - Scope: web/src/components/Header/
   - Verify: hamburger menu works, closes on navigation
   - Files: web/src/components/Header/*.tsx

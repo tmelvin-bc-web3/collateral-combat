@@ -1,16 +1,16 @@
-# Current Task: T010
+# Current Task: T012
 
 ## Description
-Progression page mobile layout
+Header mobile menu implementation
 
 ## Scope
-web/src/app/progression/
+web/src/components/Header/
 
 ## Files to Modify
-web/src/app/progression/page.tsx
+web/src/components/Header/*.tsx
 
 ## Verification
-responsive at 375px, 768px breakpoints
+hamburger menu works, closes on navigation
 
 ## Worker
 w1 (Attempt 1 of 3)
