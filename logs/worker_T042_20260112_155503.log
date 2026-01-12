@@ -1,0 +1,19 @@
+The changes are in place. Let me verify the comparison of brightness values:
+- Grid: `rgba(255, 255, 255, 0.04)` (line 40)
+- Lock price line: `rgba(255, 255, 255, 0.4)` (10x brighter)
+
+Summary of changes made:
+1. **Dashed line**: `ctx.setLineDash([6, 4])` - creates a dashed pattern (6px dash, 4px gap)
+2. **Brighter than grid**: `rgba(255, 255, 255, 0.4)` vs grid's `rgba(255, 255, 255, 0.04)` - 10x brighter opacity
+3. **Line width**: Increased from 1 to 1.5 for better visibility
+4. **Label format**: `LOCK $${currentLockPrice.toFixed(2)}` displays as "LOCK $XXX.XX"
+5. **Label styling improved**: Larger font (9px vs 8px), brighter text (0.7 vs 0.5 opacity), better padding
+
+```
+---TASK_COMPLETE---
+Task: T042
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```

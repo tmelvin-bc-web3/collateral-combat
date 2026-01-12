@@ -1,7 +1,7 @@
-# Current Task: T042
+# Current Task: T043
 
 ## Description
-Oracle lock price line styling
+Oracle last tick direction indicator
 
 ## Scope
 web/src/components/RealtimeChart.tsx
@@ -10,10 +10,10 @@ web/src/components/RealtimeChart.tsx
 web/src/components/RealtimeChart.tsx
 
 ## Verification
-lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
+arrow at right edge of chart (↑ green if positive, ↓ red if negative)
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

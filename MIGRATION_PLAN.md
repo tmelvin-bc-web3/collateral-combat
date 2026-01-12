@@ -64,7 +64,7 @@
 > Core principle: Preserve existing color palette (orange/green/dark), fonts, layout structure.
 > Improve: visual hierarchy, decision clarity, urgency, micro-interactions.
 
-- [@w2] T040 Oracle countdown timer enhancement
+- [x] T040 Oracle countdown timer enhancement
   - Scope: web/src/app/predict/
   - Verify: countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -79,7 +79,7 @@
   - Verify: lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T043 Oracle last tick direction indicator
+- [@w2] T043 Oracle last tick direction indicator
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: arrow at right edge of chart (↑ green if positive, ↓ red if negative)
   - Files: web/src/components/RealtimeChart.tsx

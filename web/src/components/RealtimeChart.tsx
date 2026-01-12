@@ -27,6 +27,8 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
   const frameRef = useRef(0);
   const lockPriceRef = useRef<number | null | undefined>(lockPrice);
   const historyLoadedRef = useRef(false);
+  const lastTickDirectionRef = useRef<'up' | 'down' | null>(null);
+  const previousTickPriceRef = useRef<number | null>(null);
 
   // Smoothed Y-axis bounds to prevent jumpy rescaling
   const displayMinRef = useRef<number | null>(null);
@@ -266,6 +268,31 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`$${currentDisplayPrice.toFixed(2)}`, tagX + tagW / 2, tagY + tagH / 2 + 4);
+
+      // Last tick direction arrow indicator
+      const tickDirection = lastTickDirectionRef.current;
+      if (tickDirection) {
+        const arrowX = w - padding.right + tagW / 2 + 4;
+        const arrowY = tagY + tagH + 8;
+        const arrowSize = 8;
+        const arrowColor = tickDirection === 'up' ? UP_COLOR : DOWN_COLOR;
+
+        ctx.fillStyle = arrowColor;
+        ctx.beginPath();
+        if (tickDirection === 'up') {
+          // Up arrow (triangle pointing up)
+          ctx.moveTo(arrowX, arrowY - arrowSize);
+          ctx.lineTo(arrowX - arrowSize * 0.7, arrowY + arrowSize * 0.3);
+          ctx.lineTo(arrowX + arrowSize * 0.7, arrowY + arrowSize * 0.3);
+        } else {
+          // Down arrow (triangle pointing down)
+          ctx.moveTo(arrowX, arrowY + arrowSize);
+          ctx.lineTo(arrowX - arrowSize * 0.7, arrowY - arrowSize * 0.3);
+          ctx.lineTo(arrowX + arrowSize * 0.7, arrowY - arrowSize * 0.3);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // Price change badge (top right) - cleaner pill design
@@ -289,34 +316,34 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       ctx.fillText(changeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 4);
     }
 
-    // Lock price line (if provided) - cleaner design
+    // Lock price line (if provided) - dashed, brighter than grid
     if (currentLockPrice) {
       const lockY = priceToY(currentLockPrice);
       const clampedY = Math.max(padding.top, Math.min(padding.top + chartH, lockY));
 
-      // Subtle dashed line
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1;
+      // Dashed line - brighter than grid (grid is 0.04 opacity)
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(padding.left, clampedY);
       ctx.lineTo(w - padding.right, clampedY);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Label badge on left - minimal design
+      // Label badge on left with "LOCK $XXX.XX" format
       const labelText = `LOCK $${currentLockPrice.toFixed(2)}`;
-      ctx.font = '600 8px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      const labelWidth = ctx.measureText(labelText).width + 10;
+      ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const labelWidth = ctx.measureText(labelText).width + 12;
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.beginPath();
-      ctx.roundRect(padding.left, clampedY - 9, labelWidth, 16, 4);
+      ctx.roundRect(padding.left, clampedY - 10, labelWidth, 18, 4);
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.textAlign = 'left';
-      ctx.fillText(labelText, padding.left + 5, clampedY + 3);
+      ctx.fillText(labelText, padding.left + 6, clampedY + 3);
     }
 
     // Time labels - cleaner
@@ -410,6 +437,17 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
 
       const price = prices[symbol];
       const now = Date.now();
+
+      // Track tick direction based on price change
+      if (previousTickPriceRef.current !== null) {
+        if (price > previousTickPriceRef.current) {
+          lastTickDirectionRef.current = 'up';
+        } else if (price < previousTickPriceRef.current) {
+          lastTickDirectionRef.current = 'down';
+        }
+        // If price is equal, keep the previous direction
+      }
+      previousTickPriceRef.current = price;
       currentPriceRef.current = price;
 
       const history = priceHistoryRef.current;
