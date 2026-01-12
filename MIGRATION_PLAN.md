@@ -138,7 +138,7 @@
   - Verify: toast shows on success/error actions
   - Files: web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
 
-- [@w1] T022 Skeleton loaders for data fetches
+- [x] T022 Skeleton loaders for data fetches
   - Scope: web/src/components/
   - Verify: skeleton shows during loading states
   - Files: web/src/components/ui/Skeleton.tsx
@@ -152,7 +152,7 @@
   - Verify: theme persists, all components respect theme
   - Files: web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts
 
-- [ ] T031 Sound effects for wins/losses
+- [@w1] T031 Sound effects for wins/losses
   - Scope: web/src/hooks/
   - Verify: sounds play, can be muted
   - Files: web/src/hooks/useSound.ts, web/public/sounds/

@@ -1,0 +1,34 @@
+All tasks completed. Let me provide a summary:
+
+```
+---TASK_COMPLETE---
+Task: T030
+Status: DONE
+Files modified: 
+- web/src/contexts/ThemeContext.tsx (created)
+- web/tailwind.config.ts (created)
+Verification: PASS
+---END_TASK---
+```
+
+**Summary of changes:**
+
+1. **ThemeContext.tsx** - Created a new theme context with:
+   - Type-safe `Theme` type (`'dark' | 'light'`)
+   - `ThemeProvider` component that manages theme state
+   - `useTheme` hook for consuming theme in components
+   - localStorage persistence with key `degendome-theme`
+   - System preference detection (prefers-color-scheme)
+   - Applies `dark`/`light` class to document root for Tailwind's class-based dark mode
+   - Prevents flash of wrong theme by not rendering until mounted
+
+2. **tailwind.config.ts** - Converted from JS to TypeScript with:
+   - Proper `Config` type from tailwindcss
+   - `darkMode: ['class']` already configured (was in the JS file)
+   - All existing color, font, and theme configurations preserved
+
+The theme system:
+- Persists user preference to localStorage
+- Falls back to system preference if no stored preference
+- Defaults to dark theme (matching the existing app design)
+- Components can use `useTheme()` to access `theme`, `toggleTheme()`, and `setTheme()`

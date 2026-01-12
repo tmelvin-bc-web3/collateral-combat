@@ -1,19 +1,19 @@
-# Current Task: T030
+# Current Task: T031
 
 ## Description
-Dark/light theme toggle
+Sound effects for wins/losses
 
 ## Scope
-web/src/
+web/src/hooks/
 
 ## Files to Modify
-web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts
+web/src/hooks/useSound.ts, web/public/sounds/
 
 ## Verification
-theme persists, all components respect theme
+sounds play, can be muted
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
