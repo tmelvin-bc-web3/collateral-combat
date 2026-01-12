@@ -345,33 +345,33 @@ export default function PredictPage() {
       )}
 
       {/* Header */}
-      <div className="mb-8 mt-8 flex items-center justify-between">
+      <div className="mb-6 md:mb-8 mt-4 md:mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-black tracking-tight uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
               THE <span className="text-warning">ORACLE</span>
             </h1>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-danger/20 border border-danger/40">
+            <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-danger/20 border border-danger/40">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
               </span>
-              <span className="text-xs font-semibold text-danger uppercase tracking-wider">Live</span>
+              <span className="text-[10px] md:text-xs font-semibold text-danger uppercase tracking-wider">Live</span>
             </div>
             {USE_ON_CHAIN_BETTING && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 border border-accent/40">
-                <span className="text-xs font-semibold text-accent uppercase tracking-wider">On-Chain</span>
+              <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-accent/20 border border-accent/40">
+                <span className="text-[10px] md:text-xs font-semibold text-accent uppercase tracking-wider">On-Chain</span>
               </div>
             )}
           </div>
-          <p className="text-text-secondary">Predict or perish. 30 seconds. No second chances.</p>
+          <p className="text-text-secondary text-sm md:text-base">Predict or perish. 30 seconds. No second chances.</p>
         </div>
 
         {/* Streak Badge */}
         {streakInfo.streak >= 2 && (
-          <div className={`px-3 py-2 rounded-lg ${streakInfo.side === 'long' ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
+          <div className={`self-start sm:self-auto px-3 py-2 rounded-lg ${streakInfo.side === 'long' ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
             <div className="flex items-center gap-2">
-              <span className={`text-xl font-bold tabular-nums ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
+              <span className={`text-lg md:text-xl font-bold tabular-nums ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
                 {streakInfo.streak}x
               </span>
               {streakInfo.side === 'long' ? (
@@ -443,31 +443,31 @@ export default function PredictPage() {
         {/* Main Game Area */}
         <div className="lg:col-span-2 space-y-3">
           {/* Timer & Price Display */}
-          <div className={`card py-4 px-5 relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
+          <div className={`card py-3 md:py-4 px-4 md:px-5 relative overflow-hidden transition-all ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
             {isLocked && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
             )}
 
-            <div className="relative flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-text-tertiary text-xs font-medium uppercase tracking-wider">SOL/USD</span>
+            <div className="relative flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-1">
+                  <span className="text-text-tertiary text-[10px] md:text-xs font-medium uppercase tracking-wider">SOL/USD</span>
                   {currentRound && (
-                    <span className="text-text-tertiary text-xs">
+                    <span className="text-text-tertiary text-[10px] md:text-xs">
                       from <span className="font-mono text-text-secondary">${currentRound.startPrice.toFixed(2)}</span>
                     </span>
                   )}
                 </div>
-                <div className="text-4xl font-bold font-mono tracking-tight">${currentPrice.toFixed(2)}</div>
+                <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${currentPrice.toFixed(2)}</div>
               </div>
 
-              <div className="text-right">
-                <div className={`text-xs font-semibold mb-1 uppercase tracking-wider ${
+              <div className="text-right flex-shrink-0">
+                <div className={`text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider ${
                   isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
                 }`}>
                   {isBettingOpen ? 'Place your wager' : isLocked ? 'Locked' : 'Starting...'}
                 </div>
-                <div className={`text-6xl font-black font-mono tabular-nums leading-none ${
+                <div className={`text-4xl md:text-6xl font-black font-mono tabular-nums leading-none ${
                   timeRemaining <= 5 ? 'text-danger animate-pulse' :
                   timeRemaining <= 10 ? 'text-accent' :
                   'text-text-primary'
@@ -492,36 +492,45 @@ export default function PredictPage() {
 
           {/* Chart */}
           <div className="card p-0 overflow-hidden">
-            <RealtimeChart
-              symbol={asset}
-              height={240}
-              lockPrice={currentRound?.startPrice}
-            />
+            <div className="hidden md:block">
+              <RealtimeChart
+                symbol={asset}
+                height={240}
+                lockPrice={currentRound?.startPrice}
+              />
+            </div>
+            <div className="block md:hidden">
+              <RealtimeChart
+                symbol={asset}
+                height={180}
+                lockPrice={currentRound?.startPrice}
+              />
+            </div>
           </div>
 
           {/* Betting Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             {/* Long Button */}
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative p-5 rounded-xl border-2 transition-all duration-200 ${
+              className={`group relative p-3 md:p-5 rounded-xl border-2 transition-all duration-200 ${
                 isBettingOpen
                   ? 'border-success bg-success/5 hover:bg-success/10 hover:border-success hover:shadow-[0_0_30px_rgba(34,197,94,0.15)] cursor-pointer active:scale-[0.98]'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1.5 md:mb-2 transition-all ${
                   isBettingOpen ? 'bg-success/20 group-hover:bg-success/30' : 'bg-bg-tertiary'
                 }`}>
-                  <svg className={`w-6 h-6 transition-transform ${isBettingOpen ? 'text-success group-hover:-translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className={`w-5 h-5 md:w-6 md:h-6 transition-transform ${isBettingOpen ? 'text-success group-hover:-translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                   </svg>
                 </div>
-                <div className={`text-2xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>LONG</div>
-                <div className={`font-mono text-xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>{getOdds('long')}x</div>
-                <div className="text-text-secondary text-xs mt-1">
+                <div className={`text-xl md:text-2xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>LONG</div>
+                <div className={`font-mono text-lg md:text-xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>{getOdds('long')}x</div>
+                <div className="text-text-secondary text-[10px] md:text-xs mt-1">
                   Pool: <span className="font-mono font-semibold">${currentRound?.longPool.toFixed(0) || 0}</span>
                 </div>
               </div>
@@ -531,23 +540,23 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative p-5 rounded-xl border-2 transition-all duration-200 ${
+              className={`group relative p-3 md:p-5 rounded-xl border-2 transition-all duration-200 ${
                 isBettingOpen
                   ? 'border-danger bg-danger/5 hover:bg-danger/10 hover:border-danger hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] cursor-pointer active:scale-[0.98]'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-1.5 md:mb-2 transition-all ${
                   isBettingOpen ? 'bg-danger/20 group-hover:bg-danger/30' : 'bg-bg-tertiary'
                 }`}>
-                  <svg className={`w-6 h-6 transition-transform ${isBettingOpen ? 'text-danger group-hover:translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className={`w-5 h-5 md:w-6 md:h-6 transition-transform ${isBettingOpen ? 'text-danger group-hover:translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </div>
-                <div className={`text-2xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>SHORT</div>
-                <div className={`font-mono text-xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>{getOdds('short')}x</div>
-                <div className="text-text-secondary text-xs mt-1">
+                <div className={`text-xl md:text-2xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>SHORT</div>
+                <div className={`font-mono text-lg md:text-xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>{getOdds('short')}x</div>
+                <div className="text-text-secondary text-[10px] md:text-xs mt-1">
                   Pool: <span className="font-mono font-semibold">${currentRound?.shortPool.toFixed(0) || 0}</span>
                 </div>
               </div>
@@ -622,15 +631,15 @@ export default function PredictPage() {
         <div className="space-y-4">
           {/* Bet Amount */}
           <div className="card">
-            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-text-secondary">
+            <h3 className="font-semibold mb-3 text-xs md:text-sm uppercase tracking-wider text-text-secondary">
               Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
             </h3>
-            <div className="grid grid-cols-5 gap-2 mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
               {BET_AMOUNTS_SOL.map((amount) => (
                 <button
                   key={amount}
                   onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  className={`py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all ${
                     selectedAmountSol === amount
                       ? 'bg-accent text-white shadow-lg'
                       : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover'
