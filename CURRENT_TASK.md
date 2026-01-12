@@ -1,16 +1,16 @@
-# Current Task: T065
+# Current Task: T066
 
 ## Description
-Oracle chart height reduction
+Oracle copy refinements
 
 ## Scope
-web/src/components/RealtimeChart.tsx
+web/src/app/predict/
 
 ## Files to Modify
-web/src/components/RealtimeChart.tsx
+web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
+remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
 
 ## Worker
 w2 (Attempt 1 of 3)

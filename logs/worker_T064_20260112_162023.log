@@ -1,0 +1,32 @@
+```
+---TASK_COMPLETE---
+Task: T064
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+
+Summary of changes:
+1. Added `hasBetThisRound` and `currentRoundId` state variables to track bet placement
+2. Reset bet state when a new round starts via socket event
+3. Set `hasBetThisRound = true` after successful bet placement (all bet paths: free bet, on-chain, off-chain)
+
+Pre-bet state (right sidebar):
+- "Ready to Bet" card with pulsing indicator
+- "Rules of the Oracle" - 3 numbered rules
+- NO pool sizes, NO long/short counts visible
+
+Post-bet state (right sidebar):
+- "Bet Locked" confirmation banner with checkmark
+- "Live Stats" section with full round statistics:
+  - Total Pool
+  - Longs/Shorts counts with pool amounts
+  - Pool ratio bar visualization
+  - Live odds for both sides
+- Compact de-emphasized rules reminder
+
+Clean state transition using:
+- `transition-all duration-300 ease-out` for smooth animations
+- `animate-fadeIn` for post-bet state appearance
+- Proper conditional rendering with `{!hasBetThisRound && ...}` / `{hasBetThisRound && ...}`
+---END_TASK---
+```

@@ -638,11 +638,11 @@ export default function PredictPage() {
                 <div className={`text-[10px] md:text-xs font-semibold mb-1 uppercase tracking-wider ${
                   isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
                 }`}>
-                  {isBettingOpen ? 'Lock your bet' : isLocked ? 'Locked' : 'Starting...'}
+                  {isBettingOpen ? 'Betting Open' : isLocked ? 'Locked' : 'Starting...'}
                 </div>
                 {isBettingOpen && (
                   <div className="text-[9px] md:text-[10px] text-text-tertiary">
-                    Final price after 30s decides the outcome.
+                    Final price decides.
                   </div>
                 )}
                 <div className={`text-5xl md:text-8xl font-black font-mono tabular-nums leading-none oracle-countdown-glow ${

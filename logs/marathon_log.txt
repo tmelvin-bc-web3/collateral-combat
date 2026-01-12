@@ -128,3 +128,6 @@
 2026-01-12 16:18:43 | COMMIT: T060 - Oracle layout restructure - reorder to Chart→Buttons→Amount
 2026-01-12 16:18:43 | SUCCESS: T060 (attempt 1)
 2026-01-12 16:18:47 | FOUND: T065
+2026-01-12 16:19:42 | COMMIT: T065 - Oracle chart height reduction
+2026-01-12 16:19:42 | SUCCESS: T065 (attempt 1)
+2026-01-12 16:19:45 | FOUND: T066

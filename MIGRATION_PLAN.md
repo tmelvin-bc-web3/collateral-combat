@@ -152,12 +152,12 @@
   - Verify: pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w2] T065 Oracle chart height reduction
+- [x] T065 Oracle chart height reduction
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T066 Oracle copy refinements
+- [@w2] T066 Oracle copy refinements
   - Scope: web/src/app/predict/
   - Verify: remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
