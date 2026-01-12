@@ -6,6 +6,7 @@ import { progressionService } from './progressionService';
 const ROUND_DURATION = 30; // 30 seconds per round
 const LOCK_BEFORE_END = 5; // Stop accepting bets 5 seconds before end
 const PLATFORM_FEE_PERCENT = 5; // 5% fee on winnings
+const EARLY_BIRD_MAX_BONUS = 0.20; // 20% max bonus for early bets
 
 class PredictionService {
   private rounds: Map<string, PredictionRound[]> = new Map(); // asset -> rounds
@@ -169,6 +170,14 @@ class PredictionService {
     }
   }
 
+  // Calculate early bird multiplier based on when bet was placed
+  private getEarlyBirdMultiplier(bet: PredictionBet, round: PredictionRound): number {
+    const timeIntoRound = bet.placedAt - round.startTime;
+    const bettingDuration = round.lockTime - round.startTime;
+    const timeRatio = Math.min(1, Math.max(0, timeIntoRound / bettingDuration));
+    return 1 + (EARLY_BIRD_MAX_BONUS * (1 - timeRatio));
+  }
+
   // Calculate payouts for a settled round
   private calculatePayouts(round: PredictionRound): void {
     const winningBets = round.winner === 'long' ? round.longBets :
@@ -193,7 +202,10 @@ class PredictionService {
 
     winningBets.forEach(bet => {
       const share = bet.amount / winningPool;
-      bet.payout = bet.amount + (distributablePool * share);
+      const basePayout = bet.amount + (distributablePool * share);
+      // Apply early bird bonus - earlier bets get up to 20% more
+      const earlyBirdMultiplier = this.getEarlyBirdMultiplier(bet, round);
+      bet.payout = basePayout * earlyBirdMultiplier;
       bet.status = 'won';
     });
 

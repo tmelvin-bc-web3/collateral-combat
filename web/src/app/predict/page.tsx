@@ -115,6 +115,9 @@ export default function PredictPage() {
   const [hasBetThisRound, setHasBetThisRound] = useState(false);
   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
 
+  // Animation tick for smooth progress border (updates every 50ms)
+  const [, setAnimationTick] = useState(0);
+
   // Motion preferences
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -293,6 +296,17 @@ export default function PredictPage() {
     return () => clearInterval(interval);
   }, [currentRound]);
 
+  // Smooth animation tick for progress border (50ms updates)
+  useEffect(() => {
+    if (!currentRound || (currentRound.status !== 'betting' && currentRound.status !== 'locked')) {
+      return;
+    }
+    const animationInterval = setInterval(() => {
+      setAnimationTick(t => t + 1);
+    }, 50);
+    return () => clearInterval(animationInterval);
+  }, [currentRound?.status]);
+
   const handlePlaceBet = async (side: PredictionSide) => {
     if (!publicKey) {
       setError('Connect wallet to play');
@@ -369,19 +383,33 @@ export default function PredictPage() {
     setIsPlacing(false);
   };
 
-  const getOdds = (side: PredictionSide): string => {
-    if (!currentRound) return '2.00';
+  const getBaseOdds = (side: PredictionSide): number => {
+    if (!currentRound) return 2.00;
     const myPool = side === 'long' ? currentRound.longPool : currentRound.shortPool;
     const theirPool = side === 'long' ? currentRound.shortPool : currentRound.longPool;
-    if (myPool === 0) return '2.00';
-    if (theirPool === 0) return '1.00';
-    const odds = 1 + (theirPool * 0.95) / myPool;
-    return odds.toFixed(2);
+    if (myPool === 0) return 2.00;
+    if (theirPool === 0) return 1.00;
+    return 1 + (theirPool * 0.95) / myPool;
+  };
+
+  const getEarlyBirdMultiplier = (): number => {
+    if (!currentRound || currentRound.status !== 'betting') return 1;
+    const now = Date.now();
+    const timeIntoRound = now - currentRound.startTime;
+    const bettingDuration = currentRound.lockTime - currentRound.startTime;
+    const timeRatio = Math.min(1, Math.max(0, timeIntoRound / bettingDuration));
+    return 1 + (0.20 * (1 - timeRatio)); // 1.0 to 1.2
+  };
+
+  const getOdds = (side: PredictionSide): string => {
+    const baseOdds = getBaseOdds(side);
+    const boostedOdds = baseOdds * getEarlyBirdMultiplier();
+    return boostedOdds.toFixed(2);
   };
 
   const getPotentialWin = (side: PredictionSide): number => {
-    const odds = parseFloat(getOdds(side));
-    return selectedAmountSol * odds;
+    const boostedOdds = parseFloat(getOdds(side));
+    return selectedAmountSol * boostedOdds;
   };
 
   const getStreak = () => {
@@ -411,7 +439,7 @@ export default function PredictPage() {
   const isLocked = currentRound?.status === 'locked';
 
   return (
-    <div className="max-w-5xl mx-auto animate-fadeIn relative">
+    <div className="h-screen flex flex-col px-4 lg:px-6 py-2 overflow-hidden">
       {/* Round End Dim Overlay */}
       {showRoundEndDim && (
         <div
@@ -428,32 +456,15 @@ export default function PredictPage() {
           <div className={`text-center ${prefersReducedMotion ? '' : 'winner-announcement'} ${lastWinner === 'long' ? 'winner-long' : 'winner-short'}`}>
             <div className="flex items-center justify-center gap-4 mb-4">
               {lastWinner === 'long' ? (
-                <svg
-                  className={`w-16 h-16 md:w-24 md:h-24 text-success ${prefersReducedMotion ? '' : 'oracle-winner-flash-long'}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={3}
-                >
+                <svg className={`w-16 h-16 md:w-24 md:h-24 text-success ${prefersReducedMotion ? '' : 'oracle-winner-flash-long'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               ) : (
-                <svg
-                  className={`w-16 h-16 md:w-24 md:h-24 text-danger ${prefersReducedMotion ? '' : 'oracle-winner-flash-short'}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={3}
-                >
+                <svg className={`w-16 h-16 md:w-24 md:h-24 text-danger ${prefersReducedMotion ? '' : 'oracle-winner-flash-short'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                 </svg>
               )}
-              <span
-                className={`text-5xl md:text-7xl font-black tracking-tight ${lastWinner === 'long' ? 'text-success' : 'text-danger'} ${
-                  prefersReducedMotion ? '' : (lastWinner === 'long' ? 'oracle-winner-flash-long' : 'oracle-winner-flash-short')
-                }`}
-                style={{ fontFamily: 'Impact, sans-serif' }}
-              >
+              <span className={`text-5xl md:text-7xl font-black tracking-tight ${lastWinner === 'long' ? 'text-success' : 'text-danger'} ${prefersReducedMotion ? '' : (lastWinner === 'long' ? 'oracle-winner-flash-long' : 'oracle-winner-flash-short')}`} style={{ fontFamily: 'Impact, sans-serif' }}>
                 {lastWinner === 'long' ? 'LONGS SURVIVE' : 'SHORTS SURVIVE'}
               </span>
             </div>
@@ -464,340 +475,382 @@ export default function PredictPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-6 md:mb-8 mt-4 md:mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
-              THE <span className="text-warning">ORACLE</span>
-            </h1>
-            <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-danger/20 border border-danger/40">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
-              </span>
-              <span className="text-[10px] md:text-xs font-semibold text-danger uppercase tracking-wider">Live</span>
-            </div>
-            {USE_ON_CHAIN_BETTING && (
-              <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-accent/20 border border-accent/40">
-                <span className="text-[10px] md:text-xs font-semibold text-accent uppercase tracking-wider">On-Chain</span>
-              </div>
-            )}
+      {/* Minimal Header */}
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight" style={{ fontFamily: 'Impact, sans-serif' }}>
+            <span className="text-white/80">THE</span> <span className="text-warning">ORACLE</span>
+          </h1>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+            </span>
+            <span className="text-[10px] text-white/40 uppercase tracking-wider">Live</span>
           </div>
         </div>
 
-        {/* Streak Badge */}
+        {/* Streak */}
         {streakInfo.streak >= 2 && (
-          <div className={`self-start sm:self-auto px-3 py-2 rounded-lg ${streakInfo.side === 'long' ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
-            <div className="flex items-center gap-2">
-              <span className={`text-lg md:text-xl font-bold tabular-nums ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
-                {streakInfo.streak}x
-              </span>
-              {streakInfo.side === 'long' ? (
-                <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              )}
-            </div>
+          <div className={`flex items-center gap-1 text-sm font-bold ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
+            <span>{streakInfo.streak}× {streakInfo.side === 'long' ? 'LONG' : 'SHORT'} streak</span>
           </div>
         )}
       </div>
 
-      {/* Results Strip */}
-      <div className="mb-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Recent</span>
-          <div className="flex-1 h-px bg-gradient-to-r from-border-primary to-transparent" />
+      {/* 3-Column Layout: Left Sidebar | Main | Right Sidebar - fills remaining height */}
+      <div className="flex gap-4 flex-1 min-h-0">
+
+        {/* LEFT SIDEBAR - Live Bets (fixed width) */}
+        <div className="hidden lg:flex lg:flex-col w-72 flex-shrink-0 overflow-hidden">
+          <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
+            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Bets</div>
+
+            <div className="flex-1 overflow-y-auto space-y-1">
+              {/* Mock data - clean rows with tier indicator */}
+              {/* Gold tier whale - long */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-yellow-400 to-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400 font-bold text-sm">CryptoKing</span>
+                    <span className="text-[10px] text-yellow-400/60">Lv.42</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">7xKp...mN4q</div>
+                </div>
+                <span className="font-bold text-success text-sm">+2.50</span>
+              </div>
+
+              {/* Purple tier - long */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-purple-400 font-bold text-sm">SolDegen</span>
+                    <span className="text-[10px] text-purple-400/60">Lv.28</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">9mNr...xP2k</div>
+                </div>
+                <span className="font-bold text-success text-sm">+0.50</span>
+              </div>
+
+              {/* No tier - short */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-white/20" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/60 font-mono text-sm">3vBx...k9Lm</span>
+                    <span className="text-[10px] text-white/30">Lv.3</span>
+                  </div>
+                </div>
+                <span className="font-bold text-danger text-sm">-1.00</span>
+              </div>
+
+              {/* Blue tier - long */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-400 font-bold text-sm">moonboy99</span>
+                    <span className="text-[10px] text-blue-400/60">Lv.15</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">Dk4j...rT8w</div>
+                </div>
+                <span className="font-bold text-success text-sm">+0.25</span>
+              </div>
+
+              {/* Gold tier whale - short */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-yellow-400 to-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400 font-bold text-sm">WhaleAlert</span>
+                    <span className="text-[10px] text-yellow-400/60">Lv.51</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">8pQw...vN3m</div>
+                </div>
+                <span className="font-bold text-danger text-sm">-5.00</span>
+              </div>
+
+              {/* No tier newbie - short */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-white/20" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/60 font-mono text-sm">2nLm...xP4q</span>
+                    <span className="text-[10px] text-white/30">Lv.1</span>
+                  </div>
+                </div>
+                <span className="font-bold text-danger text-sm">-0.10</span>
+              </div>
+
+              {/* Purple tier - long */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-purple-400 font-bold text-sm">DiamondHands</span>
+                    <span className="text-[10px] text-purple-400/60">Lv.33</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">Fy7z...qK9n</div>
+                </div>
+                <span className="font-bold text-success text-sm">+1.25</span>
+              </div>
+
+              {/* Blue tier - short */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-400 font-bold text-sm">ngmi_andy</span>
+                    <span className="text-[10px] text-blue-400/60">Lv.19</span>
+                  </div>
+                  <div className="text-[10px] text-white/30 font-mono">Ax9k...pL2j</div>
+                </div>
+                <span className="font-bold text-danger text-sm">-0.75</span>
+              </div>
+
+              {/* Real bets would render here with same format */}
+              {currentRound?.longBets?.map((bet, idx) => (
+                <div key={bet.id || idx} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <div className="w-1 h-8 rounded-full bg-white/20" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
+                  </div>
+                  <span className="font-bold text-success text-sm">+{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                </div>
+              ))}
+              {currentRound?.shortBets?.map((bet, idx) => (
+                <div key={bet.id || idx} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <div className="w-1 h-8 rounded-full bg-white/20" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
+                  </div>
+                  <span className="font-bold text-danger text-sm">-{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Pool Summary */}
+            <div className="mt-auto pt-3 border-t border-white/10">
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div>
+                  <div className="text-success font-bold text-lg">4.50</div>
+                  <div className="text-[9px] text-white/30 uppercase">Long Pool</div>
+                </div>
+                <div>
+                  <div className="text-danger font-bold text-lg">6.85</div>
+                  <div className="text-[9px] text-white/30 uppercase">Short Pool</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {recentRounds.slice(0, 10).map((round, idx) => {
-            const change = round.endPrice && round.startPrice
-              ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
-              : 0;
-            const isLong = round.winner === 'long';
-            const isShort = round.winner === 'short';
-            // Progressive fade: newer (left) = full opacity, older (right) = faded
-            const opacity = 1 - (idx * 0.08); // Fade from 100% to ~20% over 10 items
-            // Add extra spacing every 5 ticks
-            const addSpacing = idx > 0 && idx % 5 === 0;
+
+        {/* MAIN GAME AREA - takes remaining space */}
+        <div className="flex-1 flex flex-col min-h-0 gap-2">
+          {/* Chart - 50% with progress border */}
+          {(() => {
+            // Calculate smooth progress from timestamps (not integer timeRemaining)
+            let progress = 0;
+            if (currentRound && isBettingOpen) {
+              const now = Date.now();
+              const elapsed = now - currentRound.startTime;
+              const bettingDuration = currentRound.lockTime - currentRound.startTime;
+              progress = Math.min(1, Math.max(0, elapsed / bettingDuration));
+            } else if (isLocked) {
+              progress = 1;
+            }
+
+            // Fill from top, going both directions to meet at bottom
+            const remainingAngle = (1 - progress) * 180;
+            const isUrgent = isBettingOpen && timeRemaining <= 5;
+            const isVeryUrgent = isBettingOpen && timeRemaining <= 3;
+            const borderColor = isLocked
+              ? 'rgba(251, 191, 36, 0.8)'
+              : isVeryUrgent
+                ? 'rgba(239, 68, 68, 1)'
+                : isUrgent
+                  ? 'rgba(239, 68, 68, 0.9)'
+                  : 'rgba(251, 191, 36, 0.6)';
+
+            // Gradient: starts from top (270deg), fills both sides, gap at bottom shrinks
+            const gradientBg = isBettingOpen || isLocked
+              ? `conic-gradient(from 270deg, ${borderColor} 0deg ${180 - remainingAngle}deg, rgba(255,255,255,0.1) ${180 - remainingAngle}deg ${180 + remainingAngle}deg, ${borderColor} ${180 + remainingAngle}deg 360deg)`
+              : 'rgba(255,255,255,0.05)';
+
             return (
               <div
-                key={round.id}
-                className="relative group"
-                style={{ marginLeft: addSpacing ? '12px' : undefined }}
+                className={`relative rounded-xl flex-1 min-h-0 ${isUrgent ? 'p-[3px]' : 'p-[2px]'}`}
+                style={{
+                  flexBasis: '50%',
+                  background: gradientBg,
+                  boxShadow: isVeryUrgent
+                    ? '0 0 30px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.4), inset 0 0 30px rgba(239, 68, 68, 0.1)'
+                    : isUrgent
+                      ? '0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(239, 68, 68, 0.2)'
+                      : 'none',
+                  animation: isVeryUrgent
+                    ? 'urgentPulse 0.3s ease-in-out infinite'
+                    : isUrgent
+                      ? 'urgentPulse 0.5s ease-in-out infinite'
+                      : 'none',
+                }}
               >
-                {/* Spacing marker every 5 ticks */}
-                {addSpacing && (
-                  <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-px h-6 bg-border-primary/50" />
-                )}
-                <div
-                  className={`flex-shrink-0 w-10 h-10 rounded-md flex flex-col items-center justify-center transition-opacity duration-150 hover:opacity-100 ${
-                    isLong
-                      ? 'bg-success/10 border border-success/30'
-                      : isShort
-                      ? 'bg-danger/10 border border-danger/30'
-                      : 'bg-bg-tertiary border border-border-primary'
-                  }`}
-                  style={{ opacity }}
-                >
-                  {isLong ? (
-                    <svg className="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                    </svg>
-                  ) : isShort ? (
-                    <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  ) : (
-                    <div className="w-3 h-3 flex items-center justify-center">
-                      <div className="w-1.5 h-0.5 bg-text-tertiary rounded-full" />
-                    </div>
-                  )}
-                  <span className={`text-[8px] font-mono font-medium ${
-                    isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
-                  }`}>
-                    {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-                  </span>
-                </div>
-                {/* Hover tooltip with % change */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-bg-primary border border-border-primary shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10 whitespace-nowrap">
-                  <div className={`text-xs font-mono font-semibold ${
-                    isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
-                  }`}>
-                    {change >= 0 ? '+' : ''}{change.toFixed(3)}%
-                  </div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border-primary" />
+                <div className="w-full h-full rounded-[10px] overflow-hidden bg-[#09090b]">
+                  <RealtimeChart
+                    symbol={asset}
+                    height="100%"
+                    lockPrice={currentRound?.startPrice}
+                    timeRemaining={timeRemaining}
+                    isLocked={isLocked}
+                  />
                 </div>
               </div>
             );
-          })}
-          {recentRounds.length === 0 && (
-            <div className="text-text-tertiary text-xs py-1">Waiting for first round...</div>
-          )}
-        </div>
-      </div>
+          })()}
 
-      <div className="grid lg:grid-cols-4 gap-3 oracle-commitment-container">
-        {/* Main Game Area - Flow: Chart+Countdown → Buttons → Amount */}
-        <div className="lg:col-span-3 space-y-3">
-          {/* 1. SEE: Chart - First thing user sees to assess the trend */}
-          <div className="card p-0 overflow-hidden oracle-dimmable">
-            <div className="hidden md:block">
-              <RealtimeChart
-                symbol={asset}
-                height={240}
-                lockPrice={currentRound?.startPrice}
-                timeRemaining={timeRemaining}
-                isLocked={isLocked}
-              />
-            </div>
-            <div className="block md:hidden">
-              <RealtimeChart
-                symbol={asset}
-                height={180}
-                lockPrice={currentRound?.startPrice}
-                timeRemaining={timeRemaining}
-                isLocked={isLocked}
-              />
-            </div>
-          </div>
-
-          {/* 2. Price Display - Simple price info (countdown is in chart) */}
-          <div className={`card py-2 md:py-3 px-4 md:px-5 relative overflow-hidden transition-all oracle-dimmable ${isLocked ? 'ring-2 ring-accent/50' : ''}`}>
-            {isLocked && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent animate-shimmer" />
-            )}
-
-            <div className="relative flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="text-text-tertiary text-[10px] md:text-xs font-medium uppercase tracking-wider mb-1">SOL/USD</div>
-                <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${animatedPrice.toFixed(2)}</div>
-              </div>
-
-            </div>
-
-            {/* Progress Bar */}
-            {currentRound && (
-              <div className="mt-2 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-100 rounded-full ${
-                    isLocked ? 'bg-accent' : 'bg-success'
-                  }`}
-                  style={{ width: `${((30 - timeRemaining) / 30) * 100}%` }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* 3. CLICK: Betting Buttons - Strict 3-line format */}
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+          {/* Betting Section - 50% */}
+          <div className="flex-1 flex flex-col min-h-0 gap-2" style={{ flexBasis: '50%' }}>
+            {/* Betting Buttons */}
+            <div className="grid grid-cols-2 gap-4 flex-1 min-h-0">
             {/* Long Button */}
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`oracle-btn-long group relative py-6 px-4 md:py-10 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 ${
                 isBettingOpen
-                  ? 'border-success bg-success/10 hover:bg-success/20 hover:border-success shadow-[0_0_40px_rgba(34,197,94,0.3)] hover:shadow-[0_0_60px_rgba(34,197,94,0.45)] cursor-pointer active:scale-[0.97] active:brightness-125'
-                  : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
+                  ? 'bg-gradient-to-b from-success/20 to-success/5 border-2 border-success/50 shadow-[0_0_60px_rgba(34,197,94,0.4)] hover:shadow-[0_0_80px_rgba(34,197,94,0.6)] hover:border-success cursor-pointer active:scale-[0.98]'
+                  : 'bg-white/5 border-2 border-white/10 cursor-not-allowed'
               }`}
             >
-              {/* Click flash overlay */}
-              <div className="absolute inset-0 bg-success/0 group-active:bg-success/30 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex flex-col items-center text-center gap-2 md:gap-3">
-                {/* Line 1: Arrow + LONG */}
-                <div className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                  ↑ LONG
+              <div className="absolute inset-0 bg-success/0 group-active:bg-success/20 transition-colors" />
+              <div className={`relative flex flex-col items-center gap-2 ${isLocked ? 'opacity-20' : ''}`}>
+                <div className={`text-4xl md:text-6xl font-black ${isBettingOpen ? 'text-success' : 'text-white/30'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                  LONG
                 </div>
-                {/* Line 2: Bet-to-Win */}
-                <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                  {selectedAmountSol} SOL → Win {getPotentialWin('long').toFixed(2)} SOL
+                <div className={`text-2xl md:text-3xl font-bold ${isBettingOpen ? 'text-success' : 'text-white/30'}`}>
+                  {getOdds('long')}×
                 </div>
-                {/* Line 3: Odds */}
-                <div className={`text-base md:text-xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>
-                  {getOdds('long')}× odds
+                <div className={`text-sm ${isBettingOpen ? 'text-white/60' : 'text-white/20'}`}>
+                  Win {getPotentialWin('long').toFixed(2)} SOL
                 </div>
               </div>
+              {/* Lock overlay */}
+              {isLocked && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2">
+                    <svg className="w-12 h-12 md:w-16 md:h-16 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="text-warning font-bold text-sm uppercase tracking-wider">Locked</span>
+                  </div>
+                </div>
+              )}
             </button>
 
             {/* Short Button */}
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`oracle-btn-short group relative py-6 px-4 md:py-10 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 ${
                 isBettingOpen
-                  ? 'border-danger bg-danger/10 hover:bg-danger/20 hover:border-danger shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.45)] cursor-pointer active:scale-[0.97] active:brightness-125'
-                  : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
+                  ? 'bg-gradient-to-b from-danger/20 to-danger/5 border-2 border-danger/50 shadow-[0_0_60px_rgba(239,68,68,0.4)] hover:shadow-[0_0_80px_rgba(239,68,68,0.6)] hover:border-danger cursor-pointer active:scale-[0.98]'
+                  : 'bg-white/5 border-2 border-white/10 cursor-not-allowed'
               }`}
             >
-              {/* Click flash overlay */}
-              <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/30 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex flex-col items-center text-center gap-2 md:gap-3">
-                {/* Line 1: Arrow + SHORT */}
-                <div className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                  ↓ SHORT
+              <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/20 transition-colors" />
+              <div className={`relative flex flex-col items-center gap-2 ${isLocked ? 'opacity-20' : ''}`}>
+                <div className={`text-4xl md:text-6xl font-black ${isBettingOpen ? 'text-danger' : 'text-white/30'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                  SHORT
                 </div>
-                {/* Line 2: Bet-to-Win */}
-                <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                  {selectedAmountSol} SOL → Win {getPotentialWin('short').toFixed(2)} SOL
+                <div className={`text-2xl md:text-3xl font-bold ${isBettingOpen ? 'text-danger' : 'text-white/30'}`}>
+                  {getOdds('short')}×
                 </div>
-                {/* Line 3: Odds */}
-                <div className={`text-base md:text-xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>
-                  {getOdds('short')}× odds
+                <div className={`text-sm ${isBettingOpen ? 'text-white/60' : 'text-white/20'}`}>
+                  Win {getPotentialWin('short').toFixed(2)} SOL
                 </div>
               </div>
+              {/* Lock overlay */}
+              {isLocked && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2">
+                    <svg className="w-12 h-12 md:w-16 md:h-16 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="text-warning font-bold text-sm uppercase tracking-wider">Locked</span>
+                  </div>
+                </div>
+              )}
             </button>
           </div>
 
-          {/* 4. AMOUNT: Bet Amount Selector - After buttons (de-emphasized, secondary to direction choice) */}
-          <div className="card p-2 md:p-3 opacity-80 border-border-primary/50">
-            <div className="flex items-center justify-between mb-1.5">
-              <h3 className="font-medium text-[10px] md:text-xs uppercase tracking-wider text-text-tertiary">
-                Amount {USE_ON_CHAIN_BETTING && <span className="text-text-secondary">(SOL)</span>}
-              </h3>
-              {!publicKey && (
-                <span className="text-accent/70 text-[10px] md:text-xs">Connect wallet to play</span>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
-              {BET_AMOUNTS_SOL.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-medium transition-all duration-150 ${
-                    selectedAmountSol === amount
-                      ? 'bg-accent/80 text-white ring-1 ring-accent/50 ring-offset-1 ring-offset-bg-primary'
-                      : 'bg-bg-tertiary/70 text-text-tertiary hover:text-text-secondary hover:bg-bg-hover border border-transparent hover:border-border-primary'
-                  }`}
-                >
-                  {amount}
-                </button>
-              ))}
-              {/* MAX Button */}
+          {/* Wager Selector */}
+          <div className="flex-shrink-0 flex items-center justify-center gap-2">
+            <span className="text-white/30 text-xs uppercase tracking-wider">Wager:</span>
+            {BET_AMOUNTS_SOL.map((amount) => (
               <button
-                onClick={() => setSelectedAmountSol(BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1])}
-                className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-semibold transition-all duration-150 ${
-                  selectedAmountSol === BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1]
-                    ? 'bg-warning/70 text-black ring-1 ring-warning/50 ring-offset-1 ring-offset-bg-primary'
-                    : 'bg-warning/10 text-warning/70 border border-warning/20 hover:bg-warning/20 hover:border-warning/30'
+                key={amount}
+                onClick={() => setSelectedAmountSol(amount)}
+                className={`py-1.5 px-3 rounded-lg text-sm font-bold transition-all ${
+                  selectedAmountSol === amount
+                    ? 'bg-white/20 text-white border border-white/30'
+                    : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10 hover:text-white/60'
                 }`}
               >
-                MAX
+                {amount}
               </button>
-
-              {/* Free Bet Toggle - inline when available */}
-              {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
-                <button
-                  onClick={() => setUseFreeBet(!useFreeBet)}
-                  className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    useFreeBet
-                      ? 'bg-warning/70 text-black ring-1 ring-warning/50 ring-offset-1 ring-offset-bg-primary'
-                      : 'bg-warning/10 text-warning/70 border border-warning/20 hover:bg-warning/20'
-                  }`}
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                  </svg>
-                  FREE ({freeBetBalance.balance})
-                </button>
-              )}
-            </div>
+            ))}
+            {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
+              <button
+                onClick={() => setUseFreeBet(!useFreeBet)}
+                className={`py-1.5 px-3 rounded-lg text-sm font-bold transition-all ${
+                  useFreeBet
+                    ? 'bg-warning/30 text-warning border border-warning/50'
+                    : 'bg-warning/10 text-warning/60 border border-transparent hover:bg-warning/20'
+                }`}
+              >
+                FREE
+              </button>
+            )}
           </div>
 
-          {/* Success Message */}
+          {/* Success Message - compact */}
           {successTx && (
-            <div className={`p-4 rounded-xl text-center font-medium ${
+            <div className={`p-2 rounded-lg text-center text-sm font-medium flex-shrink-0 ${
               successTx === 'free_bet'
                 ? 'bg-warning/10 border border-warning/30 text-warning'
                 : 'bg-success/10 border border-success/30 text-success'
             }`}>
               <div className="flex items-center justify-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{successTx === 'free_bet' ? 'Free bet placed!' : 'Bet placed on-chain!'}</span>
+                <span>{successTx === 'free_bet' ? 'Free bet placed!' : 'Bet placed!'}</span>
               </div>
-              {successTx === 'free_bet' ? (
-                <p className="text-xs mt-1 opacity-80">Good luck! Winnings will be credited if you win.</p>
-              ) : (
-                <a
-                  href={`https://explorer.solana.com/tx/${successTx}?cluster=devnet`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs underline mt-1 block opacity-80 hover:opacity-100"
-                >
-                  View transaction
-                </a>
-              )}
             </div>
           )}
 
-          {/* My Position Display */}
+          {/* My Position Display - compact */}
           {USE_ON_CHAIN_BETTING && myPosition && !myPosition.claimed && (
-            <div className={`p-4 rounded-xl border ${
+            <div className={`p-2 rounded-lg border flex-shrink-0 ${
               myPosition.side === 'up'
                 ? 'bg-success/10 border-success/30'
                 : 'bg-danger/10 border-danger/30'
             }`}>
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Your Position</div>
-                  <div className={`text-lg font-bold ${
-                    myPosition.side === 'up' ? 'text-success' : 'text-danger'
-                  }`}>
-                    {myPosition.side === 'up' ? 'LONG' : 'SHORT'} - {myPosition.amount.toFixed(3)} SOL
-                  </div>
+                <div className={`text-sm font-bold ${
+                  myPosition.side === 'up' ? 'text-success' : 'text-danger'
+                }`}>
+                  {myPosition.side === 'up' ? 'LONG' : 'SHORT'} {myPosition.amount.toFixed(3)} SOL
                 </div>
                 {canClaim && (
                   <button
                     onClick={handleClaim}
                     disabled={isPlacing}
-                    className="px-4 py-2 bg-accent text-white font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="px-3 py-1 bg-accent text-white text-sm font-bold rounded-lg hover:opacity-90"
                   >
-                    {isPlacing ? 'Claiming...' : 'Claim Winnings'}
+                    Claim
                   </button>
                 )}
               </div>
@@ -805,52 +858,48 @@ export default function PredictPage() {
           )}
 
           {error && (
-            <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-center font-medium animate-shake">
+            <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-center text-sm font-medium animate-shake">
               {error}
             </div>
           )}
+          </div>
         </div>
 
-        {/* Sidebar - Minimal: wallet balance + bet amount only */}
-        <div className="space-y-3 oracle-dimmable">
-          {/* Wallet Display */}
-          <div className="card p-3">
-            <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Wallet</div>
-            {publicKey ? (
-              <div className="font-mono text-sm font-bold text-text-primary truncate">
-                {publicKey.toBase58().slice(0, 4)}...{publicKey.toBase58().slice(-4)}
-              </div>
-            ) : (
-              <div className="text-xs text-text-tertiary">Not connected</div>
-            )}
-          </div>
+        {/* RIGHT SIDEBAR - History (fixed width) */}
+        <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 overflow-hidden">
+          <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
+            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">History</div>
 
-          {/* Selected Bet Amount */}
-          <div className="card p-3">
-            <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Bet Amount</div>
-            <div className="font-mono text-lg font-bold text-accent">
-              {useFreeBet && freeBetBalance && freeBetBalance.balance > 0
-                ? `${FREE_BET_AMOUNT_SOL} SOL (FREE)`
-                : `${selectedAmountSol} SOL`
-              }
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {recentRounds.slice(0, 15).map((round) => {
+                const change = round.endPrice && round.startPrice
+                  ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
+                  : 0;
+                const isLong = round.winner === 'long';
+                const isShort = round.winner === 'short';
+
+                return (
+                  <div
+                    key={round.id}
+                    className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                      isLong ? 'bg-success/10' : isShort ? 'bg-danger/10' : 'bg-white/5'
+                    }`}
+                  >
+                    <span className={`font-bold text-sm ${isLong ? 'text-success' : isShort ? 'text-danger' : 'text-white/30'}`}>
+                      {isLong ? 'LONG' : isShort ? 'SHORT' : 'PUSH'}
+                    </span>
+                    <span className={`font-mono text-sm ${change >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                    </span>
+                  </div>
+                );
+              })}
+
+              {recentRounds.length === 0 && (
+                <div className="text-white/20 text-xs text-center py-8">No rounds yet</div>
+              )}
             </div>
           </div>
-
-          {/* Bet Confirmation - only after betting */}
-          {hasBetThisRound && (
-            <div className="card p-3 bg-accent/10 border-accent/30 animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3 h-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-xs text-accent uppercase tracking-wider">Bet Locked</h3>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { getSocket } from '@/lib/socket';
 
 interface RealtimeChartProps {
   symbol: string;
-  height?: number;
+  height?: number | string;
   lockPrice?: number | null;
   timeRemaining?: number;
   isLocked?: boolean;
@@ -52,14 +52,16 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
 
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
+    // Get effective height - use container height if height is "100%" or similar percentage
+    const effectiveHeight = typeof height === 'number' ? height : rect.height || 240;
     canvas.width = rect.width * dpr;
-    canvas.height = height * dpr;
+    canvas.height = effectiveHeight * dpr;
     canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.height = typeof height === 'number' ? `${height}px` : height;
     ctx.scale(dpr, dpr);
 
     const w = rect.width;
-    const h = height;
+    const h = effectiveHeight;
     const padding = { top: 12, right: 70, bottom: 12, left: 10 };
     const chartW = w - padding.left - padding.right;
     const chartH = h - padding.top - padding.bottom;
@@ -214,15 +216,51 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
       const lockY = priceToY(currentLockPrice);
       const clampedY = Math.max(padding.top, Math.min(padding.top + chartH, lockY));
 
-      // Simple dashed line only - no label
-      ctx.setLineDash([8, 6]);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1;
+      // Glow effect - extend all the way to the right edge
+      ctx.save();
+      ctx.shadowColor = 'rgba(251, 191, 36, 0.6)';
+      ctx.shadowBlur = 8;
+      ctx.setLineDash([12, 6]);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(padding.left, clampedY);
-      ctx.lineTo(w - padding.right, clampedY);
+      ctx.moveTo(0, clampedY);
+      ctx.lineTo(w, clampedY);
       ctx.stroke();
+      ctx.restore();
       ctx.setLineDash([]);
+
+      // Lock label on left
+      const labelText = 'LOCK';
+      ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, sans-serif';
+      const labelW = ctx.measureText(labelText).width + 8;
+      const labelH = 14;
+      const labelX = padding.left;
+      const labelY = clampedY - labelH / 2;
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(labelX, labelY, labelW, labelH, 3);
+      ctx.fill();
+
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'left';
+      ctx.fillText(labelText, labelX + 4, labelY + 10);
+
+      // Price on right edge
+      const priceText = `$${currentLockPrice.toFixed(2)}`;
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+      const priceW = ctx.measureText(priceText).width + 10;
+      const priceX = w - priceW - 4;
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(priceX, labelY, priceW, labelH, 3);
+      ctx.fill();
+
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'left';
+      ctx.fillText(priceText, priceX + 5, labelY + 10);
     }
   }, [height]);
 
@@ -343,7 +381,7 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
   }, [symbol, mounted, draw]);
 
   if (!mounted) {
-    return <div className="w-full bg-[#09090b] rounded-lg" style={{ height: `${height}px` }} />;
+    return <div className="w-full bg-[#09090b] rounded-lg" style={{ height: typeof height === 'number' ? `${height}px` : height }} />;
   }
 
   // Format countdown display
@@ -355,7 +393,7 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
     <div
       ref={containerRef}
       className="w-full relative overflow-hidden rounded-lg"
-      style={{ height: `${height}px`, background: 'linear-gradient(180deg, #09090b 0%, #0c0c0f 100%)' }}
+      style={{ height: typeof height === 'number' ? `${height}px` : height, background: 'linear-gradient(180deg, #09090b 0%, #0c0c0f 100%)' }}
     >
       <canvas ref={canvasRef} className="w-full h-full" />
       {/* Countdown overlay - top-left corner, small and unobtrusive */}
