@@ -1,16 +1,16 @@
-# Current Task: T013
+# Current Task: T001
 
 ## Description
-Consistent card styling across pages
+Scan codebase for exposed API keys and secrets
 
 ## Scope
-web/src/components/
+entire repo
 
 ## Files to Modify
-web/src/components/ui/Card.tsx, web/src/components/**/*.tsx
+all .ts, .tsx, .js, .json, .env*
 
 ## Verification
-all cards use shared Card component
+no matches for API_KEY, SECRET, PRIVATE_KEY patterns
 
 ## Worker
 w1 (Attempt 1 of 3)

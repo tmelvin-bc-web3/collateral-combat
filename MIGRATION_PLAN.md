@@ -8,7 +8,7 @@
 
 ## P0 - Critical (Security Audit)
 
-- [ ] T001 Scan codebase for exposed API keys and secrets
+- [@w1] T001 Scan codebase for exposed API keys and secrets
   - Scope: entire repo
   - Verify: no matches for API_KEY, SECRET, PRIVATE_KEY patterns
   - Files: all .ts, .tsx, .js, .json, .env*
@@ -52,7 +52,7 @@
   - Verify: hamburger menu works, closes on navigation
   - Files: web/src/components/Header/*.tsx
 
-- [@w1] T013 Consistent card styling across pages
+- [x] T013 Consistent card styling across pages
   - Scope: web/src/components/
   - Verify: all cards use shared Card component
   - Files: web/src/components/ui/Card.tsx, web/src/components/**/*.tsx
