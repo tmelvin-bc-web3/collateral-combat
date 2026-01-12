@@ -28,7 +28,7 @@
   - Verify: .env* in .gitignore, no secrets in git history
   - Files: .gitignore, backend/.gitignore, web/.gitignore
 
-- [ ] T005 Review CORS and origin restrictions
+- [@w1] T005 Review CORS and origin restrictions
   - Scope: backend/src/
   - Verify: CORS whitelist is restrictive, not wildcard
   - Files: backend/src/index.ts, backend/src/config.ts

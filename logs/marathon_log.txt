@@ -36,3 +36,6 @@
 2026-01-12 15:23:59 | COMMIT: T003 - Check frontend for hardcoded sensitive data
 2026-01-12 15:23:59 | SUCCESS: T003 (attempt 1)
 2026-01-12 15:24:02 | FOUND: T004
+2026-01-12 15:25:20 | COMMIT: T004 - Verify .env handling and gitignore
+2026-01-12 15:25:20 | SUCCESS: T004 (attempt 1)
+2026-01-12 15:25:24 | FOUND: T005

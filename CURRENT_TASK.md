@@ -1,16 +1,16 @@
-# Current Task: T004
+# Current Task: T005
 
 ## Description
-Verify .env handling and gitignore
+Review CORS and origin restrictions
 
 ## Scope
-root, backend, web
+backend/src/
 
 ## Files to Modify
-.gitignore, backend/.gitignore, web/.gitignore
+backend/src/index.ts, backend/src/config.ts
 
 ## Verification
-.env* in .gitignore, no secrets in git history
+CORS whitelist is restrictive, not wildcard
 
 ## Worker
 w1 (Attempt 1 of 3)

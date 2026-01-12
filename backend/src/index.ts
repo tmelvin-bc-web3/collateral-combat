@@ -3,6 +3,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { corsOptions, socketCorsOptions } from './config';
 import { priceService } from './services/priceService';
 import { battleManager } from './services/battleManager';
 import { spectatorService } from './services/spectatorService';
@@ -25,17 +26,10 @@ const app = express();
 const httpServer = createServer(app);
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
-  cors: {
-    origin: true, // Allow all origins in development
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
+  cors: socketCorsOptions,
 });
 
-app.use(cors({
-  origin: true, // Allow all origins in development
-  credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Apply global rate limiting to all API routes
