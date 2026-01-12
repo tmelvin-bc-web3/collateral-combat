@@ -1,19 +1,19 @@
-# Current Task: T021
+# Current Task: T022
 
 ## Description
-Toast notification system
+Skeleton loaders for data fetches
 
 ## Scope
-web/src/
+web/src/components/
 
 ## Files to Modify
-web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
+web/src/components/ui/Skeleton.tsx
 
 ## Verification
-toast shows on success/error actions
+skeleton shows during loading states
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

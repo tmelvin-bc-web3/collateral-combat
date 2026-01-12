@@ -128,7 +128,7 @@
   - Verify: smooth bezier curves, cleaner colors, no jank
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w1] T020 Micro-interactions and hover feedback
+- [x] T020 Micro-interactions and hover feedback
   - Scope: web/src/components/
   - Verify: buttons have hover states, transitions smooth
   - Files: web/src/components/ui/*.tsx
@@ -138,7 +138,7 @@
   - Verify: toast shows on success/error actions
   - Files: web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
 
-- [ ] T022 Skeleton loaders for data fetches
+- [@w1] T022 Skeleton loaders for data fetches
   - Scope: web/src/components/
   - Verify: skeleton shows during loading states
   - Files: web/src/components/ui/Skeleton.tsx
