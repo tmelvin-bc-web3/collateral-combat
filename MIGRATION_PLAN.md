@@ -18,7 +18,7 @@
   - Verify: all non-public routes have auth middleware
   - Files: backend/src/routes/*.ts, backend/src/middleware/auth.ts
 
-- [ ] T003 Check frontend for hardcoded sensitive data
+- [@w1] T003 Check frontend for hardcoded sensitive data
   - Scope: web/src/
   - Verify: no hardcoded URLs, keys, or credentials
   - Files: web/src/**/*.ts, web/src/**/*.tsx

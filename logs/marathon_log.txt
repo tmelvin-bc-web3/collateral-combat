@@ -30,3 +30,6 @@
 2026-01-12 15:15:54 | === Manager started (worker: w1) ===
 2026-01-12 15:15:54 | FOUND: T002
 2026-01-12 15:16:33 | INTERRUPTED
+2026-01-12 15:22:46 | COMMIT: T002 - Audit public endpoints for auth requirements
+2026-01-12 15:22:46 | SUCCESS: T002 (attempt 1)
+2026-01-12 15:22:49 | FOUND: T003
