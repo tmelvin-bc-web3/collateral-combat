@@ -1,19 +1,19 @@
-# Current Task: T020
+# Current Task: T021
 
 ## Description
-Micro-interactions and hover feedback
+Toast notification system
 
 ## Scope
-web/src/components/
+web/src/
 
 ## Files to Modify
-web/src/components/ui/*.tsx
+web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
 
 ## Verification
-buttons have hover states, transitions smooth
+toast shows on success/error actions
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

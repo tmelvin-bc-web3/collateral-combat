@@ -123,7 +123,7 @@
 
 ## P2 - Medium Priority (UX Improvements)
 
-- [@w2] T014 Oracle chart polish and animations
+- [x] T014 Oracle chart polish and animations
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: smooth bezier curves, cleaner colors, no jank
   - Files: web/src/components/RealtimeChart.tsx
@@ -133,7 +133,7 @@
   - Verify: buttons have hover states, transitions smooth
   - Files: web/src/components/ui/*.tsx
 
-- [ ] T021 Toast notification system
+- [@w2] T021 Toast notification system
   - Scope: web/src/
   - Verify: toast shows on success/error actions
   - Files: web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
