@@ -15,6 +15,7 @@ import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken,
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
 import * as achievementDb from './db/achievementDatabase';
+import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 
@@ -35,6 +36,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Apply global rate limiting to all API routes
+app.use('/api', globalLimiter);
+
 // REST API Routes
 
 // Get all whitelisted tokens
@@ -51,7 +55,7 @@ app.get('/api/prices', (req, res) => {
 });
 
 // Get price history for a symbol
-app.get('/api/prices/history/:symbol', (req, res) => {
+app.get('/api/prices/history/:symbol', burstLimiter, (req, res) => {
   const duration = parseInt(req.query.duration as string) || 60000;
   const history = priceService.getPriceHistory(req.params.symbol.toUpperCase(), duration);
   res.json(history);
@@ -128,7 +132,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', (req, res) => {
+app.put('/api/profile/:wallet', writeLimiter, (req, res) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
@@ -276,7 +280,7 @@ app.get('/api/draft/tournaments/:id/leaderboard', (req, res) => {
 });
 
 // Enter tournament
-app.post('/api/draft/tournaments/:id/enter', (req, res) => {
+app.post('/api/draft/tournaments/:id/enter', strictLimiter, (req, res) => {
   try {
     const { walletAddress } = req.body;
     if (!walletAddress) {
@@ -417,7 +421,7 @@ app.get('/api/progression/:wallet/perks', (req, res) => {
 });
 
 // Activate a perk
-app.post('/api/progression/:wallet/perks/:id/activate', (req, res) => {
+app.post('/api/progression/:wallet/perks/:id/activate', strictLimiter, (req, res) => {
   try {
     const perkId = parseInt(req.params.id);
     if (isNaN(perkId)) {
@@ -466,7 +470,7 @@ app.get('/api/progression/:wallet/free-bets/history', (req, res) => {
 });
 
 // Use free bet credit (for Oracle predictions)
-app.post('/api/progression/:wallet/free-bets/use', (req, res) => {
+app.post('/api/progression/:wallet/free-bets/use', strictLimiter, (req, res) => {
   const { gameMode, description } = req.body;
 
   if (!gameMode || !['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
