@@ -759,25 +759,25 @@ export default function PredictPage() {
             </button>
           </div>
 
-          {/* 4. AMOUNT: Bet Amount Selector - After buttons */}
-          <div className="card p-3 md:p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-xs md:text-sm uppercase tracking-wider text-text-secondary">
-                Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
+          {/* 4. AMOUNT: Bet Amount Selector - After buttons (de-emphasized, secondary to direction choice) */}
+          <div className="card p-2 md:p-3 opacity-80 border-border-primary/50">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="font-medium text-[10px] md:text-xs uppercase tracking-wider text-text-tertiary">
+                Amount {USE_ON_CHAIN_BETTING && <span className="text-text-secondary">(SOL)</span>}
               </h3>
               {!publicKey && (
-                <span className="text-accent text-xs font-medium">Connect wallet to play</span>
+                <span className="text-accent/70 text-[10px] md:text-xs">Connect wallet to play</span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+            <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
               {BET_AMOUNTS_SOL.map((amount) => (
                 <button
                   key={amount}
                   onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 ${
+                  className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-medium transition-all duration-150 ${
                     selectedAmountSol === amount
-                      ? 'bg-accent text-white ring-2 ring-accent ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(139,92,246,0.5)] scale-[0.97] translate-y-px'
-                      : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent hover:border-accent/30'
+                      ? 'bg-accent/80 text-white ring-1 ring-accent/50 ring-offset-1 ring-offset-bg-primary'
+                      : 'bg-bg-tertiary/70 text-text-tertiary hover:text-text-secondary hover:bg-bg-hover border border-transparent hover:border-border-primary'
                   }`}
                 >
                   {amount}
@@ -786,10 +786,10 @@ export default function PredictPage() {
               {/* MAX Button */}
               <button
                 onClick={() => setSelectedAmountSol(BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1])}
-                className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-bold transition-all duration-150 ${
+                className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-semibold transition-all duration-150 ${
                   selectedAmountSol === BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1]
-                    ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(234,179,8,0.5)] scale-[0.97] translate-y-px'
-                    : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30 hover:border-warning/60'
+                    ? 'bg-warning/70 text-black ring-1 ring-warning/50 ring-offset-1 ring-offset-bg-primary'
+                    : 'bg-warning/10 text-warning/70 border border-warning/20 hover:bg-warning/20 hover:border-warning/30'
                 }`}
               >
                 MAX
@@ -799,13 +799,13 @@ export default function PredictPage() {
               {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
                 <button
                   onClick={() => setUseFreeBet(!useFreeBet)}
-                  className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`py-1 px-2.5 md:py-1.5 md:px-3 rounded-md text-[10px] md:text-xs font-medium transition-all flex items-center gap-1.5 ${
                     useFreeBet
-                      ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary'
-                      : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
+                      ? 'bg-warning/70 text-black ring-1 ring-warning/50 ring-offset-1 ring-offset-bg-primary'
+                      : 'bg-warning/10 text-warning/70 border border-warning/20 hover:bg-warning/20'
                   }`}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                   </svg>
                   FREE ({freeBetBalance.balance})

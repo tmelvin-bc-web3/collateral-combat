@@ -134,3 +134,7 @@
 2026-01-12 16:20:25 | COMMIT: T064 - Oracle right column pre/post-bet states
 2026-01-12 16:20:25 | SUCCESS: T064 (attempt 1)
 2026-01-12 16:20:28 | FOUND: T067
+2026-01-12 16:20:53 | COMMIT: T066 - Oracle copy refinements
+2026-01-12 16:20:53 | SUCCESS: T066 (attempt 1)
+2026-01-12 16:21:16 | COMPLETE: No more tasks
+2026-01-12 16:21:17 | === Manager stopped (completed: 12) ===

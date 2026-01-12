@@ -157,7 +157,7 @@
   - Verify: chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w2] T066 Oracle copy refinements
+- [x] T066 Oracle copy refinements
   - Scope: web/src/app/predict/
   - Verify: remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
