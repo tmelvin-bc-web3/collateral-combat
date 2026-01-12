@@ -111,6 +111,10 @@ export default function PredictPage() {
   const [priceChange, setPriceChange] = useState(0);
   const [showRoundEndDim, setShowRoundEndDim] = useState(false);
 
+  // Track if user has placed a bet this round (for pre/post-bet UI states)
+  const [hasBetThisRound, setHasBetThisRound] = useState(false);
+  const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
+
   // Motion preferences
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -214,6 +218,11 @@ export default function PredictPage() {
 
     socket.on('prediction_round', (round) => {
       setCurrentRound(round);
+      // Reset bet state when a new round starts
+      if (round.id !== currentRoundId) {
+        setCurrentRoundId(round.id);
+        setHasBetThisRound(false);
+      }
     });
 
     socket.on('prediction_history', (rounds) => {
@@ -312,6 +321,7 @@ export default function PredictPage() {
       const usdAmount = FREE_BET_AMOUNT_SOL * currentPrice;
       socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58());
       setSuccessTx('free_bet');
+      setHasBetThisRound(true);
       setTimeout(() => setSuccessTx(null), 3000);
       setIsPlacing(false);
       return;
@@ -324,6 +334,7 @@ export default function PredictPage() {
 
       if (tx) {
         setSuccessTx(tx);
+        setHasBetThisRound(true);
         setTimeout(() => setSuccessTx(null), 5000);
       } else if (onChainError) {
         setError(onChainError);
@@ -334,6 +345,7 @@ export default function PredictPage() {
       const socket = getSocket();
       const usdAmount = selectedAmountSol * currentPrice;
       socket.emit('place_prediction', asset, side, usdAmount, publicKey.toBase58());
+      setHasBetThisRound(true);
       setTimeout(() => setIsPlacing(false), 500);
     }
   };
@@ -578,9 +590,9 @@ export default function PredictPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-3 oracle-commitment-container">
-        {/* Main Game Area - Flow: See (Chart) → Decide (Countdown) → Click (Buttons) */}
-        <div className="lg:col-span-2 space-y-3">
+      <div className="grid lg:grid-cols-4 gap-3 oracle-commitment-container">
+        {/* Main Game Area - Flow: Chart+Countdown → Buttons → Amount */}
+        <div className="lg:col-span-3 space-y-3">
           {/* 1. SEE: Chart - First thing user sees to assess the trend */}
           <div className="card p-0 overflow-hidden oracle-dimmable">
             <div className="hidden md:block">
@@ -747,6 +759,61 @@ export default function PredictPage() {
             </button>
           </div>
 
+          {/* 4. AMOUNT: Bet Amount Selector - After buttons */}
+          <div className="card p-3 md:p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-xs md:text-sm uppercase tracking-wider text-text-secondary">
+                Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
+              </h3>
+              {!publicKey && (
+                <span className="text-accent text-xs font-medium">Connect wallet to play</span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+              {BET_AMOUNTS_SOL.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => setSelectedAmountSol(amount)}
+                  className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 ${
+                    selectedAmountSol === amount
+                      ? 'bg-accent text-white ring-2 ring-accent ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(139,92,246,0.5)] scale-[0.97] translate-y-px'
+                      : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent hover:border-accent/30'
+                  }`}
+                >
+                  {amount}
+                </button>
+              ))}
+              {/* MAX Button */}
+              <button
+                onClick={() => setSelectedAmountSol(BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1])}
+                className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-bold transition-all duration-150 ${
+                  selectedAmountSol === BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1]
+                    ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(234,179,8,0.5)] scale-[0.97] translate-y-px'
+                    : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30 hover:border-warning/60'
+                }`}
+              >
+                MAX
+              </button>
+
+              {/* Free Bet Toggle - inline when available */}
+              {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
+                <button
+                  onClick={() => setUseFreeBet(!useFreeBet)}
+                  className={`py-1.5 px-3 md:py-2 md:px-4 rounded-lg text-xs md:text-sm font-medium transition-all flex items-center gap-2 ${
+                    useFreeBet
+                      ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary'
+                      : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                  </svg>
+                  FREE ({freeBetBalance.balance})
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Success Message */}
           {successTx && (
             <div className={`p-4 rounded-xl text-center font-medium ${
@@ -811,102 +878,8 @@ export default function PredictPage() {
           )}
         </div>
 
-        {/* Sidebar - Reduced padding for tighter layout */}
+        {/* Sidebar - Minimized with only stats and rules */}
         <div className="space-y-3 oracle-dimmable">
-          {/* Bet Amount */}
-          <div className="card p-3 md:p-4">
-            <h3 className="font-semibold mb-2 text-xs md:text-sm uppercase tracking-wider text-text-secondary">
-              Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
-            </h3>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
-              {BET_AMOUNTS_SOL.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 ${
-                    selectedAmountSol === amount
-                      ? 'bg-accent text-white ring-2 ring-accent ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(139,92,246,0.5)] scale-[0.97] translate-y-px'
-                      : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent hover:border-accent/30'
-                  }`}
-                >
-                  {amount}
-                </button>
-              ))}
-              {/* MAX Button */}
-              <button
-                onClick={() => setSelectedAmountSol(BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1])}
-                className={`py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-150 ${
-                  selectedAmountSol === BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1]
-                    ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(234,179,8,0.5)] scale-[0.97] translate-y-px'
-                    : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30 hover:border-warning/60'
-                }`}
-              >
-                MAX
-              </button>
-            </div>
-
-            {/* Free Bet Balance */}
-            {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
-              <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 mb-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
-                    <span className="text-xs font-semibold text-warning">Free Bets</span>
-                  </div>
-                  <span className="font-mono font-bold text-warning text-base">
-                    {freeBetBalance.balance}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setUseFreeBet(!useFreeBet)}
-                  className={`w-full py-1.5 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
-                    useFreeBet
-                      ? 'bg-warning text-black'
-                      : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
-                  }`}
-                >
-                  <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center ${
-                    useFreeBet ? 'bg-bg-primary border-bg-primary' : 'border-warning'
-                  }`}>
-                    {useFreeBet && (
-                      <svg className="w-2.5 h-2.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  {useFreeBet ? 'Using Free Bet!' : 'Use Free Bet (0.01 SOL)'}
-                </button>
-              </div>
-            )}
-
-            {/* Potential Winnings */}
-            <div className="p-3 rounded-lg bg-bg-tertiary border border-border-primary">
-              <div className="text-center text-[10px] text-text-tertiary mb-2 uppercase tracking-wider">Potential Return</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-center p-2 rounded-lg bg-success/5 border border-success/20">
-                  <div className="text-[10px] text-success/70 mb-0.5 uppercase">If Long</div>
-                  <div className="font-mono text-base font-bold text-success">
-                    {getDisplayAmount(getPotentialWin('long'))}
-                  </div>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-danger/5 border border-danger/20">
-                  <div className="text-[10px] text-danger/70 mb-0.5 uppercase">If Short</div>
-                  <div className="font-mono text-base font-bold text-danger">
-                    {getDisplayAmount(getPotentialWin('short'))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {!publicKey && (
-              <div className="mt-3 p-2 rounded-lg bg-accent/5 border border-accent/20 text-center">
-                <span className="text-accent text-xs font-medium">Connect wallet to play</span>
-              </div>
-            )}
-          </div>
-
           {/* Round Stats - De-emphasized */}
           <div className="card p-3 opacity-60">
             <h3 className="font-medium mb-1.5 text-[10px] uppercase tracking-wider text-text-tertiary">This Round</h3>

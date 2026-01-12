@@ -142,12 +142,12 @@
   - Verify: buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T063 Oracle hover commitment effect
+- [x] T063 Oracle hover commitment effect
   - Scope: web/src/app/predict/
   - Verify: hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T064 Oracle right column pre/post-bet states
+- [@w1] T064 Oracle right column pre/post-bet states
   - Scope: web/src/app/predict/
   - Verify: pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

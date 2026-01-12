@@ -1,7 +1,7 @@
-# Current Task: T063
+# Current Task: T064
 
 ## Description
-Oracle hover commitment effect
+Oracle right column pre/post-bet states
 
 ## Scope
 web/src/app/predict/
@@ -10,7 +10,7 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
+pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
 
 ## Worker
 w1 (Attempt 1 of 3)
