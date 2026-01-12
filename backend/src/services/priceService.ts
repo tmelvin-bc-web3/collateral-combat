@@ -37,14 +37,15 @@ class PriceService {
 
   constructor() {
     // Initialize with default prices (will be overwritten on fetch)
-    this.prices.set('SOL', 230);
-    this.prices.set('BTC', 100000);
-    this.prices.set('ETH', 3900);
-    this.prices.set('WIF', 2.5);
-    this.prices.set('BONK', 0.00003);
-    this.prices.set('JUP', 1.2);
-    this.prices.set('RAY', 5);
-    this.prices.set('JTO', 3.5);
+    // Updated Jan 2026 - realistic fallback prices
+    this.prices.set('SOL', 141);
+    this.prices.set('BTC', 94000);
+    this.prices.set('ETH', 3300);
+    this.prices.set('WIF', 0.38);
+    this.prices.set('BONK', 0.000003);
+    this.prices.set('JUP', 0.85);
+    this.prices.set('RAY', 4.5);
+    this.prices.set('JTO', 2.8);
 
     // Copy to base prices
     this.prices.forEach((price, symbol) => {
@@ -52,11 +53,11 @@ class PriceService {
     });
   }
 
-  async start(intervalMs: number = 10000) {
+  async start(intervalMs: number = 30000) {
     // Fetch immediately
     await this.fetchPrices();
 
-    // Then set up interval (10s to respect rate limits)
+    // Then set up interval (30s to respect CoinGecko free tier rate limits)
     this.updateInterval = setInterval(() => {
       this.fetchPrices();
     }, intervalMs);
