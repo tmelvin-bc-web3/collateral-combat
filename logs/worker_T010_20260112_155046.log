@@ -1,0 +1,16 @@
+The changes look good. Summary of mobile improvements:
+
+1. **Quick Stats section**: Reduced text sizes (`text-xl` instead of `text-2xl`), smaller padding (`p-2`), tighter gap (`gap-1.5`), and smaller label text (`text-[9px]`) for better fit at 375px
+2. **Streak Tiers**: Tightened gap from `gap-2` to `gap-1.5` on mobile
+3. **Free Wagers grid**: Changed from `grid-cols-4` to `grid-cols-2 sm:grid-cols-4` so the 4 items display as 2x2 grid on mobile instead of 4 cramped columns
+
+The page already had extensive mobile responsiveness (the file had `sm:` prefixes throughout), these changes further optimize for the 375px breakpoint specifically.
+
+```
+---TASK_COMPLETE---
+Task: T010
+Status: DONE
+Files modified: web/src/app/progression/page.tsx
+Verification: PASS
+---END_TASK---
+```

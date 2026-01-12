@@ -8,7 +8,7 @@
 
 ## P0 - Critical (Security Audit)
 
-- [@w1] T001 Scan codebase for exposed API keys and secrets
+- [x] T001 Scan codebase for exposed API keys and secrets
   - Scope: entire repo
   - Verify: no matches for API_KEY, SECRET, PRIVATE_KEY patterns
   - Files: all .ts, .tsx, .js, .json, .env*
@@ -37,7 +37,7 @@
 
 ## P1 - High Priority (Mobile & Polish)
 
-- [ ] T010 Progression page mobile layout
+- [@w1] T010 Progression page mobile layout
   - Scope: web/src/app/progression/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx

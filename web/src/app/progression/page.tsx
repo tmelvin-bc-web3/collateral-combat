@@ -268,18 +268,18 @@ export default function ProgressionPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            <div className="card border border-rust/30 text-center p-3 sm:p-4">
-              <div className="text-2xl sm:text-4xl font-black text-accent mb-1 sm:mb-2">100</div>
-              <div className="text-[10px] sm:text-sm text-text-secondary uppercase tracking-wider">Max Level</div>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-4">
+            <div className="card border border-rust/30 text-center p-2 sm:p-4">
+              <div className="text-xl sm:text-4xl font-black text-accent mb-0.5 sm:mb-2">100</div>
+              <div className="text-[9px] sm:text-sm text-text-secondary uppercase tracking-wide sm:tracking-wider leading-tight">Max Level</div>
             </div>
-            <div className="card border border-rust/30 text-center p-3 sm:p-4">
-              <div className="text-2xl sm:text-4xl font-black text-success mb-1 sm:mb-2">7%</div>
-              <div className="text-[10px] sm:text-sm text-text-secondary uppercase tracking-wider">Lowest Rake</div>
+            <div className="card border border-rust/30 text-center p-2 sm:p-4">
+              <div className="text-xl sm:text-4xl font-black text-success mb-0.5 sm:mb-2">7%</div>
+              <div className="text-[9px] sm:text-sm text-text-secondary uppercase tracking-wide sm:tracking-wider leading-tight">Lowest Rake</div>
             </div>
-            <div className="card border border-rust/30 text-center p-3 sm:p-4">
-              <div className="text-2xl sm:text-4xl font-black text-warning mb-1 sm:mb-2">7</div>
-              <div className="text-[10px] sm:text-sm text-text-secondary uppercase tracking-wider">Milestones</div>
+            <div className="card border border-rust/30 text-center p-2 sm:p-4">
+              <div className="text-xl sm:text-4xl font-black text-warning mb-0.5 sm:mb-2">7</div>
+              <div className="text-[9px] sm:text-sm text-text-secondary uppercase tracking-wide sm:tracking-wider leading-tight">Milestones</div>
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export default function ProgressionPage() {
             )}
 
             {/* Streak Tiers */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-3">
               {STREAK_BONUSES.slice().reverse().map((tier, idx) => {
                 const isActive = streak && streak.currentStreak >= tier.minDays;
                 const isCurrentTier = streak &&
@@ -516,7 +516,7 @@ export default function ProgressionPage() {
               Earn free Oracle predictions as you level up. Each free wager is a 0.01 SOL prediction - if you win, you keep the winnings!
             </p>
 
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
               <div className="text-center p-2 sm:p-3 rounded-lg bg-bg-tertiary">
                 <span className="text-base sm:text-lg font-bold text-green-400">1</span>
                 <p className="text-[10px] sm:text-xs text-text-tertiary">Level 5</p>

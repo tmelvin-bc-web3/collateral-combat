@@ -1,16 +1,16 @@
-# Current Task: T001
+# Current Task: T010
 
 ## Description
-Scan codebase for exposed API keys and secrets
+Progression page mobile layout
 
 ## Scope
-entire repo
+web/src/app/progression/
 
 ## Files to Modify
-all .ts, .tsx, .js, .json, .env*
+web/src/app/progression/page.tsx
 
 ## Verification
-no matches for API_KEY, SECRET, PRIVATE_KEY patterns
+responsive at 375px, 768px breakpoints
 
 ## Worker
 w1 (Attempt 1 of 3)
