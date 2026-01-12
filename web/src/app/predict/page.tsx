@@ -878,53 +878,137 @@ export default function PredictPage() {
           )}
         </div>
 
-        {/* Sidebar - Minimized with only stats and rules */}
+        {/* Sidebar - Pre/Post-bet states */}
         <div className="space-y-3 oracle-dimmable">
-          {/* Round Stats - De-emphasized */}
-          <div className="card p-3 opacity-60">
-            <h3 className="font-medium mb-1.5 text-[10px] uppercase tracking-wider text-text-tertiary">This Round</h3>
-            {currentRound && (
-              <div className="space-y-0.5">
-                <div className="flex justify-between items-center py-1 border-b border-border-primary/50">
-                  <span className="text-text-tertiary text-[10px]">Total Pool</span>
-                  <span className="font-mono text-[10px] text-text-secondary">
-                    ${currentRound.totalPool.toFixed(0)}
-                  </span>
+          {/* PRE-BET STATE: Minimal info - just rules */}
+          {!hasBetThisRound && (
+            <div className="space-y-3 transition-all duration-300 ease-out">
+              {/* Minimal Status Card */}
+              <div className="card p-3 border-accent/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <h3 className="font-medium text-[10px] uppercase tracking-wider text-accent">Ready to Bet</h3>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-border-primary/50">
-                  <span className="text-text-tertiary text-[10px]">Long Bets</span>
-                  <span className="font-mono text-[10px] text-text-secondary">
-                    {currentRound.longBets.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-text-tertiary text-[10px]">Short Bets</span>
-                  <span className="font-mono text-[10px] text-text-secondary">
-                    {currentRound.shortBets.length}
-                  </span>
-                </div>
+                <p className="text-[10px] text-text-tertiary leading-relaxed">
+                  Pick your side below and lock in your prediction before time runs out.
+                </p>
               </div>
-            )}
-          </div>
 
-          {/* How it Works */}
-          <div className="card p-3 border-warning/20">
-            <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-warning">Rules of the Oracle</h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
-                <span className="text-text-secondary">Choose your fate: Long or Short</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
-                <span className="text-text-secondary">30 seconds. No turning back.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
-                <span className="text-text-secondary">Survivors claim the loot</span>
+              {/* How it Works */}
+              <div className="card p-3 border-warning/20">
+                <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-warning">Rules of the Oracle</h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
+                    <span className="text-text-secondary">Choose your fate: Long or Short</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
+                    <span className="text-text-secondary">30 seconds. No turning back.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
+                    <span className="text-text-secondary">Survivors claim the loot</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* POST-BET STATE: Full stats revealed */}
+          {hasBetThisRound && (
+            <div className="space-y-3 animate-fadeIn">
+              {/* Bet Confirmation Banner */}
+              <div className="card p-3 bg-accent/10 border-accent/30 transition-all duration-300 ease-out">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xs text-accent uppercase tracking-wider">Bet Locked</h3>
+                    <p className="text-[9px] text-text-tertiary">Watching the action...</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Round Stats - Now visible */}
+              <div className="card p-3 border-accent/20 transition-all duration-300 ease-out">
+                <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-accent flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Live Stats
+                </h3>
+                {currentRound && (
+                  <div className="space-y-2">
+                    {/* Total Pool */}
+                    <div className="p-2 rounded-lg bg-bg-tertiary border border-border-primary text-center">
+                      <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-0.5">Total Pool</div>
+                      <div className="font-mono text-base font-bold text-text-primary">
+                        ${currentRound.totalPool.toFixed(0)}
+                      </div>
+                    </div>
+
+                    {/* Long vs Short */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="p-2 rounded-lg bg-success/5 border border-success/20 text-center">
+                        <div className="text-[9px] text-success/70 uppercase tracking-wider">Longs</div>
+                        <div className="font-mono text-sm font-bold text-success">{currentRound.longBets.length}</div>
+                        <div className="font-mono text-[9px] text-text-tertiary">${currentRound.longPool.toFixed(0)}</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-danger/5 border border-danger/20 text-center">
+                        <div className="text-[9px] text-danger/70 uppercase tracking-wider">Shorts</div>
+                        <div className="font-mono text-sm font-bold text-danger">{currentRound.shortBets.length}</div>
+                        <div className="font-mono text-[9px] text-text-tertiary">${currentRound.shortPool.toFixed(0)}</div>
+                      </div>
+                    </div>
+
+                    {/* Pool Ratio Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[8px] text-text-tertiary">
+                        <span>{currentRound.totalPool > 0 ? ((currentRound.longPool / currentRound.totalPool) * 100).toFixed(0) : 50}%</span>
+                        <span>{currentRound.totalPool > 0 ? ((currentRound.shortPool / currentRound.totalPool) * 100).toFixed(0) : 50}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden flex">
+                        <div
+                          className="h-full bg-success transition-all duration-300"
+                          style={{ width: `${currentRound.totalPool > 0 ? (currentRound.longPool / currentRound.totalPool) * 100 : 50}%` }}
+                        />
+                        <div
+                          className="h-full bg-danger transition-all duration-300"
+                          style={{ width: `${currentRound.totalPool > 0 ? (currentRound.shortPool / currentRound.totalPool) * 100 : 50}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Odds */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <div className="text-center p-1.5 rounded bg-success/5 border border-success/20">
+                        <div className="text-[8px] text-success/70 uppercase">Long Odds</div>
+                        <div className="font-mono text-xs font-bold text-success">{getOdds('long')}x</div>
+                      </div>
+                      <div className="text-center p-1.5 rounded bg-danger/5 border border-danger/20">
+                        <div className="text-[8px] text-danger/70 uppercase">Short Odds</div>
+                        <div className="font-mono text-xs font-bold text-danger">{getOdds('short')}x</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Compact Rules - de-emphasized */}
+              <div className="card p-2 opacity-50 border-warning/10">
+                <div className="flex items-center gap-1.5 text-[9px] text-text-tertiary">
+                  <svg className="w-3 h-3 text-warning/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Final price after 30s determines the winner</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

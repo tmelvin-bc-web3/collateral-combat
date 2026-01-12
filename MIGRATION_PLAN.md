@@ -127,7 +127,7 @@
 > User flow: See countdown → Choose direction → Confirm amount
 > Constraints: No new features, no color/font changes, rearrangement + emphasis only
 
-- [@w2] T060 Oracle layout restructure - reorder to Chart→Buttons→Amount
+- [x] T060 Oracle layout restructure - reorder to Chart→Buttons→Amount
   - Scope: web/src/app/predict/
   - Verify: layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
   - Files: web/src/app/predict/page.tsx
@@ -152,7 +152,7 @@
   - Verify: pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T065 Oracle chart height reduction
+- [@w2] T065 Oracle chart height reduction
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
   - Files: web/src/components/RealtimeChart.tsx

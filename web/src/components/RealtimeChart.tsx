@@ -17,7 +17,7 @@ interface PricePoint {
   displayPrice: number; // Smoothed price for display
 }
 
-export function RealtimeChart({ symbol, height = 280, lockPrice, timeRemaining, isLocked }: RealtimeChartProps) {
+export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, isLocked }: RealtimeChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);

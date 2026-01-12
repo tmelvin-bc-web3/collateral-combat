@@ -1,19 +1,19 @@
-# Current Task: T064
+# Current Task: T065
 
 ## Description
-Oracle right column pre/post-bet states
+Oracle chart height reduction
 
 ## Scope
-web/src/app/predict/
+web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+web/src/components/RealtimeChart.tsx
 
 ## Verification
-pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
+chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

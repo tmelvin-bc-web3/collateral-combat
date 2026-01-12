@@ -1,0 +1,17 @@
+The screenshot shows the Oracle page with the reduced chart height. The chart is now more compact at 240px (down from 280px, a ~14.3% reduction), which provides momentum context while taking up less vertical space. The chart remains readable with:
+- Price labels visible on the right side
+- Time labels visible at the bottom  
+- The price line and gradient fill clearly visible
+- The lock price line and countdown overlay still working
+- The current price indicator and badge remain visible
+
+The change successfully reduces the chart height by approximately 15% while maintaining readability and showing price momentum context.
+
+```
+---TASK_COMPLETE---
+Task: T065
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```
