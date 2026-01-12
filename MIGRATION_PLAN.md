@@ -37,12 +37,12 @@
 
 ## P1 - High Priority (Mobile & Polish)
 
-- [@w1] T010 Progression page mobile layout
+- [x] T010 Progression page mobile layout
   - Scope: web/src/app/progression/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx
 
-- [ ] T011 Leaderboard page mobile layout
+- [@w1] T011 Leaderboard page mobile layout
   - Scope: web/src/app/leaderboard/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/leaderboard/page.tsx
@@ -56,6 +56,68 @@
   - Scope: web/src/components/
   - Verify: all cards use shared Card component
   - Files: web/src/components/ui/Card.tsx, web/src/components/**/*.tsx
+
+---
+
+## P1.5 - Oracle UX Overhaul (High Priority)
+
+> Core principle: Preserve existing color palette (orange/green/dark), fonts, layout structure.
+> Improve: visual hierarchy, decision clarity, urgency, micro-interactions.
+
+- [@w2] T040 Oracle countdown timer enhancement
+  - Scope: web/src/app/predict/
+  - Verify: countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T041 Oracle chart line improvements
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
+  - Files: web/src/components/RealtimeChart.tsx
+
+- [ ] T042 Oracle lock price line styling
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
+  - Files: web/src/components/RealtimeChart.tsx
+
+- [ ] T043 Oracle last tick direction indicator
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: arrow at right edge of chart (↑ green if positive, ↓ red if negative)
+  - Files: web/src/components/RealtimeChart.tsx
+
+- [ ] T044 Oracle Long/Short button redesign
+  - Scope: web/src/app/predict/
+  - Verify: buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T045 Oracle bet amount selector improvements
+  - Scope: web/src/app/predict/
+  - Verify: selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T046 Oracle recent history row polish
+  - Scope: web/src/app/predict/
+  - Verify: older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T047 Oracle right column de-emphasis
+  - Scope: web/src/app/predict/
+  - Verify: "This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T048 Oracle copy/text clarity updates
+  - Scope: web/src/app/predict/
+  - Verify: "PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T049 Oracle motion and feedback polish
+  - Scope: web/src/app/predict/
+  - Verify: price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T050 Oracle layout flow optimization
+  - Scope: web/src/app/predict/
+  - Verify: reduced right column padding, visual stack order is Chart → Countdown → Long/Short, clear see→decide→click flow
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ---
 

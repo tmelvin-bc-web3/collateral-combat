@@ -1,0 +1,22 @@
+```
+---TASK_COMPLETE---
+Task: T011
+Status: DONE
+Files modified: web/src/app/leaderboard/page.tsx
+Verification: PASS
+---END_TASK---
+```
+
+## Summary of Changes
+
+Made the leaderboard page mobile responsive for 375px and 768px breakpoints:
+
+1. **Time Filter Buttons**: Changed from flex to grid layout on mobile (4 columns), showing only icons at 375px with labels appearing at `sm` breakpoint. Buttons stack vertically within each cell for better touch targets.
+
+2. **Top 3 Podium Cards**: Restructured to use a horizontal flex layout on mobile (rank badge on left, content on right) and centered layout on tablet/desktop. The rank title badges (Warlord, Lieutenant, Sergeant) are now inline on mobile instead of absolutely positioned.
+
+3. **First Place Card**: Reduced padding on mobile, smaller stat text sizes, better compact layout while maintaining visual hierarchy.
+
+4. **Your Stats Section**: Reduced margins, padding, and font sizes for mobile. The stats grid maintains 2 columns on mobile and expands to 4 on md breakpoint.
+
+All changes use standard Tailwind responsive prefixes (`sm:`, `md:`) for consistent breakpoint behavior at 375px (base) and 768px (md).

@@ -1,19 +1,19 @@
-# Current Task: T010
+# Current Task: T040
 
 ## Description
-Progression page mobile layout
+Oracle countdown timer enhancement
 
 ## Scope
-web/src/app/progression/
+web/src/app/predict/
 
 ## Files to Modify
-web/src/app/progression/page.tsx
+web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-responsive at 375px, 768px breakpoints
+countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
