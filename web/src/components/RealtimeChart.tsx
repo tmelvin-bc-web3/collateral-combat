@@ -7,6 +7,8 @@ interface RealtimeChartProps {
   symbol: string;
   height?: number;
   lockPrice?: number | null;
+  timeRemaining?: number;
+  isLocked?: boolean;
 }
 
 interface PricePoint {
@@ -15,7 +17,7 @@ interface PricePoint {
   displayPrice: number; // Smoothed price for display
 }
 
-export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChartProps) {
+export function RealtimeChart({ symbol, height = 280, lockPrice, timeRemaining, isLocked }: RealtimeChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -515,6 +517,9 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
     return <div className="w-full bg-[#09090b] rounded-lg" style={{ height: `${height}px` }} />;
   }
 
+  // Determine if we should show the countdown overlay
+  const showCountdown = timeRemaining !== undefined && timeRemaining > 0 && !isLocked;
+
   return (
     <div
       ref={containerRef}
@@ -522,6 +527,33 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       style={{ height: `${height}px`, background: 'linear-gradient(180deg, #09090b 0%, #0c0c0f 100%)' }}
     >
       <canvas ref={canvasRef} className="w-full h-full" />
+
+      {/* Oracle Countdown Overlay */}
+      {showCountdown && (
+        <div className="absolute top-4 right-4 flex flex-col items-end pointer-events-none">
+          <span
+            className="font-mono font-black tabular-nums leading-none"
+            style={{
+              fontSize: 'clamp(2.5rem, 6vw, 4rem)',
+              opacity: 0.8,
+              color: '#f97316',
+              textShadow: '0 0 20px rgba(249, 115, 22, 0.6), 0 0 40px rgba(249, 115, 22, 0.4), 0 0 60px rgba(249, 115, 22, 0.2)',
+            }}
+          >
+            {timeRemaining}
+          </span>
+          <span
+            className="text-xs font-medium mt-1"
+            style={{
+              opacity: 0.8,
+              color: '#f97316',
+              textShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
+            }}
+          >
+            Final price decides.
+          </span>
+        </div>
+      )}
     </div>
   );
 }

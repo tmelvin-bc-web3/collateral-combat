@@ -588,6 +588,8 @@ export default function PredictPage() {
                 symbol={asset}
                 height={240}
                 lockPrice={currentRound?.startPrice}
+                timeRemaining={timeRemaining}
+                isLocked={isLocked}
               />
             </div>
             <div className="block md:hidden">
@@ -595,6 +597,8 @@ export default function PredictPage() {
                 symbol={asset}
                 height={180}
                 lockPrice={currentRound?.startPrice}
+                timeRemaining={timeRemaining}
+                isLocked={isLocked}
               />
             </div>
           </div>

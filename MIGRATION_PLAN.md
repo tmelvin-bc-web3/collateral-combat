@@ -132,7 +132,7 @@
   - Verify: layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
   - Files: web/src/app/predict/page.tsx
 
-- [ ] T061 Oracle countdown overlay inside chart
+- [@w1] T061 Oracle countdown overlay inside chart
   - Scope: web/src/app/predict/, web/src/components/RealtimeChart.tsx
   - Verify: countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
@@ -200,7 +200,7 @@
   - Verify: theme persists, all components respect theme
   - Files: web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts
 
-- [@w1] T031 Sound effects for wins/losses
+- [x] T031 Sound effects for wins/losses
   - Scope: web/src/hooks/
   - Verify: sounds play, can be muted
   - Files: web/src/hooks/useSound.ts, web/public/sounds/

@@ -1,19 +1,19 @@
-# Current Task: T060
+# Current Task: T061
 
 ## Description
-Oracle layout restructure - reorder to Chart→Buttons→Amount
+Oracle countdown overlay inside chart
 
 ## Scope
-web/src/app/predict/
+web/src/app/predict/, web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx
+web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
 ## Verification
-layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
+countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
