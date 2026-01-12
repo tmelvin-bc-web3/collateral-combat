@@ -1,19 +1,19 @@
-# Current Task: T077
+# Current Task: T078
 
 ## Description
-Oracle strip all instructional copy - DELETION TASK
+Oracle fix countdown positioning - must not obscure chart
 
 ## Scope
-web/src/app/predict/
+web/src/app/predict/, web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
 ## Verification
-KEEP ONLY "Predict or perish." + "30 seconds. No second chances.", DELETE "Ready to bet"/"Betting open"/any instructional prose
+countdown positioned so it does NOT overlap/obscure price line or chart data, place OUTSIDE chart or in corner that doesn't block info, countdown smaller than price display
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

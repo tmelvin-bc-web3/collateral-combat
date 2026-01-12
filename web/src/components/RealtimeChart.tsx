@@ -17,7 +17,7 @@ interface PricePoint {
   displayPrice: number;
 }
 
-export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChartProps) {
+export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, isLocked }: RealtimeChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -346,6 +346,11 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
     return <div className="w-full bg-[#09090b] rounded-lg" style={{ height: `${height}px` }} />;
   }
 
+  // Format countdown display
+  const formatCountdown = (seconds: number): string => {
+    return `${seconds}s`;
+  };
+
   return (
     <div
       ref={containerRef}
@@ -353,6 +358,17 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
       style={{ height: `${height}px`, background: 'linear-gradient(180deg, #09090b 0%, #0c0c0f 100%)' }}
     >
       <canvas ref={canvasRef} className="w-full h-full" />
+      {/* Countdown overlay - top-left corner, small and unobtrusive */}
+      {timeRemaining !== undefined && timeRemaining > 0 && (
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded bg-bg-primary/80 border border-border-primary/50">
+          <span className={`text-xs font-medium uppercase tracking-wider ${isLocked ? 'text-accent' : 'text-text-tertiary'}`}>
+            {isLocked ? 'Locked' : 'Bet'}
+          </span>
+          <span className={`text-sm font-mono font-bold tabular-nums ${isLocked ? 'text-accent' : 'text-warning'}`}>
+            {formatCountdown(timeRemaining)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

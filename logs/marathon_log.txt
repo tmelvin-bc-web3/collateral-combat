@@ -164,3 +164,6 @@
 2026-01-12 16:37:41 | COMMIT: T075 - Oracle remove duplicate win displays - DELETION TASK
 2026-01-12 16:37:41 | SUCCESS: T075 (attempt 1)
 2026-01-12 16:37:44 | FOUND: T077
+2026-01-12 16:38:14 | COMMIT: T076 - Oracle remove or gut right column - DELETION TASK
+2026-01-12 16:38:14 | SUCCESS: T076 (attempt 1)
+2026-01-12 16:38:17 | FOUND: T078
