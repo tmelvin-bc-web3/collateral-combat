@@ -7,21 +7,25 @@
 #   ./ralph-queue.sh status                # Show queue status
 #   ./ralph-queue.sh list <worker_id>      # List stories assigned to worker
 
-set -euo pipefail
+set -eo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUEUE_DIR="$PROJECT_DIR/.ralph/queue"
 LOCKS_DIR="$QUEUE_DIR/locks"
 PRD_FILE="$PROJECT_DIR/.agents/tasks/prd-parallel.md"
 
-# Worker scope mappings (which file patterns each worker handles)
-declare -A WORKER_SCOPES=(
-  ["backend"]="backend/"
-  ["frontend-lib"]="web/src/lib|web/src/hooks|web/src/contexts"
-  ["frontend-ui"]="web/src/app|web/src/components"
-  ["contracts"]="prediction_program/"
-  ["any"]=".*"  # Fallback worker handles anything
-)
+# Get worker scope pattern
+get_worker_scope() {
+  local worker="$1"
+  case "$worker" in
+    backend) echo "backend/" ;;
+    frontend-lib) echo "web/src/lib|web/src/hooks|web/src/contexts" ;;
+    frontend-ui) echo "web/src/app|web/src/components" ;;
+    contracts) echo "prediction_program/" ;;
+    any) echo ".*" ;;
+    *) echo "" ;;
+  esac
+}
 
 # Colors
 RED='\033[0;31m'
@@ -145,7 +149,7 @@ worker_matches_scope() {
   fi
 
   # Check if worker's scope pattern matches story scope
-  local worker_pattern="${WORKER_SCOPES[$worker_id]:-}"
+  local worker_pattern=$(get_worker_scope "$worker_id")
   if [[ -z "$worker_pattern" ]]; then
     return 1
   fi
@@ -160,50 +164,36 @@ claim_story() {
 
   local stories=$(parse_stories)
 
-  # Find first pending story that matches worker scope and isn't locked
-  local story=$(echo "$stories" | python3 -c "
-import json
-import sys
+  # Get all pending stories as array
+  local pending_stories=$(echo "$stories" | jq -c '.[] | select(.status == "pending")')
 
-stories = json.load(sys.stdin)
-worker_id = sys.argv[1]
+  # Iterate through each pending story
+  while IFS= read -r story; do
+    [[ -z "$story" ]] && continue
 
-for s in stories:
-    if s['status'] == 'pending':
-        print(json.dumps(s))
-        break
-" "$worker_id" 2>/dev/null || echo "")
+    local story_id=$(echo "$story" | jq -r '.id')
+    local story_scope=$(echo "$story" | jq -r '.scope // ""')
+    local story_worker=$(echo "$story" | jq -r '.worker // ""')
 
-  if [[ -z "$story" || "$story" == "null" ]]; then
-    echo ""
-    return 1
-  fi
+    # Check scope match
+    if ! worker_matches_scope "$worker_id" "$story_scope" "$story_worker"; then
+      continue
+    fi
 
-  local story_id=$(echo "$story" | jq -r '.id')
-  local story_scope=$(echo "$story" | jq -r '.scope // ""')
-  local story_worker=$(echo "$story" | jq -r '.worker // ""')
+    # Check if already locked
+    if is_locked "$story_id"; then
+      continue
+    fi
 
-  # Check scope match
-  if ! worker_matches_scope "$worker_id" "$story_scope" "$story_worker"; then
-    # Try to find another story
-    echo ""
-    return 1
-  fi
+    # Try to acquire lock
+    if lock_story "$story_id" "$worker_id"; then
+      echo "$story"
+      return 0
+    fi
+  done <<< "$pending_stories"
 
-  # Check if already locked
-  if is_locked "$story_id"; then
-    echo ""
-    return 1
-  fi
-
-  # Try to acquire lock
-  if lock_story "$story_id" "$worker_id"; then
-    echo "$story"
-    return 0
-  else
-    echo ""
-    return 1
-  fi
+  echo ""
+  return 1
 }
 
 # Mark story complete in PRD

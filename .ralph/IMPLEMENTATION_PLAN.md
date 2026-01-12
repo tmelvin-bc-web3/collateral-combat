@@ -67,20 +67,22 @@
   - Verify: No TypeScript errors, correct status shown in UI
   - **Done:** Changed `Open` to `Betting` in RoundStatus enum, updated parseRound to use `betting` instead of `open`
 
-- [ ] **T221** Add claim winnings UI flow
+- [x] **T221** Add claim winnings UI flow
   - Add "Claim Winnings" button when user has unclaimed on-chain wins
   - Add loading state during claim transaction
   - Add success/error toasts after claim
   - Files: `web/src/app/predict/page.tsx`, `web/src/hooks/usePrediction.ts`
   - Verify: User can claim on-chain wins through UI
   - NOTE: Do NOT modify Oracle UI layout - only add claim button
+  - **Done:** Added prominent "Claim Winnings" button with gradient styling, loading spinner, claim success message, and position status indicator
 
-- [ ] **T222** Replace mock Live Bets with real data
+- [x] **T222** Replace mock Live Bets with real data
   - Change mock `liveBets` array to real socket stream
   - Subscribe to `bet_placed` socket event from backend
   - Show actual bets as they come in (last 10)
-  - Files: `web/src/app/predict/page.tsx`
+  - Files: `web/src/app/predict/page.tsx`, `backend/src/index.ts`
   - Verify: Live bets sidebar shows real activity
+  - **Done:** Removed all mock data, added `liveBets` state with `prediction_bet_placed` socket listener, updated backend to broadcast bet events to all subscribers, shows real pool totals
 
 - [x] **T223** Remove dead code from prediction client
   - Delete: `initializeRound()` method - not a real contract instruction

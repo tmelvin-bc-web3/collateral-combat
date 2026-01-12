@@ -3,10 +3,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
-import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance } from '@/types';
+import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance, PredictionBet } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
+
+// Live bet display type (combines socket data with profile info)
+interface LiveBetDisplay {
+  id: string;
+  bettor: string;
+  username?: string;
+  level?: number;
+  side: PredictionSide;
+  amount: number;
+  placedAt: number;
+}
 
 // Animation constants
 const PRICE_INTERPOLATION_MS = 150; // 120-180ms range
@@ -114,6 +125,13 @@ export default function PredictPage() {
   // Track if user has placed a bet this round (for pre/post-bet UI states)
   const [hasBetThisRound, setHasBetThisRound] = useState(false);
   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
+
+  // Live bets from socket stream
+  const [liveBets, setLiveBets] = useState<LiveBetDisplay[]>([]);
+
+  // Claim state
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
 
   // Animation tick for smooth progress border (updates every 50ms)
   const [, setAnimationTick] = useState(0);
@@ -255,6 +273,18 @@ export default function PredictPage() {
       }
     });
 
+    // Listen for real-time bets from other users
+    socket.on('prediction_bet_placed', (bet: PredictionBet) => {
+      const newBet: LiveBetDisplay = {
+        id: bet.id,
+        bettor: bet.bettor,
+        side: bet.side,
+        amount: bet.amount,
+        placedAt: bet.placedAt,
+      };
+      setLiveBets(prev => [newBet, ...prev].slice(0, 10)); // Keep last 10 bets
+    });
+
     socket.on('error', (msg) => {
       setError(msg);
       setTimeout(() => setError(null), 3000);
@@ -266,6 +296,7 @@ export default function PredictPage() {
       socket.off('prediction_history');
       socket.off('prediction_settled');
       socket.off('price_update');
+      socket.off('prediction_bet_placed');
       socket.off('error');
     };
   }, [asset, fetchData]);
@@ -368,19 +399,20 @@ export default function PredictPage() {
   const handleClaim = async () => {
     if (!onChainRound || !canClaim) return;
 
-    setIsPlacing(true);
+    setIsClaiming(true);
     setError(null);
+    setClaimSuccess(null);
 
     const tx = await claimWinnings(onChainRound.roundId);
 
     if (tx) {
-      setSuccessTx(tx);
-      setTimeout(() => setSuccessTx(null), 5000);
+      setClaimSuccess(tx);
+      setTimeout(() => setClaimSuccess(null), 5000);
     } else if (onChainError) {
       setError(onChainError);
     }
 
-    setIsPlacing(false);
+    setIsClaiming(false);
   };
 
   const getBaseOdds = (side: PredictionSide): number => {
@@ -507,139 +539,64 @@ export default function PredictPage() {
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Bets</div>
 
             <div className="flex-1 overflow-y-auto space-y-1">
-              {/* Mock data - clean rows with tier indicator */}
-              {/* Gold tier whale - long */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-yellow-400 to-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-yellow-400 font-bold text-sm">CryptoKing</span>
-                    <span className="text-[10px] text-yellow-400/60">Lv.42</span>
+              {/* Real-time bets from socket stream */}
+              {liveBets.length > 0 ? (
+                liveBets.map((bet) => (
+                  <div key={bet.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors animate-fadeIn">
+                    <div className="w-1 h-8 rounded-full bg-white/20" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/60 font-mono text-sm">
+                          {bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`font-bold text-sm ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
+                      {bet.side === 'long' ? '+' : '-'}{(bet.amount / (currentPrice || 1)).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="text-[10px] text-white/30 font-mono">7xKp...mN4q</div>
-                </div>
-                <span className="font-bold text-success text-sm">+2.50</span>
-              </div>
-
-              {/* Purple tier - long */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-purple-400 font-bold text-sm">SolDegen</span>
-                    <span className="text-[10px] text-purple-400/60">Lv.28</span>
-                  </div>
-                  <div className="text-[10px] text-white/30 font-mono">9mNr...xP2k</div>
-                </div>
-                <span className="font-bold text-success text-sm">+0.50</span>
-              </div>
-
-              {/* No tier - short */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-white/20" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/60 font-mono text-sm">3vBx...k9Lm</span>
-                    <span className="text-[10px] text-white/30">Lv.3</span>
-                  </div>
-                </div>
-                <span className="font-bold text-danger text-sm">-1.00</span>
-              </div>
-
-              {/* Blue tier - long */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-400 font-bold text-sm">moonboy99</span>
-                    <span className="text-[10px] text-blue-400/60">Lv.15</span>
-                  </div>
-                  <div className="text-[10px] text-white/30 font-mono">Dk4j...rT8w</div>
-                </div>
-                <span className="font-bold text-success text-sm">+0.25</span>
-              </div>
-
-              {/* Gold tier whale - short */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-yellow-400 to-yellow-600 shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-yellow-400 font-bold text-sm">WhaleAlert</span>
-                    <span className="text-[10px] text-yellow-400/60">Lv.51</span>
-                  </div>
-                  <div className="text-[10px] text-white/30 font-mono">8pQw...vN3m</div>
-                </div>
-                <span className="font-bold text-danger text-sm">-5.00</span>
-              </div>
-
-              {/* No tier newbie - short */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-white/20" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/60 font-mono text-sm">2nLm...xP4q</span>
-                    <span className="text-[10px] text-white/30">Lv.1</span>
-                  </div>
-                </div>
-                <span className="font-bold text-danger text-sm">-0.10</span>
-              </div>
-
-              {/* Purple tier - long */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-purple-400 to-purple-600" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-purple-400 font-bold text-sm">DiamondHands</span>
-                    <span className="text-[10px] text-purple-400/60">Lv.33</span>
-                  </div>
-                  <div className="text-[10px] text-white/30 font-mono">Fy7z...qK9n</div>
-                </div>
-                <span className="font-bold text-success text-sm">+1.25</span>
-              </div>
-
-              {/* Blue tier - short */}
-              <div className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="w-1 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-400 font-bold text-sm">ngmi_andy</span>
-                    <span className="text-[10px] text-blue-400/60">Lv.19</span>
-                  </div>
-                  <div className="text-[10px] text-white/30 font-mono">Ax9k...pL2j</div>
-                </div>
-                <span className="font-bold text-danger text-sm">-0.75</span>
-              </div>
-
-              {/* Real bets would render here with same format */}
-              {currentRound?.longBets?.map((bet, idx) => (
-                <div key={bet.id || idx} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                  <div className="w-1 h-8 rounded-full bg-white/20" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
-                  </div>
-                  <span className="font-bold text-success text-sm">+{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
-                </div>
-              ))}
-              {currentRound?.shortBets?.map((bet, idx) => (
-                <div key={bet.id || idx} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                  <div className="w-1 h-8 rounded-full bg-white/20" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
-                  </div>
-                  <span className="font-bold text-danger text-sm">-{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
-                </div>
-              ))}
+                ))
+              ) : (
+                // Show bets from current round if no live bets yet
+                <>
+                  {currentRound?.longBets?.map((bet, idx) => (
+                    <div key={bet.id || `long-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                      <div className="w-1 h-8 rounded-full bg-white/20" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
+                      </div>
+                      <span className="font-bold text-success text-sm">+{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {currentRound?.shortBets?.map((bet, idx) => (
+                    <div key={bet.id || `short-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                      <div className="w-1 h-8 rounded-full bg-white/20" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
+                      </div>
+                      <span className="font-bold text-danger text-sm">-{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {(!currentRound?.longBets?.length && !currentRound?.shortBets?.length) && (
+                    <div className="text-white/20 text-xs text-center py-8">No bets yet this round</div>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Pool Summary */}
+            {/* Pool Summary - show real pool data */}
             <div className="mt-auto pt-3 border-t border-white/10">
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div>
-                  <div className="text-success font-bold text-lg">4.50</div>
+                  <div className="text-success font-bold text-lg">
+                    {currentRound ? (currentRound.longPool / (currentPrice || 1)).toFixed(2) : '0.00'}
+                  </div>
                   <div className="text-[9px] text-white/30 uppercase">Long Pool</div>
                 </div>
                 <div>
-                  <div className="text-danger font-bold text-lg">6.85</div>
+                  <div className="text-danger font-bold text-lg">
+                    {currentRound ? (currentRound.shortPool / (currentPrice || 1)).toFixed(2) : '0.00'}
+                  </div>
                   <div className="text-[9px] text-white/30 uppercase">Short Pool</div>
                 </div>
               </div>
@@ -831,6 +788,44 @@ export default function PredictPage() {
             </div>
           )}
 
+          {/* Claim Success Message */}
+          {claimSuccess && (
+            <div className="p-2 rounded-lg text-center text-sm font-medium flex-shrink-0 bg-accent/20 border border-accent/50 text-accent">
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Winnings claimed!</span>
+              </div>
+            </div>
+          )}
+
+          {/* Prominent Claim Winnings Button - shown when user can claim */}
+          {USE_ON_CHAIN_BETTING && canClaim && (
+            <button
+              onClick={handleClaim}
+              disabled={isClaiming}
+              className="w-full p-3 rounded-xl bg-gradient-to-r from-accent to-purple-500 text-white font-bold text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/30 animate-pulse"
+            >
+              {isClaiming ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Claiming...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Claim Winnings</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* My Position Display - compact */}
           {USE_ON_CHAIN_BETTING && myPosition && !myPosition.claimed && (
             <div className={`p-2 rounded-lg border flex-shrink-0 ${
@@ -844,15 +839,11 @@ export default function PredictPage() {
                 }`}>
                   {myPosition.side === 'up' ? 'LONG' : 'SHORT'} {myPosition.amount.toFixed(3)} SOL
                 </div>
-                {canClaim && (
-                  <button
-                    onClick={handleClaim}
-                    disabled={isPlacing}
-                    className="px-3 py-1 bg-accent text-white text-sm font-bold rounded-lg hover:opacity-90"
-                  >
-                    Claim
-                  </button>
-                )}
+                <div className={`text-xs ${
+                  canClaim ? 'text-accent' : 'text-white/40'
+                }`}>
+                  {canClaim ? 'Winner!' : currentRound?.status === 'settled' ? 'Lost' : 'Pending'}
+                </div>
               </div>
             </div>
           )}

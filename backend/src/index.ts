@@ -1165,6 +1165,8 @@ predictionService.subscribe((event, data) => {
       break;
     case 'bet_placed':
       io.to(`prediction_${data.round.asset}`).emit('prediction_round', data.round);
+      // Broadcast the bet to all users watching this prediction
+      io.to(`prediction_${data.round.asset}`).emit('prediction_bet_placed', data.bet);
       break;
   }
 });
