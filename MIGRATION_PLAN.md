@@ -127,7 +127,7 @@
 > User flow: See countdown → Choose direction → Confirm amount
 > Constraints: No new features, no color/font changes, rearrangement + emphasis only
 
-- [ ] T060 Oracle layout restructure - reorder to Chart→Buttons→Amount
+- [@w2] T060 Oracle layout restructure - reorder to Chart→Buttons→Amount
   - Scope: web/src/app/predict/
   - Verify: layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
   - Files: web/src/app/predict/page.tsx
@@ -205,7 +205,7 @@
   - Verify: sounds play, can be muted
   - Files: web/src/hooks/useSound.ts, web/public/sounds/
 
-- [@w2] T032 Confetti animation on level up
+- [x] T032 Confetti animation on level up
   - Scope: web/src/components/
   - Verify: confetti triggers on level milestone
   - Files: web/src/components/Confetti.tsx

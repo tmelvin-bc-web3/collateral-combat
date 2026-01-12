@@ -1,0 +1,11 @@
+```
+---TASK_COMPLETE---
+Task: T031
+Status: DONE
+Files modified: 
+- web/src/hooks/useSound.ts (created)
+- web/public/sounds/win.mp3 (created - placeholder)
+- web/public/sounds/loss.mp3 (created - placeholder)
+Verification: PASS
+---END_TASK---
+```

@@ -1,16 +1,16 @@
-# Current Task: T032
+# Current Task: T060
 
 ## Description
-Confetti animation on level up
+Oracle layout restructure - reorder to Chart→Buttons→Amount
 
 ## Scope
-web/src/components/
+web/src/app/predict/
 
 ## Files to Modify
-web/src/components/Confetti.tsx
+web/src/app/predict/page.tsx
 
 ## Verification
-confetti triggers on level milestone
+layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
 
 ## Worker
 w2 (Attempt 1 of 3)
