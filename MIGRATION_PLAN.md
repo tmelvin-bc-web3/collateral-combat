@@ -84,7 +84,7 @@
   - Verify: arrow at right edge of chart (↑ green if positive, ↓ red if negative)
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w1] T044 Oracle Long/Short button redesign
+- [x] T044 Oracle Long/Short button redesign
   - Scope: web/src/app/predict/
   - Verify: buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -94,7 +94,7 @@
   - Verify: selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T046 Oracle recent history row polish
+- [@w1] T046 Oracle recent history row polish
   - Scope: web/src/app/predict/
   - Verify: older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

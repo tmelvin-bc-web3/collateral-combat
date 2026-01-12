@@ -1,7 +1,7 @@
-# Current Task: T045
+# Current Task: T046
 
 ## Description
-Oracle bet amount selector improvements
+Oracle recent history row polish
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
+older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
