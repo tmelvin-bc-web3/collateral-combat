@@ -346,6 +346,102 @@
 
 ---
 
+## P1 - Oracle Finalization (Critical)
+
+> These tasks complete the Oracle feature by ensuring backend, smart contracts, and frontend work together.
+
+### Backend Persistence
+
+- [ ] T200 Add database persistence for prediction bets
+  - Scope: backend/src/services/predictionService.ts, backend/src/database/
+  - Add: Save bets to database when placed (create prediction_bets table if needed)
+  - Add: Call userStatsDb.recordWager() when bet placed
+  - Add: Store round history with outcomes
+  - Verify: Bets persist across server restart, stats tracked
+  - Files: backend/src/services/predictionService.ts, backend/src/database/userStats.ts
+
+- [ ] T201 Add prediction bet history API endpoint
+  - Scope: backend/src/routes/
+  - Add: GET /api/predictions/history/:wallet - user's bet history
+  - Add: GET /api/predictions/round/:roundId - round details with all bets
+  - Verify: Frontend can fetch historical bets
+  - Files: backend/src/routes/predictions.ts (create if needed)
+
+### Smart Contract Alignment
+
+> ⚠️ **USE SOLANA MCP** - Workers on these tasks MUST use the Solana MCP for building, testing, and deploying.
+
+- [ ] T210 Fix smart contract timing constants
+  - Scope: prediction_program/programs/prediction_program/src/
+  - Change: LOCK_PERIOD from 10s to 5s to match backend
+  - Verify: On-chain round timing matches off-chain (25s betting, 5s locked)
+  - Files: prediction_program/programs/prediction_program/src/lib.rs
+  - REQUIRES: Solana MCP, deploy to devnet first
+
+- [ ] T211 Add early bird multiplier to smart contract
+  - Scope: prediction_program/programs/prediction_program/src/
+  - Add: Store bet_timestamp in PlayerPosition PDA
+  - Add: Calculate early bird multiplier in claim_winnings (20% max, linear decay over betting period)
+  - Formula: multiplier = 1 + (0.20 * (1 - timeIntoRound/bettingDuration))
+  - Verify: Early bets receive bonus payout on-chain
+  - Files: prediction_program/programs/prediction_program/src/state.rs, lib.rs
+  - REQUIRES: Solana MCP, deploy to devnet first
+
+- [ ] T212 Add round status enum for locked state
+  - Scope: prediction_program/programs/prediction_program/src/
+  - Change: RoundStatus enum from {Open, Settled} to {Betting, Locked, Settled}
+  - Update: Crank instruction to transition through Locked state
+  - Update: place_bet to only allow bets during Betting status
+  - Verify: Frontend type mismatch resolved
+  - Files: prediction_program/programs/prediction_program/src/state.rs, lib.rs
+  - REQUIRES: Solana MCP, deploy to devnet first
+
+### Frontend Integration
+
+- [ ] T220 Fix frontend type definitions for round status
+  - Scope: web/src/lib/prediction/, web/src/hooks/usePrediction.ts
+  - Update: RoundStatus type to match contract (Betting/Locked/Settled)
+  - Update: Status mapping and display logic in usePrediction.ts
+  - Verify: No TypeScript errors, correct status shown in UI
+  - Files: web/src/lib/prediction/types.ts, web/src/hooks/usePrediction.ts
+
+- [ ] T221 Add claim winnings UI flow
+  - Scope: web/src/app/predict/page.tsx
+  - Add: "Claim Winnings" button when user has unclaimed on-chain wins
+  - Add: Loading state during claim transaction
+  - Add: Success/error toasts after claim
+  - Verify: User can claim on-chain wins through UI
+  - Files: web/src/app/predict/page.tsx, web/src/hooks/usePrediction.ts
+
+- [ ] T222 Replace mock Live Bets with real data
+  - Scope: web/src/app/predict/page.tsx
+  - Change: Mock liveBets array to real socket stream
+  - Add: Subscribe to bet_placed socket event from backend
+  - Add: Show actual bets as they come in (last 10)
+  - Verify: Live bets sidebar shows real activity
+  - Files: web/src/app/predict/page.tsx
+
+- [ ] T223 Remove dead code from prediction client
+  - Scope: web/src/lib/prediction/client.ts
+  - Delete: initializeRound() method - not a real contract instruction
+  - Delete: lockRound() method - not a real contract instruction
+  - Delete: settleRound() method - not a real contract instruction
+  - Verify: No dead code, only methods that map to contract instructions remain
+  - Files: web/src/lib/prediction/client.ts
+
+### Testing
+
+- [ ] T230 Integration test suite for Oracle
+  - Scope: backend/tests/, web/tests/ (or web/src/__tests__/)
+  - Add: Test bet placement and database persistence
+  - Add: Test round lifecycle (betting → locked → settled)
+  - Add: Test payout calculation with early bird multiplier
+  - Add: Test on-chain/off-chain mode switching
+  - Verify: All critical paths covered, tests pass
+  - Files: backend/tests/prediction.test.ts, web/src/__tests__/predict.test.ts
+
+---
+
 ## Completed
 
 _Tasks marked [x] are moved here after verification_

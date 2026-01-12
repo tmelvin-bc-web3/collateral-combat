@@ -70,6 +70,7 @@ export function useProfile(walletAddress: string | null) {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            'x-wallet-address': walletAddress,
           },
           body: JSON.stringify(updates),
         });
@@ -100,6 +101,9 @@ export function useProfile(walletAddress: string | null) {
     try {
       await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
         method: 'DELETE',
+        headers: {
+          'x-wallet-address': walletAddress,
+        },
       });
     } catch {
       // Delete failed - continue with local cleanup
