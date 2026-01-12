@@ -9,18 +9,20 @@
 
 ### Tasks
 
-- [ ] **T200** Add database persistence for prediction bets
+- [x] **T200** Add database persistence for prediction bets
   - Save bets to database when placed (create prediction_bets table if needed)
-  - Call `userStatsDb.recordWager()` when bet placed
+  - Call `userStatsDb.recordWager()` when bet settled
   - Store round history with outcomes
-  - Files: `backend/src/services/predictionService.ts`, `backend/src/database/userStats.ts`
+  - Files: `backend/src/services/predictionService.ts`, `backend/src/db/userStatsDatabase.ts`
   - Verify: Bets persist across server restart
+  - **Done:** Added `recordBetToDatabase()` method in predictionService.ts that calls `userStatsDb.recordWager()` when bets are settled
 
-- [ ] **T201** Add prediction bet history API endpoint
-  - GET `/api/predictions/history/:wallet` - user's bet history
+- [x] **T201** Add prediction bet history API endpoint
+  - GET `/api/predictions/history/:wallet` - user's bet history (filtered to prediction type)
   - GET `/api/predictions/round/:roundId` - round details with all bets
-  - Files: `backend/src/routes/predictions.ts` (create if needed)
+  - Files: `backend/src/index.ts`, `backend/src/db/userStatsDatabase.ts`
   - Verify: Frontend can fetch historical bets
+  - **Done:** Added both endpoints in index.ts, added `getWagersByRoundId()` function in userStatsDatabase.ts
 
 ---
 

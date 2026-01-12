@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PredictionRound, PredictionBet, PredictionSide, RoundStatus, PredictionStats } from '../types';
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
+import * as userStatsDb from '../db/userStatsDatabase';
 
 const ROUND_DURATION = 30; // 30 seconds per round
 const LOCK_BEFORE_END = 5; // Stop accepting bets 5 seconds before end
@@ -192,6 +193,8 @@ class PredictionService {
       [...round.longBets, ...round.shortBets].forEach(bet => {
         bet.status = round.winner === 'push' ? 'push' : 'cancelled';
         bet.payout = bet.amount; // Refund
+        // Record wager to database
+        this.recordBetToDatabase(bet, round);
       });
       return;
     }
@@ -207,6 +210,8 @@ class PredictionService {
       const earlyBirdMultiplier = this.getEarlyBirdMultiplier(bet, round);
       bet.payout = basePayout * earlyBirdMultiplier;
       bet.status = 'won';
+      // Record wager to database
+      this.recordBetToDatabase(bet, round);
     });
 
     // Mark losing bets
@@ -214,10 +219,29 @@ class PredictionService {
     losingBets.forEach(bet => {
       bet.status = 'lost';
       bet.payout = 0;
+      // Record wager to database
+      this.recordBetToDatabase(bet, round);
     });
 
     // Award XP to all participants
     this.awardPredictionXp(round, winningBets, losingBets);
+  }
+
+  // Record a bet to the user stats database
+  private recordBetToDatabase(bet: PredictionBet, round: PredictionRound): void {
+    try {
+      const profitLoss = (bet.payout || 0) - bet.amount;
+      userStatsDb.recordWager(
+        bet.bettor,
+        'prediction',
+        bet.amount,
+        bet.status as userStatsDb.WagerOutcome,
+        profitLoss,
+        round.id
+      );
+    } catch (error) {
+      console.error(`Failed to record prediction bet to database:`, error);
+    }
   }
 
   // Award XP based on prediction results

@@ -174,6 +174,10 @@ const getUserRank = db.prepare(`
   WHERE total_profit_loss > (SELECT total_profit_loss FROM user_stats_cache WHERE wallet_address = ?)
 `);
 
+const getWagersByGameId = db.prepare(`
+  SELECT * FROM user_wagers WHERE game_id = ? ORDER BY created_at DESC
+`);
+
 // ===================
 // Functions
 // ===================
@@ -376,6 +380,11 @@ export function getUserRankByProfit(walletAddress: string): number | null {
   const result = getUserRank.get(walletAddress) as any;
   if (!result) return null;
   return result.rank;
+}
+
+export function getWagersByRoundId(roundId: string): UserWager[] {
+  const rows = getWagersByGameId.all(roundId) as any[];
+  return rows.map(mapWagerRow);
 }
 
 function mapWagerRow(row: any): UserWager {

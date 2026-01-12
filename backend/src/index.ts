@@ -247,6 +247,54 @@ app.post('/api/prediction/:asset/stop', requireAdmin(), (req: Request, res: Resp
   res.json({ status: 'stopped', asset: req.params.asset });
 });
 
+// Prediction history endpoints
+app.get('/api/predictions/history/:wallet', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  const result = userStatsDb.getWagerHistory(req.params.wallet, {
+    limit,
+    offset,
+    wagerType: 'prediction',
+  });
+
+  res.json({
+    bets: result.wagers,
+    total: result.total,
+    limit,
+    offset,
+  });
+});
+
+app.get('/api/predictions/round/:roundId', (req, res) => {
+  const roundId = req.params.roundId;
+
+  // Get all bets for this round from the database
+  const bets = userStatsDb.getWagersByRoundId(roundId);
+
+  if (bets.length === 0) {
+    return res.status(404).json({ error: 'Round not found or has no bets' });
+  }
+
+  // Calculate round summary from bets
+  const summary = {
+    roundId,
+    totalBets: bets.length,
+    totalWagered: bets.reduce((sum, b) => sum + b.amount, 0),
+    totalPayout: bets.reduce((sum, b) => sum + b.profitLoss + b.amount, 0),
+    bets: bets.map(b => ({
+      id: b.id,
+      wallet: b.walletAddress,
+      amount: b.amount,
+      outcome: b.outcome,
+      profitLoss: b.profitLoss,
+      createdAt: b.createdAt,
+    })),
+  };
+
+  res.json(summary);
+});
+
 // ===================
 // Draft Tournament Endpoints
 // ===================
