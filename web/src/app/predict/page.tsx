@@ -467,10 +467,10 @@ export default function PredictPage() {
                 }`}>
                   {isBettingOpen ? 'Place your wager' : isLocked ? 'Locked' : 'Starting...'}
                 </div>
-                <div className={`text-4xl md:text-6xl font-black font-mono tabular-nums leading-none ${
+                <div className={`text-5xl md:text-8xl font-black font-mono tabular-nums leading-none oracle-countdown-glow ${
                   timeRemaining <= 5 ? 'text-danger animate-pulse' :
                   timeRemaining <= 10 ? 'text-accent' :
-                  'text-text-primary'
+                  'text-warning'
                 }`}>
                   {timeRemaining}
                 </div>

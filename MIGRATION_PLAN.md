@@ -42,7 +42,7 @@
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx
 
-- [@w1] T011 Leaderboard page mobile layout
+- [x] T011 Leaderboard page mobile layout
   - Scope: web/src/app/leaderboard/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/leaderboard/page.tsx
@@ -69,7 +69,7 @@
   - Verify: countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T041 Oracle chart line improvements
+- [@w1] T041 Oracle chart line improvements
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
   - Files: web/src/components/RealtimeChart.tsx

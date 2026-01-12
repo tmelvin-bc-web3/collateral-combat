@@ -1,19 +1,19 @@
-# Current Task: T040
+# Current Task: T041
 
 ## Description
-Oracle countdown timer enhancement
+Oracle chart line improvements
 
 ## Scope
-web/src/app/predict/
+web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+web/src/components/RealtimeChart.tsx
 
 ## Verification
-countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
+line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

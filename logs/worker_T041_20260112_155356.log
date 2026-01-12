@@ -1,0 +1,13 @@
+The changes are correctly applied:
+
+1. **Line stroke +1px thicker**: Changed from `2.5` to `3.5` (line 222)
+2. **Gradient fill under line**: Updated to always use green (`rgba(16, 185, 129, ...)`) with 8% opacity at top fading to 4% at middle and 0% (transparent) at bottom (lines 214-216)
+
+```
+---TASK_COMPLETE---
+Task: T041
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```

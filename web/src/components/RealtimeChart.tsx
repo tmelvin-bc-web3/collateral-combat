@@ -209,22 +209,17 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       ctx.lineTo(path[path.length - 1].x, padding.top + chartH);
       ctx.closePath();
 
+      // Gradient fill under line - always green with 5-8% opacity fading to transparent
       const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
-      if (isUp) {
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.15)');
-        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.05)');
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-      } else {
-        gradient.addColorStop(0, 'rgba(244, 63, 94, 0.15)');
-        gradient.addColorStop(0.5, 'rgba(244, 63, 94, 0.05)');
-        gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
-      }
+      gradient.addColorStop(0, 'rgba(16, 185, 129, 0.08)');
+      gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.04)');
+      gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
       ctx.fillStyle = gradient;
       ctx.fill();
 
       // Main line - smooth curve
       ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3.5;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       drawSmoothLine(path);

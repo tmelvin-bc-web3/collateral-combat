@@ -1221,6 +1221,20 @@ input[type="number"] {
   animation: pulseRing 1.5s ease-out infinite;
 }
 
+/* Oracle countdown pulsing orange glow */
+@keyframes oracleCountdownGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255, 85, 0, 0.4), 0 0 40px rgba(255, 85, 0, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(255, 85, 0, 0.8), 0 0 60px rgba(255, 85, 0, 0.4);
+  }
+}
+
+.oracle-countdown-glow {
+  animation: oracleCountdownGlow 1s ease-in-out infinite;
+}
+
 /* Entry success animation */
 @keyframes entrySuccess {
   0% {
