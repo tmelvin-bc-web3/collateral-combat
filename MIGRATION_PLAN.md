@@ -303,6 +303,8 @@
 
 ## P2.6 - Mobile Responsiveness (Medium Priority)
 
+> ⚠️ **CONSTRAINT**: Mobile changes must NOT alter desktop layout. Use responsive breakpoints (sm:, md:, lg:) only. Test both mobile AND desktop before marking complete.
+
 - [ ] T110 Oracle page mobile layout
   - Scope: web/src/app/predict/
   - Verify: fully usable at 375px width, buttons large enough to tap, chart readable, no horizontal scroll
