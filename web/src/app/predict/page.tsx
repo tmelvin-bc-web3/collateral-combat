@@ -384,14 +384,6 @@ export default function PredictPage() {
     return selectedAmountSol * odds;
   };
 
-  // Get display value in SOL or USD
-  const getDisplayAmount = (solAmount: number): string => {
-    if (USE_ON_CHAIN_BETTING) {
-      return `${solAmount.toFixed(3)} SOL`;
-    }
-    return `$${(solAmount * currentPrice).toFixed(0)}`;
-  };
-
   const getStreak = () => {
     let streak = 0;
     let streakSide: PredictionSide | null = null;
@@ -827,98 +819,42 @@ export default function PredictPage() {
           )}
         </div>
 
-        {/* Sidebar - Post-bet stats only */}
+        {/* Sidebar - Minimal: wallet balance + bet amount only */}
         <div className="space-y-3 oracle-dimmable">
-          {/* POST-BET STATE: Full stats revealed */}
+          {/* Wallet Display */}
+          <div className="card p-3">
+            <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Wallet</div>
+            {publicKey ? (
+              <div className="font-mono text-sm font-bold text-text-primary truncate">
+                {publicKey.toBase58().slice(0, 4)}...{publicKey.toBase58().slice(-4)}
+              </div>
+            ) : (
+              <div className="text-xs text-text-tertiary">Not connected</div>
+            )}
+          </div>
+
+          {/* Selected Bet Amount */}
+          <div className="card p-3">
+            <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-1">Bet Amount</div>
+            <div className="font-mono text-lg font-bold text-accent">
+              {useFreeBet && freeBetBalance && freeBetBalance.balance > 0
+                ? `${FREE_BET_AMOUNT_SOL} SOL (FREE)`
+                : `${selectedAmountSol} SOL`
+              }
+            </div>
+          </div>
+
+          {/* Bet Confirmation - only after betting */}
           {hasBetThisRound && (
-            <div className="space-y-3 animate-fadeIn">
-              {/* Bet Confirmation Banner */}
-              <div className="card p-3 bg-accent/10 border-accent/30 transition-all duration-300 ease-out">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xs text-accent uppercase tracking-wider">Bet Locked</h3>
-                    <p className="text-[9px] text-text-tertiary">Watching the action...</p>
-                  </div>
+            <div className="card p-3 bg-accent/10 border-accent/30 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-              </div>
-
-              {/* Full Round Stats - Now visible */}
-              <div className="card p-3 border-accent/20 transition-all duration-300 ease-out">
-                <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-accent flex items-center gap-2">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Live Stats
-                </h3>
-                {currentRound && (
-                  <div className="space-y-2">
-                    {/* Total Pool */}
-                    <div className="p-2 rounded-lg bg-bg-tertiary border border-border-primary text-center">
-                      <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-0.5">Total Pool</div>
-                      <div className="font-mono text-base font-bold text-text-primary">
-                        ${currentRound.totalPool.toFixed(0)}
-                      </div>
-                    </div>
-
-                    {/* Long vs Short */}
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div className="p-2 rounded-lg bg-success/5 border border-success/20 text-center">
-                        <div className="text-[9px] text-success/70 uppercase tracking-wider">Longs</div>
-                        <div className="font-mono text-sm font-bold text-success">{currentRound.longBets.length}</div>
-                        <div className="font-mono text-[9px] text-text-tertiary">${currentRound.longPool.toFixed(0)}</div>
-                      </div>
-                      <div className="p-2 rounded-lg bg-danger/5 border border-danger/20 text-center">
-                        <div className="text-[9px] text-danger/70 uppercase tracking-wider">Shorts</div>
-                        <div className="font-mono text-sm font-bold text-danger">{currentRound.shortBets.length}</div>
-                        <div className="font-mono text-[9px] text-text-tertiary">${currentRound.shortPool.toFixed(0)}</div>
-                      </div>
-                    </div>
-
-                    {/* Pool Ratio Bar */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px] text-text-tertiary">
-                        <span>{currentRound.totalPool > 0 ? ((currentRound.longPool / currentRound.totalPool) * 100).toFixed(0) : 50}%</span>
-                        <span>{currentRound.totalPool > 0 ? ((currentRound.shortPool / currentRound.totalPool) * 100).toFixed(0) : 50}%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-bg-tertiary overflow-hidden flex">
-                        <div
-                          className="h-full bg-success transition-all duration-300"
-                          style={{ width: `${currentRound.totalPool > 0 ? (currentRound.longPool / currentRound.totalPool) * 100 : 50}%` }}
-                        />
-                        <div
-                          className="h-full bg-danger transition-all duration-300"
-                          style={{ width: `${currentRound.totalPool > 0 ? (currentRound.shortPool / currentRound.totalPool) * 100 : 50}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Live Odds */}
-                    <div className="grid grid-cols-2 gap-1.5 pt-1">
-                      <div className="text-center p-1.5 rounded bg-success/5 border border-success/20">
-                        <div className="text-[8px] text-success/70 uppercase">Long Odds</div>
-                        <div className="font-mono text-xs font-bold text-success">{getOdds('long')}x</div>
-                      </div>
-                      <div className="text-center p-1.5 rounded bg-danger/5 border border-danger/20">
-                        <div className="text-[8px] text-danger/70 uppercase">Short Odds</div>
-                        <div className="font-mono text-xs font-bold text-danger">{getOdds('short')}x</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Compact Rules - de-emphasized */}
-              <div className="card p-2 opacity-50 border-warning/10">
-                <div className="flex items-center gap-1.5 text-[9px] text-text-tertiary">
-                  <svg className="w-3 h-3 text-warning/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Final price after 30s determines the winner</span>
+                <div>
+                  <h3 className="font-bold text-xs text-accent uppercase tracking-wider">Bet Locked</h3>
                 </div>
               </div>
             </div>

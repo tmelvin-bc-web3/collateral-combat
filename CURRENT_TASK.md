@@ -1,7 +1,7 @@
-# Current Task: T075
+# Current Task: T076
 
 ## Description
-Oracle remove duplicate win displays - DELETION TASK
+Oracle remove or gut right column - DELETION TASK
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-win amount ONLY inside Long/Short buttons, DELETE standalone "Potential Return" card, DELETE any other win amount displays
+right column REMOVED or shows ONLY wallet balance + bet amount, DELETE pools/counts/rules during betting phase
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

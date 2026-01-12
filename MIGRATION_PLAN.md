@@ -234,7 +234,7 @@
   - Verify: chart shows ONLY price line + lock price + current price, DELETE all banners/status text/captions, chart must feel QUIET
   - Files: web/src/components/RealtimeChart.tsx
 
-- [@w1] T073 Oracle single price consolidation - DELETION TASK
+- [x] T073 Oracle single price consolidation - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: ONE price display only ("$142.52" with optional "SOL/USD" above), DELETE all duplicate price readouts, DELETE "from $X" helper text
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -249,7 +249,7 @@
   - Verify: win amount ONLY inside Long/Short buttons, DELETE standalone "Potential Return" card, DELETE any other win amount displays
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T076 Oracle remove or gut right column - DELETION TASK
+- [@w1] T076 Oracle remove or gut right column - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: right column REMOVED or shows ONLY wallet balance + bet amount, DELETE pools/counts/rules during betting phase
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

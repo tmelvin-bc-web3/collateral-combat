@@ -1,0 +1,16 @@
+TypeScript verification passes.
+
+```
+---TASK_COMPLETE---
+Task: T075
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+---END_TASK---
+```
+
+**Summary of changes:**
+- Removed unused `getDisplayAmount` function (dead code cleanup)
+- Win amounts remain ONLY inside Long/Short buttons: `{selectedAmountSol} SOL → Win {getPotentialWin('long').toFixed(2)} SOL`
+- No standalone "Potential Return" card exists (was already removed)
+- Sidebar was simplified by linter to show only wallet + bet amount (removed duplicate stats displays)
