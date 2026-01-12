@@ -224,7 +224,7 @@
   - Verify: ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
-- [@w1] T071 Oracle delete narrative UI blocks - DELETION TASK
+- [x] T071 Oracle delete narrative UI blocks - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
