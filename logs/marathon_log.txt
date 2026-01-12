@@ -131,3 +131,6 @@
 2026-01-12 16:19:42 | COMMIT: T065 - Oracle chart height reduction
 2026-01-12 16:19:42 | SUCCESS: T065 (attempt 1)
 2026-01-12 16:19:45 | FOUND: T066
+2026-01-12 16:20:25 | COMMIT: T064 - Oracle right column pre/post-bet states
+2026-01-12 16:20:25 | SUCCESS: T064 (attempt 1)
+2026-01-12 16:20:28 | FOUND: T067

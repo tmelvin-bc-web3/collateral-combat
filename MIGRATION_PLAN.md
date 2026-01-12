@@ -147,7 +147,7 @@
   - Verify: hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T064 Oracle right column pre/post-bet states
+- [x] T064 Oracle right column pre/post-bet states
   - Scope: web/src/app/predict/
   - Verify: pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -162,7 +162,7 @@
   - Verify: remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T067 Oracle bet amount de-emphasis
+- [@w1] T067 Oracle bet amount de-emphasis
   - Scope: web/src/app/predict/
   - Verify: bet amount selector below Long/Short buttons, reduced glow/contrast, smaller container, feels secondary to direction choice
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

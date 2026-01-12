@@ -1,7 +1,7 @@
-# Current Task: T066
+# Current Task: T067
 
 ## Description
-Oracle copy refinements
+Oracle bet amount de-emphasis
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
+bet amount selector below Long/Short buttons, reduced glow/contrast, smaller container, feels secondary to direction choice
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
