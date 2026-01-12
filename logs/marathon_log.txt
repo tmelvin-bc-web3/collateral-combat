@@ -80,3 +80,6 @@
 2026-01-12 15:57:29 | COMMIT: T045 - Oracle bet amount selector improvements
 2026-01-12 15:57:29 | SUCCESS: T045 (attempt 1)
 2026-01-12 15:57:32 | FOUND: T047
+2026-01-12 15:58:10 | COMMIT: T046 - Oracle recent history row polish
+2026-01-12 15:58:10 | SUCCESS: T046 (attempt 1)
+2026-01-12 15:58:13 | FOUND: T048

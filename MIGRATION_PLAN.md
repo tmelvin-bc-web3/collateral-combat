@@ -94,7 +94,7 @@
   - Verify: selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T046 Oracle recent history row polish
+- [x] T046 Oracle recent history row polish
   - Scope: web/src/app/predict/
   - Verify: older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -104,7 +104,7 @@
   - Verify: "This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T048 Oracle copy/text clarity updates
+- [@w1] T048 Oracle copy/text clarity updates
   - Scope: web/src/app/predict/
   - Verify: "PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

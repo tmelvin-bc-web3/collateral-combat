@@ -1,0 +1,21 @@
+The changes have been successfully applied. Here's a summary of the de-emphasis changes made to the "This Round" section:
+
+**Changes Made:**
+
+1. **Card opacity**: Added `opacity-60` to the entire card container to visually de-emphasize it
+2. **Header**: Changed from `font-semibold mb-3 text-sm` to `font-medium mb-2 text-[10px]`, and from `text-text-secondary` to `text-text-tertiary` (reduced contrast)
+3. **Spacing**: Reduced `space-y-2` to `space-y-1`, and `py-2` to `py-1.5`
+4. **Border opacity**: Changed `border-border-primary` to `border-border-primary/50` (50% opacity)
+5. **Labels**: Changed from `text-text-secondary text-sm` to `text-text-tertiary text-xs` (smaller and lower contrast)
+6. **Values**: Changed from `font-mono font-bold text-accent/success/danger` to `font-mono text-xs text-text-secondary` (removed bold, removed color emphasis, smaller font)
+
+These changes ensure the "This Round" and pool stats section has reduced contrast, smaller font, and won't compete visually with the prominent Long/Short buttons.
+
+```
+---TASK_COMPLETE---
+Task: T047
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+---END_TASK---
+```

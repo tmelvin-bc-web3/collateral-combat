@@ -1,7 +1,7 @@
-# Current Task: T047
+# Current Task: T048
 
 ## Description
-Oracle right column de-emphasis
+Oracle copy/text clarity updates
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-"This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
+"PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
 
 ## Worker
-w2 (Attempt 1 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above
