@@ -61,7 +61,8 @@ case "$ACTION" in
     complete)
         # Mark task as done
         if grep -q "$TASK_ID" "$PLAN_FILE"; then
-            sed -i '' "s/^- \[[@x! ]*\] $TASK_ID /- [x] $TASK_ID /" "$PLAN_FILE"
+            # Match any bracket content: [ ], [@w1], [!], [x] etc
+            sed -i '' "s/^- \[[^]]*\] $TASK_ID /- [x] $TASK_ID /" "$PLAN_FILE"
             echo -e "${GREEN}✓ Completed $TASK_ID${NC}"
         else
             echo -e "${RED}✗ $TASK_ID not found${NC}"
@@ -72,7 +73,8 @@ case "$ACTION" in
     fail)
         # Mark task as failed
         if grep -q "$TASK_ID" "$PLAN_FILE"; then
-            sed -i '' "s/^- \[[@x ]*\] $TASK_ID /- [!] $TASK_ID /" "$PLAN_FILE"
+            # Match any bracket content: [ ], [@w1], [x] etc
+            sed -i '' "s/^- \[[^]]*\] $TASK_ID /- [!] $TASK_ID /" "$PLAN_FILE"
             echo -e "${RED}✗ Marked $TASK_ID as failed${NC}"
         else
             echo -e "${RED}✗ $TASK_ID not found${NC}"

@@ -1,0 +1,17 @@
+All tasks completed. Here's a summary:
+
+```
+---TASK_COMPLETE---
+Task: T013
+Status: DONE
+Files modified:
+  - web/src/components/ui/Card.tsx (renamed from card.tsx, updated styling)
+  - web/src/components/ui/skeleton.tsx (updated to use Card)
+  - web/src/components/BattleLobby.tsx (updated to use Card)
+  - web/src/components/BattleArena.tsx (updated to use Card)
+  - web/src/components/FeaturedBattle.tsx (updated to use Card)
+  - web/src/components/BettingPanel.tsx (updated to use Card)
+  - web/src/components/SpectatorView.tsx (updated to use Card)
+Verification: PASS
+---END_TASK---
+```

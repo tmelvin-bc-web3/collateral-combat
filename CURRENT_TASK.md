@@ -1,16 +1,16 @@
-# Current Task: T012
+# Current Task: T013
 
 ## Description
-Header mobile menu implementation
+Consistent card styling across pages
 
 ## Scope
-web/src/components/Header/
+web/src/components/
 
 ## Files to Modify
-web/src/components/Header/*.tsx
+web/src/components/ui/Card.tsx, web/src/components/**/*.tsx
 
 ## Verification
-hamburger menu works, closes on navigation
+all cards use shared Card component
 
 ## Worker
 w1 (Attempt 1 of 3)

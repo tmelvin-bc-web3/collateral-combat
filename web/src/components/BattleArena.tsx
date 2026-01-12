@@ -8,6 +8,7 @@ import { TradingViewChart } from './TradingViewChart';
 import { AssetIcon } from './AssetIcon';
 import { ASSETS } from '@/lib/assets';
 import { Battle, PerpPosition, Leverage, PositionSide } from '@/types';
+import { Card } from './ui/Card';
 
 const LEVERAGE_OPTIONS: Leverage[] = [2, 5, 10, 20];
 
@@ -162,7 +163,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
       </div>
 
       {/* Chart Section */}
-      <div className="card mb-6 overflow-hidden">
+      <Card className="mb-6 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-border-primary bg-bg-tertiary/50">
           <div className="flex items-center gap-4">
             <span className="font-bold text-lg">{selectedAsset}/USD</span>
@@ -185,13 +186,13 @@ export function BattleArena({ battle }: BattleArenaProps) {
             <TradingViewChart symbol={selectedAsset} height={350} />
           </div>
         )}
-      </div>
+      </Card>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: Account & Positions - 2 columns */}
         <div className="lg:col-span-2 space-y-6">
           {/* Open Positions */}
-          <div className="card">
+          <Card>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-purple-500/20 flex items-center justify-center">
@@ -232,10 +233,10 @@ export function BattleArena({ battle }: BattleArenaProps) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Trade History */}
-          <div className="card">
+          <Card>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-purple-500/20 flex items-center justify-center">
                 <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -282,12 +283,12 @@ export function BattleArena({ battle }: BattleArenaProps) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Right: Trading Panel */}
         <div className="lg:col-span-1">
-          <div className="card sticky top-24">
+          <Card className="sticky top-24">
             {/* Header */}
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center">
@@ -478,7 +479,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
                 <span className="text-warning text-sm">Already have {selectedAsset} position</span>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>
@@ -559,7 +560,7 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         {/* Background glow */}
         <div className={`absolute inset-0 blur-3xl ${isWinner ? 'bg-accent/20' : 'bg-danger/10'}`} />
 
-        <div className="relative card overflow-hidden">
+        <Card className="relative overflow-hidden">
           {/* Confetti effect for winner */}
           {isWinner && (
             <div className="absolute inset-0 bg-gradient-to-b from-accent/10 via-transparent to-transparent" />
@@ -649,7 +650,7 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               </div>
             </button>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { LiveBattle } from '@/types';
 import { UserAvatar } from './UserAvatar';
+import { Card } from './ui/Card';
 
 export function FeaturedBattle() {
   const [featuredBattle, setFeaturedBattle] = useState<LiveBattle | null>(null);
@@ -69,7 +70,7 @@ export function FeaturedBattle() {
 
   if (!featuredBattle) {
     return (
-      <div className="card border border-border-primary mb-8">
+      <Card className="border border-border-primary mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-text-tertiary" />
@@ -86,7 +87,7 @@ export function FeaturedBattle() {
           <h3 className="font-semibold mb-1 text-text-secondary">No Live Battles</h3>
           <p className="text-sm text-text-tertiary mb-4">Be the first to start a battle and others can watch!</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -109,7 +110,7 @@ export function FeaturedBattle() {
   const p2Winning = player2Pnl > player1Pnl;
 
   return (
-    <div className="card border border-accent/20 mb-8">
+    <Card className="border border-accent/20 mb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -179,6 +180,6 @@ export function FeaturedBattle() {
           Watch & Wager
         </Link>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,0 +1,18 @@
+Build passes successfully. The leaderboard page has been made mobile responsive for 375px and 768px breakpoints.
+
+Summary of mobile layout changes:
+1. **Container**: Added `px-4 sm:px-6` padding for mobile edge spacing
+2. **Hero section**: Reduced padding on mobile (`py-8 sm:py-12`), scaled down title (`text-3xl sm:text-4xl md:text-5xl`), adjusted description text size
+3. **Stats overview**: Smaller gaps and padding on mobile, reduced icon and text sizes
+4. **Time filter**: Full width on mobile, icons-only on small screens, scrollable overflow
+5. **Podium cards**: Single column on mobile with proper ordering (1st, 2nd, 3rd), reduced padding and text sizes
+6. **Leaderboard table**: Desktop table hidden on mobile (`hidden md:block`), replaced with mobile-friendly card layout (`md:hidden`) with 3-column stat grid
+
+```
+---TASK_COMPLETE---
+Task: T011
+Status: DONE
+Files modified: web/src/app/leaderboard/page.tsx
+Verification: PASS
+---END_TASK---
+```

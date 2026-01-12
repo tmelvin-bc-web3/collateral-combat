@@ -7,6 +7,7 @@ import { BattleConfig, BattleDuration } from '@/types';
 import { FeaturedBattle } from './FeaturedBattle';
 import { AssetIcon } from './AssetIcon';
 import { ASSETS } from '@/lib/assets';
+import { Card } from './ui/Card';
 
 const DURATION_OPTIONS: { value: BattleDuration; label: string; icon: string }[] = [
   { value: 1800, label: '30 min', icon: 'flash' },
@@ -170,10 +171,10 @@ export function BattleLobby() {
             { value: '30 min', label: 'Fight Duration', color: 'text-accent' },
             { value: '95%', label: 'Survivor Loot', color: 'text-success' },
           ].map((stat) => (
-            <div key={stat.label} className="card text-center p-6 hover:border-warning/30 transition-colors border-warning/10">
+            <Card key={stat.label} className="text-center p-6 hover:border-warning/30 transition-colors border-warning/10">
               <div className={`text-2xl font-black mb-1 ${stat.color}`}>{stat.value}</div>
               <div className="text-sm text-text-tertiary uppercase tracking-wide">{stat.label}</div>
-            </div>
+            </Card>
           ))}
         </div>
 
@@ -215,7 +216,7 @@ export function BattleLobby() {
               },
             ].map((item) => (
               <div key={item.step} className="relative">
-                <div className="card h-full p-8 hover:border-warning/30 transition-all group border-warning/10">
+                <Card className="h-full p-8 hover:border-warning/30 transition-all group border-warning/10">
                   <div className="absolute -top-4 -left-2 text-6xl font-black text-warning/10 group-hover:text-warning/20 transition-colors">
                     {item.step}
                   </div>
@@ -226,7 +227,7 @@ export function BattleLobby() {
                     <h3 className="text-xl font-bold mb-3 uppercase">{item.title}</h3>
                     <p className="text-text-secondary leading-relaxed">{item.description}</p>
                   </div>
-                </div>
+                </Card>
               </div>
             ))}
           </div>
@@ -255,7 +256,7 @@ export function BattleLobby() {
 
         {/* Final CTA */}
         <div className="max-w-2xl mx-auto text-center mb-16">
-          <div className="card p-8 bg-gradient-to-br from-warning/5 via-bg-secondary to-danger/5 border-warning/20">
+          <Card className="p-8 bg-gradient-to-br from-warning/5 via-bg-secondary to-danger/5 border-warning/20">
             <h2 className="text-2xl font-black mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>Ready to <span className="text-warning">Enter the Dome?</span></h2>
             <p className="text-text-secondary mb-6">
               Connect your wallet and face your challenger. No risk to your real funds - just pure degen combat.
@@ -269,7 +270,7 @@ export function BattleLobby() {
             >
               Enter the Dome
             </button>
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -283,7 +284,7 @@ export function BattleLobby() {
           {/* Pulsing glow */}
           <div className="absolute inset-0 bg-accent/20 blur-3xl animate-pulse" />
 
-          <div className="relative card overflow-hidden">
+          <Card className="relative overflow-hidden">
             <div className="p-8">
               {/* Radar animation */}
               <div className="relative w-24 h-24 mx-auto mb-6">
@@ -321,7 +322,7 @@ export function BattleLobby() {
                 Cancel Search
               </button>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -334,7 +335,7 @@ export function BattleLobby() {
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-accent/20 via-success/20 to-accent/20 blur-3xl" />
 
-          <div className="relative card overflow-hidden">
+          <Card className="relative overflow-hidden">
             <div className="p-8">
               {/* Player avatars with VS */}
               <div className="flex items-center justify-center gap-6 mb-6">
@@ -392,7 +393,7 @@ export function BattleLobby() {
                 Leave Room
               </button>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     );
@@ -432,7 +433,7 @@ export function BattleLobby() {
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Battle Config - Takes up 3 columns */}
         <div className="lg:col-span-3">
-          <div className="card overflow-hidden">
+          <Card className="overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-bg-tertiary to-bg-secondary border-b border-border-primary">
               <div className="flex items-center gap-3">
@@ -608,13 +609,13 @@ export function BattleLobby() {
                 </button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Right Side - 2 columns */}
         <div className="lg:col-span-2 space-y-6">
           {/* How it Works */}
-          <div className="card">
+          <Card>
             <h2 className="font-bold text-lg mb-5 flex items-center gap-2">
               <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -642,10 +643,10 @@ export function BattleLobby() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Tradeable Assets */}
-          <div className="card">
+          <Card>
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -676,7 +677,7 @@ export function BattleLobby() {
                 <span className="font-bold text-accent">20x</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

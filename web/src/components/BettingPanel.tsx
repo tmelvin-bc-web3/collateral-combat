@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { LiveBattle, BattleOdds, SpectatorBet } from '@/types';
 import { getSocket } from '@/lib/socket';
+import { Card } from './ui/Card';
 
 interface BettingPanelProps {
   battle: LiveBattle;
@@ -95,7 +96,7 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
   const player2Leading = player1 && player2 && player2.account.totalPnlPercent > player1.account.totalPnlPercent;
 
   return (
-    <div className="card sticky top-24 overflow-hidden">
+    <Card className="sticky top-24 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
@@ -370,6 +371,6 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
           Odds update based on current P&L and betting activity. Higher odds means higher risk, but higher reward. If no one bets against you, your bet is returned.
         </p>
       </div>
-    </div>
+    </Card>
   );
 }

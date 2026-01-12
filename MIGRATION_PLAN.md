@@ -8,27 +8,27 @@
 
 ## P0 - Critical (Security Audit)
 
-- [@w1] T001 Scan codebase for exposed API keys and secrets
+- [ ] T001 Scan codebase for exposed API keys and secrets
   - Scope: entire repo
   - Verify: no matches for API_KEY, SECRET, PRIVATE_KEY patterns
   - Files: all .ts, .tsx, .js, .json, .env*
 
-- [@w1] T002 Audit public endpoints for auth requirements
+- [x] T002 Audit public endpoints for auth requirements
   - Scope: backend/src/routes/
   - Verify: all non-public routes have auth middleware
   - Files: backend/src/routes/*.ts, backend/src/middleware/auth.ts
 
-- [@w1] T003 Check frontend for hardcoded sensitive data
+- [x] T003 Check frontend for hardcoded sensitive data
   - Scope: web/src/
   - Verify: no hardcoded URLs, keys, or credentials
   - Files: web/src/**/*.ts, web/src/**/*.tsx
 
-- [@w1] T004 Verify .env handling and gitignore
+- [x] T004 Verify .env handling and gitignore
   - Scope: root, backend, web
   - Verify: .env* in .gitignore, no secrets in git history
   - Files: .gitignore, backend/.gitignore, web/.gitignore
 
-- [@w1] T005 Review CORS and origin restrictions
+- [x] T005 Review CORS and origin restrictions
   - Scope: backend/src/
   - Verify: CORS whitelist is restrictive, not wildcard
   - Files: backend/src/index.ts, backend/src/config.ts
@@ -37,22 +37,22 @@
 
 ## P1 - High Priority (Mobile & Polish)
 
-- [@w1] T010 Progression page mobile layout
+- [ ] T010 Progression page mobile layout
   - Scope: web/src/app/progression/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx
 
-- [@w1] T011 Leaderboard page mobile layout
+- [ ] T011 Leaderboard page mobile layout
   - Scope: web/src/app/leaderboard/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/leaderboard/page.tsx
 
-- [@w1] T012 Header mobile menu implementation
+- [x] T012 Header mobile menu implementation
   - Scope: web/src/components/Header/
   - Verify: hamburger menu works, closes on navigation
   - Files: web/src/components/Header/*.tsx
 
-- [ ] T013 Consistent card styling across pages
+- [@w1] T013 Consistent card styling across pages
   - Scope: web/src/components/
   - Verify: all cards use shared Card component
   - Files: web/src/components/ui/Card.tsx, web/src/components/**/*.tsx

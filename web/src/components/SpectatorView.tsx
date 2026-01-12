@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LiveBattle, PerpPosition } from '@/types';
 import { BettingPanel } from './BettingPanel';
 import { TradingViewChart } from './TradingViewChart';
+import { Card } from './ui/Card';
 
 interface SpectatorViewProps {
   battle: LiveBattle;
@@ -254,7 +255,7 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
         {/* Main Content - 2 columns */}
         <div className="lg:col-span-2 space-y-6">
           {/* Chart */}
-          <div className="card p-0 overflow-hidden">
+          <Card className="p-0 overflow-hidden">
             <div className="flex items-center gap-2 p-4 border-b border-border-primary bg-bg-tertiary/50">
               <span className="text-xs text-text-tertiary uppercase tracking-wider mr-2">Chart</span>
               {['SOL', 'BTC', 'ETH', 'WIF', 'BONK'].map((asset) => (
@@ -274,12 +275,12 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
             <div className="h-[350px]">
               <TradingViewChart symbol={selectedAsset} />
             </div>
-          </div>
+          </Card>
 
           {/* Live Positions */}
           <div className="grid md:grid-cols-2 gap-4">
             {/* Player 1 Positions */}
-            <div className="card">
+            <Card>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${player1Leading ? 'bg-success' : 'bg-text-tertiary'}`} />
@@ -296,10 +297,10 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
                   <div className="text-center py-6 text-text-tertiary text-sm">No open positions</div>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* Player 2 Positions */}
-            <div className="card">
+            <Card>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${player2Leading ? 'bg-success' : 'bg-text-tertiary'}`} />
@@ -316,7 +317,7 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
                   <div className="text-center py-6 text-text-tertiary text-sm">No open positions</div>
                 )}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
 
