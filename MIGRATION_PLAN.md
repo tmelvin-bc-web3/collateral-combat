@@ -37,7 +37,7 @@
 
 ## P1 - High Priority (Mobile & Polish)
 
-- [ ] T010 Progression page mobile layout
+- [@w1] T010 Progression page mobile layout
   - Scope: web/src/app/progression/
   - Verify: responsive at 375px, 768px breakpoints
   - Files: web/src/app/progression/page.tsx
@@ -60,6 +60,11 @@
 ---
 
 ## P2 - Medium Priority (UX Improvements)
+
+- [ ] T014 Oracle chart polish and animations
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: smooth bezier curves, cleaner colors, no jank
+  - Files: web/src/components/RealtimeChart.tsx
 
 - [ ] T020 Micro-interactions and hover feedback
   - Scope: web/src/components/

@@ -1,16 +1,16 @@
-# Current Task: T005
+# Current Task: T010
 
 ## Description
-Review CORS and origin restrictions
+Progression page mobile layout
 
 ## Scope
-backend/src/
+web/src/app/progression/
 
 ## Files to Modify
-backend/src/index.ts, backend/src/config.ts
+web/src/app/progression/page.tsx
 
 ## Verification
-CORS whitelist is restrictive, not wildcard
+responsive at 375px, 768px breakpoints
 
 ## Worker
 w1 (Attempt 1 of 3)

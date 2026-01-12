@@ -33,13 +33,13 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
   const displayMaxRef = useRef<number | null>(null);
 
   const VISIBLE_DURATION = 60 * 1000;
-  const SMOOTHING_FACTOR = 0.12; // How fast points animate to target
-  const AXIS_SMOOTHING = 0.03; // How fast Y-axis adjusts (slower = more stable)
-  const UP_COLOR = '#22c55e';
-  const DOWN_COLOR = '#ef4444';
-  const GRID_COLOR = '#1a1a1a';
-  const BG_COLOR = '#0d0d0d';
-  const TEXT_COLOR = '#444';
+  const SMOOTHING_FACTOR = 0.15; // Faster smoothing for responsive feel
+  const AXIS_SMOOTHING = 0.05; // Slightly faster axis adjustment
+  const UP_COLOR = '#10b981'; // Emerald green - cleaner
+  const DOWN_COLOR = '#f43f5e'; // Rose red - cleaner
+  const GRID_COLOR = 'rgba(255, 255, 255, 0.04)'; // Subtle grid
+  const BG_COLOR = '#09090b'; // Zinc-950 - darker, cleaner
+  const TEXT_COLOR = 'rgba(255, 255, 255, 0.35)'; // Better contrast
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -74,10 +74,10 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
     const visiblePoints = history.filter(p => p.time >= visibleStart);
 
     if (visiblePoints.length === 0) {
-      ctx.fillStyle = TEXT_COLOR;
-      ctx.font = '13px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.font = '500 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Waiting for data...', w / 2, h / 2);
+      ctx.fillText('Connecting to price feed...', w / 2, h / 2);
       return;
     }
 
@@ -134,7 +134,7 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       return padding.top + chartH - progress * chartH;
     };
 
-    // Grid lines
+    // Grid lines - horizontal only, subtle
     ctx.strokeStyle = GRID_COLOR;
     ctx.lineWidth = 1;
 
@@ -146,15 +146,15 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
       ctx.stroke();
     }
 
-    // Price labels
+    // Price labels - cleaner font
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = '10px -apple-system, system-ui, sans-serif';
+    ctx.font = '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
 
     for (let i = 0; i <= 4; i++) {
       const price = maxPrice - ((maxPrice - minPrice) * i) / 4;
       const y = padding.top + (chartH * i) / 4;
-      ctx.fillText(`$${price.toFixed(2)}`, w - padding.right + 8, y + 3);
+      ctx.fillText(`$${price.toFixed(2)}`, w - padding.right + 8, y + 4);
     }
 
     // Build path from smoothed display prices
@@ -164,131 +164,175 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
     }
 
     if (path.length > 1) {
-      // Subtle glow behind line
-      ctx.strokeStyle = isUp ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
-      ctx.lineWidth = 6;
+      // Smooth curve helper using cardinal spline
+      const drawSmoothLine = (points: { x: number; y: number }[], tension = 0.3) => {
+        if (points.length < 2) return;
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+
+        if (points.length === 2) {
+          ctx.lineTo(points[1].x, points[1].y);
+          return;
+        }
+
+        for (let i = 0; i < points.length - 1; i++) {
+          const p0 = points[i === 0 ? i : i - 1];
+          const p1 = points[i];
+          const p2 = points[i + 1];
+          const p3 = points[i + 2 >= points.length ? i + 1 : i + 2];
+
+          const cp1x = p1.x + (p2.x - p0.x) * tension;
+          const cp1y = p1.y + (p2.y - p0.y) * tension;
+          const cp2x = p2.x - (p3.x - p1.x) * tension;
+          const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+      };
+
+      // Soft glow effect
+      ctx.save();
+      ctx.filter = 'blur(8px)';
+      ctx.strokeStyle = isUp ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)';
+      ctx.lineWidth = 4;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(path[0].x, path[0].y);
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i].x, path[i].y);
-      }
+      drawSmoothLine(path);
       ctx.stroke();
+      ctx.restore();
 
-      // Area fill
+      // Area fill with smooth gradient
       ctx.beginPath();
       ctx.moveTo(path[0].x, padding.top + chartH);
-      for (const p of path) {
-        ctx.lineTo(p.x, p.y);
-      }
+      drawSmoothLine(path);
       ctx.lineTo(path[path.length - 1].x, padding.top + chartH);
       ctx.closePath();
 
       const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
       if (isUp) {
-        gradient.addColorStop(0, 'rgba(34, 197, 94, 0.2)');
-        gradient.addColorStop(1, 'rgba(34, 197, 94, 0)');
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.15)');
+        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.05)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
       } else {
-        gradient.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
-        gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        gradient.addColorStop(0, 'rgba(244, 63, 94, 0.15)');
+        gradient.addColorStop(0.5, 'rgba(244, 63, 94, 0.05)');
+        gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
       }
       ctx.fillStyle = gradient;
       ctx.fill();
 
-      // Main line
+      // Main line - smooth curve
       ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(path[0].x, path[0].y);
-      for (let i = 1; i < path.length; i++) {
-        ctx.lineTo(path[i].x, path[i].y);
-      }
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      drawSmoothLine(path);
       ctx.stroke();
 
-      // Current price dot with pulse
+      // Current price dot with pulse - cleaner animation
       const last = path[path.length - 1];
-      const pulse = Math.sin(frameRef.current * 0.05) * 0.3 + 0.7;
+      const pulse = Math.sin(frameRef.current * 0.06) * 0.5 + 0.5;
 
-      // Pulse ring
-      ctx.strokeStyle = isUp ? `rgba(34, 197, 94, ${0.4 * pulse})` : `rgba(239, 68, 68, ${0.4 * pulse})`;
-      ctx.lineWidth = 2;
+      // Outer glow ring
+      ctx.strokeStyle = isUp ? `rgba(16, 185, 129, ${0.2 + 0.2 * pulse})` : `rgba(244, 63, 94, ${0.2 + 0.2 * pulse})`;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(last.x, last.y, 6 + pulse * 2, 0, Math.PI * 2);
+      ctx.arc(last.x, last.y, 8 + pulse * 4, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Dot
+      // Inner ring
+      ctx.strokeStyle = isUp ? `rgba(16, 185, 129, ${0.4 + 0.2 * pulse})` : `rgba(244, 63, 94, ${0.4 + 0.2 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Center dot
       ctx.fillStyle = lineColor;
       ctx.beginPath();
-      ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+      ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Price tag
-      const tagW = 58;
-      const tagH = 20;
-      const tagX = w - padding.right + 6;
-      const tagY = last.y - tagH / 2;
+      // Price tag - cleaner design
+      const tagW = 62;
+      const tagH = 22;
+      const tagX = w - padding.right + 4;
+      const tagY = Math.max(padding.top, Math.min(padding.top + chartH - tagH, last.y - tagH / 2));
 
+      // Tag background with slight transparency
       ctx.fillStyle = lineColor;
       ctx.beginPath();
-      ctx.roundRect(tagX, tagY, tagW, tagH, 3);
+      ctx.roundRect(tagX, tagY, tagW, tagH, 4);
       ctx.fill();
 
+      // Price text
       ctx.fillStyle = '#000';
-      ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+      ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`$${currentDisplayPrice.toFixed(2)}`, tagX + tagW / 2, last.y + 4);
+      ctx.fillText(`$${currentDisplayPrice.toFixed(2)}`, tagX + tagW / 2, tagY + tagH / 2 + 4);
     }
 
-    // Price change badge (top right)
+    // Price change badge (top right) - cleaner pill design
     if (startPriceRef.current !== null) {
       const changeText = `${isUp ? '+' : ''}${priceChange.toFixed(2)}%`;
+      const badgeW = 65;
+      const badgeH = 20;
+      const badgeX = w - padding.right + 4;
+      const badgeY = 8;
 
-      ctx.font = 'bold 13px -apple-system, system-ui, sans-serif';
-      ctx.textAlign = 'right';
+      // Badge background
+      ctx.fillStyle = isUp ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)';
+      ctx.beginPath();
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 10);
+      ctx.fill();
+
+      // Badge text
+      ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
       ctx.fillStyle = lineColor;
-      ctx.fillText(changeText, w - padding.right + 60, 16);
+      ctx.fillText(changeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 4);
     }
 
-    // Lock price line (if provided)
+    // Lock price line (if provided) - cleaner design
     if (currentLockPrice) {
       const lockY = priceToY(currentLockPrice);
       const clampedY = Math.max(padding.top, Math.min(padding.top + chartH, lockY));
 
-      // Dashed line
-      ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = '#888';
-      ctx.lineWidth = 1.5;
+      // Subtle dashed line
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padding.left, clampedY);
       ctx.lineTo(w - padding.right, clampedY);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Label badge on left
+      // Label badge on left - minimal design
       const labelText = `LOCK $${currentLockPrice.toFixed(2)}`;
-      ctx.font = 'bold 9px -apple-system, system-ui, sans-serif';
-      const labelWidth = ctx.measureText(labelText).width + 8;
+      ctx.font = '600 8px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const labelWidth = ctx.measureText(labelText).width + 10;
 
-      ctx.fillStyle = '#333';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.beginPath();
-      ctx.roundRect(padding.left, clampedY - 10, labelWidth, 14, 3);
+      ctx.roundRect(padding.left, clampedY - 9, labelWidth, 16, 4);
       ctx.fill();
 
-      ctx.fillStyle = '#aaa';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.textAlign = 'left';
-      ctx.fillText(labelText, padding.left + 4, clampedY + 1);
+      ctx.fillText(labelText, padding.left + 5, clampedY + 3);
     }
 
-    // Time labels
+    // Time labels - cleaner
     ctx.fillStyle = TEXT_COLOR;
-    ctx.font = '9px -apple-system, system-ui, sans-serif';
+    ctx.font = '500 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
 
     for (const sec of [0, 30, 60]) {
       const time = now - (60 - sec) * 1000;
       const x = timeToX(time);
-      ctx.fillText(`${sec}s`, x, h - 8);
+      ctx.fillText(`${sec}s`, x, h - 6);
     }
   }, [height]);
 
@@ -408,11 +452,15 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
   }, [symbol, mounted, draw]);
 
   if (!mounted) {
-    return <div className="w-full bg-[#0d0d0d]" style={{ height: `${height}px` }} />;
+    return <div className="w-full bg-[#09090b] rounded-lg" style={{ height: `${height}px` }} />;
   }
 
   return (
-    <div ref={containerRef} className="w-full" style={{ height: `${height}px` }}>
+    <div
+      ref={containerRef}
+      className="w-full relative overflow-hidden rounded-lg"
+      style={{ height: `${height}px`, background: 'linear-gradient(180deg, #09090b 0%, #0c0c0f 100%)' }}
+    >
       <canvas ref={canvasRef} className="w-full h-full" />
     </div>
   );

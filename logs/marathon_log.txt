@@ -39,3 +39,6 @@
 2026-01-12 15:25:20 | COMMIT: T004 - Verify .env handling and gitignore
 2026-01-12 15:25:20 | SUCCESS: T004 (attempt 1)
 2026-01-12 15:25:24 | FOUND: T005
+2026-01-12 15:27:14 | COMMIT: T005 - Review CORS and origin restrictions
+2026-01-12 15:27:14 | SUCCESS: T005 (attempt 1)
+2026-01-12 15:27:17 | FOUND: T010
