@@ -1,7 +1,7 @@
-# Current Task: T074
+# Current Task: T075
 
 ## Description
-Oracle Long/Short strict 3-line format
+Oracle remove duplicate win displays - DELETION TASK
 
 ## Scope
 web/src/app/predict/
@@ -10,7 +10,7 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-buttons show EXACTLY: line1="↑ LONG" line2="0.1 SOL → Win 0.20 SOL" line3="2.00× odds", tall buttons, strong glow, NO surrounding explanation text
+win amount ONLY inside Long/Short buttons, DELETE standalone "Potential Return" card, DELETE any other win amount displays
 
 ## Worker
 w2 (Attempt 1 of 3)

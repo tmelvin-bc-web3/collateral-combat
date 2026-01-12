@@ -155,3 +155,6 @@
 2026-01-12 16:34:17 | COMMIT: T072 - Oracle strip chart to bare essentials - DELETION TASK
 2026-01-12 16:34:17 | SUCCESS: T072 (attempt 1)
 2026-01-12 16:34:20 | FOUND: T074
+2026-01-12 16:35:52 | COMMIT: T074 - Oracle Long/Short strict 3-line format
+2026-01-12 16:35:52 | SUCCESS: T074 (attempt 1)
+2026-01-12 16:35:55 | FOUND: T075
