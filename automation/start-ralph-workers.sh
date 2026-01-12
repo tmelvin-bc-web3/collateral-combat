@@ -39,11 +39,15 @@ tmux split-window -h -t "$SESSION_NAME"
 tmux split-window -v -t "$SESSION_NAME:0.0"
 tmux split-window -v -t "$SESSION_NAME:0.1"
 
-# Start each worker in a pane
-tmux send-keys -t "$SESSION_NAME:0.0" "$WORKER_SCRIPT backend .ralph/plan-backend.md $MAX_ITERATIONS" C-m
-tmux send-keys -t "$SESSION_NAME:0.1" "$WORKER_SCRIPT frontend-lib .ralph/plan-frontend-lib.md $MAX_ITERATIONS" C-m
-tmux send-keys -t "$SESSION_NAME:0.2" "$WORKER_SCRIPT contracts .ralph/plan-contracts.md $MAX_ITERATIONS" C-m
-tmux send-keys -t "$SESSION_NAME:0.3" "$WORKER_SCRIPT frontend-ui .ralph/plan-frontend-ui.md $MAX_ITERATIONS" C-m
+# Start each worker in a pane (using separate PRDs for parallel execution)
+# Worker 1: Main PRD (US-001 done, continues with remaining)
+tmux send-keys -t "$SESSION_NAME:0.0" "ralph build $MAX_ITERATIONS --prd .agents/tasks/prd.md" C-m
+# Worker 2: Smart contracts (requires Solana MCP)
+tmux send-keys -t "$SESSION_NAME:0.1" "ralph build $MAX_ITERATIONS --prd .agents/tasks/prd-contracts.md" C-m
+# Worker 3: Frontend stories
+tmux send-keys -t "$SESSION_NAME:0.2" "ralph build $MAX_ITERATIONS --prd .agents/tasks/prd-frontend.md" C-m
+# Worker 4: Additional frontend iterations
+tmux send-keys -t "$SESSION_NAME:0.3" "ralph build $MAX_ITERATIONS --prd .agents/tasks/prd-frontend.md" C-m
 
 echo ""
 echo "Workers started in tmux session: $SESSION_NAME"

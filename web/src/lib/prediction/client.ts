@@ -14,7 +14,6 @@ import {
   WinnerSide,
   lamportsToSol,
   solToLamports,
-  priceToScaled,
   scaledToPrice,
 } from './types';
 import idlJson from './prediction_program.json';
@@ -163,35 +162,6 @@ export class PredictionClient {
     return tx;
   }
 
-  async initializeRound(startPriceUsd: number): Promise<string> {
-    if (!this.wallet.publicKey) throw new Error('Wallet not connected');
-
-    const gameState = await this.getGameState();
-    if (!gameState) throw new Error('Game not initialized');
-
-    const roundId = gameState.currentRound;
-    const [gameStatePDA] = this.getGameStatePDA();
-    const [roundPDA] = this.getRoundPDA(roundId);
-    const [escrowPDA] = this.getEscrowPDA(roundId);
-
-    const startPrice = priceToScaled(startPriceUsd);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const methods = this.program.methods as any;
-    const tx = await methods
-      .initializeRound(startPrice)
-      .accounts({
-        gameState: gameStatePDA,
-        round: roundPDA,
-        escrow: escrowPDA,
-        payer: this.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-
-    return tx;
-  }
-
   async placeBet(roundId: BN | number, side: 'up' | 'down', amountSol: number): Promise<string> {
     if (!this.wallet.publicKey) throw new Error('Wallet not connected');
 
@@ -213,52 +183,6 @@ export class PredictionClient {
         escrow: escrowPDA,
         player: this.wallet.publicKey,
         systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-
-    return tx;
-  }
-
-  async lockRound(roundId: BN | number, endPriceUsd: number): Promise<string> {
-    if (!this.wallet.publicKey) throw new Error('Wallet not connected');
-
-    const roundIdBN = typeof roundId === 'number' ? new BN(roundId) : roundId;
-    const [roundPDA] = this.getRoundPDA(roundIdBN);
-    const [escrowPDA] = this.getEscrowPDA(roundIdBN);
-
-    const endPrice = priceToScaled(endPriceUsd);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const methods = this.program.methods as any;
-    const tx = await methods
-      .lockRound(endPrice)
-      .accounts({
-        round: roundPDA,
-        escrow: escrowPDA,
-        caller: this.wallet.publicKey,
-      })
-      .rpc();
-
-    return tx;
-  }
-
-  async settleRound(roundId: BN | number): Promise<string> {
-    if (!this.wallet.publicKey) throw new Error('Wallet not connected');
-
-    const roundIdBN = typeof roundId === 'number' ? new BN(roundId) : roundId;
-    const [gameStatePDA] = this.getGameStatePDA();
-    const [roundPDA] = this.getRoundPDA(roundIdBN);
-    const [escrowPDA] = this.getEscrowPDA(roundIdBN);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const methods = this.program.methods as any;
-    const tx = await methods
-      .settleRound()
-      .accounts({
-        gameState: gameStatePDA,
-        round: roundPDA,
-        escrow: escrowPDA,
-        caller: this.wallet.publicKey,
       })
       .rpc();
 
@@ -319,12 +243,12 @@ export class PredictionClient {
       upPool: BN;
       downPool: BN;
       totalPool: BN;
-      status: { open?: object; locked?: object; settled?: object };
+      status: { betting?: object; locked?: object; settled?: object };
       winner: { none?: object; up?: object; down?: object; draw?: object };
       bump: number;
     };
 
-    let status = RoundStatus.Open;
+    let status = RoundStatus.Betting;
     if (acc.status.locked) status = RoundStatus.Locked;
     else if (acc.status.settled) status = RoundStatus.Settled;
 
@@ -372,4 +296,4 @@ export class PredictionClient {
 }
 
 // Export utility functions
-export { lamportsToSol, solToLamports, priceToScaled, scaledToPrice };
+export { lamportsToSol, solToLamports, scaledToPrice };

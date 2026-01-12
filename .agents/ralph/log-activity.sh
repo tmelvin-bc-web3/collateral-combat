@@ -20,15 +20,17 @@ echo "[$TS] $*" >> "$ACTIVITY_LOG"
 if [[ -f "$TELEGRAM_CONFIG" && -f "$NOTIFY_SCRIPT" ]]; then
   MESSAGE="$*"
 
-  # Detect task events and send appropriate notifications
-  if echo "$MESSAGE" | grep -qi "starting task\|begin task\|working on"; then
-    TASK_ID=$(echo "$MESSAGE" | grep -oE "T[0-9]+" | head -1 || echo "unknown")
-    bash "$NOTIFY_SCRIPT" start "$TASK_ID" "$MESSAGE" 2>/dev/null &
-  elif echo "$MESSAGE" | grep -qi "completed\|finished\|done\|success"; then
-    TASK_ID=$(echo "$MESSAGE" | grep -oE "T[0-9]+" | head -1 || echo "unknown")
-    bash "$NOTIFY_SCRIPT" complete "$TASK_ID" "$MESSAGE" 2>/dev/null &
+  # Extract story ID (US-XXX) or task ID (T###)
+  STORY_ID=$(echo "$MESSAGE" | grep -oE "US-[0-9]+" | head -1 || echo "")
+  TASK_ID=$(echo "$MESSAGE" | grep -oE "T[0-9]+" | head -1 || echo "")
+  ID="${STORY_ID:-${TASK_ID:-unknown}}"
+
+  # Detect events and send appropriate notifications
+  if echo "$MESSAGE" | grep -qi "ITERATION.*start\|Starting work on\|begin"; then
+    bash "$NOTIFY_SCRIPT" start "$ID" "$MESSAGE" 2>/dev/null &
+  elif echo "$MESSAGE" | grep -qi "COMPLETED\|complete.*success\|implemented"; then
+    bash "$NOTIFY_SCRIPT" complete "$ID" "$MESSAGE" 2>/dev/null &
   elif echo "$MESSAGE" | grep -qi "failed\|error\|blocked"; then
-    TASK_ID=$(echo "$MESSAGE" | grep -oE "T[0-9]+" | head -1 || echo "unknown")
-    bash "$NOTIFY_SCRIPT" fail "$TASK_ID" "$MESSAGE" 2>/dev/null &
+    bash "$NOTIFY_SCRIPT" fail "$ID" "$MESSAGE" 2>/dev/null &
   fi
 fi

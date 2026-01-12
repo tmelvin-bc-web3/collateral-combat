@@ -16,7 +16,7 @@ export const SETTLE_REWARD_LAMPORTS = 2_000_000; // 0.002 SOL
 
 // Enums
 export enum RoundStatus {
-  Open = 'Open',
+  Betting = 'Betting',
   Locked = 'Locked',
   Settled = 'Settled',
 }

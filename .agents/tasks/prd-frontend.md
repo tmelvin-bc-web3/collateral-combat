@@ -1,65 +1,33 @@
-# Sol Battles - Product Requirements Document
-
-## Overview
-
-Sol Battles (DegenDome) is a Solana-based prediction gaming platform where users bet on cryptocurrency price movements. The core game mode is "Oracle" - a 30-second prediction game where users bet Long or Short on SOL price.
-
-## Tech Stack
-
-- **Frontend**: Next.js 16, React, TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express, Socket.io
-- **Blockchain**: Solana, Anchor framework
-- **Database**: JSON file-based (profiles.json), SQLite for stats
+# Sol Battles - Frontend PRD
 
 ## Constraints
-
 - **Oracle UI is LOCKED** - Do not modify visual layout without human approval
 - **Mobile changes** must NOT alter desktop layout - use responsive breakpoints only
-- **Smart contract tasks** require Solana MCP for building/testing/deploying
+- Only modify files in `web/src/` directory
 
 ---
 
 ## Stories
 
-### [x] US-001: Backend Persistence
-Add database persistence for prediction bets and history API endpoints.
-
-**Tasks:**
-- [x] T200: Save bets to database when placed, call userStatsDb.recordWager()
-- [x] T201: Add GET /api/predictions/history/:wallet and /api/predictions/round/:roundId
-
-**Files:** backend/src/services/predictionService.ts, backend/src/db/userStatsDatabase.ts, backend/src/index.ts
-
-**Verify:** Bets persist across server restart, frontend can fetch historical bets - ✅ VERIFIED
-
----
-
-### [x] US-002: Smart Contract Alignment
-SKIPPED - Requires Solana MCP. Will be done manually.
-
-**Tasks:** T210, T211, T212 - deferred
-
----
-
-### [x] US-003: Frontend Types and Client
+### [ ] US-003: Frontend Types and Client
 Fix type definitions and clean up prediction client.
 
 **Tasks:**
-- [x] T220: Update RoundStatus type to match contract (Betting/Locked/Settled)
-- [x] T223: Remove dead code from client.ts (initializeRound, lockRound, settleRound)
+- T220: Update RoundStatus type to match contract (Betting/Locked/Settled)
+- T223: Remove dead code from client.ts (initializeRound, lockRound, settleRound methods)
 
 **Files:** web/src/lib/prediction/types.ts, web/src/hooks/usePrediction.ts, web/src/lib/prediction/client.ts
 
-**Verify:** No TypeScript errors, no dead code - ✅ VERIFIED (npm run build passes)
+**Verify:** No TypeScript errors, no dead code
 
 ---
 
 ### [ ] US-004: Frontend UI Integration
-Add claim UI, replace mock data, improve UX.
+Add claim UI, replace mock data.
 
 **Tasks:**
 - T221: Add "Claim Winnings" button for unclaimed on-chain wins
-- T222: Replace mock liveBets with real socket stream
+- T222: Replace mock liveBets with real socket stream (subscribe to bet_placed event)
 
 **Files:** web/src/app/predict/page.tsx
 
@@ -74,7 +42,7 @@ Add time period tabs, pagination, and search.
 - T100: Add weekly/monthly/all-time tabs
 - T101: Paginate results (25 per page), add search by username/wallet
 
-**Files:** web/src/app/leaderboard/page.tsx, backend/src/services/progressionService.ts
+**Files:** web/src/app/leaderboard/page.tsx
 
 **Verify:** Tabs switch data correctly, pagination works, search finds users
 
@@ -88,7 +56,7 @@ Create user profile page with stats, history, and achievements.
 - T103: Show last 50 bets with outcome, amount, date
 - T104: Display win rate, total wagered, biggest win, streak records
 
-**Files:** web/src/app/profile/[wallet]/page.tsx, backend/src/routes/profile.ts
+**Files:** web/src/app/profile/[wallet]/page.tsx
 
 **Verify:** Profile loads for any wallet, shows correct stats
 
@@ -122,15 +90,3 @@ Add sound effects and haptic feedback.
 **Files:** web/src/hooks/useSound.ts, web/src/contexts/SoundContext.tsx, web/src/hooks/useHaptic.ts
 
 **Verify:** Sounds play correctly, haptics work on mobile
-
----
-
-### [ ] US-009: Integration Testing
-Add comprehensive test suite for Oracle.
-
-**Tasks:**
-- T230: Test bet placement, round lifecycle, payout calculation, on-chain/off-chain modes
-
-**Files:** backend/tests/prediction.test.ts, web/src/__tests__/predict.test.ts
-
-**Verify:** All critical paths covered, tests pass

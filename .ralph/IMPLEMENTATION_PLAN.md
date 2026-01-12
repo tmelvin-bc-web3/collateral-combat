@@ -60,11 +60,12 @@
 
 ### Tasks
 
-- [ ] **T220** Fix frontend type definitions for round status
+- [x] **T220** Fix frontend type definitions for round status
   - Update RoundStatus type to match contract (Betting/Locked/Settled)
   - Update status mapping and display logic
   - Files: `web/src/lib/prediction/types.ts`, `web/src/hooks/usePrediction.ts`
   - Verify: No TypeScript errors, correct status shown in UI
+  - **Done:** Changed `Open` to `Betting` in RoundStatus enum, updated parseRound to use `betting` instead of `open`
 
 - [ ] **T221** Add claim winnings UI flow
   - Add "Claim Winnings" button when user has unclaimed on-chain wins
@@ -81,12 +82,13 @@
   - Files: `web/src/app/predict/page.tsx`
   - Verify: Live bets sidebar shows real activity
 
-- [ ] **T223** Remove dead code from prediction client
+- [x] **T223** Remove dead code from prediction client
   - Delete: `initializeRound()` method - not a real contract instruction
   - Delete: `lockRound()` method - not a real contract instruction
   - Delete: `settleRound()` method - not a real contract instruction
   - Files: `web/src/lib/prediction/client.ts`
   - Verify: No dead code remains
+  - **Done:** Removed all three dead methods and unused `priceToScaled` import
 
 ---
 
