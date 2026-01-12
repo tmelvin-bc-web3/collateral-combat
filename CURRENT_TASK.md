@@ -1,19 +1,19 @@
-# Current Task: T050
+# Current Task: T014
 
 ## Description
-Oracle layout flow optimization
+Oracle chart polish and animations
 
 ## Scope
-web/src/app/predict/
+web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+web/src/components/RealtimeChart.tsx
 
 ## Verification
-reduced right column padding, visual stack order is Chart → Countdown → Long/Short, clear see→decide→click flow
+smooth bezier curves, cleaner colors, no jank
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

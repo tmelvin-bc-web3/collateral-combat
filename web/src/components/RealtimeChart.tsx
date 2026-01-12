@@ -29,19 +29,23 @@ export function RealtimeChart({ symbol, height = 280, lockPrice }: RealtimeChart
   const historyLoadedRef = useRef(false);
   const lastTickDirectionRef = useRef<'up' | 'down' | null>(null);
   const previousTickPriceRef = useRef<number | null>(null);
+  const lastFrameTimeRef = useRef<number>(0);
 
   // Smoothed Y-axis bounds to prevent jumpy rescaling
   const displayMinRef = useRef<number | null>(null);
   const displayMaxRef = useRef<number | null>(null);
 
   const VISIBLE_DURATION = 60 * 1000;
-  const SMOOTHING_FACTOR = 0.15; // Faster smoothing for responsive feel
-  const AXIS_SMOOTHING = 0.05; // Slightly faster axis adjustment
-  const UP_COLOR = '#10b981'; // Emerald green - cleaner
-  const DOWN_COLOR = '#f43f5e'; // Rose red - cleaner
-  const GRID_COLOR = 'rgba(255, 255, 255, 0.04)'; // Subtle grid
-  const BG_COLOR = '#09090b'; // Zinc-950 - darker, cleaner
-  const TEXT_COLOR = 'rgba(255, 255, 255, 0.35)'; // Better contrast
+  const SMOOTHING_FACTOR = 0.12; // Smooth easing for fluid motion
+  const AXIS_SMOOTHING = 0.04; // Gentle axis transitions
+  const CURVE_TENSION = 0.25; // Bezier curve tension for smooth lines
+  const TARGET_FPS = 60;
+  const FRAME_DURATION = 1000 / TARGET_FPS;
+  const UP_COLOR = '#22c55e'; // Green-500 - vibrant but clean
+  const DOWN_COLOR = '#ef4444'; // Red-500 - clear contrast
+  const GRID_COLOR = 'rgba(255, 255, 255, 0.03)'; // Very subtle grid
+  const BG_COLOR = '#09090b'; // Zinc-950 - deep dark
+  const TEXT_COLOR = 'rgba(255, 255, 255, 0.4)'; // Readable labels
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;

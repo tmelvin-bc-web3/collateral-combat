@@ -61,3 +61,16 @@
 
 All secrets must be in `.env` files which are gitignored.
 Never commit API keys, private keys, or tokens.
+
+## Solana Development (MCP)
+
+When working on smart contracts (`battle_program/`, `prediction_program/`), use the **Solana MCP** tools:
+
+- `solana-mcp-server` is configured and available
+- Use it for: Anchor framework help, Solana APIs, SDK questions, error debugging
+- Query documentation directly for Solana/Anchor patterns
+
+Example queries:
+- "How do I create a PDA in Anchor?"
+- "What's the correct way to handle CPI calls?"
+- "Debug this Anchor error: ..."

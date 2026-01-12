@@ -1,0 +1,21 @@
+```
+---TASK_COMPLETE---
+Task: T050
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+
+Changes made:
+1. **Reordered visual stack**: Chart → Countdown → Long/Short buttons (was: Countdown → Chart → Buttons)
+   - Implements "see→decide→click" flow: user sees chart first, then countdown creates urgency, then buttons for action
+   
+2. **Reduced right column padding**:
+   - Grid gap reduced from gap-4 to gap-3
+   - Sidebar space-y reduced from 4 to 3
+   - Card padding reduced from default to p-3 md:p-4
+   - Button padding reduced (py-2 to py-1.5, p-4 to p-3)
+   - Inner element spacing tightened throughout (mb-4→mb-3, gap-3→gap-2, etc.)
+   - Font sizes slightly reduced for sidebar stats (xs→[10px])
+   - Icon sizes reduced (w-5 h-5→w-4 h-4, w-6 h-6→w-5 h-5)
+---END_TASK---
+```

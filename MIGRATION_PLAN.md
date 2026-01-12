@@ -109,7 +109,7 @@
   - Verify: "PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w2] T049 Oracle motion and feedback polish
+- [x] T049 Oracle motion and feedback polish
   - Scope: web/src/app/predict/
   - Verify: price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -123,7 +123,7 @@
 
 ## P2 - Medium Priority (UX Improvements)
 
-- [ ] T014 Oracle chart polish and animations
+- [@w2] T014 Oracle chart polish and animations
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: smooth bezier curves, cleaner colors, no jank
   - Files: web/src/components/RealtimeChart.tsx

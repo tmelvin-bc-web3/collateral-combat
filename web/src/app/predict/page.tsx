@@ -783,19 +783,19 @@ export default function PredictPage() {
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
+        {/* Sidebar - Reduced padding for tighter layout */}
+        <div className="space-y-3">
           {/* Bet Amount */}
-          <div className="card">
-            <h3 className="font-semibold mb-3 text-xs md:text-sm uppercase tracking-wider text-text-secondary">
+          <div className="card p-3 md:p-4">
+            <h3 className="font-semibold mb-2 text-xs md:text-sm uppercase tracking-wider text-text-secondary">
               Bet Amount {USE_ON_CHAIN_BETTING && <span className="text-accent">(SOL)</span>}
             </h3>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3">
               {BET_AMOUNTS_SOL.map((amount) => (
                 <button
                   key={amount}
                   onClick={() => setSelectedAmountSol(amount)}
-                  className={`py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 ${
+                  className={`py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 ${
                     selectedAmountSol === amount
                       ? 'bg-accent text-white ring-2 ring-accent ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(139,92,246,0.5)] scale-[0.97] translate-y-px'
                       : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent hover:border-accent/30'
@@ -807,7 +807,7 @@ export default function PredictPage() {
               {/* MAX Button */}
               <button
                 onClick={() => setSelectedAmountSol(BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1])}
-                className={`py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-150 ${
+                className={`py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-150 ${
                   selectedAmountSol === BET_AMOUNTS_SOL[BET_AMOUNTS_SOL.length - 1]
                     ? 'bg-warning text-black ring-2 ring-warning ring-offset-2 ring-offset-bg-primary shadow-[0_0_12px_rgba(234,179,8,0.5)] scale-[0.97] translate-y-px'
                     : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30 hover:border-warning/60'
@@ -819,31 +819,31 @@ export default function PredictPage() {
 
             {/* Free Bet Balance */}
             {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
-              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 mb-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                     </svg>
-                    <span className="text-sm font-semibold text-warning">Free Bets</span>
+                    <span className="text-xs font-semibold text-warning">Free Bets</span>
                   </div>
-                  <span className="font-mono font-bold text-warning text-lg">
+                  <span className="font-mono font-bold text-warning text-base">
                     {freeBetBalance.balance}
                   </span>
                 </div>
                 <button
                   onClick={() => setUseFreeBet(!useFreeBet)}
-                  className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  className={`w-full py-1.5 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
                     useFreeBet
                       ? 'bg-warning text-black'
                       : 'bg-warning/20 text-warning border border-warning/40 hover:bg-warning/30'
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                  <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center ${
                     useFreeBet ? 'bg-bg-primary border-bg-primary' : 'border-warning'
                   }`}>
                     {useFreeBet && (
-                      <svg className="w-3 h-3 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg className="w-2.5 h-2.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -854,18 +854,18 @@ export default function PredictPage() {
             )}
 
             {/* Potential Winnings */}
-            <div className="p-4 rounded-xl bg-bg-tertiary border border-border-primary">
-              <div className="text-center text-xs text-text-tertiary mb-3 uppercase tracking-wider">Potential Return</div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center p-3 rounded-lg bg-success/5 border border-success/20">
-                  <div className="text-[10px] text-success/70 mb-1 uppercase">If Long</div>
-                  <div className="font-mono text-lg font-bold text-success">
+            <div className="p-3 rounded-lg bg-bg-tertiary border border-border-primary">
+              <div className="text-center text-[10px] text-text-tertiary mb-2 uppercase tracking-wider">Potential Return</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-center p-2 rounded-lg bg-success/5 border border-success/20">
+                  <div className="text-[10px] text-success/70 mb-0.5 uppercase">If Long</div>
+                  <div className="font-mono text-base font-bold text-success">
                     {getDisplayAmount(getPotentialWin('long'))}
                   </div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-danger/5 border border-danger/20">
-                  <div className="text-[10px] text-danger/70 mb-1 uppercase">If Short</div>
-                  <div className="font-mono text-lg font-bold text-danger">
+                <div className="text-center p-2 rounded-lg bg-danger/5 border border-danger/20">
+                  <div className="text-[10px] text-danger/70 mb-0.5 uppercase">If Short</div>
+                  <div className="font-mono text-base font-bold text-danger">
                     {getDisplayAmount(getPotentialWin('short'))}
                   </div>
                 </div>
@@ -873,32 +873,32 @@ export default function PredictPage() {
             </div>
 
             {!publicKey && (
-              <div className="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20 text-center">
-                <span className="text-accent text-sm font-medium">Connect wallet to play</span>
+              <div className="mt-3 p-2 rounded-lg bg-accent/5 border border-accent/20 text-center">
+                <span className="text-accent text-xs font-medium">Connect wallet to play</span>
               </div>
             )}
           </div>
 
           {/* Round Stats - De-emphasized */}
-          <div className="card opacity-60">
-            <h3 className="font-medium mb-2 text-[10px] uppercase tracking-wider text-text-tertiary">This Round</h3>
+          <div className="card p-3 opacity-60">
+            <h3 className="font-medium mb-1.5 text-[10px] uppercase tracking-wider text-text-tertiary">This Round</h3>
             {currentRound && (
-              <div className="space-y-1">
-                <div className="flex justify-between items-center py-1.5 border-b border-border-primary/50">
-                  <span className="text-text-tertiary text-xs">Total Pool</span>
-                  <span className="font-mono text-xs text-text-secondary">
+              <div className="space-y-0.5">
+                <div className="flex justify-between items-center py-1 border-b border-border-primary/50">
+                  <span className="text-text-tertiary text-[10px]">Total Pool</span>
+                  <span className="font-mono text-[10px] text-text-secondary">
                     ${currentRound.totalPool.toFixed(0)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-border-primary/50">
-                  <span className="text-text-tertiary text-xs">Long Bets</span>
-                  <span className="font-mono text-xs text-text-secondary">
+                <div className="flex justify-between items-center py-1 border-b border-border-primary/50">
+                  <span className="text-text-tertiary text-[10px]">Long Bets</span>
+                  <span className="font-mono text-[10px] text-text-secondary">
                     {currentRound.longBets.length}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-1.5">
-                  <span className="text-text-tertiary text-xs">Short Bets</span>
-                  <span className="font-mono text-xs text-text-secondary">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-text-tertiary text-[10px]">Short Bets</span>
+                  <span className="font-mono text-[10px] text-text-secondary">
                     {currentRound.shortBets.length}
                   </span>
                 </div>
@@ -907,19 +907,19 @@ export default function PredictPage() {
           </div>
 
           {/* How it Works */}
-          <div className="card border-warning/20">
-            <h3 className="font-bold mb-3 text-sm uppercase tracking-wider text-warning">Rules of the Oracle</h3>
-            <div className="space-y-2.5 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
+          <div className="card p-3 border-warning/20">
+            <h3 className="font-bold mb-2 text-xs uppercase tracking-wider text-warning">Rules of the Oracle</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">1</div>
                 <span className="text-text-secondary">Choose your fate: Long or Short</span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">2</div>
                 <span className="text-text-secondary">30 seconds. No turning back.</span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-lg bg-warning/20 flex items-center justify-center text-xs font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-warning/20 flex items-center justify-center text-[10px] font-bold text-warning flex-shrink-0 border border-warning/30">3</div>
                 <span className="text-text-secondary">Survivors claim the loot</span>
               </div>
             </div>
