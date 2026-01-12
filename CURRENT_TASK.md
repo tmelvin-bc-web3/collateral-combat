@@ -1,7 +1,7 @@
-# Current Task: T073
+# Current Task: T074
 
 ## Description
-Oracle single price consolidation - DELETION TASK
+Oracle Long/Short strict 3-line format
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-ONE price display only ("$142.52" with optional "SOL/USD" above), DELETE all duplicate price readouts, DELETE "from $X" helper text
+buttons show EXACTLY: line1="↑ LONG" line2="0.1 SOL → Win 0.20 SOL" line3="2.00× odds", tall buttons, strong glow, NO surrounding explanation text
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

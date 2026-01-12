@@ -239,7 +239,7 @@
   - Verify: ONE price display only ("$142.52" with optional "SOL/USD" above), DELETE all duplicate price readouts, DELETE "from $X" helper text
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T074 Oracle Long/Short strict 3-line format
+- [@w2] T074 Oracle Long/Short strict 3-line format
   - Scope: web/src/app/predict/
   - Verify: buttons show EXACTLY: line1="↑ LONG" line2="0.1 SOL → Win 0.20 SOL" line3="2.00× odds", tall buttons, strong glow, NO surrounding explanation text
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

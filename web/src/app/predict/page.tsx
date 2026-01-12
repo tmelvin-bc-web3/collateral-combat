@@ -623,14 +623,7 @@ export default function PredictPage() {
 
             <div className="relative flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1 md:gap-2 mb-1">
-                  <span className="text-text-tertiary text-[10px] md:text-xs font-medium uppercase tracking-wider">SOL/USD</span>
-                  {currentRound && (
-                    <span className="text-text-tertiary text-[10px] md:text-xs">
-                      from <span className="font-mono text-text-secondary">${currentRound.startPrice.toFixed(2)}</span>
-                    </span>
-                  )}
-                </div>
+                <div className="text-text-tertiary text-[10px] md:text-xs font-medium uppercase tracking-wider mb-1">SOL/USD</div>
                 <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${animatedPrice.toFixed(2)}</div>
               </div>
 
@@ -656,49 +649,33 @@ export default function PredictPage() {
             )}
           </div>
 
-          {/* 3. CLICK: Betting Buttons - Primary CTA with bet-to-win format */}
+          {/* 3. CLICK: Betting Buttons - Strict 3-line format */}
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             {/* Long Button */}
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`oracle-btn-long group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`oracle-btn-long group relative py-6 px-4 md:py-10 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
-                  ? 'border-success bg-success/10 hover:bg-success/20 hover:border-success shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_50px_rgba(34,197,94,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
+                  ? 'border-success bg-success/10 hover:bg-success/20 hover:border-success shadow-[0_0_40px_rgba(34,197,94,0.3)] hover:shadow-[0_0_60px_rgba(34,197,94,0.45)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               {/* Click flash overlay */}
               <div className="absolute inset-0 bg-success/0 group-active:bg-success/30 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex flex-col items-center text-center">
-                {/* Main Label with Arrow */}
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className={`w-7 h-7 md:w-10 md:h-10 transition-transform duration-200 ${isBettingOpen ? 'text-success group-hover:-translate-y-1' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                  <span className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                    LONG
-                  </span>
+              <div className="relative flex flex-col items-center text-center gap-2 md:gap-3">
+                {/* Line 1: Arrow + LONG */}
+                <div className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                  ↑ LONG
                 </div>
-                {/* Bet-to-Win Format */}
+                {/* Line 2: Bet-to-Win */}
                 <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                  <span className="font-mono">{selectedAmountSol}</span> SOL
-                  <span className="mx-2 text-text-tertiary">→</span>
-                  <span className={`${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>
-                    Win <span className="font-mono font-bold">{getPotentialWin('long').toFixed(2)}</span> SOL
-                  </span>
+                  {selectedAmountSol} SOL → Win {getPotentialWin('long').toFixed(2)} SOL
                 </div>
-                {/* Odds Badge */}
-                <div className={`mt-3 px-3 py-1 rounded-full text-xs md:text-sm font-bold ${
-                  isBettingOpen
-                    ? 'bg-success/20 text-success border border-success/40'
-                    : 'bg-bg-tertiary text-text-tertiary border border-border-primary'
-                }`}>
-                  {getOdds('long')}x odds
+                {/* Line 3: Odds */}
+                <div className={`text-base md:text-xl font-bold ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>
+                  {getOdds('long')}× odds
                 </div>
-              </div>
-              <div className="relative text-text-secondary text-[9px] md:text-[11px] mt-3 text-center opacity-70">
-                Pool: <span className="font-mono">${currentRound?.longPool.toFixed(0) || 0}</span>
               </div>
             </button>
 
@@ -706,43 +683,27 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`oracle-btn-short group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
+              className={`oracle-btn-short group relative py-6 px-4 md:py-10 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
-                  ? 'border-danger bg-danger/10 hover:bg-danger/20 hover:border-danger shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_50px_rgba(239,68,68,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
+                  ? 'border-danger bg-danger/10 hover:bg-danger/20 hover:border-danger shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.45)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               {/* Click flash overlay */}
               <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/30 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex flex-col items-center text-center">
-                {/* Main Label with Arrow */}
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className={`w-7 h-7 md:w-10 md:h-10 transition-transform duration-200 ${isBettingOpen ? 'text-danger group-hover:translate-y-1' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                  <span className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                    SHORT
-                  </span>
+              <div className="relative flex flex-col items-center text-center gap-2 md:gap-3">
+                {/* Line 1: Arrow + SHORT */}
+                <div className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                  ↓ SHORT
                 </div>
-                {/* Bet-to-Win Format */}
+                {/* Line 2: Bet-to-Win */}
                 <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                  <span className="font-mono">{selectedAmountSol}</span> SOL
-                  <span className="mx-2 text-text-tertiary">→</span>
-                  <span className={`${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>
-                    Win <span className="font-mono font-bold">{getPotentialWin('short').toFixed(2)}</span> SOL
-                  </span>
+                  {selectedAmountSol} SOL → Win {getPotentialWin('short').toFixed(2)} SOL
                 </div>
-                {/* Odds Badge */}
-                <div className={`mt-3 px-3 py-1 rounded-full text-xs md:text-sm font-bold ${
-                  isBettingOpen
-                    ? 'bg-danger/20 text-danger border border-danger/40'
-                    : 'bg-bg-tertiary text-text-tertiary border border-border-primary'
-                }`}>
-                  {getOdds('short')}x odds
+                {/* Line 3: Odds */}
+                <div className={`text-base md:text-xl font-bold ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>
+                  {getOdds('short')}× odds
                 </div>
-              </div>
-              <div className="relative text-text-secondary text-[9px] md:text-[11px] mt-3 text-center opacity-70">
-                Pool: <span className="font-mono">${currentRound?.shortPool.toFixed(0) || 0}</span>
               </div>
             </button>
           </div>
