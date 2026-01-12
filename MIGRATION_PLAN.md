@@ -244,7 +244,7 @@
   - Verify: buttons show EXACTLY: line1="↑ LONG" line2="0.1 SOL → Win 0.20 SOL" line3="2.00× odds", tall buttons, strong glow, NO surrounding explanation text
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w2] T075 Oracle remove duplicate win displays - DELETION TASK
+- [x] T075 Oracle remove duplicate win displays - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: win amount ONLY inside Long/Short buttons, DELETE standalone "Potential Return" card, DELETE any other win amount displays
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -254,7 +254,7 @@
   - Verify: right column REMOVED or shows ONLY wallet balance + bet amount, DELETE pools/counts/rules during betting phase
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T077 Oracle strip all instructional copy - DELETION TASK
+- [@w2] T077 Oracle strip all instructional copy - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: KEEP ONLY "Predict or perish." + "30 seconds. No second chances.", DELETE "Ready to bet"/"Betting open"/any instructional prose
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

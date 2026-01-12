@@ -1,7 +1,7 @@
-# Current Task: T076
+# Current Task: T077
 
 ## Description
-Oracle remove or gut right column - DELETION TASK
+Oracle strip all instructional copy - DELETION TASK
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-right column REMOVED or shows ONLY wallet balance + bet amount, DELETE pools/counts/rules during betting phase
+KEEP ONLY "Predict or perish." + "30 seconds. No second chances.", DELETE "Ready to bet"/"Betting open"/any instructional prose
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

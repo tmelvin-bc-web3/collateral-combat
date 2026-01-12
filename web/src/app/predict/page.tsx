@@ -619,13 +619,6 @@ export default function PredictPage() {
                 <div className="text-2xl md:text-4xl font-bold font-mono tracking-tight">${animatedPrice.toFixed(2)}</div>
               </div>
 
-              <div className="text-right flex-shrink-0">
-                <div className={`text-[10px] md:text-xs font-semibold uppercase tracking-wider ${
-                  isLocked ? 'text-accent' : isBettingOpen ? 'text-success' : 'text-text-tertiary'
-                }`}>
-                  {isBettingOpen ? 'Betting Open' : isLocked ? 'Locked' : 'Starting...'}
-                </div>
-              </div>
             </div>
 
             {/* Progress Bar */}
