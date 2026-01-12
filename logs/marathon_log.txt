@@ -83,3 +83,6 @@
 2026-01-12 15:58:10 | COMMIT: T046 - Oracle recent history row polish
 2026-01-12 15:58:10 | SUCCESS: T046 (attempt 1)
 2026-01-12 15:58:13 | FOUND: T048
+2026-01-12 15:58:29 | COMMIT: T047 - Oracle right column de-emphasis
+2026-01-12 15:58:29 | SUCCESS: T047 (attempt 1)
+2026-01-12 15:58:32 | FOUND: T049

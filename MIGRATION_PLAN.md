@@ -99,7 +99,7 @@
   - Verify: older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w2] T047 Oracle right column de-emphasis
+- [x] T047 Oracle right column de-emphasis
   - Scope: web/src/app/predict/
   - Verify: "This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -109,7 +109,7 @@
   - Verify: "PLACE YOUR WAGER" → "LOCK YOUR BET", add subtext "Final price after 30s decides the outcome."
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T049 Oracle motion and feedback polish
+- [@w2] T049 Oracle motion and feedback polish
   - Scope: web/src/app/predict/
   - Verify: price updates animate smoothly (120-180ms interpolation), round end dims screen + winner flash (300-400ms), respects prefers-reduced-motion
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
