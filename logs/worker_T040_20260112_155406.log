@@ -1,0 +1,23 @@
+The changes are complete. Let me summarize what was done:
+
+**Changes Made:**
+
+1. **`web/src/app/globals.css`** - Added a new CSS animation `oracleCountdownGlow` that creates a pulsing orange glow effect:
+   - Animates from 0.4 opacity to 0.8 opacity
+   - Uses 1s ease-in-out timing
+   - Applied via the `.oracle-countdown-glow` class
+
+2. **`web/src/app/predict/page.tsx`** - Enhanced the countdown timer (lines 470-476):
+   - Increased size from `text-4xl md:text-6xl` to `text-5xl md:text-8xl` (~25-30% larger)
+   - Added `oracle-countdown-glow` class for the pulsing orange glow effect
+   - Changed default color from `text-text-primary` to `text-warning` (orange) when time > 10 seconds to match the glow theme
+   - Timer is positioned prominently in the card above the chart
+
+```
+---TASK_COMPLETE---
+Task: T040
+Status: DONE
+Files modified: web/src/app/globals.css, web/src/app/predict/page.tsx
+Verification: PASS
+---END_TASK---
+```

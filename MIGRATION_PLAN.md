@@ -69,12 +69,12 @@
   - Verify: countdown 25-30% larger, pulsing orange glow (0.4→0.8 opacity, 1s ease-in-out), positioned prominently near/on chart
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T041 Oracle chart line improvements
+- [x] T041 Oracle chart line improvements
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
   - Files: web/src/components/RealtimeChart.tsx
 
-- [ ] T042 Oracle lock price line styling
+- [@w1] T042 Oracle lock price line styling
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
   - Files: web/src/components/RealtimeChart.tsx

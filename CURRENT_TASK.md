@@ -1,7 +1,7 @@
-# Current Task: T041
+# Current Task: T042
 
 ## Description
-Oracle chart line improvements
+Oracle lock price line styling
 
 ## Scope
 web/src/components/RealtimeChart.tsx
@@ -10,7 +10,7 @@ web/src/components/RealtimeChart.tsx
 web/src/components/RealtimeChart.tsx
 
 ## Verification
-line stroke +1px thicker, gradient fill under line (green, 5-8% opacity fading to transparent)
+lock price line is dashed, brighter than grid, has label "LOCK $XXX.XX"
 
 ## Worker
 w1 (Attempt 1 of 3)
