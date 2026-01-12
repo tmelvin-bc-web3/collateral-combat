@@ -656,37 +656,49 @@ export default function PredictPage() {
             )}
           </div>
 
-          {/* 3. CLICK: Betting Buttons - Action after seeing chart and countdown */}
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
+          {/* 3. CLICK: Betting Buttons - Primary CTA with bet-to-win format */}
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
             {/* Long Button */}
             <button
               onClick={() => handlePlaceBet('long')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative py-4 px-3 md:py-6 md:px-5 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
+              className={`group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
-                  ? 'border-success bg-success/5 hover:bg-success/10 hover:border-success hover:shadow-[0_0_40px_rgba(34,197,94,0.25)] cursor-pointer active:scale-[0.98] active:brightness-125'
+                  ? 'border-success bg-success/10 hover:bg-success/20 hover:border-success shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_50px_rgba(34,197,94,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               {/* Click flash overlay */}
-              <div className="absolute inset-0 bg-success/0 group-active:bg-success/20 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex items-center justify-center gap-3 md:gap-4">
-                <svg className={`w-6 h-6 md:w-8 md:h-8 transition-transform duration-200 flex-shrink-0 ${isBettingOpen ? 'text-success group-hover:-translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                </svg>
-                <div className="flex flex-col items-start min-w-0">
-                  <div className={`text-lg md:text-2xl font-bold leading-tight ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>
-                    LONG <span className="inline md:hidden">↑</span><span className="hidden md:inline">↑</span>
-                  </div>
-                  <div className={`text-sm md:text-base font-medium ${isBettingOpen ? 'text-success/80' : 'text-text-tertiary/60'}`}>
-                    Win: <span className="font-mono font-bold">{getPotentialWin('long').toFixed(2)} SOL</span>
-                  </div>
+              <div className="absolute inset-0 bg-success/0 group-active:bg-success/30 transition-colors duration-100 pointer-events-none" />
+              <div className="relative flex flex-col items-center text-center">
+                {/* Main Label with Arrow */}
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className={`w-7 h-7 md:w-10 md:h-10 transition-transform duration-200 ${isBettingOpen ? 'text-success group-hover:-translate-y-1' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  <span className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                    LONG
+                  </span>
+                </div>
+                {/* Bet-to-Win Format */}
+                <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
+                  <span className="font-mono">{selectedAmountSol}</span> SOL
+                  <span className="mx-2 text-text-tertiary">→</span>
+                  <span className={`${isBettingOpen ? 'text-success' : 'text-text-tertiary'}`}>
+                    Win <span className="font-mono font-bold">{getPotentialWin('long').toFixed(2)}</span> SOL
+                  </span>
+                </div>
+                {/* Odds Badge */}
+                <div className={`mt-3 px-3 py-1 rounded-full text-xs md:text-sm font-bold ${
+                  isBettingOpen
+                    ? 'bg-success/20 text-success border border-success/40'
+                    : 'bg-bg-tertiary text-text-tertiary border border-border-primary'
+                }`}>
+                  {getOdds('long')}x odds
                 </div>
               </div>
-              <div className="relative text-text-secondary text-[10px] md:text-xs mt-2 text-center">
-                Pool: <span className="font-mono font-semibold">${currentRound?.longPool.toFixed(0) || 0}</span>
-                <span className="mx-1.5 text-text-tertiary">•</span>
-                <span className="font-mono font-semibold">{getOdds('long')}x</span>
+              <div className="relative text-text-secondary text-[9px] md:text-[11px] mt-3 text-center opacity-70">
+                Pool: <span className="font-mono">${currentRound?.longPool.toFixed(0) || 0}</span>
               </div>
             </button>
 
@@ -694,31 +706,43 @@ export default function PredictPage() {
             <button
               onClick={() => handlePlaceBet('short')}
               disabled={!isBettingOpen || isPlacing || !publicKey}
-              className={`group relative py-4 px-3 md:py-6 md:px-5 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
+              className={`group relative py-5 px-4 md:py-8 md:px-6 rounded-2xl border-3 transition-all duration-200 overflow-hidden ${
                 isBettingOpen
-                  ? 'border-danger bg-danger/5 hover:bg-danger/10 hover:border-danger hover:shadow-[0_0_40px_rgba(239,68,68,0.25)] cursor-pointer active:scale-[0.98] active:brightness-125'
+                  ? 'border-danger bg-danger/10 hover:bg-danger/20 hover:border-danger shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_50px_rgba(239,68,68,0.35)] cursor-pointer active:scale-[0.97] active:brightness-125'
                   : 'border-border-primary bg-bg-secondary cursor-not-allowed opacity-40'
               }`}
             >
               {/* Click flash overlay */}
-              <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/20 transition-colors duration-100 pointer-events-none" />
-              <div className="relative flex items-center justify-center gap-3 md:gap-4">
-                <svg className={`w-6 h-6 md:w-8 md:h-8 transition-transform duration-200 flex-shrink-0 ${isBettingOpen ? 'text-danger group-hover:translate-y-0.5' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-                <div className="flex flex-col items-start min-w-0">
-                  <div className={`text-lg md:text-2xl font-bold leading-tight ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>
-                    SHORT <span className="inline md:hidden">↓</span><span className="hidden md:inline">↓</span>
-                  </div>
-                  <div className={`text-sm md:text-base font-medium ${isBettingOpen ? 'text-danger/80' : 'text-text-tertiary/60'}`}>
-                    Win: <span className="font-mono font-bold">{getPotentialWin('short').toFixed(2)} SOL</span>
-                  </div>
+              <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/30 transition-colors duration-100 pointer-events-none" />
+              <div className="relative flex flex-col items-center text-center">
+                {/* Main Label with Arrow */}
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className={`w-7 h-7 md:w-10 md:h-10 transition-transform duration-200 ${isBettingOpen ? 'text-danger group-hover:translate-y-1' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <span className={`text-2xl md:text-4xl font-black tracking-tight ${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+                    SHORT
+                  </span>
+                </div>
+                {/* Bet-to-Win Format */}
+                <div className={`text-sm md:text-lg font-semibold ${isBettingOpen ? 'text-text-primary' : 'text-text-tertiary'}`}>
+                  <span className="font-mono">{selectedAmountSol}</span> SOL
+                  <span className="mx-2 text-text-tertiary">→</span>
+                  <span className={`${isBettingOpen ? 'text-danger' : 'text-text-tertiary'}`}>
+                    Win <span className="font-mono font-bold">{getPotentialWin('short').toFixed(2)}</span> SOL
+                  </span>
+                </div>
+                {/* Odds Badge */}
+                <div className={`mt-3 px-3 py-1 rounded-full text-xs md:text-sm font-bold ${
+                  isBettingOpen
+                    ? 'bg-danger/20 text-danger border border-danger/40'
+                    : 'bg-bg-tertiary text-text-tertiary border border-border-primary'
+                }`}>
+                  {getOdds('short')}x odds
                 </div>
               </div>
-              <div className="relative text-text-secondary text-[10px] md:text-xs mt-2 text-center">
-                Pool: <span className="font-mono font-semibold">${currentRound?.shortPool.toFixed(0) || 0}</span>
-                <span className="mx-1.5 text-text-tertiary">•</span>
-                <span className="font-mono font-semibold">{getOdds('short')}x</span>
+              <div className="relative text-text-secondary text-[9px] md:text-[11px] mt-3 text-center opacity-70">
+                Pool: <span className="font-mono">${currentRound?.shortPool.toFixed(0) || 0}</span>
               </div>
             </button>
           </div>

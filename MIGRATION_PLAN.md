@@ -132,12 +132,12 @@
   - Verify: layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
   - Files: web/src/app/predict/page.tsx
 
-- [@w1] T061 Oracle countdown overlay inside chart
+- [x] T061 Oracle countdown overlay inside chart
   - Scope: web/src/app/predict/, web/src/components/RealtimeChart.tsx
   - Verify: countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
-- [ ] T062 Oracle Long/Short buttons bet-to-win format
+- [@w1] T062 Oracle Long/Short buttons bet-to-win format
   - Scope: web/src/app/predict/
   - Verify: buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

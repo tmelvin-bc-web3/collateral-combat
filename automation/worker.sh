@@ -106,7 +106,7 @@ if timeout ${TIMEOUT_SECONDS}s claude \
     --dangerously-skip-permissions \
     --print \
     --output-format text \
-    --allowedTools "Write,Read,Edit,Glob,Grep,Bash" \
+    --allowedTools "Write,Read,Edit,Glob,Grep,Bash,WebFetch" \
     -p "$(cat "$PROMPT_FILE")" \
     > "$OUTPUT_FILE" 2>&1; then
 

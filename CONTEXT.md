@@ -62,6 +62,20 @@
 All secrets must be in `.env` files which are gitignored.
 Never commit API keys, private keys, or tokens.
 
+## Live Development Servers
+
+The dev servers are running - use them to verify your changes:
+
+- **Frontend**: http://localhost:3000 (Next.js)
+- **Backend**: http://localhost:3002 (Express API)
+- **Oracle Page**: http://localhost:3000/predict
+
+**Verification Tips:**
+- Use `WebFetch` tool to fetch pages and check your changes rendered correctly
+- For CSS/layout changes, fetch the page and verify classes/structure in HTML
+- For API changes, use `curl http://localhost:3002/api/...` via Bash
+- The frontend hot-reloads, so changes appear immediately
+
 ## Solana Development (MCP)
 
 When working on smart contracts (`battle_program/`, `prediction_program/`), use the **Solana MCP** tools:

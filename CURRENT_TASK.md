@@ -1,16 +1,16 @@
-# Current Task: T061
+# Current Task: T062
 
 ## Description
-Oracle countdown overlay inside chart
+Oracle Long/Short buttons bet-to-win format
 
 ## Scope
-web/src/app/predict/, web/src/components/RealtimeChart.tsx
+web/src/app/predict/
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
+web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
+buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
 
 ## Worker
 w1 (Attempt 1 of 3)
