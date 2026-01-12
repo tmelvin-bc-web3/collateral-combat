@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
 import { UserStreak, STREAK_BONUSES } from '@/types';
+import { PageLoading } from '@/components/ui/skeleton';
 
 // Reward type definition
 interface LevelReward {
@@ -135,8 +136,14 @@ const LEVEL_REWARDS: { level: number; rewards: LevelReward[] }[] = [
 export default function ProgressionPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'rewards' | 'perks'>('overview');
   const [streak, setStreak] = useState<UserStreak | null>(null);
+  const [mounted, setMounted] = useState(false);
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58();
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch streak data
   useEffect(() => {
@@ -161,6 +168,10 @@ export default function ProgressionPage() {
     fetchStreak();
   }, [walletAddress]);
 
+  if (!mounted) {
+    return <PageLoading message="Loading progression..." />;
+  }
+
   return (
     <div className="max-w-5xl mx-auto animate-fadeIn">
       {/* Header */}
@@ -176,7 +187,7 @@ export default function ProgressionPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-8 p-1 bg-bg-secondary rounded-lg border border-rust/20">
+      <div className="flex gap-1 mb-8 p-1.5 bg-bg-secondary rounded-xl border border-rust/20">
         {(['overview', 'rewards', 'perks'] as const).map((tab) => (
           <button
             key={tab}

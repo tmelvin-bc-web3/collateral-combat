@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { BattleProvider, useBattleContext } from '@/contexts/BattleContext';
 import { BattleLobby } from '@/components/BattleLobby';
 import { BattleArena } from '@/components/BattleArena';
+import { PageLoading } from '@/components/ui/skeleton';
 
 function BattleContent() {
   const { battle } = useBattleContext();
@@ -37,11 +38,7 @@ export default function BattlePage() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <PageLoading message="Entering the Arena..." />;
   }
 
   return <BattleWithWallet />;
