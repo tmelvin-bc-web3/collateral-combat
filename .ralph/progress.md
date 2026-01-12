@@ -22,6 +22,33 @@
 
 ---
 
+## [2026-01-12 22:25] - US-004: Frontend UI Integration
+Thread:
+Run: 20260112-220941-94248 (iteration 2)
+Run log: /Users/taylermelvin/Desktop/sol-battles/.ralph/runs/run-20260112-220941-94248-iter-2.log
+Run summary: /Users/taylermelvin/Desktop/sol-battles/.ralph/runs/run-20260112-220941-94248-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: c2ab899 US-004: Frontend UI Integration - completed by Ralph
+- Post-commit status: clean
+- Verification:
+  - Command: `npm run build` (web) -> PASS (TypeScript compiles, no errors)
+  - Command: `npm run build` (backend) -> PASS for index.ts (pre-existing errors in referralService.ts unrelated)
+- Files changed:
+  - web/src/app/predict/page.tsx (added LiveBetDisplay type, liveBets state, isClaiming/claimSuccess states, prediction_bet_placed listener, replaced mock data with real socket stream, added prominent Claim Winnings button with loading states)
+  - backend/src/index.ts (added broadcast of prediction_bet_placed to all subscribers)
+  - .ralph/IMPLEMENTATION_PLAN.md (marked T221 and T222 as done)
+  - .agents/tasks/prd.md (marked US-004 as complete)
+- What was implemented:
+  - T221: Added prominent "Claim Winnings" button with gradient styling (from-accent to-purple-500), loading spinner during transaction, claim success message, and position status indicator showing "Winner!/Lost/Pending"
+  - T222: Removed all hardcoded mock live bets data, added liveBets state array, subscribed to prediction_bet_placed socket event, updated backend to broadcast bets to all subscribers watching the prediction room, shows real pool totals from currentRound
+- **Learnings for future iterations:**
+  - The backend was only emitting prediction_bet_placed to the individual socket that placed the bet, not broadcasting to all subscribers
+  - The predictionService notifyListeners sends { round, bet } object on 'bet_placed' event
+  - Pool amounts in the UI are stored in USD, need to convert using currentPrice for SOL display
+
+---
+
 ## [2026-01-12 22:17] - US-003: Frontend Types and Client
 Thread:
 Run: 20260112-220941-94248 (iteration 1)

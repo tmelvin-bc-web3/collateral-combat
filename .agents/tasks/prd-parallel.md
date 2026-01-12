@@ -33,7 +33,7 @@ SKIPPED - Requires Solana MCP.
 
 ---
 
-### [ ] US-003: Frontend Types and Client
+### [x] US-003: Frontend Types and Client
 Fix type definitions and clean up prediction client.
 @scope: web/src/lib
 @worker: frontend-lib
