@@ -272,6 +272,78 @@
 
 ---
 
+## P2.5 - UX Enhancements (Medium Priority)
+
+- [ ] T100 Leaderboard weekly/monthly/all-time tabs
+  - Scope: web/src/app/leaderboard/
+  - Verify: tabs for weekly, monthly, all-time periods, data updates correctly per tab, current tab highlighted
+  - Files: web/src/app/leaderboard/page.tsx, backend/src/services/progressionService.ts
+
+- [ ] T101 Leaderboard pagination and search
+  - Scope: web/src/app/leaderboard/
+  - Verify: paginate results (25 per page), search by username/wallet, smooth transitions
+  - Files: web/src/app/leaderboard/page.tsx
+
+- [ ] T102 User profile page - basic structure
+  - Scope: web/src/app/profile/
+  - Verify: new /profile/[wallet] route, shows username, level, XP, rank, avatar
+  - Files: web/src/app/profile/[wallet]/page.tsx
+
+- [ ] T103 User profile page - betting history
+  - Scope: web/src/app/profile/
+  - Verify: shows last 50 bets with outcome, amount, date, win/loss record
+  - Files: web/src/app/profile/[wallet]/page.tsx, backend/src/routes/profile.ts
+
+- [ ] T104 User profile page - stats and achievements
+  - Scope: web/src/app/profile/
+  - Verify: win rate, total wagered, biggest win, streak records, unlocked perks
+  - Files: web/src/app/profile/[wallet]/page.tsx
+
+---
+
+## P2.6 - Mobile Responsiveness (Medium Priority)
+
+- [ ] T110 Oracle page mobile layout
+  - Scope: web/src/app/predict/
+  - Verify: fully usable at 375px width, buttons large enough to tap, chart readable, no horizontal scroll
+  - Files: web/src/app/predict/page.tsx
+
+- [ ] T111 Global mobile navigation improvements
+  - Scope: web/src/components/
+  - Verify: hamburger menu smooth, touch targets 44px+, proper spacing on small screens
+  - Files: web/src/components/Header/*.tsx, web/src/app/globals.css
+
+- [ ] T112 Touch interactions and gestures
+  - Scope: web/src/
+  - Verify: swipe gestures where appropriate, no hover-only interactions, tap feedback on all buttons
+  - Files: web/src/app/**/*.tsx, web/src/components/**/*.tsx
+
+---
+
+## P2.7 - Sound & Feedback (Medium Priority)
+
+- [ ] T120 Sound effects system setup
+  - Scope: web/src/hooks/, web/public/sounds/
+  - Verify: useSound hook created, sounds preloaded, volume control, mute toggle persists
+  - Files: web/src/hooks/useSound.ts, web/src/contexts/SoundContext.tsx
+
+- [ ] T121 Betting sound effects
+  - Scope: web/src/app/predict/
+  - Verify: sounds for bet placed, countdown tick (last 5s), round lock, win, loss
+  - Files: web/src/app/predict/page.tsx, web/public/sounds/
+
+- [ ] T122 UI feedback sounds
+  - Scope: web/src/
+  - Verify: subtle sounds for button clicks, level up, achievement unlock, error
+  - Files: web/src/components/**/*.tsx, web/public/sounds/
+
+- [ ] T123 Haptic feedback for mobile
+  - Scope: web/src/hooks/
+  - Verify: vibration on bet placed, win/loss, uses navigator.vibrate API, respects user preference
+  - Files: web/src/hooks/useHaptic.ts, web/src/app/predict/page.tsx
+
+---
+
 ## Completed
 
 _Tasks marked [x] are moved here after verification_
