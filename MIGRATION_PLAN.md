@@ -61,6 +61,8 @@
 
 ## P1.5 - Oracle UX Overhaul (High Priority)
 
+> ⚠️ **LOCKED** - Do not modify Oracle UI without explicit human approval. All tasks complete.
+
 > Core principle: Preserve existing color palette (orange/green/dark), fonts, layout structure.
 > Improve: visual hierarchy, decision clarity, urgency, micro-interactions.
 
@@ -122,6 +124,8 @@
 ---
 
 ## P1.6 - Oracle Structural Reframe (High Priority)
+
+> ⚠️ **LOCKED** - Do not modify Oracle UI without explicit human approval. All tasks complete.
 
 > Mental model shift: "configure a trade" → "make a decision under pressure"
 > User flow: See countdown → Choose direction → Confirm amount
@@ -213,6 +217,8 @@
 ---
 
 ## P0.5 - Oracle Corrective Pass (CRITICAL - REMOVAL FOCUSED)
+
+> ⚠️ **LOCKED** - Do not modify Oracle UI without explicit human approval. All tasks complete.
 
 > **CORE RULE**: ONE dominant focal point. If it duplicates info, DELETE it.
 > **PRODUCT TRUTH**: This is not a trading interface. It is a timed decision trap.
