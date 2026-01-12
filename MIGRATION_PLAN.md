@@ -23,7 +23,7 @@
   - Verify: no hardcoded URLs, keys, or credentials
   - Files: web/src/**/*.ts, web/src/**/*.tsx
 
-- [ ] T004 Verify .env handling and gitignore
+- [@w1] T004 Verify .env handling and gitignore
   - Scope: root, backend, web
   - Verify: .env* in .gitignore, no secrets in git history
   - Files: .gitignore, backend/.gitignore, web/.gitignore

@@ -1,16 +1,16 @@
-# Current Task: T003
+# Current Task: T004
 
 ## Description
-Check frontend for hardcoded sensitive data
+Verify .env handling and gitignore
 
 ## Scope
-web/src/
+root, backend, web
 
 ## Files to Modify
-web/src/**/*.ts, web/src/**/*.tsx
+.gitignore, backend/.gitignore, web/.gitignore
 
 ## Verification
-no hardcoded URLs, keys, or credentials
+.env* in .gitignore, no secrets in git history
 
 ## Worker
 w1 (Attempt 1 of 3)
