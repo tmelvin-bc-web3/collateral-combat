@@ -308,6 +308,136 @@ body {
   background: var(--bg-tertiary);
 }
 
+/* Button size variants */
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.btn-lg {
+  padding: 16px 28px;
+  font-size: 16px;
+}
+
+/* Button rounded variants */
+.btn-rounded {
+  border-radius: 8px;
+}
+
+.btn-rounded-xl {
+  border-radius: 12px;
+}
+
+.btn-rounded-full {
+  border-radius: 9999px;
+}
+
+/* Button with icon */
+.btn-icon {
+  padding: 10px;
+  min-width: 40px;
+  height: 40px;
+}
+
+/* Action buttons - high emphasis with glow hover */
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.btn-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-action-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.btn-action-success:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.15);
+}
+
+.btn-action-success:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-action-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.btn-action-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.15);
+}
+
+.btn-action-danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-action-accent {
+  background: rgba(255, 85, 0, 0.1);
+  border-color: rgba(255, 85, 0, 0.3);
+  color: var(--accent);
+}
+
+.btn-action-accent:hover:not(:disabled) {
+  background: rgba(255, 85, 0, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 30px rgba(255, 85, 0, 0.15);
+}
+
+.btn-action-accent:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Tab button style - consistent across pages */
+.btn-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.btn-tab-active {
+  background: var(--fire);
+  color: white;
+  box-shadow: 0 4px 12px rgba(230, 57, 0, 0.3);
+}
+
 /* Input - industrial */
 .input {
   background: var(--bg-primary);

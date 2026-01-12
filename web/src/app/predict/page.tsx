@@ -318,7 +318,7 @@ export default function PredictPage() {
   const isLocked = currentRound?.status === 'locked';
 
   return (
-    <div className="max-w-6xl mx-auto animate-fadeIn relative">
+    <div className="max-w-5xl mx-auto animate-fadeIn relative">
       {/* Winner Announcement Overlay */}
       {showWinnerAnimation && lastWinner && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -345,7 +345,7 @@ export default function PredictPage() {
       )}
 
       {/* Header */}
-      <div className="mb-4 mt-6 flex items-center justify-between">
+      <div className="mb-8 mt-8 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-black tracking-tight uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
