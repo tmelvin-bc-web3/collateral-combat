@@ -224,7 +224,7 @@
   - Verify: ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
 
-- [@w2] T071 Oracle delete narrative UI blocks - DELETION TASK
+- [@w1] T071 Oracle delete narrative UI blocks - DELETION TASK
   - Scope: web/src/app/predict/
   - Verify: DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -259,7 +259,7 @@
   - Verify: KEEP ONLY "Predict or perish." + "30 seconds. No second chances.", DELETE "Ready to bet"/"Betting open"/any instructional prose
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w1] T078 Oracle fix countdown positioning - must not obscure chart
+- [x] T078 Oracle fix countdown positioning - must not obscure chart
   - Scope: web/src/app/predict/, web/src/components/RealtimeChart.tsx
   - Verify: countdown positioned so it does NOT overlap/obscure price line or chart data, place OUTSIDE chart or in corner that doesn't block info, countdown smaller than price display
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx

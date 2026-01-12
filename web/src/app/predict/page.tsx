@@ -484,7 +484,6 @@ export default function PredictPage() {
               </div>
             )}
           </div>
-          <p className="text-text-secondary text-sm md:text-base">Predict or perish. 30 seconds. No second chances.</p>
         </div>
 
         {/* Streak Badge */}
