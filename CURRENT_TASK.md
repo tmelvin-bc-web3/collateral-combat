@@ -1,19 +1,19 @@
-# Current Task: T031
+# Current Task: T032
 
 ## Description
-Sound effects for wins/losses
+Confetti animation on level up
 
 ## Scope
-web/src/hooks/
+web/src/components/
 
 ## Files to Modify
-web/src/hooks/useSound.ts, web/public/sounds/
+web/src/components/Confetti.tsx
 
 ## Verification
-sounds play, can be muted
+confetti triggers on level milestone
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

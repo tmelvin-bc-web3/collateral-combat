@@ -121,6 +121,54 @@
 
 ---
 
+## P1.6 - Oracle Structural Reframe (High Priority)
+
+> Mental model shift: "configure a trade" → "make a decision under pressure"
+> User flow: See countdown → Choose direction → Confirm amount
+> Constraints: No new features, no color/font changes, rearrangement + emphasis only
+
+- [ ] T060 Oracle layout restructure - reorder to Chart→Buttons→Amount
+  - Scope: web/src/app/predict/
+  - Verify: layout order is (1) Chart+Countdown (2) Long/Short buttons (3) Bet amount selector, right column minimized
+  - Files: web/src/app/predict/page.tsx
+
+- [ ] T061 Oracle countdown overlay inside chart
+  - Scope: web/src/app/predict/, web/src/components/RealtimeChart.tsx
+  - Verify: countdown floats inside chart container (top-center or top-right), no box/card, ~2x font size, 80% opacity, orange glow, text "Final price decides." below number
+  - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
+
+- [ ] T062 Oracle Long/Short buttons bet-to-win format
+  - Scope: web/src/app/predict/
+  - Verify: buttons show "LONG ↑ / 0.1 SOL → Win 0.2 SOL" format, win value updates instantly when bet amount changes, buttons are visually dominant (primary CTA)
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T063 Oracle hover commitment effect
+  - Scope: web/src/app/predict/
+  - Verify: hovering Long/Short dims entire UI to ~70% opacity EXCEPT the hovered button, creates psychological commitment moment, CSS-only preferred, respects prefers-reduced-motion
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T064 Oracle right column pre/post-bet states
+  - Scope: web/src/app/predict/
+  - Verify: pre-bet shows minimal info (hide pool size, long/short counts), post-bet expands to show full stats, clean state transition
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T065 Oracle chart height reduction
+  - Scope: web/src/components/RealtimeChart.tsx
+  - Verify: chart height reduced ~15%, maintains readability, provides momentum context not analysis detail
+  - Files: web/src/components/RealtimeChart.tsx
+
+- [ ] T066 Oracle copy refinements
+  - Scope: web/src/app/predict/
+  - Verify: remove "PLACE YOUR WAGER" / "LOCK YOUR BET", keep taglines "Predict or perish." and "30 seconds. No second chances.", countdown shows "Final price decides."
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+- [ ] T067 Oracle bet amount de-emphasis
+  - Scope: web/src/app/predict/
+  - Verify: bet amount selector below Long/Short buttons, reduced glow/contrast, smaller container, feels secondary to direction choice
+  - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
+
+---
+
 ## P2 - Medium Priority (UX Improvements)
 
 - [x] T014 Oracle chart polish and animations
@@ -147,7 +195,7 @@
 
 ## P3 - Nice to Have
 
-- [@w2] T030 Dark/light theme toggle
+- [x] T030 Dark/light theme toggle
   - Scope: web/src/
   - Verify: theme persists, all components respect theme
   - Files: web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts
@@ -157,7 +205,7 @@
   - Verify: sounds play, can be muted
   - Files: web/src/hooks/useSound.ts, web/public/sounds/
 
-- [ ] T032 Confetti animation on level up
+- [@w2] T032 Confetti animation on level up
   - Scope: web/src/components/
   - Verify: confetti triggers on level milestone
   - Files: web/src/components/Confetti.tsx
