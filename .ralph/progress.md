@@ -22,6 +22,32 @@
 
 ---
 
+## [2026-01-12 22:17] - US-003: Frontend Types and Client
+Thread:
+Run: 20260112-220941-94248 (iteration 1)
+Run log: /Users/taylermelvin/Desktop/sol-battles/.ralph/runs/run-20260112-220941-94248-iter-1.log
+Run summary: /Users/taylermelvin/Desktop/sol-battles/.ralph/runs/run-20260112-220941-94248-iter-1.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 6653a8f US-003: Frontend Types and Client - completed by Ralph
+- Post-commit status: clean (one unrelated untracked file: .agents/tasks/prd-parallel.md)
+- Verification:
+  - Command: `npm run build` (web) -> PASS (TypeScript compiles, no errors)
+- Files changed:
+  - web/src/lib/prediction/types.ts (changed RoundStatus.Open to RoundStatus.Betting)
+  - web/src/lib/prediction/client.ts (removed dead code: initializeRound, lockRound, settleRound; updated parseRound status check)
+  - .ralph/IMPLEMENTATION_PLAN.md (marked T220 and T223 as done)
+  - .agents/tasks/prd.md (marked US-003 as complete)
+- What was implemented:
+  - T220: Updated RoundStatus enum from Open to Betting to match the smart contract's Betting/Locked/Settled states
+  - T223: Removed three dead methods that don't correspond to real contract instructions
+- **Learnings for future iterations:**
+  - The contract uses `Betting` status (not `Open`) during the betting phase
+  - The contract has no separate lock/settle instructions; these happen via the crank mechanism
+  - usePrediction.ts hook uses string-based status ('betting'/'locked'/'settled') internally, not the enum directly
+
+---
+
 ## [2026-01-12 22:05] - US-001: Backend Persistence
 Thread:
 Run: 20260112-220038-85844 (iteration 1)
