@@ -1,19 +1,19 @@
-# Current Task: T070
+# Current Task: T072
 
 ## Description
-Oracle remove duplicate countdowns - DELETION TASK
+Oracle strip chart to bare essentials - DELETION TASK
 
 ## Scope
-web/src/app/predict/, web/src/components/
+web/src/components/RealtimeChart.tsx
 
 ## Files to Modify
-web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
+web/src/components/RealtimeChart.tsx
 
 ## Verification
-ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
+chart shows ONLY price line + lock price + current price, DELETE all banners/status text/captions, chart must feel QUIET
 
 ## Worker
-w1 (Attempt 2 of 3)
+w1 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

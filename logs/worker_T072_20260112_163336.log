@@ -1,0 +1,27 @@
+The file is clean and minimal. Summary of deletions made:
+
+1. **Removed pulsing animation rings** (lines 192-214 → reduced to simple static dot)
+   - Deleted outer pulsing ring
+   - Deleted inner pulsing ring  
+   - Replaced with a simple static filled circle
+
+2. **Removed lock price label/caption** (lines 243-256 → deleted)
+   - Deleted the "LOCK $xxx.xx" text label box
+   - Kept only the subtle dashed horizontal line
+
+3. **Removed unused `frameRef`** - was only used for pulsing animation
+
+The chart now shows ONLY:
+- ✅ Price line (smooth bezier curve with gradient fill)
+- ✅ Lock price (simple dashed line, no label)
+- ✅ Current price tag (colored tag on right side)
+- ✅ Simple static dot at current price
+
+```
+---TASK_COMPLETE---
+Task: T072
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```

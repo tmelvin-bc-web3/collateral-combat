@@ -219,7 +219,7 @@
 > **WORKER MANDATE**: REMOVE elements, do NOT add. Strip everything non-essential.
 > This UI should feel DANGEROUS, not helpful. Withhold information. Force instinct.
 
-- [@w1] T070 Oracle remove duplicate countdowns - DELETION TASK
+- [x] T070 Oracle remove duplicate countdowns - DELETION TASK
   - Scope: web/src/app/predict/, web/src/components/
   - Verify: ONLY ONE countdown exists (inside chart, top-right), NO card/background/label - just number, optional "Final price decides." below, DELETE all other countdown displays
   - Files: web/src/app/predict/page.tsx, web/src/components/RealtimeChart.tsx
@@ -229,7 +229,7 @@
   - Verify: DELETE "READY TO BET" box, DELETE "RULES OF THE ORACLE" box, DELETE any explanatory panels during betting - these kill tension
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T072 Oracle strip chart to bare essentials - DELETION TASK
+- [@w1] T072 Oracle strip chart to bare essentials - DELETION TASK
   - Scope: web/src/components/RealtimeChart.tsx
   - Verify: chart shows ONLY price line + lock price + current price, DELETE all banners/status text/captions, chart must feel QUIET
   - Files: web/src/components/RealtimeChart.tsx

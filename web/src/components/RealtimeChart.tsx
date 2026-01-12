@@ -25,7 +25,6 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
   const priceHistoryRef = useRef<PricePoint[]>([]);
   const currentPriceRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
-  const frameRef = useRef(0);
   const lockPriceRef = useRef<number | null | undefined>(lockPrice);
   const historyLoadedRef = useRef(false);
   const lastFrameTimeRef = useRef<number>(0);
@@ -50,8 +49,6 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    frameRef.current++;
 
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
@@ -190,27 +187,11 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
       ctx.stroke();
 
       const last = path[path.length - 1];
-      const time = frameRef.current * 0.05;
-      const pulse = (Math.sin(time) + 1) * 0.5;
 
-      const outerOpacity = 0.15 + 0.15 * pulse;
-      const outerRadius = 10 + pulse * 4;
-      ctx.strokeStyle = isUp ? `rgba(34, 197, 94, ${outerOpacity})` : `rgba(239, 68, 68, ${outerOpacity})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, outerRadius, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const innerOpacity = 0.3 + 0.2 * pulse;
-      ctx.strokeStyle = isUp ? `rgba(34, 197, 94, ${innerOpacity})` : `rgba(239, 68, 68, ${innerOpacity})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
-      ctx.stroke();
-
+      // Simple static dot at current price
       ctx.fillStyle = lineColor;
       ctx.beginPath();
-      ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
+      ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
       ctx.fill();
 
       const tagW = 64;
@@ -233,6 +214,7 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
       const lockY = priceToY(currentLockPrice);
       const clampedY = Math.max(padding.top, Math.min(padding.top + chartH, lockY));
 
+      // Simple dashed line only - no label
       ctx.setLineDash([8, 6]);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.lineWidth = 1;
@@ -241,19 +223,6 @@ export function RealtimeChart({ symbol, height = 240, lockPrice }: RealtimeChart
       ctx.lineTo(w - padding.right, clampedY);
       ctx.stroke();
       ctx.setLineDash([]);
-
-      const labelText = `LOCK $${currentLockPrice.toFixed(2)}`;
-      ctx.font = '500 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      const labelWidth = ctx.measureText(labelText).width + 14;
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.beginPath();
-      ctx.roundRect(padding.left, clampedY - 10, labelWidth, 20, 4);
-      ctx.fill();
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.textAlign = 'left';
-      ctx.fillText(labelText, padding.left + 7, clampedY + 4);
     }
   }, [height]);
 
