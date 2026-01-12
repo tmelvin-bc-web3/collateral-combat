@@ -1,0 +1,18 @@
+The countdown "BET 16s" is now visible on mobile in the top-left corner. It:
+1. Does NOT obscure the price line or chart data
+2. Is positioned outside the main chart area (in the corner)
+3. Is much smaller than the main price display ($143.43)
+
+All verification criteria are met:
+- Countdown positioned so it does NOT overlap/obscure price line or chart data ✓
+- Placed in corner that doesn't block info ✓
+- Countdown smaller than price display ✓
+
+```
+---TASK_COMPLETE---
+Task: T078
+Status: DONE
+Files modified: web/src/components/RealtimeChart.tsx
+Verification: PASS
+---END_TASK---
+```

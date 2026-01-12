@@ -167,3 +167,7 @@
 2026-01-12 16:38:14 | COMMIT: T076 - Oracle remove or gut right column - DELETION TASK
 2026-01-12 16:38:14 | SUCCESS: T076 (attempt 1)
 2026-01-12 16:38:17 | FOUND: T078
+2026-01-12 16:39:21 | COMMIT: T077 - Oracle strip all instructional copy - DELETION TASK
+2026-01-12 16:39:21 | SUCCESS: T077 (attempt 1)
+2026-01-12 16:39:44 | COMPLETE: No more tasks
+2026-01-12 16:39:44 | === Manager stopped (completed: 5) ===
