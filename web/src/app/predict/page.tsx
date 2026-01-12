@@ -401,35 +401,58 @@ export default function PredictPage() {
               : 0;
             const isLong = round.winner === 'long';
             const isShort = round.winner === 'short';
+            // Progressive fade: newer (left) = full opacity, older (right) = faded
+            const opacity = 1 - (idx * 0.08); // Fade from 100% to ~20% over 10 items
+            // Add extra spacing every 5 ticks
+            const addSpacing = idx > 0 && idx % 5 === 0;
             return (
               <div
                 key={round.id}
-                className={`flex-shrink-0 w-10 h-10 rounded-md flex flex-col items-center justify-center ${
-                  isLong
-                    ? 'bg-success/10 border border-success/30'
-                    : isShort
-                    ? 'bg-danger/10 border border-danger/30'
-                    : 'bg-bg-tertiary border border-border-primary'
-                }`}
+                className="relative group"
+                style={{ marginLeft: addSpacing ? '12px' : undefined }}
               >
-                {isLong ? (
-                  <svg className="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                  </svg>
-                ) : isShort ? (
-                  <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                ) : (
-                  <div className="w-3 h-3 flex items-center justify-center">
-                    <div className="w-1.5 h-0.5 bg-text-tertiary rounded-full" />
-                  </div>
+                {/* Spacing marker every 5 ticks */}
+                {addSpacing && (
+                  <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-px h-6 bg-border-primary/50" />
                 )}
-                <span className={`text-[8px] font-mono font-medium ${
-                  isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
-                }`}>
-                  {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-                </span>
+                <div
+                  className={`flex-shrink-0 w-10 h-10 rounded-md flex flex-col items-center justify-center transition-opacity duration-150 hover:opacity-100 ${
+                    isLong
+                      ? 'bg-success/10 border border-success/30'
+                      : isShort
+                      ? 'bg-danger/10 border border-danger/30'
+                      : 'bg-bg-tertiary border border-border-primary'
+                  }`}
+                  style={{ opacity }}
+                >
+                  {isLong ? (
+                    <svg className="w-3 h-3 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  ) : isShort ? (
+                    <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  ) : (
+                    <div className="w-3 h-3 flex items-center justify-center">
+                      <div className="w-1.5 h-0.5 bg-text-tertiary rounded-full" />
+                    </div>
+                  )}
+                  <span className={`text-[8px] font-mono font-medium ${
+                    isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
+                  }`}>
+                    {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+                  </span>
+                </div>
+                {/* Hover tooltip with % change */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-bg-primary border border-border-primary shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10 whitespace-nowrap">
+                  <div className={`text-xs font-mono font-semibold ${
+                    isLong ? 'text-success' : isShort ? 'text-danger' : 'text-text-tertiary'
+                  }`}>
+                    {change >= 0 ? '+' : ''}{change.toFixed(3)}%
+                  </div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border-primary" />
+                </div>
               </div>
             );
           })}
@@ -735,26 +758,26 @@ export default function PredictPage() {
             )}
           </div>
 
-          {/* Round Stats */}
-          <div className="card">
-            <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-text-secondary">This Round</h3>
+          {/* Round Stats - De-emphasized */}
+          <div className="card opacity-60">
+            <h3 className="font-medium mb-2 text-[10px] uppercase tracking-wider text-text-tertiary">This Round</h3>
             {currentRound && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center py-2 border-b border-border-primary">
-                  <span className="text-text-secondary text-sm">Total Pool</span>
-                  <span className="font-mono font-bold text-accent">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center py-1.5 border-b border-border-primary/50">
+                  <span className="text-text-tertiary text-xs">Total Pool</span>
+                  <span className="font-mono text-xs text-text-secondary">
                     ${currentRound.totalPool.toFixed(0)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-border-primary">
-                  <span className="text-text-secondary text-sm">Long Bets</span>
-                  <span className="font-mono font-bold text-success">
+                <div className="flex justify-between items-center py-1.5 border-b border-border-primary/50">
+                  <span className="text-text-tertiary text-xs">Long Bets</span>
+                  <span className="font-mono text-xs text-text-secondary">
                     {currentRound.longBets.length}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-text-secondary text-sm">Short Bets</span>
-                  <span className="font-mono font-bold text-danger">
+                <div className="flex justify-between items-center py-1.5">
+                  <span className="text-text-tertiary text-xs">Short Bets</span>
+                  <span className="font-mono text-xs text-text-secondary">
                     {currentRound.shortBets.length}
                   </span>
                 </div>

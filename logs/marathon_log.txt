@@ -77,3 +77,6 @@
 2026-01-12 15:56:46 | COMMIT: T044 - Oracle Long/Short button redesign
 2026-01-12 15:56:46 | SUCCESS: T044 (attempt 1)
 2026-01-12 15:56:49 | FOUND: T046
+2026-01-12 15:57:29 | COMMIT: T045 - Oracle bet amount selector improvements
+2026-01-12 15:57:29 | SUCCESS: T045 (attempt 1)
+2026-01-12 15:57:32 | FOUND: T047

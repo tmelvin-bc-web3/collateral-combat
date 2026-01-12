@@ -1,7 +1,7 @@
-# Current Task: T046
+# Current Task: T047
 
 ## Description
-Oracle recent history row polish
+Oracle right column de-emphasis
 
 ## Scope
 web/src/app/predict/
@@ -10,10 +10,10 @@ web/src/app/predict/
 web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
 ## Verification
-older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
+"This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

@@ -89,7 +89,7 @@
   - Verify: buttons 15-20% taller, show "LONG ↑ Win: X.XX SOL" format, hover glow + arrow nudge (±2px), click flash + scale(0.98→1)
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [@w2] T045 Oracle bet amount selector improvements
+- [x] T045 Oracle bet amount selector improvements
   - Scope: web/src/app/predict/
   - Verify: selected state has bright outline + glow + pressed appearance, win values update immediately, optional MAX button
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
@@ -99,7 +99,7 @@
   - Verify: older ticks fade progressively (left→right), spacing every 5 ticks, hover tooltip shows % change
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx
 
-- [ ] T047 Oracle right column de-emphasis
+- [@w2] T047 Oracle right column de-emphasis
   - Scope: web/src/app/predict/
   - Verify: "This Round" and pool stats have reduced contrast, smaller font, never compete with Long/Short buttons
   - Files: web/src/app/predict/page.tsx, web/src/app/predict/*.tsx

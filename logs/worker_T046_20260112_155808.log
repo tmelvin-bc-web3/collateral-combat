@@ -1,0 +1,16 @@
+```
+---TASK_COMPLETE---
+Task: T046
+Status: DONE
+Files modified: web/src/app/predict/page.tsx
+Verification: PASS
+---END_TASK---
+```
+
+**Summary of changes:**
+
+1. **Progressive fading (left→right)**: Added `opacity` calculation based on index (`1 - (idx * 0.08)`), so newer ticks (left) are fully opaque and older ticks (right) progressively fade to ~20% opacity. Ticks restore full opacity on hover.
+
+2. **Spacing every 5 ticks**: Added conditional `marginLeft: '12px'` and a vertical divider line (`w-px h-6 bg-border-primary/50`) at every 5th tick position to visually separate groups.
+
+3. **Hover tooltip showing % change**: Wrapped each tick in a `relative group` container and added an absolutely positioned tooltip that shows the precise percentage change (3 decimal places) on hover. The tooltip has a pointer caret and appears above the tick with smooth opacity transition.
