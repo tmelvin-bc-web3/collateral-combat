@@ -1,19 +1,19 @@
-# Current Task: T022
+# Current Task: T030
 
 ## Description
-Skeleton loaders for data fetches
+Dark/light theme toggle
 
 ## Scope
-web/src/components/
+web/src/
 
 ## Files to Modify
-web/src/components/ui/Skeleton.tsx
+web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts
 
 ## Verification
-skeleton shows during loading states
+theme persists, all components respect theme
 
 ## Worker
-w1 (Attempt 1 of 3)
+w2 (Attempt 1 of 3)
 
 ## Rules
 1. ONLY modify files listed above

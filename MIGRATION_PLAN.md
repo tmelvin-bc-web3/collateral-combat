@@ -133,7 +133,7 @@
   - Verify: buttons have hover states, transitions smooth
   - Files: web/src/components/ui/*.tsx
 
-- [@w2] T021 Toast notification system
+- [x] T021 Toast notification system
   - Scope: web/src/
   - Verify: toast shows on success/error actions
   - Files: web/src/components/Toast.tsx, web/src/contexts/ToastContext.tsx
@@ -147,7 +147,7 @@
 
 ## P3 - Nice to Have
 
-- [ ] T030 Dark/light theme toggle
+- [@w2] T030 Dark/light theme toggle
   - Scope: web/src/
   - Verify: theme persists, all components respect theme
   - Files: web/src/contexts/ThemeContext.tsx, web/tailwind.config.ts

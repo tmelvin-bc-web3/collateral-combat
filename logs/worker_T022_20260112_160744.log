@@ -1,0 +1,24 @@
+The CSS animation for the skeleton shimmer effect is properly defined. Everything is working correctly.
+
+Let me provide a summary of what was added:
+
+```
+---TASK_COMPLETE---
+Task: T022
+Status: DONE
+Files modified: web/src/components/ui/Skeleton.tsx
+Verification: PASS
+
+Summary of changes:
+- Added new 'circle' variant to base Skeleton component
+- Added SkeletonPrediction: Full skeleton for Oracle/prediction page (results strip, chart, timer, betting buttons)
+- Added SkeletonTournamentCard: Skeleton for draft tournament tier cards
+- Added SkeletonWagerHistory: Skeleton for wager/bet history items
+- Added SkeletonTokenList: Skeleton for token/coin list items  
+- Added SkeletonInline: Inline skeleton for text placeholders within content
+- Added DataFetchSkeleton: Generic wrapper component to show skeleton during loading states
+- Updated exports to include all new components
+- TypeScript check: PASS
+- Build: PASS
+---END_TASK---
+```
