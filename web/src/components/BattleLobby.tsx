@@ -635,12 +635,12 @@ export function BattleLobby() {
                 <button
                   onClick={handleFindMatch}
                   disabled={combinedLoading}
-                  className="flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-accent to-accent/80 text-bg-primary font-bold hover:shadow-[0_0_30px_rgba(0,212,170,0.4)] transition-all disabled:opacity-50 active:scale-[0.98]"
+                  className="flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold hover:shadow-fire transition-all disabled:opacity-50 active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-center gap-2">
                     {combinedLoading && !isCreatingOnChain ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         Finding...
                       </>
                     ) : (
