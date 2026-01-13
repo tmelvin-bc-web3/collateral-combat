@@ -29,7 +29,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
 
   // Order state
-  const [side, setSide] = useState<PositionSide>('long');
   const [leverage, setLeverage] = useState<Leverage>(5);
   const [margin, setMargin] = useState('100');
 
@@ -96,9 +95,9 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const hasExistingPosition = currentPlayer?.account.positions.some(p => p.asset === selectedAsset) || false;
   const isValid = marginValue >= 10 && marginValue <= availableBalance && !hasExistingPosition;
 
-  const handleOpenPosition = (positionSide: PositionSide) => {
+  const handleOpenPosition = (side: PositionSide) => {
     if (!isValid) return;
-    openPosition(selectedAsset, positionSide, leverage, positionSize);
+    openPosition(selectedAsset, side, leverage, positionSize);
     setMargin('100');
   };
 
@@ -116,7 +115,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const currentPrice = prices[selectedAsset] || 0;
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden animate-fadeIn">
+    <div className="h-[calc(100vh-96px)] flex flex-col overflow-hidden animate-fadeIn">
       {/* Error Toast */}
       {error && (
         <div className="fixed top-20 right-4 z-50 p-4 rounded-xl bg-danger/20 border border-danger/30 text-danger text-sm flex items-center gap-3 shadow-xl animate-fadeIn">
@@ -127,109 +126,98 @@ export function BattleArena({ battle }: BattleArenaProps) {
         </div>
       )}
 
-      {/* Header - "THE ARENA" */}
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight" style={{ fontFamily: 'Impact, sans-serif' }}>
-            <span className="text-white/80">THE</span> <span className="text-warning">ARENA</span>
-          </h1>
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
-            </span>
-            <span className="text-[10px] text-white/40 uppercase tracking-wider">Live</span>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-3 sm:gap-6">
-          {/* Timer */}
-          <div className={`text-xl sm:text-2xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
-            {formatTime(timeRemaining)}
-          </div>
-
-          {/* Account Value */}
-          <div className="hidden sm:block text-right">
-            <div className="text-[10px] text-white/40 uppercase tracking-wider">Account</div>
-            <div className="font-mono font-bold">${getAccountValue().toFixed(0)}</div>
-          </div>
-
-          {/* Total P&L */}
-          <div className="text-right">
-            <div className="text-[10px] text-white/40 uppercase tracking-wider">P&L</div>
-            <div className={`font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-              {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}%
-            </div>
-          </div>
-
-          {/* Prize Pool */}
-          <div className="px-3 py-1.5 rounded-lg bg-warning/10 border border-warning/30">
-            <div className="text-[10px] text-warning uppercase tracking-wider">Prize</div>
-            <div className="font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart - Full Width with glass border */}
-      <div className="flex-1 min-h-0 mb-3 rounded-xl bg-black/40 backdrop-blur border border-white/10 overflow-hidden p-1">
-        <div className="w-full h-full rounded-lg overflow-hidden">
-          <TradingViewChart symbol={selectedAsset} height="100%" />
-        </div>
-      </div>
-
-      {/* Asset Pills */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 flex-shrink-0 hide-scrollbar">
-        {ASSETS.map((asset) => {
-          const isSelected = selectedAsset === asset.symbol;
-          const price = prices[asset.symbol] || 0;
-          return (
-            <button
-              key={asset.symbol}
-              onClick={() => setSelectedAsset(asset.symbol)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all flex-shrink-0 ${
-                isSelected
-                  ? 'bg-warning/20 border-warning text-warning shadow-[0_0_15px_rgba(255,85,0,0.3)]'
-                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20'
-              }`}
-            >
-              <AssetIcon symbol={asset.symbol} size="sm" />
-              <div className="text-left">
-                <div className={`text-sm font-bold ${isSelected ? 'text-warning' : 'text-white'}`}>{asset.symbol}</div>
-                <div className={`text-xs font-mono ${isSelected ? 'text-warning/70' : 'text-white/40'}`}>
-                  ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      {/* Main Layout: Chart Left + Order Panel Right */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left Side: Chart Area */}
+        <div className="flex-1 flex flex-col min-w-0 border-r border-white/10">
+          {/* Chart Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-black/40 flex-shrink-0">
+            {/* Asset Selector & Price */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <AssetIcon symbol={selectedAsset} size="md" />
+                <div>
+                  <div className="font-bold text-lg">{selectedAsset}<span className="text-white/40">/USD</span></div>
+                  <div className="text-xs text-white/40">Perpetual</div>
                 </div>
               </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Order Controls - LONG / Controls / SHORT */}
-      <div className="bg-black/40 backdrop-blur border border-white/10 rounded-xl p-4 mb-3 flex-shrink-0">
-        <div className="flex items-stretch gap-4">
-          {/* LONG Button */}
-          <button
-            onClick={() => handleOpenPosition('long')}
-            disabled={!isValid}
-            className={`flex-1 py-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-              'bg-success/10 border-success/50 hover:bg-success/20 hover:border-success hover:shadow-[0_0_30px_rgba(127,186,0,0.4)]'
-            }`}
-          >
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-black text-success" style={{ fontFamily: 'Impact, sans-serif' }}>
-                LONG
+              <div className="text-2xl font-mono font-bold">
+                ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-sm text-success/70 font-mono">{selectedAsset}</div>
             </div>
-          </button>
 
-          {/* Center Controls */}
-          <div className="flex-1 flex flex-col justify-center gap-3">
+            {/* Battle Stats */}
+            <div className="flex items-center gap-4">
+              {/* Timer */}
+              <div className="text-center">
+                <div className="text-[10px] text-white/40 uppercase">Time Left</div>
+                <div className={`text-xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
+                  {formatTime(timeRemaining)}
+                </div>
+              </div>
+
+              {/* Account */}
+              <div className="text-center hidden sm:block">
+                <div className="text-[10px] text-white/40 uppercase">Account</div>
+                <div className="font-mono font-bold">${getAccountValue().toFixed(0)}</div>
+              </div>
+
+              {/* P&L */}
+              <div className="text-center">
+                <div className="text-[10px] text-white/40 uppercase">P&L</div>
+                <div className={`font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}%
+                </div>
+              </div>
+
+              {/* Prize */}
+              <div className="px-3 py-1 rounded bg-warning/10 border border-warning/30 text-center">
+                <div className="text-[10px] text-warning uppercase">Prize</div>
+                <div className="font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Asset Pills */}
+          <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10 bg-black/20 overflow-x-auto hide-scrollbar flex-shrink-0">
+            {ASSETS.map((asset) => {
+              const isSelected = selectedAsset === asset.symbol;
+              return (
+                <button
+                  key={asset.symbol}
+                  onClick={() => setSelectedAsset(asset.symbol)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-sm font-medium transition-all flex-shrink-0 ${
+                    isSelected
+                      ? 'bg-warning/20 text-warning'
+                      : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                  }`}
+                >
+                  <AssetIcon symbol={asset.symbol} size="sm" />
+                  {asset.symbol}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Chart - Takes remaining space */}
+          <div className="flex-1 min-h-0 bg-[#0d0d0d]">
+            <TradingViewChart symbol={selectedAsset} height="100%" />
+          </div>
+        </div>
+
+        {/* Right Side: Order Panel */}
+        <div className="w-[280px] flex-shrink-0 bg-black/40 flex flex-col">
+          {/* Panel Header */}
+          <div className="px-4 py-3 border-b border-white/10 flex-shrink-0">
+            <h2 className="font-bold text-sm uppercase tracking-wider text-white/60">Place Order</h2>
+          </div>
+
+          {/* Order Form */}
+          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
             {/* Leverage */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-white/40 uppercase tracking-wider">Leverage</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/40 uppercase tracking-wider">Leverage</span>
                 <span className="text-sm font-mono font-bold text-warning">{leverage}x</span>
               </div>
               <div className="grid grid-cols-4 gap-1">
@@ -237,9 +225,9 @@ export function BattleArena({ battle }: BattleArenaProps) {
                   <button
                     key={lev}
                     onClick={() => setLeverage(lev)}
-                    className={`py-1.5 text-xs font-bold rounded transition-all ${
+                    className={`py-2 text-sm font-bold rounded transition-all ${
                       leverage === lev
-                        ? 'bg-warning text-white'
+                        ? 'bg-warning text-black'
                         : 'bg-white/10 text-white/60 hover:bg-white/20'
                     }`}
                   >
@@ -251,29 +239,29 @@ export function BattleArena({ battle }: BattleArenaProps) {
 
             {/* Margin Input */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-white/40 uppercase tracking-wider">Margin</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/40 uppercase tracking-wider">Margin</span>
                 <span className="text-xs text-white/40">
                   Avail: <span className="font-mono text-white/60">${availableBalance.toFixed(0)}</span>
                 </span>
               </div>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">$</span>
                 <input
                   type="number"
                   value={margin}
                   onChange={(e) => setMargin(e.target.value)}
                   placeholder="0"
-                  className="w-full py-2 pl-7 pr-3 rounded-lg bg-white/10 border border-white/20 focus:border-warning focus:outline-none font-mono text-right text-white"
+                  className="w-full py-3 pl-7 pr-3 rounded-lg bg-white/5 border border-white/10 focus:border-warning focus:outline-none font-mono text-lg text-right text-white"
                 />
               </div>
-              {/* Quick size */}
-              <div className="grid grid-cols-4 gap-1 mt-1.5">
+              {/* Quick size buttons */}
+              <div className="grid grid-cols-4 gap-1 mt-2">
                 {[25, 50, 75, 100].map((percent) => (
                   <button
                     key={percent}
                     onClick={() => handleQuickSize(percent)}
-                    className="py-1 text-[10px] font-medium rounded bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/70 transition-all"
+                    className="py-1.5 text-xs font-medium rounded bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60 transition-all"
                   >
                     {percent === 100 ? 'MAX' : `${percent}%`}
                   </button>
@@ -282,15 +270,17 @@ export function BattleArena({ battle }: BattleArenaProps) {
             </div>
 
             {/* Position Size */}
-            <div className="text-center">
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Position Size: </span>
-              <span className="font-mono font-bold text-white">${positionSize.toFixed(0)}</span>
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/40 uppercase">Position Size</span>
+                <span className="font-mono font-bold text-lg">${positionSize.toFixed(0)}</span>
+              </div>
             </div>
 
             {/* Warning */}
             {hasExistingPosition && (
-              <div className="flex items-center justify-center gap-2 text-warning text-xs">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-warning text-sm">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span>Already have {selectedAsset} position</span>
@@ -298,28 +288,30 @@ export function BattleArena({ battle }: BattleArenaProps) {
             )}
           </div>
 
-          {/* SHORT Button */}
-          <button
-            onClick={() => handleOpenPosition('short')}
-            disabled={!isValid}
-            className={`flex-1 py-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-              'bg-danger/10 border-danger/50 hover:bg-danger/20 hover:border-danger hover:shadow-[0_0_30px_rgba(204,34,0,0.4)]'
-            }`}
-          >
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-black text-danger" style={{ fontFamily: 'Impact, sans-serif' }}>
-                SHORT
-              </div>
-              <div className="text-sm text-danger/70 font-mono">{selectedAsset}</div>
-            </div>
-          </button>
+          {/* Long/Short Buttons - Fixed at bottom */}
+          <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
+            <button
+              onClick={() => handleOpenPosition('long')}
+              disabled={!isValid}
+              className="w-full py-4 rounded-lg font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-success hover:bg-success/90 text-white"
+            >
+              Long {selectedAsset}
+            </button>
+            <button
+              onClick={() => handleOpenPosition('short')}
+              disabled={!isValid}
+              className="w-full py-4 rounded-lg font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-danger hover:bg-danger/90 text-white"
+            >
+              Short {selectedAsset}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Positions Panel */}
-      <div className="h-[200px] flex flex-col bg-black/40 backdrop-blur border border-white/10 rounded-xl overflow-hidden flex-shrink-0">
+      {/* Bottom: Positions Panel */}
+      <div className="h-[160px] flex-shrink-0 border-t border-white/10 bg-black/40 flex flex-col">
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-white/10 flex-shrink-0">
           <button
             onClick={() => setActiveTab('positions')}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
@@ -370,7 +362,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
 
   const hasOnChainBattle = !!battle.onChainBattleId;
   const isSettled = battle.onChainSettled || !!settlementTx;
-  const canClaim = isWinner && hasOnChainBattle && isSettled && claimStatus === 'idle';
 
   const handleClaimPrize = async () => {
     if (!battle.onChainBattleId) return;
