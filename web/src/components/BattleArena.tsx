@@ -6,16 +6,17 @@ import { useBattleContext } from '@/contexts/BattleContext';
 import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { usePrices } from '@/hooks/usePrices';
 import { Battle, PositionSide, Leverage } from '@/types';
-
-import { MarketsSidebar } from './battle/MarketsSidebar';
-import { ChartSection } from './battle/ChartSection';
-import { OrderPanel } from './battle/OrderPanel';
+import { ASSETS } from '@/lib/assets';
+import { AssetIcon } from './AssetIcon';
+import { TradingViewChart } from './TradingViewChart';
 import { PositionsTable } from './battle/PositionsTable';
 import { TradeHistoryTable } from './battle/TradeHistoryTable';
 
 interface BattleArenaProps {
   battle: Battle;
 }
+
+const LEVERAGE_OPTIONS: Leverage[] = [2, 5, 10, 20];
 
 export function BattleArena({ battle }: BattleArenaProps) {
   const { publicKey } = useWallet();
@@ -26,6 +27,11 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [selectedAsset, setSelectedAsset] = useState('SOL');
   const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
+
+  // Order state
+  const [side, setSide] = useState<PositionSide>('long');
+  const [leverage, setLeverage] = useState<Leverage>(5);
+  const [margin, setMargin] = useState('100');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -40,10 +46,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleOpenPosition = (side: PositionSide, leverage: Leverage, size: number) => {
-    openPosition(selectedAsset, side, leverage, size);
-  };
-
   // Calculate real-time P&L for positions using live prices
   const getPositionsWithLivePnL = useCallback(() => {
     if (!currentPlayer) return [];
@@ -54,8 +56,8 @@ export function BattleArena({ battle }: BattleArenaProps) {
         ? livePrice - position.entryPrice
         : position.entryPrice - livePrice;
       const pnlPercent = (priceDiff / position.entryPrice) * 100 * position.leverage;
-      const margin = position.size / position.leverage;
-      const pnlDollar = margin * (pnlPercent / 100);
+      const marginAmount = position.size / position.leverage;
+      const pnlDollar = marginAmount * (pnlPercent / 100);
 
       return {
         ...position,
@@ -79,7 +81,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
     return currentPlayer.account.balance + marginInPositions + unrealizedPnl;
   };
 
-  // Calculate total P&L with live prices
   const getTotalPnLPercent = () => {
     if (!currentPlayer) return 0;
     const totalUnrealizedPnl = positionsWithLivePnL.reduce((sum, p) => sum + p.unrealizedPnl, 0);
@@ -89,17 +90,33 @@ export function BattleArena({ battle }: BattleArenaProps) {
     return (totalPnl / startingBalance) * 100;
   };
 
+  const marginValue = parseFloat(margin) || 0;
+  const positionSize = marginValue * leverage;
+  const availableBalance = currentPlayer?.account.balance || 0;
+  const hasExistingPosition = currentPlayer?.account.positions.some(p => p.asset === selectedAsset) || false;
+  const isValid = marginValue >= 10 && marginValue <= availableBalance && !hasExistingPosition;
+
+  const handleOpenPosition = (positionSide: PositionSide) => {
+    if (!isValid) return;
+    openPosition(selectedAsset, positionSide, leverage, positionSize);
+    setMargin('100');
+  };
+
+  const handleQuickSize = (percent: number) => {
+    const amount = Math.floor((availableBalance * percent) / 100);
+    setMargin(amount.toString());
+  };
+
   if (battle.status === 'completed') {
     return <BattleResults battle={battle} walletAddress={walletAddress} />;
   }
 
   const totalPnl = getTotalPnLPercent();
   const isUrgent = timeRemaining < 60;
-  const availableBalance = currentPlayer?.account.balance || 0;
-  const hasExistingPosition = currentPlayer?.account.positions.some(p => p.asset === selectedAsset) || false;
+  const currentPrice = prices[selectedAsset] || 0;
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col animate-fadeIn">
+    <div className="h-[calc(100vh-120px)] flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden animate-fadeIn">
       {/* Error Toast */}
       {error && (
         <div className="fixed top-20 right-4 z-50 p-4 rounded-xl bg-danger/20 border border-danger/30 text-danger text-sm flex items-center gap-3 shadow-xl animate-fadeIn">
@@ -110,90 +127,205 @@ export function BattleArena({ battle }: BattleArenaProps) {
         </div>
       )}
 
-      {/* Battle Header - Slim */}
-      <div className={`flex items-center justify-between px-4 py-2 bg-bg-secondary border-b border-border-primary ${isUrgent ? 'bg-danger/5' : ''}`}>
-        <div className="flex items-center gap-4">
-          {/* Live Badge */}
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-danger/20 border border-danger/30">
+      {/* Header - "THE ARENA" */}
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight" style={{ fontFamily: 'Impact, sans-serif' }}>
+            <span className="text-white/80">THE</span> <span className="text-warning">ARENA</span>
+          </h1>
+          <div className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
             </span>
-            <span className="text-xs font-bold text-danger uppercase">Live</span>
+            <span className="text-[10px] text-white/40 uppercase tracking-wider">Live</span>
           </div>
+        </div>
 
+        {/* Stats */}
+        <div className="flex items-center gap-3 sm:gap-6">
           {/* Timer */}
-          <div className={`text-2xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : ''}`}>
+          <div className={`text-xl sm:text-2xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
             {formatTime(timeRemaining)}
           </div>
 
-          {isUrgent && (
-            <span className="px-2 py-0.5 rounded bg-warning/20 text-warning text-xs font-bold uppercase">
-              Final Minute
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-6">
           {/* Account Value */}
-          <div className="text-right">
-            <div className="text-xs text-text-tertiary">Account Value</div>
+          <div className="hidden sm:block text-right">
+            <div className="text-[10px] text-white/40 uppercase tracking-wider">Account</div>
             <div className="font-mono font-bold">${getAccountValue().toFixed(0)}</div>
           </div>
 
           {/* Total P&L */}
           <div className="text-right">
-            <div className="text-xs text-text-tertiary">Total P&L</div>
+            <div className="text-[10px] text-white/40 uppercase tracking-wider">P&L</div>
             <div className={`font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
               {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}%
             </div>
           </div>
 
           {/* Prize Pool */}
-          <div className="text-right px-4 py-1.5 rounded-lg bg-accent/10 border border-accent/30">
-            <div className="text-xs text-accent">Prize Pool</div>
-            <div className="font-bold text-accent">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
+          <div className="px-3 py-1.5 rounded-lg bg-warning/10 border border-warning/30">
+            <div className="text-[10px] text-warning uppercase tracking-wider">Prize</div>
+            <div className="font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
           </div>
         </div>
       </div>
 
-      {/* Main Trading Layout */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Left Sidebar - Markets */}
-        <MarketsSidebar
-          selectedAsset={selectedAsset}
-          onSelectAsset={setSelectedAsset}
-          prices={prices}
-          balance={getAccountValue()}
-          totalPnl={totalPnl}
-          availableMargin={availableBalance}
-        />
-
-        {/* Center - Chart */}
-        <ChartSection
-          symbol={selectedAsset}
-          price={prices[selectedAsset] || 0}
-        />
-
-        {/* Right - Order Panel */}
-        <OrderPanel
-          selectedAsset={selectedAsset}
-          availableBalance={availableBalance}
-          hasExistingPosition={hasExistingPosition}
-          onOpenPosition={handleOpenPosition}
-        />
+      {/* Chart - Full Width with glass border */}
+      <div className="flex-1 min-h-0 mb-3 rounded-xl bg-black/40 backdrop-blur border border-white/10 overflow-hidden p-1">
+        <div className="w-full h-full rounded-lg overflow-hidden">
+          <TradingViewChart symbol={selectedAsset} height="100%" />
+        </div>
       </div>
 
-      {/* Bottom Panel - Positions & History */}
-      <div className="h-[250px] flex flex-col bg-bg-secondary border-t border-border-primary">
+      {/* Asset Pills */}
+      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 flex-shrink-0 hide-scrollbar">
+        {ASSETS.map((asset) => {
+          const isSelected = selectedAsset === asset.symbol;
+          const price = prices[asset.symbol] || 0;
+          return (
+            <button
+              key={asset.symbol}
+              onClick={() => setSelectedAsset(asset.symbol)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all flex-shrink-0 ${
+                isSelected
+                  ? 'bg-warning/20 border-warning text-warning shadow-[0_0_15px_rgba(255,85,0,0.3)]'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20'
+              }`}
+            >
+              <AssetIcon symbol={asset.symbol} size="sm" />
+              <div className="text-left">
+                <div className={`text-sm font-bold ${isSelected ? 'text-warning' : 'text-white'}`}>{asset.symbol}</div>
+                <div className={`text-xs font-mono ${isSelected ? 'text-warning/70' : 'text-white/40'}`}>
+                  ${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Order Controls - LONG / Controls / SHORT */}
+      <div className="bg-black/40 backdrop-blur border border-white/10 rounded-xl p-4 mb-3 flex-shrink-0">
+        <div className="flex items-stretch gap-4">
+          {/* LONG Button */}
+          <button
+            onClick={() => handleOpenPosition('long')}
+            disabled={!isValid}
+            className={`flex-1 py-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              'bg-success/10 border-success/50 hover:bg-success/20 hover:border-success hover:shadow-[0_0_30px_rgba(127,186,0,0.4)]'
+            }`}
+          >
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-black text-success" style={{ fontFamily: 'Impact, sans-serif' }}>
+                LONG
+              </div>
+              <div className="text-sm text-success/70 font-mono">{selectedAsset}</div>
+            </div>
+          </button>
+
+          {/* Center Controls */}
+          <div className="flex-1 flex flex-col justify-center gap-3">
+            {/* Leverage */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] text-white/40 uppercase tracking-wider">Leverage</span>
+                <span className="text-sm font-mono font-bold text-warning">{leverage}x</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {LEVERAGE_OPTIONS.map((lev) => (
+                  <button
+                    key={lev}
+                    onClick={() => setLeverage(lev)}
+                    className={`py-1.5 text-xs font-bold rounded transition-all ${
+                      leverage === lev
+                        ? 'bg-warning text-white'
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                    }`}
+                  >
+                    {lev}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Margin Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] text-white/40 uppercase tracking-wider">Margin</span>
+                <span className="text-xs text-white/40">
+                  Avail: <span className="font-mono text-white/60">${availableBalance.toFixed(0)}</span>
+                </span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                <input
+                  type="number"
+                  value={margin}
+                  onChange={(e) => setMargin(e.target.value)}
+                  placeholder="0"
+                  className="w-full py-2 pl-7 pr-3 rounded-lg bg-white/10 border border-white/20 focus:border-warning focus:outline-none font-mono text-right text-white"
+                />
+              </div>
+              {/* Quick size */}
+              <div className="grid grid-cols-4 gap-1 mt-1.5">
+                {[25, 50, 75, 100].map((percent) => (
+                  <button
+                    key={percent}
+                    onClick={() => handleQuickSize(percent)}
+                    className="py-1 text-[10px] font-medium rounded bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/70 transition-all"
+                  >
+                    {percent === 100 ? 'MAX' : `${percent}%`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Position Size */}
+            <div className="text-center">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Position Size: </span>
+              <span className="font-mono font-bold text-white">${positionSize.toFixed(0)}</span>
+            </div>
+
+            {/* Warning */}
+            {hasExistingPosition && (
+              <div className="flex items-center justify-center gap-2 text-warning text-xs">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Already have {selectedAsset} position</span>
+              </div>
+            )}
+          </div>
+
+          {/* SHORT Button */}
+          <button
+            onClick={() => handleOpenPosition('short')}
+            disabled={!isValid}
+            className={`flex-1 py-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              'bg-danger/10 border-danger/50 hover:bg-danger/20 hover:border-danger hover:shadow-[0_0_30px_rgba(204,34,0,0.4)]'
+            }`}
+          >
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-black text-danger" style={{ fontFamily: 'Impact, sans-serif' }}>
+                SHORT
+              </div>
+              <div className="text-sm text-danger/70 font-mono">{selectedAsset}</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Positions Panel */}
+      <div className="h-[200px] flex flex-col bg-black/40 backdrop-blur border border-white/10 rounded-xl overflow-hidden flex-shrink-0">
         {/* Tabs */}
-        <div className="flex border-b border-border-primary">
+        <div className="flex border-b border-white/10">
           <button
             onClick={() => setActiveTab('positions')}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
               activeTab === 'positions'
-                ? 'border-accent text-text-primary'
-                : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                ? 'border-warning text-warning'
+                : 'border-transparent text-white/40 hover:text-white/60'
             }`}
           >
             Positions ({positionsWithLivePnL.length})
@@ -202,8 +334,8 @@ export function BattleArena({ battle }: BattleArenaProps) {
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
               activeTab === 'history'
-                ? 'border-accent text-text-primary'
-                : 'border-transparent text-text-tertiary hover:text-text-secondary'
+                ? 'border-warning text-warning'
+                : 'border-transparent text-white/40 hover:text-white/60'
             }`}
           >
             History ({currentPlayer?.trades.length || 0})
@@ -236,7 +368,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   const isWinner = battle.winnerId === walletAddress;
   const prize = battle.prizePool * 0.95;
 
-  // Check if this is an on-chain battle that can be claimed
   const hasOnChainBattle = !!battle.onChainBattleId;
   const isSettled = battle.onChainSettled || !!settlementTx;
   const canClaim = isWinner && hasOnChainBattle && isSettled && claimStatus === 'idle';
@@ -246,17 +377,10 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
 
     setClaimStatus('claiming');
     try {
-      // The on-chain battle ID is the PDA string, but we need to get the battle ID number
-      // For now, we'll use the claimPlayerPrize which expects a number
-      // We'll need to extract the battle ID from somewhere...
-      // Actually the useBattleOnChain hook has fetchBattle which takes battleId number
-
-      // For MVP, let's try using the battle account directly
-      const tx = await claimPlayerPrize(0); // TODO: Need to pass actual battle ID
+      const tx = await claimPlayerPrize(0);
       if (tx) {
         setClaimStatus('claimed');
         setClaimTxSignature(tx);
-        console.log('[BattleResults] Prize claimed:', tx);
       } else {
         setClaimStatus('error');
       }
@@ -267,47 +391,45 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   };
 
   return (
-    <div className="max-w-xl mx-auto mt-16 animate-fadeIn">
+    <div className="max-w-xl mx-auto mt-16 px-4 animate-fadeIn">
       <div className="relative">
-        {/* Background glow */}
-        <div className={`absolute inset-0 blur-3xl ${isWinner ? 'bg-accent/20' : 'bg-danger/10'}`} />
+        <div className={`absolute inset-0 blur-3xl ${isWinner ? 'bg-warning/20' : 'bg-danger/10'}`} />
 
-        <div className="relative bg-bg-secondary border border-border-primary rounded-2xl overflow-hidden">
-          {/* Confetti effect for winner */}
+        <div className="relative bg-black/60 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
           {isWinner && (
-            <div className="absolute inset-0 bg-gradient-to-b from-accent/10 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-warning/10 via-transparent to-transparent" />
           )}
 
           <div className="relative p-8 text-center">
-            {/* Trophy/Icon */}
+            {/* Trophy */}
             <div className={`w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-xl ${
               isWinner
-                ? 'bg-gradient-to-br from-accent to-accent/70 shadow-accent/30'
-                : 'bg-gradient-to-br from-bg-tertiary to-bg-hover'
+                ? 'bg-gradient-to-br from-warning to-fire shadow-warning/30'
+                : 'bg-gradient-to-br from-white/10 to-white/5'
             }`}>
               {isWinner ? (
                 <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               ) : (
-                <svg className="w-12 h-12 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-12 h-12 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
             </div>
 
-            <h1 className={`text-4xl font-black mb-3 ${isWinner ? 'text-accent' : 'text-text-secondary'}`}>
-              {isWinner ? 'Victory!' : 'Defeat'}
+            <h1 className={`text-4xl font-black mb-3 ${isWinner ? 'text-warning' : 'text-white/60'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
+              {isWinner ? 'VICTORY' : 'DEFEAT'}
             </h1>
-            <p className="text-lg text-text-secondary mb-8">
+            <p className="text-lg text-white/60 mb-8">
               {isWinner ? (
-                <>You won <span className="font-bold text-accent">{prize.toFixed(2)} SOL</span></>
+                <>You won <span className="font-bold text-warning">{prize.toFixed(2)} SOL</span></>
               ) : (
                 'Better luck next time, champion'
               )}
             </p>
 
-            {/* Claim Prize Button for Winner */}
+            {/* Claim Button */}
             {isWinner && hasOnChainBattle && (
               <div className="mb-6">
                 {claimStatus === 'claimed' ? (
@@ -323,7 +445,7 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
                         href={`https://explorer.solana.com/tx/${claimTxSignature}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-text-tertiary hover:text-accent mt-2 block"
+                        className="text-xs text-white/40 hover:text-warning mt-2 block"
                       >
                         View transaction
                       </a>
@@ -335,16 +457,10 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
                       <div className="w-4 h-4 border-2 border-warning border-t-transparent rounded-full animate-spin" />
                       <span className="font-medium">Settling on-chain...</span>
                     </div>
-                    <p className="text-xs text-text-tertiary mt-2">
-                      Please wait for the battle to be settled on-chain
-                    </p>
                   </div>
                 ) : claimStatus === 'error' ? (
                   <div className="p-4 rounded-xl bg-danger/10 border border-danger/30">
                     <div className="flex items-center justify-center gap-2 text-danger font-medium">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
                       {claimError || 'Failed to claim prize'}
                     </div>
                     <button
@@ -358,23 +474,16 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
                   <button
                     onClick={handleClaimPrize}
                     disabled={isClaiming || claimStatus === 'claiming'}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-lg hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(255,85,0,0.4)] transition-all active:scale-[0.98] disabled:opacity-50"
                   >
-                    <div className="flex items-center justify-center gap-2">
-                      {isClaiming || claimStatus === 'claiming' ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
-                          Claiming Prize...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Claim {prize.toFixed(2)} SOL
-                        </>
-                      )}
-                    </div>
+                    {isClaiming || claimStatus === 'claiming' ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Claiming...
+                      </div>
+                    ) : (
+                      `Claim ${prize.toFixed(2)} SOL`
+                    )}
                   </button>
                 )}
               </div>
@@ -382,13 +491,13 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
 
             {/* Settlement TX Link */}
             {settlementTx && (
-              <div className="mb-6 p-3 rounded-lg bg-bg-tertiary border border-border-primary">
-                <div className="text-xs text-text-tertiary">Battle settled on-chain</div>
+              <div className="mb-6 p-3 rounded-lg bg-white/5 border border-white/10">
+                <div className="text-xs text-white/40">Battle settled on-chain</div>
                 <a
                   href={`https://explorer.solana.com/tx/${settlementTx}?cluster=devnet`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-accent hover:underline"
+                  className="text-xs text-warning hover:underline"
                 >
                   View settlement transaction
                 </a>
@@ -407,25 +516,25 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
                     className={`relative flex items-center justify-between p-4 rounded-xl transition-all ${
                       isCurrentPlayer
                         ? isFirstPlace
-                          ? 'bg-accent/10 border-2 border-accent/30'
-                          : 'bg-bg-tertiary border-2 border-border-primary'
-                        : 'bg-bg-tertiary border border-border-primary'
+                          ? 'bg-warning/10 border-2 border-warning/30'
+                          : 'bg-white/10 border-2 border-white/20'
+                        : 'bg-white/5 border border-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
                         isFirstPlace
-                          ? 'bg-gradient-to-br from-accent to-accent/70 text-bg-primary'
-                          : 'bg-bg-hover text-text-tertiary'
+                          ? 'bg-gradient-to-br from-warning to-fire text-white'
+                          : 'bg-white/10 text-white/40'
                       }`}>
                         {index + 1}
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold">
+                        <div className="font-semibold text-white">
                           {isCurrentPlayer ? 'You' : `${player.walletAddress.slice(0, 4)}...${player.walletAddress.slice(-4)}`}
                         </div>
                         {isFirstPlace && (
-                          <div className="text-xs text-accent font-medium">Winner</div>
+                          <div className="text-xs text-warning font-medium">Winner</div>
                         )}
                       </div>
                     </div>
@@ -437,10 +546,10 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               })}
             </div>
 
-            {/* Play Again Button */}
+            {/* Play Again */}
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-accent to-accent/80 text-bg-primary font-bold text-lg hover:shadow-[0_0_30px_rgba(0,212,170,0.4)] transition-all active:scale-[0.98]"
+              className="w-full py-4 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

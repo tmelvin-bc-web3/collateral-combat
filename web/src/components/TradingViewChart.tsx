@@ -18,7 +18,7 @@ type Indicator = 'MA' | 'EMA' | 'RSI' | 'MACD' | 'BB' | 'VOLUME';
 
 interface TradingViewChartProps {
   symbol: string;
-  height?: number;
+  height?: number | string;
   minimal?: boolean; // Simple line chart with no controls
 }
 
@@ -112,13 +112,15 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
     { value: 'D', label: '1D' },
   ];
 
+  const heightStyle = typeof height === 'string' ? height : `${height}px`;
+
   // For minimal mode, just return the chart
   if (minimal) {
     return (
       <div
         id={`tradingview_${symbol}_minimal`}
         ref={containerRef}
-        style={{ height: `${height}px` }}
+        style={{ height: heightStyle }}
         className="w-full h-full"
       />
     );
@@ -170,7 +172,7 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
       <div
         id={`tradingview_${symbol}`}
         ref={containerRef}
-        style={{ height: `${height}px` }}
+        style={{ height: heightStyle }}
         className="rounded-lg overflow-hidden border border-white/5"
       />
     </div>
