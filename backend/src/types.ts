@@ -141,6 +141,17 @@ export interface BattleOdds {
   lastUpdated: number;
 }
 
+// Response type for odds lock (on-chain betting flow)
+export interface OddsLockResponse {
+  lockId: string;
+  battleId: string;
+  backedPlayer: string;
+  lockedOdds: number;
+  amount: number;
+  potentialPayout: number;
+  expiresAt: number;
+}
+
 export interface LiveBattle extends Battle {
   odds?: BattleOdds;
   featured?: boolean;
@@ -215,6 +226,11 @@ export interface ServerToClientEvents {
   bet_placed: (bet: SpectatorBet) => void;
   bet_settled: (bet: SpectatorBet) => void;
   spectator_count: (data: { battleId: string; count: number }) => void;
+  user_bets: (bets: SpectatorBet[]) => void;
+  odds_lock: (lock: OddsLockResponse) => void;
+  bet_verified: (bet: SpectatorBet) => void;
+  unclaimed_bets: (bets: SpectatorBet[]) => void;
+  claim_verified: (data: { betId: string; txSignature: string }) => void;
   // Prediction events
   prediction_round: (round: PredictionRound) => void;
   prediction_history: (rounds: PredictionRound[]) => void;
@@ -253,6 +269,10 @@ export interface ClientToServerEvents {
   leave_spectate: (battleId: string) => void;
   place_bet: (battleId: string, backedPlayer: string, amount: number, walletAddress: string) => void;
   get_my_bets: (walletAddress: string) => void;
+  request_odds_lock: (data: { battleId: string; backedPlayer: string; amount: number; walletAddress: string }) => void;
+  verify_bet: (data: { lockId: string; txSignature: string; walletAddress: string }) => void;
+  get_unclaimed_bets: (walletAddress: string) => void;
+  verify_claim: (data: { betId: string; txSignature: string }) => void;
   // Prediction events
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
