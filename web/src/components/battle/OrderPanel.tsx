@@ -38,9 +38,9 @@ export function OrderPanel({
   };
 
   return (
-    <div className="w-[280px] flex-shrink-0 bg-bg-secondary border-l border-border-primary flex flex-col h-full min-h-0">
+    <div className="w-[280px] flex-shrink-0 bg-bg-secondary border-l border-border-primary relative h-full">
       {/* Long/Short Tabs */}
-      <div className="grid grid-cols-2 flex-shrink-0">
+      <div className="grid grid-cols-2">
         <button
           onClick={() => setSide('long')}
           className={`py-3 text-sm font-bold uppercase transition-all ${
@@ -63,7 +63,8 @@ export function OrderPanel({
         </button>
       </div>
 
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      {/* Scrollable content area - with padding for fixed button */}
+      <div className="absolute top-[48px] bottom-[76px] left-0 right-0 overflow-y-auto p-4 space-y-4">
         {/* Order Type - Market only for battles */}
         <div>
           <label className="text-xs text-text-tertiary uppercase tracking-wider">Order Type</label>
@@ -148,8 +149,8 @@ export function OrderPanel({
         )}
       </div>
 
-      {/* Submit Button - Always visible at bottom */}
-      <div className="p-4 border-t border-border-primary flex-shrink-0 bg-bg-secondary">
+      {/* Submit Button - Fixed at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border-primary bg-bg-secondary">
         <button
           onClick={handleSubmit}
           disabled={!isValid}
