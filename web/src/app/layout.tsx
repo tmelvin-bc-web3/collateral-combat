@@ -5,6 +5,7 @@ import { WalletProvider } from '@/components/WalletProvider';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { ProgressionProvider } from '@/contexts/ProgressionContext';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { ProfileSetupWrapper } from '@/components/ProfileSetupWrapper';
 import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
 import { WhitelistLayoutWrapper } from '@/components/WhitelistLayoutWrapper';
@@ -57,6 +58,7 @@ export default function RootLayout({
                 <main className="pt-24 pb-12 px-4 min-h-screen relative z-10">
                   <div className="max-w-7xl mx-auto">{children}</div>
                 </main>
+                <Footer />
                 <ProfileSetupWrapper />
                 <OnboardingTourWrapper />
               </ProgressionProvider>

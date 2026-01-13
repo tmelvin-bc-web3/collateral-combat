@@ -504,7 +504,7 @@ export default function ProfilePage() {
               </svg>
             </div>
             <div>
-              <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">Bet History</h2>
+              <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">Wager History</h2>
               <p className="text-text-tertiary text-[10px] sm:text-xs">Last 50 wagers</p>
             </div>
           </div>
@@ -517,8 +517,8 @@ export default function ProfilePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h3 className="font-bold mb-1 uppercase text-sm sm:text-base">No Bets Yet</h3>
-            <p className="text-text-secondary text-xs sm:text-sm">This user hasn&apos;t placed any bets yet</p>
+            <h3 className="font-bold mb-1 uppercase text-sm sm:text-base">No Wagers Yet</h3>
+            <p className="text-text-secondary text-xs sm:text-sm">This user hasn&apos;t placed any wagers yet</p>
           </div>
         ) : (
           <>

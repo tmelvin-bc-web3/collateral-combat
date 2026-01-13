@@ -137,6 +137,17 @@ export interface BattleOdds {
   lastUpdated: number;
 }
 
+// Response type for odds lock (on-chain betting flow)
+export interface OddsLock {
+  lockId: string;
+  battleId: string;
+  backedPlayer: string;
+  lockedOdds: number;
+  amount: number;
+  potentialPayout: number;
+  expiresAt: number;
+}
+
 export interface LiveBattle extends Battle {
   odds?: BattleOdds;
   featured?: boolean;

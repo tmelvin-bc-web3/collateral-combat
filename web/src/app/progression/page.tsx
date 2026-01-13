@@ -70,7 +70,7 @@ const XP_SOURCES = [
     ),
   },
   {
-    name: 'Spectator Betting',
+    name: 'Spectator Wagering',
     description: 'Watch battles and wager on the outcome',
     xpRange: '25-100 XP',
     color: 'text-blue-400',
@@ -316,7 +316,7 @@ export default function ProgressionPage() {
                     </div>
                     {streak.atRisk && (
                       <p className="text-yellow-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 flex items-center gap-1">
-                        <span>⚠️</span> Bet today to keep your streak!
+                        <span>⚠️</span> Wager today to keep your streak!
                       </p>
                     )}
                   </div>
@@ -537,7 +537,7 @@ export default function ProgressionPage() {
 
             <div className="mt-2 sm:mt-3 p-2 sm:p-3 rounded-lg bg-green-500/10 border border-green-500/20">
               <p className="text-[10px] sm:text-xs text-green-400">
-                <strong>Note:</strong> Free bets are &quot;winnings only&quot; - you keep the profit but not the original stake. Total: <strong>29 free wagers</strong> by Level 100!
+                <strong>Note:</strong> Free wagers are &quot;winnings only&quot; - you keep the profit but not the original stake. Total: <strong>29 free wagers</strong> by Level 100!
               </p>
             </div>
           </div>
@@ -566,7 +566,7 @@ export default function ProgressionPage() {
                 <div className="min-w-0">
                   <h3 className="font-bold text-text-primary mb-0.5 sm:mb-1 text-sm sm:text-base">Activate When Ready</h3>
                   <p className="text-xs sm:text-sm text-text-secondary">
-                    Perks are stored in your inventory. Activate them whenever you want - they last for 50 bets once activated.
+                    Perks are stored in your inventory. Activate them whenever you want - they last for 50 wagers once activated.
                   </p>
                 </div>
               </div>

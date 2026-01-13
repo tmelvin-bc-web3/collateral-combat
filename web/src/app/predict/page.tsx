@@ -9,9 +9,9 @@ import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
 
 // Mobile panel tab type
-type MobilePanel = 'none' | 'bets' | 'history';
+type MobilePanel = 'none' | 'wagers' | 'history';
 
-// Live bet display type (combines socket data with profile info)
+// Live wager display type (combines socket data with profile info)
 interface LiveBetDisplay {
   id: string;
   bettor: string;
@@ -96,11 +96,11 @@ function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolea
   return displayPrice;
 }
 
-// SOL bet amounts (in SOL, not USD)
+// SOL wager amounts (in SOL, not USD)
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
 type BetAmountSol = typeof BET_AMOUNTS_SOL[number];
 
-// Free bet is always the minimum amount
+// Free wager is always the minimum amount
 const FREE_BET_AMOUNT_SOL = 0.01;
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -122,11 +122,11 @@ export default function PredictPage() {
   const [priceChange, setPriceChange] = useState(0);
   const [showRoundEndDim, setShowRoundEndDim] = useState(false);
 
-  // Track if user has placed a bet this round (for pre/post-bet UI states)
-  const [hasBetThisRound, setHasBetThisRound] = useState(false);
+  // Track if user has placed a wager this round (for pre/post-wager UI states)
+  const [hasBetThisRound, setHasWagerThisRound] = useState(false);
   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
 
-  // Live bets from socket stream
+  // Live wagers from socket stream
   const [liveBets, setLiveBets] = useState<LiveBetDisplay[]>([]);
 
   // Claim state
@@ -146,11 +146,11 @@ export default function PredictPage() {
     !prefersReducedMotion
   );
 
-  // Free bet state
+  // Free wager state
   const [freeBetBalance, setFreeBetBalance] = useState<FreeBetBalance | null>(null);
-  const [useFreeBet, setUseFreeBet] = useState(false);
+  const [useFreeBet, setUseFreeWager] = useState(false);
   const [freeBetPositions, setFreeBetPositions] = useState<FreeBetPosition[]>([]);
-  const [isPlacingFreeBet, setIsPlacingFreeBet] = useState(false);
+  const [isPlacingFreeBet, setIsPlacingFreeWager] = useState(false);
   const [freeBetError, setFreeBetError] = useState<string | null>(null);
 
   // Mobile panel state
@@ -170,7 +170,7 @@ export default function PredictPage() {
 
   const asset = 'SOL';
 
-  // Fetch free bet balance
+  // Fetch free wager balance
   const fetchFreeBetBalance = useCallback(async () => {
     if (!publicKey) {
       setFreeBetBalance(null);
@@ -186,11 +186,11 @@ export default function PredictPage() {
         setFreeBetBalance(balance);
       }
     } catch {
-      // Failed to fetch free bet balance
+      // Failed to fetch free wager balance
     }
   }, [publicKey]);
 
-  // Fetch free bet positions
+  // Fetch free wager positions
   const fetchFreeBetPositions = useCallback(async () => {
     if (!publicKey) {
       setFreeBetPositions([]);
@@ -206,7 +206,7 @@ export default function PredictPage() {
         setFreeBetPositions(positions);
       }
     } catch {
-      // Failed to fetch free bet positions
+      // Failed to fetch free wager positions
     }
   }, [publicKey]);
 
@@ -246,10 +246,10 @@ export default function PredictPage() {
 
     socket.on('prediction_round', (round) => {
       setCurrentRound(round);
-      // Reset bet state when a new round starts
+      // Reset wager state when a new round starts
       if (round.id !== currentRoundId) {
         setCurrentRoundId(round.id);
-        setHasBetThisRound(false);
+        setHasWagerThisRound(false);
       }
     });
 
@@ -308,7 +308,7 @@ export default function PredictPage() {
     };
   }, [asset, fetchData]);
 
-  // Fetch free bet balance and positions when wallet connects
+  // Fetch free wager balance and positions when wallet connects
   useEffect(() => {
     fetchFreeBetBalance();
     fetchFreeBetPositions();
@@ -346,7 +346,7 @@ export default function PredictPage() {
     return () => clearInterval(animationInterval);
   }, [currentRound?.status]);
 
-  const handlePlaceBet = async (side: PredictionSide) => {
+  const handlePlaceWager = async (side: PredictionSide) => {
     if (!publicKey) {
       setError('Connect wallet to play');
       return;
@@ -361,9 +361,9 @@ export default function PredictPage() {
     setError(null);
     setSuccessTx(null);
 
-    // Handle free bet usage via escrow API (always uses minimum bet amount)
+    // Handle free wager usage via escrow API (always uses minimum wager amount)
     if (useFreeBet && freeBetBalance && freeBetBalance.balance > 0) {
-      setIsPlacingFreeBet(true);
+      setIsPlacingFreeWager(true);
       setFreeBetError(null);
 
       try {
@@ -384,21 +384,21 @@ export default function PredictPage() {
         if (res.ok) {
           const data = await res.json();
           setSuccessTx('free_bet');
-          setHasBetThisRound(true);
+          setHasWagerThisRound(true);
           setTimeout(() => setSuccessTx(null), 3000);
-          // Refresh free bet balance and positions
+          // Refresh free wager balance and positions
           fetchFreeBetBalance();
           fetchFreeBetPositions();
         } else {
-          const errorData = await res.json().catch(() => ({ error: 'Failed to place free bet' }));
-          setFreeBetError(errorData.error || 'Failed to place free bet');
-          setError(errorData.error || 'Failed to place free bet');
+          const errorData = await res.json().catch(() => ({ error: 'Failed to place free wager' }));
+          setFreeBetError(errorData.error || 'Failed to place free wager');
+          setError(errorData.error || 'Failed to place free wager');
         }
       } catch (err) {
-        setFreeBetError('Network error placing free bet');
-        setError('Network error placing free bet');
+        setFreeBetError('Network error placing free wager');
+        setError('Network error placing free wager');
       } finally {
-        setIsPlacingFreeBet(false);
+        setIsPlacingFreeWager(false);
         setIsPlacing(false);
       }
       return;
@@ -410,7 +410,7 @@ export default function PredictPage() {
 
     if (tx) {
       setSuccessTx(tx);
-      setHasBetThisRound(true);
+      setHasWagerThisRound(true);
       setTimeout(() => setSuccessTx(null), 5000);
     } else if (onChainError) {
       setError(onChainError);
@@ -550,13 +550,13 @@ export default function PredictPage() {
           {/* Mobile panel toggle buttons - 44px touch targets */}
           <div className="flex lg:hidden gap-1">
             <button
-              onClick={() => setMobilePanel(mobilePanel === 'bets' ? 'none' : 'bets')}
+              onClick={() => setMobilePanel(mobilePanel === 'wagers' ? 'none' : 'wagers')}
               className={`min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all touch-manipulation active:scale-95 ${
-                mobilePanel === 'bets'
+                mobilePanel === 'wagers'
                   ? 'bg-warning/20 border border-warning/50 text-warning'
                   : 'bg-white/5 border border-white/10 text-white/60'
               }`}
-              aria-label="Toggle live bets panel"
+              aria-label="Toggle live wagers panel"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -591,10 +591,10 @@ export default function PredictPage() {
       {mobilePanel !== 'none' && (
         <div className="lg:hidden mb-2 flex-shrink-0 animate-slideUp">
           <div className="bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl p-3 max-h-[200px] overflow-y-auto mobile-scroll hide-scrollbar-mobile">
-            {mobilePanel === 'bets' ? (
+            {mobilePanel === 'wagers' ? (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Live Bets</span>
+                  <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Live Wagers</span>
                   <button
                     onClick={() => setMobilePanel('none')}
                     className="min-h-[32px] min-w-[32px] p-1 text-white/40 hover:text-white touch-manipulation"
@@ -618,7 +618,7 @@ export default function PredictPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="text-white/20 text-xs text-center py-4">No bets yet this round</div>
+                    <div className="text-white/20 text-xs text-center py-4">No wagers yet this round</div>
                   )}
                 </div>
                 {/* Pool Summary - Mobile */}
@@ -679,13 +679,13 @@ export default function PredictPage() {
       {/* 3-Column Layout: Left Sidebar | Main | Right Sidebar - fills remaining height */}
       <div className="flex gap-2 sm:gap-4 flex-1 min-h-0">
 
-        {/* LEFT SIDEBAR - Live Bets (fixed width) */}
+        {/* LEFT SIDEBAR - Live Wagers (fixed width) */}
         <div className="hidden lg:flex lg:flex-col w-72 flex-shrink-0 overflow-hidden">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
-            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Bets</div>
+            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Wagers</div>
 
             <div className="flex-1 overflow-y-auto space-y-1">
-              {/* Real-time bets from socket stream */}
+              {/* Real-time wagers from socket stream */}
               {liveBets.length > 0 ? (
                 liveBets.map((bet) => (
                   <div key={bet.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors animate-fadeIn">
@@ -703,7 +703,7 @@ export default function PredictPage() {
                   </div>
                 ))
               ) : (
-                // Show bets from current round if no live bets yet
+                // Show wagers from current round if no live wagers yet
                 <>
                   {currentRound?.longBets?.map((bet, idx) => (
                     <div key={bet.id || `long-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
@@ -724,7 +724,7 @@ export default function PredictPage() {
                     </div>
                   ))}
                   {(!currentRound?.longBets?.length && !currentRound?.shortBets?.length) && (
-                    <div className="text-white/20 text-xs text-center py-8">No bets yet this round</div>
+                    <div className="text-white/20 text-xs text-center py-8">No wagers yet this round</div>
                   )}
                 </>
               )}
@@ -813,13 +813,13 @@ export default function PredictPage() {
             );
           })()}
 
-          {/* Betting Section - 50% */}
+          {/* Wagerting Section - 50% */}
           <div className="flex-1 flex flex-col min-h-0 gap-2" style={{ flexBasis: '50%' }}>
-            {/* Betting Buttons */}
+            {/* Wagerting Buttons */}
             <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 min-h-0">
             {/* Long Button - min height 120px for mobile tap target */}
             <button
-              onClick={() => handlePlaceBet('long')}
+              onClick={() => handlePlaceWager('long')}
               disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
               className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 min-h-[120px] touch-manipulation ${
                 isBettingOpen
@@ -854,7 +854,7 @@ export default function PredictPage() {
 
             {/* Short Button - min height 120px for mobile tap target */}
             <button
-              onClick={() => handlePlaceBet('short')}
+              onClick={() => handlePlaceWager('short')}
               disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
               className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 min-h-[120px] touch-manipulation ${
                 isBettingOpen
@@ -891,7 +891,7 @@ export default function PredictPage() {
           {/* Wager Selector - scrollable on mobile */}
           <div className="flex-shrink-0 flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
             <span className="text-white/30 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap flex-shrink-0">Wager:</span>
-            {/* Show amount buttons only when NOT using free bet */}
+            {/* Show amount buttons only when NOT using free wager */}
             {!useFreeBet && BET_AMOUNTS_SOL.map((amount) => (
               <button
                 key={amount}
@@ -905,7 +905,7 @@ export default function PredictPage() {
                 {amount}
               </button>
             ))}
-            {/* Show locked 0.01 SOL when using free bet */}
+            {/* Show locked 0.01 SOL when using free wager */}
             {useFreeBet && (
               <div className="min-h-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold bg-warning/20 text-warning border border-warning/40 flex items-center gap-1.5">
                 <span>0.01</span>
@@ -915,7 +915,7 @@ export default function PredictPage() {
             {/* FREE button - toggle */}
             {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
               <button
-                onClick={() => setUseFreeBet(!useFreeBet)}
+                onClick={() => setUseFreeWager(!useFreeBet)}
                 className={`min-h-[44px] min-w-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold transition-all touch-manipulation flex-shrink-0 active:scale-95 ${
                   useFreeBet
                     ? 'bg-warning/30 text-warning border border-warning/50'
@@ -938,7 +938,7 @@ export default function PredictPage() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{successTx === 'free_bet' ? 'Free bet placed!' : 'Bet placed!'}</span>
+                <span>{successTx === 'free_bet' ? 'Free wager placed!' : 'Wager placed!'}</span>
               </div>
             </div>
           )}
@@ -1003,10 +1003,10 @@ export default function PredictPage() {
             </div>
           )}
 
-          {/* Pending Free Bet Positions */}
+          {/* Pending Free Wager Positions */}
           {freeBetPositions.length > 0 && (
             <div className="flex-shrink-0 space-y-1">
-              <div className="text-[10px] text-warning/60 uppercase tracking-wider font-medium">Free Bet Positions</div>
+              <div className="text-[10px] text-warning/60 uppercase tracking-wider font-medium">Free Wager Positions</div>
               {freeBetPositions.filter(p => p.status === 'pending' || p.status === 'won').map((position) => (
                 <div
                   key={position.id}

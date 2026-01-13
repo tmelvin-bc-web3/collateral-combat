@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -20,6 +20,11 @@ interface ServerToClientEvents {
   bet_placed: (bet: SpectatorBet) => void;
   bet_settled: (bet: SpectatorBet) => void;
   spectator_count: (data: { battleId: string; count: number }) => void;
+  user_bets: (bets: SpectatorBet[]) => void;
+  odds_lock: (lock: OddsLock) => void;
+  bet_verified: (bet: SpectatorBet) => void;
+  unclaimed_bets: (bets: SpectatorBet[]) => void;
+  claim_verified: (data: { betId: string; txSignature: string }) => void;
   // Prediction events
   prediction_round: (round: PredictionRound) => void;
   prediction_history: (rounds: PredictionRound[]) => void;
@@ -54,6 +59,8 @@ interface ClientToServerEvents {
   start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
+  open_position_signed: (payload: SignedTradePayload) => void;
+  close_position_signed: (payload: SignedTradePayload) => void;
   leave_battle: (battleId: string) => void;
   subscribe_prices: (tokens: string[]) => void;
   // Spectator events
@@ -63,6 +70,10 @@ interface ClientToServerEvents {
   leave_spectate: (battleId: string) => void;
   place_bet: (battleId: string, backedPlayer: string, amount: number, walletAddress: string) => void;
   get_my_bets: (walletAddress: string) => void;
+  request_odds_lock: (data: { battleId: string; backedPlayer: string; amount: number; walletAddress: string }) => void;
+  verify_bet: (data: { lockId: string; txSignature: string; walletAddress: string }) => void;
+  get_unclaimed_bets: (walletAddress: string) => void;
+  verify_claim: (data: { betId: string; txSignature: string }) => void;
   // Prediction events
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;

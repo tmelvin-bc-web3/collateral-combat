@@ -25,7 +25,7 @@ const GAME_MODES = [
     ),
     stats: [
       { label: 'Round', value: '30s' },
-      { label: 'Min Bet', value: '0.01 SOL' },
+      { label: 'Min Wager', value: '0.01 SOL' },
     ],
     color: 'accent',
     live: true,
@@ -80,7 +80,7 @@ const GAME_MODES = [
     ),
     stats: [
       { label: 'Live Battles', value: '0' },
-      { label: 'Min Bet', value: '0.1 SOL' },
+      { label: 'Min Wager', value: '0.1 SOL' },
     ],
     color: 'danger',
     live: false,

@@ -408,7 +408,7 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
       {timeRemaining !== undefined && timeRemaining > 0 && (
         <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded bg-bg-primary/80 border border-border-primary/50">
           <span className={`text-xs font-medium uppercase tracking-wider ${isLocked ? 'text-accent' : 'text-text-tertiary'}`}>
-            {isLocked ? 'Locked' : 'Bet'}
+            {isLocked ? 'Locked' : 'Wager'}
           </span>
           <span className={`text-sm font-mono font-bold tabular-nums ${isLocked ? 'text-accent' : 'text-warning'}`}>
             {formatCountdown(timeRemaining)}

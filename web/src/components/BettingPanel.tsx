@@ -399,7 +399,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
         </div>
       )}
 
-      {/* Place Bet Button */}
+      {/* Place Wager Button */}
       <button
         onClick={handlePlaceBet}
         disabled={!selectedPlayer || isPlacing || isRequestingLock || !walletAddress}
@@ -421,24 +421,24 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
           ) : isPlacing ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Placing Bet...
+              Placing Wager...
             </>
           ) : (
             <>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Place Bet
+              Place Wager
             </>
           )}
         </div>
       </button>
 
-      {/* Bet Pool Info */}
+      {/* Wager Pool Info */}
       {odds && odds.totalPool > 0 && (
         <div className="mt-5 pt-5 border-t border-border-primary">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-text-secondary">Total Bet Pool</span>
+            <span className="text-sm text-text-secondary">Total Wager Pool</span>
             <span className="font-mono font-bold text-lg">{odds.totalPool.toFixed(2)} SOL</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -454,7 +454,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
         </div>
       )}
 
-      {/* Recent Bets */}
+      {/* Recent Wagers */}
       {recentBets.length > 0 && (
         <div className="mt-5 pt-5 border-t border-border-primary">
           <div className="flex items-center gap-2 mb-3">
@@ -462,7 +462,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
             </span>
-            <span className="text-sm font-medium text-text-secondary">Recent Bets</span>
+            <span className="text-sm font-medium text-text-secondary">Recent Wagers</span>
           </div>
           <div className="space-y-2">
             {recentBets.map((bet) => (
@@ -489,7 +489,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
           <span className="text-xs font-medium text-text-tertiary">How odds work</span>
         </div>
         <p className="text-xs text-text-secondary leading-relaxed">
-          Odds update based on current P&L and betting activity. Higher odds means higher risk, but higher reward. If no one bets against you, your bet is returned.
+          Odds update based on current P&L and wagering activity. Higher odds means higher risk, but higher reward. If no one wagers against you, your wager is returned.
         </p>
       </div>
 
