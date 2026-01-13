@@ -289,21 +289,29 @@ export function BattleArena({ battle }: BattleArenaProps) {
           </div>
 
           {/* Long/Short Buttons - Fixed at bottom */}
-          <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
-            <button
-              onClick={() => handleOpenPosition('long')}
-              disabled={!isValid}
-              className="w-full py-4 rounded-lg font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-success hover:bg-success/90 text-white"
-            >
-              Long {selectedAsset}
-            </button>
-            <button
-              onClick={() => handleOpenPosition('short')}
-              disabled={!isValid}
-              className="w-full py-4 rounded-lg font-bold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-danger hover:bg-danger/90 text-white"
-            >
-              Short {selectedAsset}
-            </button>
+          <div className="p-3 border-t border-white/10 flex-shrink-0">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleOpenPosition('long')}
+                disabled={!isValid}
+                className="relative py-3 rounded border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-success/10 border-success/40 hover:bg-success/20 hover:border-success group"
+              >
+                <div className="text-success font-bold text-sm tracking-wide">LONG</div>
+                <div className="text-success/60 text-[10px] font-mono mt-0.5 group-hover:text-success/80">
+                  {leverage}x • ${positionSize.toFixed(0)}
+                </div>
+              </button>
+              <button
+                onClick={() => handleOpenPosition('short')}
+                disabled={!isValid}
+                className="relative py-3 rounded border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-danger/10 border-danger/40 hover:bg-danger/20 hover:border-danger group"
+              >
+                <div className="text-danger font-bold text-sm tracking-wide">SHORT</div>
+                <div className="text-danger/60 text-[10px] font-mono mt-0.5 group-hover:text-danger/80">
+                  {leverage}x • ${positionSize.toFixed(0)}
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
