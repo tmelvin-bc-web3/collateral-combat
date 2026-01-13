@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: sol-battles-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    rootDir: backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CMC_API_KEY
+        sync: false
+      - key: ESCROW_WALLET_PRIVATE_KEY
+        sync: false
+      - key: REBATE_WALLET_PRIVATE_KEY
+        sync: false
+      - key: SOLANA_RPC_URL
+        sync: false
