@@ -1,24 +1,87 @@
 'use client';
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 type TimeFilter = 'weekly' | 'monthly' | 'all';
 
 const ITEMS_PER_PAGE = 25;
 
-const MOCK_LEADERBOARD = [
-  { rank: 1, address: '7xKp...3mNq', wins: 47, losses: 12, winRate: 79.7, totalPnl: 156.32, avgPnl: 8.42, streak: 7 },
-  { rank: 2, address: '9aRt...7kLm', wins: 38, losses: 15, winRate: 71.7, totalPnl: 98.45, avgPnl: 6.21, streak: 4 },
-  { rank: 3, address: '4bYu...2pWx', wins: 52, losses: 23, winRate: 69.3, totalPnl: 87.21, avgPnl: 5.83, streak: 2 },
-  { rank: 4, address: '2cDe...9qZa', wins: 29, losses: 14, winRate: 67.4, totalPnl: 72.18, avgPnl: 5.12, streak: 5 },
-  { rank: 5, address: '8fGh...1sRb', wins: 41, losses: 21, winRate: 66.1, totalPnl: 65.90, avgPnl: 4.89, streak: 0 },
-  { rank: 6, address: '3iJk...5tUc', wins: 33, losses: 18, winRate: 64.7, totalPnl: 58.33, avgPnl: 4.56, streak: 3 },
-  { rank: 7, address: '6lMn...8vWd', wins: 27, losses: 16, winRate: 62.8, totalPnl: 45.67, avgPnl: 4.21, streak: 0 },
-  { rank: 8, address: '1oOp...4xYe', wins: 24, losses: 15, winRate: 61.5, totalPnl: 38.92, avgPnl: 3.98, streak: 1 },
-  { rank: 9, address: '5qQr...0zAf', wins: 31, losses: 20, winRate: 60.8, totalPnl: 32.15, avgPnl: 3.67, streak: 0 },
-  { rank: 10, address: '0sSt...6bBg', wins: 19, losses: 13, winRate: 59.4, totalPnl: 28.44, avgPnl: 3.45, streak: 2 },
-];
+// Generate mock leaderboard data with 75 entries to demonstrate pagination
+// The multiplier adjusts stats for different time periods
+const generateMockLeaderboard = (multiplier: number, seed: number) => {
+  // Use a seeded random for consistent results per time period
+  const seededRandom = (i: number) => {
+    const x = Math.sin(seed + i) * 10000;
+    return x - Math.floor(x);
+  };
+
+  const baseEntries = [
+    { address: '7xKp...3mNq', username: 'WarLord_Alpha', wins: 47, losses: 12, winRate: 79.7, totalPnl: 156.32, avgPnl: 8.42, streak: 7 },
+    { address: '9aRt...7kLm', username: 'DegenKing99', wins: 38, losses: 15, winRate: 71.7, totalPnl: 98.45, avgPnl: 6.21, streak: 4 },
+    { address: '4bYu...2pWx', username: 'CryptoNinja', wins: 52, losses: 23, winRate: 69.3, totalPnl: 87.21, avgPnl: 5.83, streak: 2 },
+    { address: '2cDe...9qZa', username: 'SolanaSlayer', wins: 29, losses: 14, winRate: 67.4, totalPnl: 72.18, avgPnl: 5.12, streak: 5 },
+    { address: '8fGh...1sRb', username: 'MoonHunter', wins: 41, losses: 21, winRate: 66.1, totalPnl: 65.90, avgPnl: 4.89, streak: 0 },
+    { address: '3iJk...5tUc', username: 'ApeBrain420', wins: 33, losses: 18, winRate: 64.7, totalPnl: 58.33, avgPnl: 4.56, streak: 3 },
+    { address: '6lMn...8vWd', username: 'DiamondHands', wins: 27, losses: 16, winRate: 62.8, totalPnl: 45.67, avgPnl: 4.21, streak: 0 },
+    { address: '1oOp...4xYe', username: 'WhaleTamer', wins: 24, losses: 15, winRate: 61.5, totalPnl: 38.92, avgPnl: 3.98, streak: 1 },
+    { address: '5qQr...0zAf', username: 'RektRevenge', wins: 31, losses: 20, winRate: 60.8, totalPnl: 32.15, avgPnl: 3.67, streak: 0 },
+    { address: '0sSt...6bBg', username: 'BullRunner', wins: 19, losses: 13, winRate: 59.4, totalPnl: 28.44, avgPnl: 3.45, streak: 2 },
+  ];
+
+  const additionalUsernames = [
+    'FloorSweeper', 'GigaBrain', 'PaperHands', 'TokenHoarder', 'YieldFarmer',
+    'LiquidityKing', 'GasGuzzler', 'RuqPuller', 'AlphaCaller', 'BetaTester',
+    'GammaRays', 'DeltaForce', 'OmegaWolf', 'SigmaGrind', 'ThetaGang',
+    'VegasVibes', 'RhoRunner', 'PhilosophyFi', 'PsiOps', 'ChiChaser',
+    'ZetaZero', 'EtaEater', 'IotaInvestor', 'KappaKing', 'LambdaLabs',
+    'MuMoney', 'NuNomad', 'XiXpert', 'OmicronOne', 'PiPioneer',
+    'TauTrader', 'UpsilonUp', 'ChainChamp', 'BlockBuster', 'HashHero',
+    'NodeNinja', 'ValidatorVic', 'StakerSteve', 'MinterMike', 'BurnerBob',
+    'HodlHank', 'SwapSam', 'BridgeBill', 'WrapWill', 'PoolPete',
+    'VaultVince', 'LockerLarry', 'AirdropAndy', 'SnipeSniper', 'BotBuster',
+    'MevMaster', 'FlashFred', 'ArbArnie', 'SpreadSpreader', 'SlipSlider',
+    'ImpermanentIvan', 'DivergenceDoug', 'CorrelationCarl', 'VolatilityVic', 'LeverageLeo',
+  ];
+
+  // Apply multiplier to base entries for time-period variation
+  const entries = baseEntries.map((e, i) => ({
+    ...e,
+    wins: Math.round(e.wins * multiplier),
+    losses: Math.round(e.losses * multiplier),
+    totalPnl: Math.round(e.totalPnl * multiplier * 100) / 100,
+    streak: multiplier < 0.5 ? Math.min(e.streak, 3) : e.streak, // Weekly has shorter streaks
+  }));
+
+  // Generate additional entries to reach 75 total
+  for (let i = 10; i < 75; i++) {
+    const baseWinRate = 59 - (i - 10) * 0.5;
+    const wins = Math.floor((15 + seededRandom(i) * 30) * multiplier);
+    const losses = Math.floor(wins * (100 - baseWinRate) / baseWinRate);
+    entries.push({
+      address: `${Math.random().toString(36).substring(2, 6)}...${Math.random().toString(36).substring(2, 6)}`.toUpperCase(),
+      username: additionalUsernames[i - 10] || `Warrior${i + 1}`,
+      wins,
+      losses,
+      winRate: Math.round(baseWinRate * 10) / 10,
+      totalPnl: Math.round((25 - (i - 10) * 0.3 + seededRandom(i + 100) * 5) * multiplier * 100) / 100,
+      avgPnl: Math.round((3 - (i - 10) * 0.03 + seededRandom(i + 200) * 0.5) * 100) / 100,
+      streak: seededRandom(i + 300) > 0.7 ? Math.floor(seededRandom(i + 400) * 5) : 0,
+    });
+  }
+
+  // Sort by totalPnl descending and assign ranks
+  return entries
+    .sort((a, b) => b.totalPnl - a.totalPnl)
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
+};
+
+// Pre-generate leaderboards for each time period
+const MOCK_LEADERBOARDS: Record<TimeFilter, ReturnType<typeof generateMockLeaderboard>> = {
+  weekly: generateMockLeaderboard(0.25, 1),   // ~25% of all-time stats
+  monthly: generateMockLeaderboard(0.5, 2),   // ~50% of all-time stats
+  all: generateMockLeaderboard(1, 3),         // Full all-time stats
+};
 
 const TIME_FILTERS: { value: TimeFilter; label: string; icon: ReactNode }[] = [
   {
@@ -86,15 +149,18 @@ export default function LeaderboardPage() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Filter leaderboard by search query (username/wallet)
+  // Filter leaderboard by time period and search query (username/wallet)
   const filteredLeaderboard = useMemo(() => {
-    if (!searchQuery.trim()) return MOCK_LEADERBOARD;
+    const leaderboard = MOCK_LEADERBOARDS[timeFilter];
+    if (!searchQuery.trim()) return leaderboard;
     const query = searchQuery.toLowerCase().trim();
-    return MOCK_LEADERBOARD.filter((trader) =>
-      trader.address.toLowerCase().includes(query)
+    return leaderboard.filter((trader) =>
+      trader.address.toLowerCase().includes(query) ||
+      trader.username.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, timeFilter]);
 
   // Paginate results
   const totalPages = Math.ceil(filteredLeaderboard.length / ITEMS_PER_PAGE);
@@ -104,10 +170,33 @@ export default function LeaderboardPage() {
   }, [filteredLeaderboard, currentPage]);
 
   // Reset to page 1 when search changes
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = useCallback((value: string) => {
+    setIsTransitioning(true);
     setSearchQuery(value);
     setCurrentPage(1);
-  };
+  }, []);
+
+  // Reset to page 1 when time filter changes
+  const handleTimeFilterChange = useCallback((filter: TimeFilter) => {
+    setIsTransitioning(true);
+    setTimeFilter(filter);
+    setCurrentPage(1);
+  }, []);
+
+  // Handle page change with smooth transition
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage === currentPage || newPage < 1 || newPage > totalPages) return;
+    setIsTransitioning(true);
+    setCurrentPage(newPage);
+  }, [currentPage, totalPages]);
+
+  // Reset transition state after animation
+  useEffect(() => {
+    if (isTransitioning) {
+      const timer = setTimeout(() => setIsTransitioning(false), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isTransitioning, currentPage, searchQuery, timeFilter]);
 
   // Get top 3 for podium (only if no search query and on first page)
   const showPodium = !searchQuery.trim() && currentPage === 1;
@@ -200,7 +289,7 @@ export default function LeaderboardPage() {
           {TIME_FILTERS.map((filter) => (
             <button
               key={filter.value}
-              onClick={() => setTimeFilter(filter.value)}
+              onClick={() => handleTimeFilterChange(filter.value)}
               className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-[10px] sm:text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                 timeFilter === filter.value
                   ? 'bg-warning text-bg-primary'
@@ -224,7 +313,7 @@ export default function LeaderboardPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search by wallet..."
+            placeholder="Search by username or wallet..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-bg-secondary border border-warning/20 text-text-primary placeholder-text-tertiary text-sm focus:outline-none focus:border-warning/50 focus:ring-1 focus:ring-warning/30 transition-all"
           />
           {searchQuery && (
@@ -252,7 +341,10 @@ export default function LeaderboardPage() {
                   <div className="flex-shrink-0 sm:inline-block">{getRankBadge(2)}</div>
                   <div className="flex-1 min-w-0 sm:mt-3">
                     <div className="flex items-center justify-between sm:justify-center">
-                      <div className="font-mono font-semibold text-sm sm:text-base truncate">{top3[1].address}</div>
+                      <div>
+                        <div className="font-semibold text-sm sm:text-base truncate">{top3[1].username}</div>
+                        <div className="font-mono text-xs text-text-tertiary truncate">{top3[1].address}</div>
+                      </div>
                       <div className="sm:hidden px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-2 flex-shrink-0">
                         Lieutenant
                       </div>
@@ -289,7 +381,10 @@ export default function LeaderboardPage() {
                   <div className="flex-shrink-0 sm:inline-block">{getRankBadge(1)}</div>
                   <div className="flex-1 min-w-0 sm:mt-3">
                     <div className="flex items-center justify-between sm:justify-center">
-                      <div className="font-mono text-sm sm:text-lg font-bold truncate">{top3[0].address}</div>
+                      <div>
+                        <div className="text-sm sm:text-lg font-bold truncate">{top3[0].username}</div>
+                        <div className="font-mono text-xs text-text-tertiary truncate">{top3[0].address}</div>
+                      </div>
                       <div className="sm:hidden px-2 py-0.5 rounded-full bg-warning/20 text-warning text-[10px] font-bold uppercase tracking-wider ml-2 flex-shrink-0">
                         Warlord
                       </div>
@@ -332,7 +427,10 @@ export default function LeaderboardPage() {
                   <div className="flex-shrink-0 sm:inline-block">{getRankBadge(3)}</div>
                   <div className="flex-1 min-w-0 sm:mt-3">
                     <div className="flex items-center justify-between sm:justify-center">
-                      <div className="font-mono font-semibold text-sm sm:text-base truncate">{top3[2].address}</div>
+                      <div>
+                        <div className="font-semibold text-sm sm:text-base truncate">{top3[2].username}</div>
+                        <div className="font-mono text-xs text-text-tertiary truncate">{top3[2].address}</div>
+                      </div>
                       <div className="sm:hidden px-2 py-0.5 rounded-full bg-amber-700/20 text-amber-600 text-[10px] font-bold uppercase tracking-wider ml-2 flex-shrink-0">
                         Sergeant
                       </div>
@@ -362,7 +460,7 @@ export default function LeaderboardPage() {
       )}
 
       {/* Full Leaderboard Table - Desktop */}
-      <div className="hidden md:block card p-0 overflow-hidden border border-warning/20">
+      <div className={`hidden md:block card p-0 overflow-hidden border border-warning/20 transition-opacity duration-150 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-5 py-4 bg-bg-tertiary border-b border-warning/20 text-text-tertiary text-xs font-bold uppercase tracking-wider">
           <div className="col-span-1">Rank</div>
@@ -384,7 +482,10 @@ export default function LeaderboardPage() {
             </div>
             <div className="col-span-3">
               <div className="flex items-center gap-3">
-                <div className="font-mono font-semibold">{trader.address}</div>
+                <div>
+                  <div className="font-semibold">{trader.username}</div>
+                  <div className="font-mono text-xs text-text-tertiary">{trader.address}</div>
+                </div>
                 {trader.streak >= 3 && (
                   <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/10 border border-danger/30">
                     <svg className="w-3 h-3 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -422,7 +523,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Full Leaderboard - Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className={`md:hidden space-y-3 transition-opacity duration-150 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         {restOfLeaderboard.map((trader) => (
           <div
             key={trader.rank}
@@ -431,8 +532,9 @@ export default function LeaderboardPage() {
             <div className="flex items-center gap-3 mb-3">
               {getRankBadge(trader.rank)}
               <div className="flex-1 min-w-0">
-                <div className="font-mono font-semibold truncate">{trader.address}</div>
-                <div className="text-xs text-text-tertiary">
+                <div className="font-semibold truncate">{trader.username}</div>
+                <div className="font-mono text-xs text-text-tertiary truncate">{trader.address}</div>
+                <div className="text-xs text-text-tertiary mt-0.5">
                   <span className="text-success font-bold">{trader.wins}K</span>
                   <span className="mx-1">/</span>
                   <span className="text-danger font-bold">{trader.losses}D</span>
@@ -470,7 +572,7 @@ export default function LeaderboardPage() {
         <div className="flex items-center justify-center gap-2 mt-6">
           {/* Previous Button */}
           <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
               currentPage === 1
@@ -500,11 +602,11 @@ export default function LeaderboardPage() {
               return (
                 <button
                   key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-9 h-9 rounded-lg text-sm font-bold transition-all duration-150 ${
                     currentPage === pageNum
-                      ? 'bg-warning text-bg-primary'
-                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border border-warning/20'
+                      ? 'bg-warning text-bg-primary scale-105'
+                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border border-warning/20 hover:scale-105'
                   }`}
                 >
                   {pageNum}
@@ -515,7 +617,7 @@ export default function LeaderboardPage() {
 
           {/* Next Button */}
           <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
             className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
               currentPage === totalPages

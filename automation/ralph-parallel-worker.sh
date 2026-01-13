@@ -108,7 +108,14 @@ main() {
         break
       fi
 
-      # Wait and retry
+      # Check if any stories remain for this worker's scope
+      local my_tasks=$("$QUEUE_SCRIPT" status 2>/dev/null | grep -c "@worker:$WORKER_ID" || echo "0")
+      if [[ "$my_tasks" == "0" ]]; then
+        log_success "No more tasks for $WORKER_ID scope. Exiting."
+        break
+      fi
+
+      # Wait and retry (tasks for our scope may be locked by another instance)
       log "Waiting 30s before retry..."
       sleep 30
       continue

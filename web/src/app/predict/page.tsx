@@ -8,6 +8,9 @@ import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
 
+// Mobile panel tab type
+type MobilePanel = 'none' | 'bets' | 'history';
+
 // Live bet display type (combines socket data with profile info)
 interface LiveBetDisplay {
   id: string;
@@ -149,6 +152,9 @@ export default function PredictPage() {
   const [freeBetPositions, setFreeBetPositions] = useState<FreeBetPosition[]>([]);
   const [isPlacingFreeBet, setIsPlacingFreeBet] = useState(false);
   const [freeBetError, setFreeBetError] = useState<string | null>(null);
+
+  // Mobile panel state
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
   // On-chain prediction hook
   const {
@@ -488,7 +494,7 @@ export default function PredictPage() {
   const isLocked = currentRound?.status === 'locked';
 
   return (
-    <div className="h-screen flex flex-col px-2 sm:px-4 lg:px-6 py-2 overflow-hidden">
+    <div className="h-screen flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden safe-area-inset">
       {/* Round End Dim Overlay */}
       {showRoundEndDim && (
         <div
@@ -539,13 +545,136 @@ export default function PredictPage() {
           </div>
         </div>
 
-        {/* Streak */}
-        {streakInfo.streak >= 2 && (
-          <div className={`flex items-center gap-1 text-xs sm:text-sm font-bold ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
-            <span>{streakInfo.streak}× {streakInfo.side === 'long' ? 'LONG' : 'SHORT'} streak</span>
+        {/* Desktop: Streak display | Mobile: Panel toggle buttons */}
+        <div className="flex items-center gap-2">
+          {/* Mobile panel toggle buttons - 44px touch targets */}
+          <div className="flex lg:hidden gap-1">
+            <button
+              onClick={() => setMobilePanel(mobilePanel === 'bets' ? 'none' : 'bets')}
+              className={`min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all touch-manipulation active:scale-95 ${
+                mobilePanel === 'bets'
+                  ? 'bg-warning/20 border border-warning/50 text-warning'
+                  : 'bg-white/5 border border-white/10 text-white/60'
+              }`}
+              aria-label="Toggle live bets panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setMobilePanel(mobilePanel === 'history' ? 'none' : 'history')}
+              className={`min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all touch-manipulation active:scale-95 ${
+                mobilePanel === 'history'
+                  ? 'bg-warning/20 border border-warning/50 text-warning'
+                  : 'bg-white/5 border border-white/10 text-white/60'
+              }`}
+              aria-label="Toggle history panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </div>
-        )}
+
+          {/* Streak - visible on all screens */}
+          {streakInfo.streak >= 2 && (
+            <div className={`flex items-center gap-1 text-xs sm:text-sm font-bold ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
+              <span className="hidden sm:inline">{streakInfo.streak}× {streakInfo.side === 'long' ? 'LONG' : 'SHORT'} streak</span>
+              <span className="sm:hidden">{streakInfo.streak}×</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Mobile Panel - Slides in from top */}
+      {mobilePanel !== 'none' && (
+        <div className="lg:hidden mb-2 flex-shrink-0 animate-slideUp">
+          <div className="bg-black/60 backdrop-blur-sm border border-white/10 rounded-xl p-3 max-h-[200px] overflow-y-auto mobile-scroll hide-scrollbar-mobile">
+            {mobilePanel === 'bets' ? (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Live Bets</span>
+                  <button
+                    onClick={() => setMobilePanel('none')}
+                    className="min-h-[32px] min-w-[32px] p-1 text-white/40 hover:text-white touch-manipulation"
+                    aria-label="Close panel"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {liveBets.length > 0 ? (
+                    liveBets.slice(0, 5).map((bet) => (
+                      <div key={bet.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-white/5">
+                        <span className="text-white/60 font-mono text-xs">
+                          {bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}
+                        </span>
+                        <span className={`font-bold text-xs ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
+                          {bet.side === 'long' ? '+' : '-'}{(bet.amount / (currentPrice || 1)).toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-white/20 text-xs text-center py-4">No bets yet this round</div>
+                  )}
+                </div>
+                {/* Pool Summary - Mobile */}
+                <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-center">
+                  <div>
+                    <div className="text-success font-bold text-sm">
+                      {currentRound ? (currentRound.longPool / (currentPrice || 1)).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="text-[9px] text-white/30 uppercase">Long</div>
+                  </div>
+                  <div>
+                    <div className="text-danger font-bold text-sm">
+                      {currentRound ? (currentRound.shortPool / (currentPrice || 1)).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="text-[9px] text-white/30 uppercase">Short</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">History</span>
+                  <button
+                    onClick={() => setMobilePanel('none')}
+                    className="min-h-[32px] min-w-[32px] p-1 text-white/40 hover:text-white touch-manipulation"
+                    aria-label="Close panel"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {recentRounds.slice(0, 10).map((round) => {
+                    const isLong = round.winner === 'long';
+                    const isShort = round.winner === 'short';
+                    return (
+                      <div
+                        key={round.id}
+                        className={`px-2 py-1 rounded text-xs font-bold ${
+                          isLong ? 'bg-success/20 text-success' : isShort ? 'bg-danger/20 text-danger' : 'bg-white/10 text-white/30'
+                        }`}
+                      >
+                        {isLong ? 'L' : isShort ? 'S' : 'P'}
+                      </div>
+                    );
+                  })}
+                  {recentRounds.length === 0 && (
+                    <div className="text-white/20 text-xs py-2">No rounds yet</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 3-Column Layout: Left Sidebar | Main | Right Sidebar - fills remaining height */}
       <div className="flex gap-2 sm:gap-4 flex-1 min-h-0">

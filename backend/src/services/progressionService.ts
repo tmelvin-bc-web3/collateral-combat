@@ -29,6 +29,7 @@ import {
   FreeBetTransaction,
   UserStreak,
 } from '../db/progressionDatabase';
+import * as userStatsDb from '../db/userStatsDatabase';
 import {
   UserProgression,
   XpHistoryEntry,
@@ -36,6 +37,24 @@ import {
   XpGainEvent,
   ProgressionPerkType,
 } from '../types';
+
+// ===================
+// Leaderboard Types
+// ===================
+
+export interface LeaderboardEntry {
+  rank: number;
+  address: string;
+  fullAddress: string;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalPnl: number;
+  avgPnl: number;
+  streak: number;
+}
+
+export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all';
 
 // ===================
 // Level Configuration
@@ -555,6 +574,37 @@ class ProgressionService {
 
   isStreakAtRisk(walletAddress: string): boolean {
     return isStreakAtRisk(walletAddress);
+  }
+
+  // ===================
+  // Leaderboard
+  // ===================
+
+  getLeaderboard(
+    period: 'weekly' | 'monthly' | 'all' = 'all',
+    metric: 'profit' | 'winRate' | 'volume' = 'profit',
+    limit: number = 50
+  ): LeaderboardEntry[] {
+    // Get base leaderboard from userStats
+    const stats = userStatsDb.getStatsLeaderboard(metric, limit);
+
+    // Map to leaderboard entries with rank
+    return stats.map((entry, index) => ({
+      rank: index + 1,
+      address: this.shortenAddress(entry.walletAddress),
+      fullAddress: entry.walletAddress,
+      wins: entry.totalWins,
+      losses: entry.totalLosses,
+      winRate: entry.winRate,
+      totalPnl: entry.totalProfitLoss,
+      avgPnl: entry.totalWagers > 0 ? (entry.totalProfitLoss / entry.totalWagers) * 100 : 0,
+      streak: entry.currentStreak,
+    }));
+  }
+
+  private shortenAddress(address: string): string {
+    if (address.length <= 12) return address;
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
   }
 
   // ===================
