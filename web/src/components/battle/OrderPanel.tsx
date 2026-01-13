@@ -38,9 +38,9 @@ export function OrderPanel({
   };
 
   return (
-    <div className="w-[280px] flex-shrink-0 bg-bg-secondary border-l border-border-primary flex flex-col h-full">
+    <div className="w-[280px] flex-shrink-0 bg-bg-secondary border-l border-border-primary flex flex-col h-full min-h-0">
       {/* Long/Short Tabs */}
-      <div className="grid grid-cols-2">
+      <div className="grid grid-cols-2 flex-shrink-0">
         <button
           onClick={() => setSide('long')}
           className={`py-3 text-sm font-bold uppercase transition-all ${
@@ -148,8 +148,8 @@ export function OrderPanel({
         )}
       </div>
 
-      {/* Submit Button */}
-      <div className="p-4 border-t border-border-primary">
+      {/* Submit Button - Always visible at bottom */}
+      <div className="p-4 border-t border-border-primary flex-shrink-0 bg-bg-secondary">
         <button
           onClick={handleSubmit}
           disabled={!isValid}

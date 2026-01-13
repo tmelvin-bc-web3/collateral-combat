@@ -158,7 +158,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
       </div>
 
       {/* Main Trading Layout */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left Sidebar - Markets */}
         <MarketsSidebar
           selectedAsset={selectedAsset}
