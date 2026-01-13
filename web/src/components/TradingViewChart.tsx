@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useState } from 'react';
 
 // TradingView symbol mapping
 const SYMBOL_MAP: Record<string, string> = {
@@ -19,117 +19,15 @@ type Indicator = 'MA' | 'EMA' | 'RSI' | 'MACD' | 'BB' | 'VOLUME';
 interface TradingViewChartProps {
   symbol: string;
   height?: number | string;
-  minimal?: boolean; // Simple line chart with no controls
+  minimal?: boolean;
 }
 
 export function TradingViewChart({ symbol, height = 400, minimal = false }: TradingViewChartProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<any>(null);
   const [selectedIndicators, setSelectedIndicators] = useState<Indicator[]>(['VOLUME']);
-  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
-  // Note: TradingView free widget minimum is 1 minute ('1').
-  // For sub-minute, would need TradingView Pro or custom charting library.
   const [interval, setInterval] = useState('1');
 
   const tvSymbol = SYMBOL_MAP[symbol] || 'BINANCE:SOLUSDT';
   const isFullHeight = height === '100%';
-
-  // Measure container size
-  useEffect(() => {
-    if (!isFullHeight || !wrapperRef.current) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setContainerSize({ width: Math.floor(width), height: Math.floor(height) });
-        }
-      }
-    });
-
-    resizeObserver.observe(wrapperRef.current);
-    return () => resizeObserver.disconnect();
-  }, [isFullHeight]);
-
-  // Create TradingView widget
-  const createWidget = useCallback(() => {
-    if (!containerRef.current) return;
-
-    // Clear previous widget
-    containerRef.current.innerHTML = '';
-
-    // Build studies array based on selected indicators (none for minimal)
-    const studies: string[] = [];
-    if (!minimal) {
-      if (selectedIndicators.includes('MA')) studies.push('MASimple@tv-basicstudies');
-      if (selectedIndicators.includes('EMA')) studies.push('MAExp@tv-basicstudies');
-      if (selectedIndicators.includes('RSI')) studies.push('RSI@tv-basicstudies');
-      if (selectedIndicators.includes('MACD')) studies.push('MACD@tv-basicstudies');
-      if (selectedIndicators.includes('BB')) studies.push('BollingerBands@tv-basicstudies');
-      if (selectedIndicators.includes('VOLUME')) studies.push('Volume@tv-basicstudies');
-    }
-
-    // Determine dimensions
-    let widgetWidth: number | undefined;
-    let widgetHeight: number | undefined;
-    let useAutosize = true;
-
-    if (isFullHeight && containerSize) {
-      widgetWidth = containerSize.width;
-      widgetHeight = containerSize.height;
-      useAutosize = false;
-    } else if (typeof height === 'number') {
-      widgetHeight = height;
-    }
-
-    // Create TradingView widget
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    script.onload = () => {
-      if (typeof (window as any).TradingView !== 'undefined' && containerRef.current) {
-        widgetRef.current = new (window as any).TradingView.widget({
-          autosize: useAutosize,
-          width: widgetWidth,
-          height: widgetHeight,
-          symbol: tvSymbol,
-          interval: minimal ? '1' : interval,
-          timezone: 'Etc/UTC',
-          theme: 'dark',
-          style: minimal ? '3' : '1', // 3 = line chart, 1 = candles
-          locale: 'en',
-          toolbar_bg: '#0d0d0d',
-          enable_publishing: false,
-          hide_top_toolbar: minimal,
-          hide_legend: minimal,
-          hide_side_toolbar: minimal,
-          save_image: false,
-          container_id: containerRef.current.id,
-          studies: studies,
-          backgroundColor: '#0d0d0d',
-          gridColor: '#1a1a1a',
-          withdateranges: !minimal,
-          allow_symbol_change: !minimal,
-        });
-      }
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, [tvSymbol, interval, selectedIndicators, minimal, isFullHeight, containerSize, height]);
-
-  // Initialize widget when ready
-  useEffect(() => {
-    // For full height mode, wait until we have container dimensions
-    if (isFullHeight && !containerSize) return;
-
-    return createWidget();
-  }, [createWidget, isFullHeight, containerSize]);
 
   const toggleIndicator = (indicator: Indicator) => {
     setSelectedIndicators(prev =>
@@ -157,21 +55,39 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
     { value: 'D', label: '1D' },
   ];
 
+  // Build studies string for URL
+  const studiesParam = (() => {
+    const studies: string[] = [];
+    if (!minimal) {
+      if (selectedIndicators.includes('MA')) studies.push('MASimple@tv-basicstudies');
+      if (selectedIndicators.includes('EMA')) studies.push('MAExp@tv-basicstudies');
+      if (selectedIndicators.includes('RSI')) studies.push('RSI@tv-basicstudies');
+      if (selectedIndicators.includes('MACD')) studies.push('MACD@tv-basicstudies');
+      if (selectedIndicators.includes('BB')) studies.push('BollingerBands@tv-basicstudies');
+      if (selectedIndicators.includes('VOLUME')) studies.push('Volume@tv-basicstudies');
+    }
+    return studies.join('%1F');
+  })();
+
+  // Use TradingView's embed iframe URL
+  const embedUrl = `https://s.tradingview.com/widgetembed/?frameElementId=tradingview_embed&symbol=${encodeURIComponent(tvSymbol)}&interval=${minimal ? '1' : interval}&hidesidetoolbar=${minimal ? '1' : '0'}&symboledit=${minimal ? '0' : '1'}&saveimage=0&toolbarbg=0d0d0d&studies=${studiesParam}&theme=dark&style=${minimal ? '3' : '1'}&timezone=Etc%2FUTC&withdateranges=${minimal ? '0' : '1'}&showpopupbutton=0&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=localhost&utm_medium=widget_new&utm_campaign=chart`;
+
   const heightStyle = typeof height === 'string' ? height : `${height}px`;
 
-  // For minimal mode, just return the chart
+  // For minimal mode, just return the iframe
   if (minimal) {
     return (
-      <div
-        id={`tradingview_${symbol}_minimal`}
-        ref={containerRef}
-        style={{ height: heightStyle }}
-        className="w-full h-full"
-      />
+      <div style={{ height: heightStyle }} className="w-full">
+        <iframe
+          src={embedUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          allowFullScreen
+        />
+      </div>
     );
   }
 
-  // Full height mode: use flex layout with measured dimensions
+  // Full height mode
   if (isFullHeight) {
     return (
       <div className="flex flex-col h-full">
@@ -215,13 +131,13 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
           </div>
         </div>
 
-        {/* Chart Wrapper - measures available space */}
-        <div ref={wrapperRef} className="flex-1 min-h-0 relative">
-          {/* Chart Container - gets explicit dimensions */}
-          <div
-            id={`tradingview_${symbol}`}
-            ref={containerRef}
-            className="absolute inset-0"
+        {/* Chart iframe - fills remaining space */}
+        <div className="flex-1 min-h-0">
+          <iframe
+            key={`${tvSymbol}-${interval}-${studiesParam}`}
+            src={embedUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            allowFullScreen
           />
         </div>
       </div>
@@ -271,13 +187,15 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
         </div>
       </div>
 
-      {/* Chart Container */}
-      <div
-        id={`tradingview_${symbol}`}
-        ref={containerRef}
-        style={{ height: heightStyle }}
-        className="rounded-lg overflow-hidden border border-white/5"
-      />
+      {/* Chart iframe */}
+      <div style={{ height: heightStyle }} className="rounded-lg overflow-hidden border border-white/5">
+        <iframe
+          key={`${tvSymbol}-${interval}-${studiesParam}`}
+          src={embedUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          allowFullScreen
+        />
+      </div>
     </div>
   );
 }
