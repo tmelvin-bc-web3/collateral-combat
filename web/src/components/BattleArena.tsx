@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
 import { useBattleOnChain } from '@/hooks/useBattleOnChain';
@@ -44,22 +44,56 @@ export function BattleArena({ battle }: BattleArenaProps) {
     openPosition(selectedAsset, side, leverage, size);
   };
 
+  // Calculate real-time P&L for positions using live prices
+  const getPositionsWithLivePnL = useCallback(() => {
+    if (!currentPlayer) return [];
+
+    return currentPlayer.account.positions.map(position => {
+      const livePrice = prices[position.asset] || position.currentPrice;
+      const priceDiff = position.side === 'long'
+        ? livePrice - position.entryPrice
+        : position.entryPrice - livePrice;
+      const pnlPercent = (priceDiff / position.entryPrice) * 100 * position.leverage;
+      const margin = position.size / position.leverage;
+      const pnlDollar = margin * (pnlPercent / 100);
+
+      return {
+        ...position,
+        currentPrice: livePrice,
+        unrealizedPnl: pnlDollar,
+        unrealizedPnlPercent: pnlPercent,
+      };
+    });
+  }, [currentPlayer, prices]);
+
+  const positionsWithLivePnL = getPositionsWithLivePnL();
+
   const getAccountValue = () => {
     if (!currentPlayer) return 0;
-    const marginInPositions = currentPlayer.account.positions.reduce(
+    const marginInPositions = positionsWithLivePnL.reduce(
       (sum, p) => sum + (p.size / p.leverage), 0
     );
-    const unrealizedPnl = currentPlayer.account.positions.reduce(
+    const unrealizedPnl = positionsWithLivePnL.reduce(
       (sum, p) => sum + p.unrealizedPnl, 0
     );
     return currentPlayer.account.balance + marginInPositions + unrealizedPnl;
+  };
+
+  // Calculate total P&L with live prices
+  const getTotalPnLPercent = () => {
+    if (!currentPlayer) return 0;
+    const totalUnrealizedPnl = positionsWithLivePnL.reduce((sum, p) => sum + p.unrealizedPnl, 0);
+    const closedPnl = currentPlayer.account.closedPnl || 0;
+    const totalPnl = totalUnrealizedPnl + closedPnl;
+    const startingBalance = currentPlayer.account.startingBalance || 10000;
+    return (totalPnl / startingBalance) * 100;
   };
 
   if (battle.status === 'completed') {
     return <BattleResults battle={battle} walletAddress={walletAddress} />;
   }
 
-  const totalPnl = currentPlayer?.account.totalPnlPercent || 0;
+  const totalPnl = getTotalPnLPercent();
   const isUrgent = timeRemaining < 60;
   const availableBalance = currentPlayer?.account.balance || 0;
   const hasExistingPosition = currentPlayer?.account.positions.some(p => p.asset === selectedAsset) || false;
@@ -162,7 +196,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
                 : 'border-transparent text-text-tertiary hover:text-text-secondary'
             }`}
           >
-            Positions ({currentPlayer?.account.positions.length || 0})
+            Positions ({positionsWithLivePnL.length})
           </button>
           <button
             onClick={() => setActiveTab('history')}
@@ -180,7 +214,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
         <div className="flex-1 overflow-hidden">
           {activeTab === 'positions' ? (
             <PositionsTable
-              positions={currentPlayer?.account.positions || []}
+              positions={positionsWithLivePnL}
               onClosePosition={closePosition}
             />
           ) : (
