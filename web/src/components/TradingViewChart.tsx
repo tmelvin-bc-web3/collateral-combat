@@ -112,6 +112,7 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
     { value: 'D', label: '1D' },
   ];
 
+  const isFullHeight = height === '100%';
   const heightStyle = typeof height === 'string' ? height : `${height}px`;
 
   // For minimal mode, just return the chart
@@ -127,19 +128,19 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
   }
 
   return (
-    <div className="space-y-3">
+    <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'space-y-3'}`}>
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 px-2 py-2 bg-black/60 border-b border-white/10 flex-shrink-0">
         {/* Timeframe */}
-        <div className="flex items-center gap-1 bg-dark-200 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
           {intervals.map((int) => (
             <button
               key={int.value}
               onClick={() => setInterval(int.value)}
               className={`px-2 py-1 text-xs rounded transition-all ${
                 interval === int.value
-                  ? 'bg-primary text-dark-300 font-bold'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-warning text-black font-bold'
+                  : 'text-white/50 hover:text-white'
               }`}
             >
               {int.label}
@@ -147,19 +148,19 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
           ))}
         </div>
 
-        <div className="h-4 w-px bg-zinc-700" />
+        <div className="h-4 w-px bg-white/20" />
 
         {/* Indicators */}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-zinc-500 mr-1">Indicators:</span>
+          <span className="text-xs text-white/40 mr-1">Indicators:</span>
           {indicators.map((ind) => (
             <button
               key={ind.id}
               onClick={() => toggleIndicator(ind.id)}
               className={`px-2 py-1 text-xs rounded transition-all ${
                 selectedIndicators.includes(ind.id)
-                  ? 'bg-secondary/20 text-secondary border border-secondary/30'
-                  : 'bg-dark-200 text-zinc-400 hover:text-white'
+                  ? 'bg-warning/20 text-warning border border-warning/30'
+                  : 'bg-white/5 text-white/50 hover:text-white'
               }`}
             >
               {ind.label}
@@ -168,12 +169,12 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
         </div>
       </div>
 
-      {/* Chart Container */}
+      {/* Chart Container - fills remaining space */}
       <div
         id={`tradingview_${symbol}`}
         ref={containerRef}
-        style={{ height: heightStyle }}
-        className="rounded-lg overflow-hidden border border-white/5"
+        style={isFullHeight ? undefined : { height: heightStyle }}
+        className={`overflow-hidden ${isFullHeight ? 'flex-1 min-h-0' : 'rounded-lg border border-white/5'}`}
       />
     </div>
   );
