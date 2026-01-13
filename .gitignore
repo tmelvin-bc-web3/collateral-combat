@@ -30,6 +30,18 @@ yarn-error.log*
 backend/data
 .vercel
 
+# Claude/Ralph automation
+.agents/
+.ralph/
+automation/
+logs/
+MIGRATION_PLAN.md
+start-pipeline.sh
+web/.ralph_session*
+web/logs/
+CURRENT_TASK.md
+coverage/
+
 # Solana/Anchor
 test-ledger/
 **/target/
