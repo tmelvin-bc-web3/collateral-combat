@@ -62,6 +62,29 @@ export interface SpectatorBet {
   bump: number;
 }
 
+// Trade structure for trustless settlement
+export interface Trade {
+  asset: number;
+  isLong: boolean;
+  leverage: number;
+  size: BN;
+  entryPrice: BN;
+  exitPrice: BN;
+  timestamp: BN;
+  nonce: number;
+  signature: number[];
+}
+
+// Trade log for a player in a battle
+export interface TradeLog {
+  battleId: BN;
+  player: PublicKey;
+  trades: Trade[];
+  finalPnl: BN;
+  verified: boolean;
+  bump: number;
+}
+
 // Helper to convert lamports to SOL
 export const lamportsToSol = (lamports: BN | number): number => {
   const value = typeof lamports === 'number' ? lamports : lamports.toNumber();

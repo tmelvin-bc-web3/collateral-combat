@@ -2,12 +2,26 @@ import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import bs58 from 'bs58';
 import * as idl from '../idl/battle_program.json';
+import { SignedTrade, Battle } from '../types';
 
 const BATTLE_PROGRAM_ID = new PublicKey('GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9');
 
 // PDA Seeds
 const CONFIG_SEED = Buffer.from('config');
 const BATTLE_SEED = Buffer.from('battle');
+const TRADE_LOG_SEED = Buffer.from('trade_log');
+
+// Asset mapping
+const ASSET_INDEX: Record<string, number> = {
+  'SOL': 0,
+  'BTC': 1,
+  'ETH': 2,
+  'WIF': 3,
+  'BONK': 4,
+  'JUP': 5,
+  'RAY': 6,
+  'JTO': 7,
+};
 
 // Winner options matching the Anchor enum
 type WinnerOption = { creator: {} } | { opponent: {} } | { draw: {} };
@@ -83,6 +97,17 @@ class BattleSettlementService {
   private getBattlePDA(battleId: BN): PublicKey {
     const [pda] = PublicKey.findProgramAddressSync(
       [BATTLE_SEED, battleId.toArrayLike(Buffer, 'le', 8)],
+      BATTLE_PROGRAM_ID
+    );
+    return pda;
+  }
+
+  /**
+   * Get the trade log PDA for a player in a battle
+   */
+  private getTradeLogPDA(battleId: BN, playerPubkey: PublicKey): PublicKey {
+    const [pda] = PublicKey.findProgramAddressSync(
+      [TRADE_LOG_SEED, battleId.toArrayLike(Buffer, 'le', 8), playerPubkey.toBuffer()],
       BATTLE_PROGRAM_ID
     );
     return pda;
@@ -166,6 +191,186 @@ class BattleSettlementService {
       return await (this.program.account as any).battle.fetch(battlePDA);
     } catch (error) {
       console.error('[Settlement] Failed to fetch battle data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Convert signed trade to TradeInput format for the contract
+   */
+  private signedTradeToInput(trade: SignedTrade): any {
+    // Parse the signed message to get trade details
+    const message = JSON.parse(trade.signedMessage);
+
+    return {
+      asset: ASSET_INDEX[trade.asset] ?? 0,
+      isLong: trade.side === 'long',
+      isOpen: trade.type === 'open',
+      leverage: trade.leverage,
+      size: new BN(Math.round(trade.size * 100)), // Convert to cents
+      entryPrice: new BN(Math.round(trade.entryPrice * 1_000_000)), // 6 decimal precision
+      exitPrice: trade.exitPrice ? new BN(Math.round(trade.exitPrice * 1_000_000)) : new BN(0),
+      timestamp: new BN(message.timestamp),
+      nonce: message.nonce,
+      signature: Array.from(bs58.decode(trade.signature)),
+    };
+  }
+
+  /**
+   * Submit signed trades for a player to the on-chain trade log
+   * @param onChainBattleId The on-chain battle ID (number)
+   * @param playerWallet The player's wallet address
+   * @param trades The signed trades to submit
+   * @returns Transaction signature or null if failed
+   */
+  async submitTrades(
+    onChainBattleId: number,
+    playerWallet: string,
+    trades: SignedTrade[]
+  ): Promise<string | null> {
+    if (!this.isReady()) {
+      console.warn('[Settlement] Service not initialized - cannot submit trades');
+      return null;
+    }
+
+    if (trades.length === 0) {
+      console.log('[Settlement] No trades to submit');
+      return null;
+    }
+
+    try {
+      const battleIdBN = new BN(onChainBattleId);
+      const battlePDA = this.getBattlePDA(battleIdBN);
+      const playerPubkey = new PublicKey(playerWallet);
+      const tradeLogPDA = this.getTradeLogPDA(battleIdBN, playerPubkey);
+
+      // Convert trades to contract input format
+      const tradeInputs = trades.map(t => this.signedTradeToInput(t));
+
+      console.log(`[Settlement] Submitting ${trades.length} trades for player ${playerWallet}`);
+
+      const tx = await (this.program!.methods as any)
+        .submitTrades(tradeInputs)
+        .accounts({
+          battle: battlePDA,
+          tradeLog: tradeLogPDA,
+          player: playerPubkey,
+          authority: this.authority!.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([this.authority!])
+        .rpc();
+
+      console.log(`[Settlement] Trades submitted! Tx: ${tx}`);
+      return tx;
+    } catch (error: any) {
+      console.error('[Settlement] Failed to submit trades:', error.message);
+      if (error.logs) {
+        console.error('[Settlement] Logs:', error.logs.slice(-5).join('\n'));
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Settle a battle using verified trades (trustless settlement)
+   * This calculates P&L on-chain and determines the winner
+   * @param battle The battle object with signed trades
+   * @returns Transaction signature or null if failed
+   */
+  async settleBattleVerified(battle: Battle): Promise<string | null> {
+    if (!this.isReady()) {
+      console.warn('[Settlement] Service not initialized - cannot settle verified');
+      return null;
+    }
+
+    if (!battle.onChainBattleId) {
+      console.warn('[Settlement] Battle has no on-chain ID');
+      return null;
+    }
+
+    const signedTrades = battle.signedTrades || [];
+    if (signedTrades.length === 0) {
+      console.warn('[Settlement] No signed trades for battle - falling back to legacy settlement');
+      return null;
+    }
+
+    try {
+      // Parse the on-chain battle ID (it's stored as a pubkey string)
+      const onChainBattleData = await this.getBattleData(battle.onChainBattleId);
+      if (!onChainBattleData) {
+        console.error('[Settlement] Could not fetch on-chain battle data');
+        return null;
+      }
+
+      const battleIdBN = onChainBattleData.id as BN;
+      const configPDA = this.getConfigPDA();
+      const battlePDA = new PublicKey(battle.onChainBattleId);
+
+      // Get player wallet addresses
+      const creatorWallet = battle.players[0]?.walletAddress;
+      const opponentWallet = battle.players[1]?.walletAddress;
+
+      if (!creatorWallet) {
+        console.error('[Settlement] No creator wallet found');
+        return null;
+      }
+
+      // Filter trades by player
+      const creatorTrades = signedTrades.filter(t => t.walletAddress === creatorWallet);
+      const opponentTrades = opponentWallet
+        ? signedTrades.filter(t => t.walletAddress === opponentWallet)
+        : [];
+
+      console.log(`[Settlement] Verified settlement for battle ${battle.id}`);
+      console.log(`  Creator trades: ${creatorTrades.length}`);
+      console.log(`  Opponent trades: ${opponentTrades.length}`);
+
+      // Submit creator trades if any
+      if (creatorTrades.length > 0) {
+        const submitTx = await this.submitTrades(battleIdBN.toNumber(), creatorWallet, creatorTrades);
+        if (!submitTx) {
+          console.warn('[Settlement] Failed to submit creator trades');
+        }
+      }
+
+      // Submit opponent trades if any
+      if (opponentTrades.length > 0 && opponentWallet) {
+        const submitTx = await this.submitTrades(battleIdBN.toNumber(), opponentWallet, opponentTrades);
+        if (!submitTx) {
+          console.warn('[Settlement] Failed to submit opponent trades');
+        }
+      }
+
+      // Get trade log PDAs
+      const creatorPubkey = new PublicKey(creatorWallet);
+      const creatorTradeLogPDA = this.getTradeLogPDA(battleIdBN, creatorPubkey);
+
+      // For solo battles, use creator's trade log for both
+      const opponentPubkey = opponentWallet ? new PublicKey(opponentWallet) : creatorPubkey;
+      const opponentTradeLogPDA = this.getTradeLogPDA(battleIdBN, opponentPubkey);
+
+      console.log('[Settlement] Calling settle_battle_verified...');
+
+      const tx = await (this.program!.methods as any)
+        .settleBattleVerified()
+        .accounts({
+          config: configPDA,
+          battle: battlePDA,
+          creatorTradeLog: creatorTradeLogPDA,
+          opponentTradeLog: opponentTradeLogPDA,
+          authority: this.authority!.publicKey,
+        })
+        .signers([this.authority!])
+        .rpc();
+
+      console.log(`[Settlement] Battle settled (verified)! Tx: ${tx}`);
+      return tx;
+    } catch (error: any) {
+      console.error('[Settlement] Failed to settle battle verified:', error.message);
+      if (error.logs) {
+        console.error('[Settlement] Logs:', error.logs.slice(-5).join('\n'));
+      }
       return null;
     }
   }

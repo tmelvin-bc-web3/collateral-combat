@@ -996,6 +996,54 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Open a signed position (for trustless settlement)
+  socket.on('open_position_signed', (payload: { message: any; signature: string; walletAddress: string }) => {
+    try {
+      // Validate wallet address matches authenticated wallet
+      if (!walletAddress || payload.walletAddress !== walletAddress) {
+        throw new Error('Not authenticated or wallet mismatch');
+      }
+
+      const position = battleManager.openPositionSigned(payload);
+      if (position) {
+        socket.emit('position_opened', position);
+
+        const battle = battleManager.getBattle(payload.message.battleId);
+        if (battle) {
+          socket.emit('battle_update', battle);
+        }
+      }
+      console.log(`[Battle] Signed position opened by ${walletAddress}`);
+    } catch (error: any) {
+      console.error('[Battle] Signed open position error:', error.message);
+      socket.emit('error', error.message);
+    }
+  });
+
+  // Close a signed position (for trustless settlement)
+  socket.on('close_position_signed', (payload: { message: any; signature: string; walletAddress: string }) => {
+    try {
+      // Validate wallet address matches authenticated wallet
+      if (!walletAddress || payload.walletAddress !== walletAddress) {
+        throw new Error('Not authenticated or wallet mismatch');
+      }
+
+      const trade = battleManager.closePositionSigned(payload);
+      if (trade) {
+        socket.emit('position_closed', trade);
+
+        const battle = battleManager.getBattle(payload.message.battleId);
+        if (battle) {
+          socket.emit('battle_update', battle);
+        }
+      }
+      console.log(`[Battle] Signed position closed by ${walletAddress}`);
+    } catch (error: any) {
+      console.error('[Battle] Signed close position error:', error.message);
+      socket.emit('error', error.message);
+    }
+  });
+
   // Start solo practice
   socket.on('start_solo_practice', (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => {
     try {
@@ -1060,7 +1108,67 @@ io.on('connection', (socket) => {
 
   socket.on('get_my_bets', (wallet: string) => {
     const bets = spectatorService.getUserBets(wallet);
-    // Send bets back - could be a separate event or part of initial load
+    socket.emit('user_bets', bets);
+  });
+
+  // On-chain betting flow with odds locking
+  socket.on('request_odds_lock', (data: {
+    battleId: string;
+    backedPlayer: string;
+    amount: number;
+    walletAddress: string;
+  }) => {
+    try {
+      const lock = spectatorService.requestOddsLock(
+        data.battleId,
+        data.backedPlayer,
+        data.amount,
+        data.walletAddress
+      );
+      socket.emit('odds_lock', lock);
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
+  });
+
+  socket.on('verify_bet', (data: {
+    lockId: string;
+    txSignature: string;
+    walletAddress: string;
+  }) => {
+    try {
+      const bet = spectatorService.verifyAndRecordBet(
+        data.lockId,
+        data.txSignature,
+        data.walletAddress
+      );
+      if (bet) {
+        socket.emit('bet_verified', bet);
+        // Broadcast to spectators
+        io.to(`spectate_${bet.battleId}`).emit('bet_placed', bet);
+      } else {
+        socket.emit('error', 'Failed to verify bet - lock may be expired or already used');
+      }
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
+  });
+
+  socket.on('get_unclaimed_bets', (wallet: string) => {
+    const bets = spectatorService.getUnclaimedWins(wallet);
+    socket.emit('unclaimed_bets', bets);
+  });
+
+  socket.on('verify_claim', (data: {
+    betId: string;
+    txSignature: string;
+  }) => {
+    try {
+      spectatorService.markBetClaimed(data.betId, data.txSignature);
+      socket.emit('claim_verified', { betId: data.betId, txSignature: data.txSignature });
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
   });
 
   // Prediction events

@@ -9,9 +9,15 @@ import {
   TradeRecord,
   PositionSide,
   Leverage,
+  SignedTradeMessage,
+  SignedTradePayload,
+  SignedTrade,
 } from '../types';
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
+import { PublicKey } from '@solana/web3.js';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 
 const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
@@ -269,6 +275,153 @@ class BattleManager {
     console.log(`${walletAddress} closed ${position.side.toUpperCase()} ${position.asset} for ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
     this.notifyListeners(battle);
     return trade;
+  }
+
+  // Verify Ed25519 signature for a signed trade message
+  verifyTradeSignature(
+    message: SignedTradeMessage,
+    signature: string,
+    walletAddress: string
+  ): boolean {
+    try {
+      const messageBytes = new TextEncoder().encode(JSON.stringify(message));
+      const signatureBytes = bs58.decode(signature);
+      const publicKeyBytes = new PublicKey(walletAddress).toBytes();
+
+      return nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+    } catch (err) {
+      console.error('[BattleManager] Signature verification error:', err);
+      return false;
+    }
+  }
+
+  // Open a signed position (for trustless settlement)
+  openPositionSigned(
+    payload: SignedTradePayload
+  ): PerpPosition | null {
+    const { message, signature, walletAddress } = payload;
+
+    // Verify signature
+    if (!this.verifyTradeSignature(message, signature, walletAddress)) {
+      throw new Error('Invalid trade signature');
+    }
+
+    // Verify message fields
+    if (message.version !== 1 || message.action !== 'open') {
+      throw new Error('Invalid message format');
+    }
+
+    const battle = this.battles.get(message.battleId);
+    if (!battle) {
+      throw new Error('Battle not found');
+    }
+
+    // Verify the timestamp is within battle duration (with some slack)
+    const now = Date.now();
+    const timeDiff = Math.abs(now - message.timestamp);
+    if (timeDiff > 60000) { // 60 second tolerance
+      throw new Error('Trade timestamp too old');
+    }
+
+    // Open the position using the existing method
+    const position = this.openPosition(
+      message.battleId,
+      walletAddress,
+      message.asset,
+      message.side,
+      message.leverage,
+      message.size
+    );
+
+    // Store the signed trade for on-chain settlement
+    if (position) {
+      const signedTrade: SignedTrade = {
+        id: position.id,
+        timestamp: message.timestamp,
+        asset: message.asset,
+        side: message.side,
+        leverage: message.leverage,
+        size: message.size,
+        entryPrice: position.entryPrice,
+        type: 'open',
+        signature,
+        signedMessage: JSON.stringify(message),
+        verified: true,
+        walletAddress,
+      };
+      this.storeSignedTrade(battle, signedTrade);
+    }
+
+    return position;
+  }
+
+  // Close a signed position (for trustless settlement)
+  closePositionSigned(
+    payload: SignedTradePayload
+  ): TradeRecord | null {
+    const { message, signature, walletAddress } = payload;
+
+    // Verify signature
+    if (!this.verifyTradeSignature(message, signature, walletAddress)) {
+      throw new Error('Invalid trade signature');
+    }
+
+    // Verify message fields
+    if (message.version !== 1 || message.action !== 'close') {
+      throw new Error('Invalid message format');
+    }
+
+    if (!message.positionId) {
+      throw new Error('Position ID required for close');
+    }
+
+    const battle = this.battles.get(message.battleId);
+    if (!battle) {
+      throw new Error('Battle not found');
+    }
+
+    // Verify timestamp
+    const now = Date.now();
+    const timeDiff = Math.abs(now - message.timestamp);
+    if (timeDiff > 60000) {
+      throw new Error('Trade timestamp too old');
+    }
+
+    // Close the position using existing method
+    const trade = this.closePosition(
+      message.battleId,
+      walletAddress,
+      message.positionId
+    );
+
+    // Store the signed trade
+    if (trade) {
+      const signedTrade: SignedTrade = {
+        ...trade,
+        signature,
+        signedMessage: JSON.stringify(message),
+        verified: true,
+        walletAddress,
+      };
+      this.storeSignedTrade(battle, signedTrade);
+    }
+
+    return trade;
+  }
+
+  // Store a signed trade in the battle for later on-chain settlement
+  private storeSignedTrade(battle: Battle, signedTrade: SignedTrade): void {
+    if (!battle.signedTrades) {
+      battle.signedTrades = [];
+    }
+    battle.signedTrades.push(signedTrade);
+    console.log(`[BattleManager] Stored signed ${signedTrade.type} trade for ${signedTrade.walletAddress} (total: ${battle.signedTrades.length})`);
+  }
+
+  // Get all signed trades for a battle
+  getSignedTrades(battleId: string): SignedTrade[] {
+    const battle = this.battles.get(battleId);
+    return battle?.signedTrades || [];
   }
 
   // Update account value with current prices

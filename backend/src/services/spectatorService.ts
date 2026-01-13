@@ -2,10 +2,24 @@ import { v4 as uuidv4 } from 'uuid';
 import { Battle, LiveBattle, BattleOdds, SpectatorBet, BetStatus } from '../types';
 import { battleManager } from './battleManager';
 import { progressionService } from './progressionService';
+import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
 const MAX_BET = 10; // Maximum bet in SOL
 const PLATFORM_FEE_PERCENT = 5; // 5% fee on winnings
+const LAMPORTS_PER_SOL = 1_000_000_000;
+const ODDS_LOCK_DURATION_MS = 30_000; // 30 seconds
+
+// Response type for odds lock
+export interface OddsLockResponse {
+  lockId: string;
+  battleId: string;
+  backedPlayer: string;
+  lockedOdds: number;
+  amount: number;
+  potentialPayout: number;
+  expiresAt: number;
+}
 
 class SpectatorService {
   private spectators: Map<string, Set<string>> = new Map(); // battleId -> Set of socket ids
@@ -155,7 +169,7 @@ class SpectatorService {
     };
   }
 
-  // Place a bet
+  // Place a bet (legacy - for backward compatibility)
   placeBet(
     battleId: string,
     backedPlayer: string,
@@ -207,7 +221,7 @@ class SpectatorService {
       status: 'pending'
     };
 
-    // Store bet
+    // Store bet in memory
     const battleBets = this.bets.get(battleId) || [];
     battleBets.push(bet);
     this.bets.set(battleId, battleBets);
@@ -218,6 +232,24 @@ class SpectatorService {
     userBetIds.push(bet.id);
     this.userBets.set(bettor, userBetIds);
 
+    // Persist to database
+    const backedPlayerSide = this.getBackedPlayerSide(battle, backedPlayer);
+    spectatorBetDatabase.createBet({
+      id: bet.id,
+      battleId,
+      onChainBattleId: battle.onChainBattleId || null,
+      bettorWallet: bettor,
+      backedPlayer: backedPlayerSide,
+      amountLamports: Math.round(amount * LAMPORTS_PER_SOL),
+      oddsAtPlacement: playerOdds,
+      potentialPayoutLamports: Math.round(bet.potentialPayout * LAMPORTS_PER_SOL),
+      txSignature: null,
+      status: 'pending',
+      claimTx: null,
+      createdAt: bet.placedAt,
+      settledAt: null,
+    });
+
     console.log(`Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x`);
 
     // Notify about new bet and updated odds
@@ -227,17 +259,243 @@ class SpectatorService {
     return bet;
   }
 
+  // ================================================
+  // NEW: Odds Locking for On-Chain Betting
+  // ================================================
+
+  /**
+   * Request an odds lock before placing on-chain bet
+   * This prevents odds slippage during transaction signing
+   */
+  requestOddsLock(
+    battleId: string,
+    backedPlayer: string,
+    amount: number,
+    bettor: string
+  ): OddsLockResponse {
+    const battle = battleManager.getBattle(battleId);
+    if (!battle) {
+      throw new Error('Battle not found');
+    }
+
+    if (battle.status !== 'active') {
+      throw new Error('Battle is not active');
+    }
+
+    if (amount < MIN_BET) {
+      throw new Error(`Minimum bet is ${MIN_BET} SOL`);
+    }
+
+    if (amount > MAX_BET) {
+      throw new Error(`Maximum bet is ${MAX_BET} SOL`);
+    }
+
+    // Cannot bet on yourself
+    if (battle.players.some(p => p.walletAddress === bettor)) {
+      throw new Error('Cannot bet on your own battle');
+    }
+
+    // Get current odds
+    const odds = this.calculateOdds(battleId);
+    const playerOdds = odds?.player1.wallet === backedPlayer
+      ? odds.player1.odds
+      : odds?.player2.odds || 2.0;
+
+    const lockId = uuidv4();
+    const now = Date.now();
+    const expiresAt = now + ODDS_LOCK_DURATION_MS;
+    const potentialPayout = amount * playerOdds * (1 - PLATFORM_FEE_PERCENT / 100);
+
+    // Store lock in database
+    const backedPlayerSide = this.getBackedPlayerSide(battle, backedPlayer);
+    spectatorBetDatabase.createOddsLock({
+      id: lockId,
+      battleId,
+      backedPlayer: backedPlayerSide,
+      amountLamports: Math.round(amount * LAMPORTS_PER_SOL),
+      lockedOdds: playerOdds,
+      expiresAt,
+      used: false,
+      createdAt: now,
+    });
+
+    console.log(`Odds lock created: ${lockId} for ${amount} SOL @ ${playerOdds}x (expires ${new Date(expiresAt).toISOString()})`);
+
+    return {
+      lockId,
+      battleId,
+      backedPlayer,
+      lockedOdds: playerOdds,
+      amount,
+      potentialPayout,
+      expiresAt,
+    };
+  }
+
+  /**
+   * Verify an on-chain bet and record it in the database
+   * Called after frontend successfully places bet on-chain
+   */
+  verifyAndRecordBet(
+    lockId: string,
+    txSignature: string,
+    bettor: string
+  ): SpectatorBet | null {
+    // Get the odds lock
+    const lock = spectatorBetDatabase.getOddsLock(lockId);
+    if (!lock) {
+      console.error(`[Spectator] Odds lock not found: ${lockId}`);
+      return null;
+    }
+
+    // Check if lock is expired
+    if (Date.now() > lock.expiresAt) {
+      console.error(`[Spectator] Odds lock expired: ${lockId}`);
+      return null;
+    }
+
+    // Check if lock is already used
+    if (lock.used) {
+      console.error(`[Spectator] Odds lock already used: ${lockId}`);
+      return null;
+    }
+
+    // Mark lock as used
+    spectatorBetDatabase.markLockUsed(lockId);
+
+    const battle = battleManager.getBattle(lock.battleId);
+    const backedPlayerWallet = this.getWalletFromSide(battle, lock.backedPlayer);
+    const amount = lock.amountLamports / LAMPORTS_PER_SOL;
+    const potentialPayout = amount * lock.lockedOdds * (1 - PLATFORM_FEE_PERCENT / 100);
+
+    // Create bet record
+    const betId = uuidv4();
+    const now = Date.now();
+
+    spectatorBetDatabase.createBet({
+      id: betId,
+      battleId: lock.battleId,
+      onChainBattleId: battle?.onChainBattleId || null,
+      bettorWallet: bettor,
+      backedPlayer: lock.backedPlayer,
+      amountLamports: lock.amountLamports,
+      oddsAtPlacement: lock.lockedOdds,
+      potentialPayoutLamports: Math.round(potentialPayout * LAMPORTS_PER_SOL),
+      txSignature,
+      status: 'pending',
+      claimTx: null,
+      createdAt: now,
+      settledAt: null,
+    });
+
+    // Create in-memory bet for real-time updates
+    const bet: SpectatorBet = {
+      id: betId,
+      battleId: lock.battleId,
+      bettor,
+      backedPlayer: backedPlayerWallet || '',
+      amount,
+      odds: lock.lockedOdds,
+      potentialPayout,
+      placedAt: now,
+      status: 'pending',
+    };
+
+    // Store in memory
+    const battleBets = this.bets.get(lock.battleId) || [];
+    battleBets.push(bet);
+    this.bets.set(lock.battleId, battleBets);
+    this.allBets.set(betId, bet);
+
+    const userBetIds = this.userBets.get(bettor) || [];
+    userBetIds.push(betId);
+    this.userBets.set(bettor, userBetIds);
+
+    console.log(`Verified bet: ${bettor} bet ${amount} SOL @ ${lock.lockedOdds}x (tx: ${txSignature.slice(0, 8)}...)`);
+
+    // Notify
+    this.notifyListeners('bet_placed', bet);
+    this.notifyListeners('odds_update', this.calculateOdds(lock.battleId));
+
+    return bet;
+  }
+
+  /**
+   * Get unclaimed winning bets for a wallet
+   */
+  getUnclaimedWins(walletAddress: string): SpectatorBet[] {
+    const records = spectatorBetDatabase.getUnclaimedWins(walletAddress);
+    return records.map(r => this.recordToBet(r));
+  }
+
+  /**
+   * Mark a bet as claimed after on-chain claim
+   */
+  markBetClaimed(betId: string, claimTx: string): void {
+    spectatorBetDatabase.markClaimed(betId, claimTx);
+
+    // Update in-memory
+    const bet = this.allBets.get(betId);
+    if (bet) {
+      bet.status = 'won'; // Already won, just claimed
+    }
+
+    console.log(`Bet ${betId} claimed (tx: ${claimTx.slice(0, 8)}...)`);
+  }
+
+  // Helper to get backed player side ('creator' or 'opponent')
+  private getBackedPlayerSide(battle: Battle | undefined, backedPlayerWallet: string): 'creator' | 'opponent' {
+    if (!battle) return 'creator';
+    return battle.players[0]?.walletAddress === backedPlayerWallet ? 'creator' : 'opponent';
+  }
+
+  // Helper to get wallet from side
+  private getWalletFromSide(battle: Battle | undefined, side: 'creator' | 'opponent'): string | null {
+    if (!battle) return null;
+    return side === 'creator' ? battle.players[0]?.walletAddress : battle.players[1]?.walletAddress;
+  }
+
+  // Convert database record to SpectatorBet
+  private recordToBet(record: SpectatorBetRecord): SpectatorBet {
+    const battle = battleManager.getBattle(record.battleId);
+    const backedPlayerWallet = this.getWalletFromSide(battle, record.backedPlayer);
+
+    return {
+      id: record.id,
+      battleId: record.battleId,
+      bettor: record.bettorWallet,
+      backedPlayer: backedPlayerWallet || '',
+      amount: record.amountLamports / LAMPORTS_PER_SOL,
+      odds: record.oddsAtPlacement,
+      potentialPayout: record.potentialPayoutLamports / LAMPORTS_PER_SOL,
+      placedAt: record.createdAt,
+      status: record.status as BetStatus,
+      settledAt: record.settledAt || undefined,
+    };
+  }
+
   // Settle all bets for a completed battle
   private settleBets(battleId: string): void {
     const battle = battleManager.getBattle(battleId);
     if (!battle || !battle.winnerId) return;
 
+    const now = Date.now();
+
+    // Settle in-memory bets
     const bets = this.bets.get(battleId) || [];
     const pendingBets = bets.filter(b => b.status === 'pending');
 
     pendingBets.forEach(bet => {
-      if (bet.backedPlayer === battle.winnerId) {
-        bet.status = 'won';
+      const isWinner = bet.backedPlayer === battle.winnerId;
+      const newStatus: BetStatus = isWinner ? 'won' : 'lost';
+
+      bet.status = newStatus;
+      bet.settledAt = now;
+
+      // Update database
+      spectatorBetDatabase.updateBetStatus(bet.id, newStatus, now);
+
+      if (isWinner) {
         console.log(`Bet won: ${bet.bettor} won ${bet.potentialPayout.toFixed(2)} SOL`);
 
         // Award XP for winning spectator bet: 30 XP + (bet × 0.1)
@@ -250,7 +508,6 @@ class SpectatorService {
           'Won spectator bet'
         );
       } else {
-        bet.status = 'lost';
         console.log(`Bet lost: ${bet.bettor} lost ${bet.amount} SOL`);
 
         // Award XP for losing spectator bet: 10 XP + (bet × 0.02)
@@ -263,8 +520,20 @@ class SpectatorService {
           'Spectator bet'
         );
       }
-      bet.settledAt = Date.now();
+
       this.notifyListeners('bet_settled', bet);
+    });
+
+    // Also settle any database-only bets (from on-chain flow)
+    const dbBets = spectatorBetDatabase.getPendingBets(battleId);
+    const winnerSide = this.getBackedPlayerSide(battle, battle.winnerId);
+
+    dbBets.forEach(dbBet => {
+      // Skip if already processed in memory
+      if (this.allBets.has(dbBet.id)) return;
+
+      const isWinner = dbBet.backedPlayer === winnerSide;
+      spectatorBetDatabase.updateBetStatus(dbBet.id, isWinner ? 'won' : 'lost', now);
     });
   }
 

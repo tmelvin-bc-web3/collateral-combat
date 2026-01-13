@@ -20,11 +20,11 @@ function BattleContent() {
 }
 
 function BattleWithWallet() {
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
   const walletAddress = publicKey?.toBase58() || null;
 
   return (
-    <BattleProvider walletAddress={walletAddress}>
+    <BattleProvider walletAddress={walletAddress} signMessage={signMessage}>
       <BattleContent />
     </BattleProvider>
   );

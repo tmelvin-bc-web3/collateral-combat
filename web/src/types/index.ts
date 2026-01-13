@@ -43,6 +43,26 @@ export interface TradeRecord {
   type: 'open' | 'close';
 }
 
+// Signed trade message format for trustless settlement
+export interface SignedTradeMessage {
+  version: 1;
+  battleId: string;
+  action: 'open' | 'close';
+  asset: string;
+  side: PositionSide;
+  leverage: Leverage;
+  size: number;
+  timestamp: number;
+  nonce: number;
+  positionId?: string; // For close actions
+}
+
+export interface SignedTradePayload {
+  message: SignedTradeMessage;
+  signature: string;
+  walletAddress: string;
+}
+
 export type BattleStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
 export type BattleDuration = 1800 | 3600;

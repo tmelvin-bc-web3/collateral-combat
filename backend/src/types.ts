@@ -43,6 +43,34 @@ export interface TradeRecord {
   type: 'open' | 'close';
 }
 
+// Signed trade message format for trustless settlement
+export interface SignedTradeMessage {
+  version: 1;
+  battleId: string;
+  action: 'open' | 'close';
+  asset: string;
+  side: PositionSide;
+  leverage: Leverage;
+  size: number;
+  timestamp: number;
+  nonce: number;
+  positionId?: string; // For close actions
+}
+
+export interface SignedTradePayload {
+  message: SignedTradeMessage;
+  signature: string;
+  walletAddress: string;
+}
+
+// Extended TradeRecord with signature for trustless settlement
+export interface SignedTrade extends TradeRecord {
+  signature: string;
+  signedMessage: string; // JSON stringified SignedTradeMessage
+  verified: boolean;
+  walletAddress: string;
+}
+
 export type BattleStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
 export type BattleDuration = 1800 | 3600; // 30min, 1hr in seconds
@@ -77,6 +105,8 @@ export interface Battle {
   // On-chain tracking
   onChainBattleId?: string;  // Pubkey of on-chain battle account
   onChainSettled?: boolean;  // Whether settle_battle has been called
+  // Signed trades for trustless settlement
+  signedTrades?: SignedTrade[];
 }
 
 // Spectator Betting Types
@@ -211,6 +241,9 @@ export interface ClientToServerEvents {
   start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
+  // Signed trade events for trustless settlement
+  open_position_signed: (payload: SignedTradePayload) => void;
+  close_position_signed: (payload: SignedTradePayload) => void;
   leave_battle: (battleId: string) => void;
   subscribe_prices: (tokens: string[]) => void;
   // Spectator events

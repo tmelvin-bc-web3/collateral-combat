@@ -6,9 +6,10 @@ import { getSocket } from '@/lib/socket';
 import { LiveBattle, SpectatorBet } from '@/types';
 import { LiveBattleCard } from '@/components/LiveBattleCard';
 import { SpectatorView } from '@/components/SpectatorView';
+import { SpectatorClaimsPanel } from '@/components/SpectatorClaimsPanel';
 import { SkeletonBattleCard, PageLoading } from '@/components/ui/skeleton';
 
-type Tab = 'live' | 'my-wagers';
+type Tab = 'live' | 'my-wagers' | 'claims';
 
 export default function SpectatePage() {
   const { publicKey } = useWallet();
@@ -141,6 +142,16 @@ export default function SpectatePage() {
         >
           My Wagers
         </button>
+        <button
+          onClick={() => setActiveTab('claims')}
+          className={`px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'claims'
+              ? 'bg-success text-white'
+              : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-primary'
+          }`}
+        >
+          Claims
+        </button>
       </div>
 
       {activeTab === 'live' && (
@@ -250,6 +261,26 @@ export default function SpectatePage() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'claims' && (
+        <>
+          {!publicKey ? (
+            <div className="card border border-success/20 text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-success/10 flex items-center justify-center border border-success/30">
+                <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="font-bold mb-2 uppercase">Connect Wallet</h3>
+              <p className="text-text-secondary text-sm">Connect your wallet to view and claim your winnings</p>
+            </div>
+          ) : (
+            <SpectatorClaimsPanel
+              walletAddress={publicKey.toBase58()}
+            />
+          )}
+        </>
       )}
     </div>
   );

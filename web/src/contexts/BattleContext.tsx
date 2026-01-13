@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
-import { Battle, BattleConfig, PositionSide, Leverage } from '@/types';
+import { Battle, BattleConfig, PositionSide, Leverage, SignedTradeMessage } from '@/types';
+import bs58 from 'bs58';
 
 interface BattleSettledData {
   battleId: string;
@@ -25,20 +26,25 @@ interface BattleContextType {
   joinBattle: (battleId: string) => void;
   queueMatchmaking: (config: BattleConfig) => void;
   startSoloPractice: (config: BattleConfig, onChainBattleId?: string) => void;
-  openPosition: (asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
-  closePosition: (positionId: string) => void;
+  openPosition: (asset: string, side: PositionSide, leverage: Leverage, size: number) => Promise<void>;
+  closePosition: (positionId: string) => Promise<void>;
   leaveBattle: () => void;
   getTimeRemaining: () => number;
 }
 
 const BattleContext = createContext<BattleContextType | null>(null);
 
+// Type for wallet signMessage function
+type SignMessageFn = ((message: Uint8Array) => Promise<Uint8Array>) | undefined;
+
 export function BattleProvider({
   children,
-  walletAddress
+  walletAddress,
+  signMessage,
 }: {
   children: ReactNode;
   walletAddress: string | null;
+  signMessage?: SignMessageFn;
 }) {
   const [battle, setBattle] = useState<Battle | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,6 +55,36 @@ export function BattleProvider({
     position: number;
     estimated: number;
   }>({ inQueue: false, position: 0, estimated: 0 });
+
+  // Track nonce per battle for replay protection
+  const nonceRef = useRef<Map<string, number>>(new Map());
+
+  // Get next nonce for a battle
+  const getNextNonce = useCallback((battleId: string) => {
+    const currentNonce = nonceRef.current.get(battleId) || 0;
+    const nextNonce = currentNonce + 1;
+    nonceRef.current.set(battleId, nextNonce);
+    return nextNonce;
+  }, []);
+
+  // Sign a trade message with the wallet
+  const signTradeMessage = useCallback(async (
+    message: SignedTradeMessage
+  ): Promise<{ signature: string } | null> => {
+    if (!signMessage || !walletAddress) {
+      console.warn('[Battle] Cannot sign trade - wallet not connected or signMessage unavailable');
+      return null;
+    }
+
+    try {
+      const messageBytes = new TextEncoder().encode(JSON.stringify(message));
+      const signatureBytes = await signMessage(messageBytes);
+      return { signature: bs58.encode(signatureBytes) };
+    } catch (err) {
+      console.error('[Battle] Failed to sign trade message:', err);
+      return null;
+    }
+  }, [signMessage, walletAddress]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -167,27 +203,91 @@ export function BattleProvider({
   );
 
   const openPosition = useCallback(
-    (asset: string, side: PositionSide, leverage: Leverage, size: number) => {
+    async (asset: string, side: PositionSide, leverage: Leverage, size: number) => {
       if (!walletAddress || !battle) {
         setError('Not in a battle');
         return;
       }
+
       const socket = getSocket();
+
+      // If signing is available, sign the trade for trustless settlement
+      if (signMessage) {
+        const message: SignedTradeMessage = {
+          version: 1,
+          battleId: battle.id,
+          action: 'open',
+          asset,
+          side,
+          leverage,
+          size,
+          timestamp: Date.now(),
+          nonce: getNextNonce(battle.id),
+        };
+
+        const signed = await signTradeMessage(message);
+        if (signed) {
+          socket.emit('open_position_signed', {
+            message,
+            signature: signed.signature,
+            walletAddress,
+          });
+          return;
+        }
+        // Fall through to unsigned if signing failed
+        console.warn('[Battle] Falling back to unsigned trade');
+      }
+
+      // Fallback: unsigned trade (for wallets without signMessage)
       socket.emit('open_position', battle.id, asset, side, leverage, size);
     },
-    [walletAddress, battle]
+    [walletAddress, battle, signMessage, getNextNonce, signTradeMessage]
   );
 
   const closePosition = useCallback(
-    (positionId: string) => {
+    async (positionId: string) => {
       if (!walletAddress || !battle) {
         setError('Not in a battle');
         return;
       }
+
       const socket = getSocket();
+
+      // Find the position to get its details for signing
+      const player = battle.players.find(p => p.walletAddress === walletAddress);
+      const position = player?.account.positions.find(p => p.id === positionId);
+
+      // If signing is available and we have position details, sign the close
+      if (signMessage && position) {
+        const message: SignedTradeMessage = {
+          version: 1,
+          battleId: battle.id,
+          action: 'close',
+          asset: position.asset,
+          side: position.side,
+          leverage: position.leverage,
+          size: position.size,
+          timestamp: Date.now(),
+          nonce: getNextNonce(battle.id),
+          positionId,
+        };
+
+        const signed = await signTradeMessage(message);
+        if (signed) {
+          socket.emit('close_position_signed', {
+            message,
+            signature: signed.signature,
+            walletAddress,
+          });
+          return;
+        }
+        console.warn('[Battle] Falling back to unsigned close');
+      }
+
+      // Fallback: unsigned close
       socket.emit('close_position', battle.id, positionId);
     },
-    [walletAddress, battle]
+    [walletAddress, battle, signMessage, getNextNonce, signTradeMessage]
   );
 
   const leaveBattle = useCallback(() => {

@@ -9,6 +9,8 @@ import {
   Config,
   Battle,
   SpectatorBet,
+  TradeLog,
+  Trade,
   BattleStatus,
   PlayerSide,
   lamportsToSol,
@@ -24,6 +26,7 @@ const CONFIG_SEED = Buffer.from('config');
 const BATTLE_SEED = Buffer.from('battle');
 const ESCROW_SEED = Buffer.from('escrow');
 const SPECTATOR_BET_SEED = Buffer.from('spectator_bet');
+const TRADE_LOG_SEED = Buffer.from('trade_log');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyProgram = Program<any>;
@@ -80,6 +83,14 @@ export class BattleClient {
     );
   }
 
+  getTradeLogPDA(battleId: BN | number, player: PublicKey): [PublicKey, number] {
+    const battleIdBN = typeof battleId === 'number' ? new BN(battleId) : battleId;
+    return PublicKey.findProgramAddressSync(
+      [TRADE_LOG_SEED, battleIdBN.toArrayLike(Buffer, 'le', 8), player.toBuffer()],
+      BATTLE_PROGRAM_ID
+    );
+  }
+
   // ============================================
   // Account Fetching
   // ============================================
@@ -123,6 +134,18 @@ export class BattleClient {
   async getMySpectatorBet(battleId: BN | number): Promise<SpectatorBet | null> {
     if (!this.wallet.publicKey) return null;
     return this.getSpectatorBet(battleId, this.wallet.publicKey);
+  }
+
+  async getTradeLog(battleId: BN | number, player: PublicKey): Promise<TradeLog | null> {
+    try {
+      const [tradeLogPDA] = this.getTradeLogPDA(battleId, player);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const accounts = this.program.account as any;
+      const account = await accounts.tradeLog.fetch(tradeLogPDA);
+      return this.parseTradeLog(account);
+    } catch {
+      return null;
+    }
   }
 
   async getOpenBattles(): Promise<Battle[]> {
@@ -442,6 +465,46 @@ export class BattleClient {
       backedPlayer,
       amount: acc.amount,
       claimed: acc.claimed,
+      bump: acc.bump,
+    };
+  }
+
+  private parseTradeLog(account: unknown): TradeLog {
+    const acc = account as {
+      battleId: BN;
+      player: PublicKey;
+      trades: {
+        asset: number;
+        isLong: boolean;
+        leverage: number;
+        size: BN;
+        entryPrice: BN;
+        exitPrice: BN;
+        timestamp: BN;
+        nonce: number;
+        signature: number[];
+      }[];
+      finalPnl: BN;
+      verified: boolean;
+      bump: number;
+    };
+
+    return {
+      battleId: acc.battleId,
+      player: acc.player,
+      trades: acc.trades.map(t => ({
+        asset: t.asset,
+        isLong: t.isLong,
+        leverage: t.leverage,
+        size: t.size,
+        entryPrice: t.entryPrice,
+        exitPrice: t.exitPrice,
+        timestamp: t.timestamp,
+        nonce: t.nonce,
+        signature: t.signature,
+      })),
+      finalPnl: acc.finalPnl,
+      verified: acc.verified,
       bump: acc.bump,
     };
   }

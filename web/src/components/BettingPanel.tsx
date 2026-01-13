@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LiveBattle, BattleOdds, SpectatorBet } from '@/types';
 import { getSocket } from '@/lib/socket';
 import { Card } from './ui/Card';
@@ -8,18 +8,36 @@ import { Card } from './ui/Card';
 interface BettingPanelProps {
   battle: LiveBattle;
   walletAddress?: string;
+  onChainBattleId?: number; // For on-chain betting
+  onPlaceBet?: (backedPlayer: 'creator' | 'opponent', amount: number) => Promise<string>; // Returns tx signature
 }
 
 const BET_AMOUNTS = [0.1, 0.25, 0.5, 1];
 
-export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
+interface OddsLock {
+  lockId: string;
+  battleId: string;
+  backedPlayer: string;
+  lockedOdds: number;
+  amount: number;
+  potentialPayout: number;
+  expiresAt: number;
+}
+
+export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBet }: BettingPanelProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [betAmount, setBetAmount] = useState(0.1);
   const [customAmount, setCustomAmount] = useState('');
   const [isPlacing, setIsPlacing] = useState(false);
+  const [isRequestingLock, setIsRequestingLock] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentBets, setRecentBets] = useState<SpectatorBet[]>([]);
   const [odds, setOdds] = useState<BattleOdds | null>(battle.odds || null);
+
+  // Odds lock state for on-chain betting
+  const [oddsLock, setOddsLock] = useState<OddsLock | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [lockCountdown, setLockCountdown] = useState(0);
 
   const player1 = battle.players[0];
   const player2 = battle.players[1];
@@ -39,13 +57,108 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
       }
     });
 
+    socket.on('odds_lock', (lock: OddsLock) => {
+      setOddsLock(lock);
+      setShowConfirmModal(true);
+      setIsRequestingLock(false);
+    });
+
+    socket.on('bet_verified', () => {
+      setIsPlacing(false);
+      setShowConfirmModal(false);
+      setOddsLock(null);
+      setSelectedPlayer(null);
+      setCustomAmount('');
+    });
+
     return () => {
       socket.off('odds_update');
       socket.off('bet_placed');
+      socket.off('odds_lock');
+      socket.off('bet_verified');
     };
   }, [battle.id]);
 
-  const handlePlaceBet = async () => {
+  // Countdown timer for odds lock
+  useEffect(() => {
+    if (!oddsLock) {
+      setLockCountdown(0);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.floor((oddsLock.expiresAt - Date.now()) / 1000));
+      setLockCountdown(remaining);
+      if (remaining === 0) {
+        setShowConfirmModal(false);
+        setOddsLock(null);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [oddsLock]);
+
+  // Request odds lock (first step)
+  const handleRequestBet = useCallback(() => {
+    if (!walletAddress) {
+      setError('Connect wallet to place wagers');
+      return;
+    }
+    if (!selectedPlayer) {
+      setError('Select a player to back');
+      return;
+    }
+
+    const amount = customAmount ? parseFloat(customAmount) : betAmount;
+    if (isNaN(amount) || amount <= 0) {
+      setError('Enter a valid wager amount');
+      return;
+    }
+
+    setIsRequestingLock(true);
+    setError(null);
+
+    const socket = getSocket();
+    socket.emit('request_odds_lock', {
+      battleId: battle.id,
+      backedPlayer: selectedPlayer,
+      amount,
+      walletAddress,
+    });
+  }, [walletAddress, selectedPlayer, customAmount, betAmount, battle.id]);
+
+  // Confirm and place on-chain bet (second step)
+  const handleConfirmBet = useCallback(async () => {
+    if (!oddsLock || !walletAddress || !onPlaceBet) return;
+
+    setIsPlacing(true);
+    setError(null);
+
+    try {
+      // Determine if backing creator or opponent
+      const backedSide: 'creator' | 'opponent' =
+        player1?.walletAddress === oddsLock.backedPlayer ? 'creator' : 'opponent';
+
+      // Place on-chain bet
+      const txSignature = await onPlaceBet(backedSide, oddsLock.amount);
+
+      // Verify with backend
+      const socket = getSocket();
+      socket.emit('verify_bet', {
+        lockId: oddsLock.lockId,
+        txSignature,
+        walletAddress,
+      });
+    } catch (err: any) {
+      setError(err.message || 'Failed to place bet');
+      setIsPlacing(false);
+    }
+  }, [oddsLock, walletAddress, onPlaceBet, player1]);
+
+  // Legacy bet (off-chain only)
+  const handlePlaceBetLegacy = async () => {
     if (!walletAddress) {
       setError('Connect wallet to place wagers');
       return;
@@ -67,13 +180,16 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
     const socket = getSocket();
     socket.emit('place_bet', battle.id, selectedPlayer, amount, walletAddress);
 
-    // Wait for confirmation (simplified - in production would listen for bet_placed event for this bet)
+    // Wait for confirmation
     setTimeout(() => {
       setIsPlacing(false);
       setSelectedPlayer(null);
       setCustomAmount('');
     }, 1000);
   };
+
+  // Use on-chain flow if available, otherwise legacy
+  const handlePlaceBet = onPlaceBet && onChainBattleId ? handleRequestBet : handlePlaceBetLegacy;
 
   const getOddsForPlayer = (playerWallet: string) => {
     if (!odds) return 2.0; // Default even odds
@@ -286,7 +402,7 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
       {/* Place Bet Button */}
       <button
         onClick={handlePlaceBet}
-        disabled={!selectedPlayer || isPlacing || !walletAddress}
+        disabled={!selectedPlayer || isPlacing || isRequestingLock || !walletAddress}
         className="w-full py-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]"
       >
         <div className="flex items-center justify-center gap-2">
@@ -296,6 +412,11 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
               </svg>
               Connect Wallet
+            </>
+          ) : isRequestingLock ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Locking Odds...
             </>
           ) : isPlacing ? (
             <>
@@ -371,6 +492,74 @@ export function BettingPanel({ battle, walletAddress }: BettingPanelProps) {
           Odds update based on current P&L and betting activity. Higher odds means higher risk, but higher reward. If no one bets against you, your bet is returned.
         </p>
       </div>
+
+      {/* Odds Confirmation Modal */}
+      {showConfirmModal && oddsLock && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-bg-secondary rounded-2xl p-6 max-w-sm w-full border border-border-primary shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Confirm Your Wager</h3>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${lockCountdown > 10 ? 'bg-success' : lockCountdown > 5 ? 'bg-warning' : 'bg-danger'} animate-pulse`} />
+                <span className="text-sm font-mono text-text-secondary">{lockCountdown}s</span>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="p-4 rounded-xl bg-bg-tertiary">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-text-secondary">Backing</span>
+                  <span className="font-mono font-semibold">{formatWallet(oddsLock.backedPlayer)}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-text-secondary">Amount</span>
+                  <span className="font-mono font-bold">{oddsLock.amount.toFixed(2)} SOL</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-text-secondary">Locked Odds</span>
+                  <span className="font-mono font-bold text-accent">{oddsLock.lockedOdds.toFixed(2)}x</span>
+                </div>
+                <div className="h-px bg-border-primary my-3" />
+                <div className="flex justify-between">
+                  <span className="text-sm text-text-secondary">Potential Win</span>
+                  <span className="font-mono font-bold text-success">{oddsLock.potentialPayout.toFixed(2)} SOL</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-text-tertiary text-center">
+                Your odds are locked for {lockCountdown} seconds. This transaction will transfer {oddsLock.amount.toFixed(2)} SOL to the battle escrow.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setOddsLock(null);
+                }}
+                disabled={isPlacing}
+                className="flex-1 py-3 rounded-xl font-semibold bg-bg-tertiary hover:bg-bg-hover transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmBet}
+                disabled={isPlacing || lockCountdown === 0}
+                className="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {isPlacing ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Signing...</span>
+                  </div>
+                ) : (
+                  'Confirm Wager'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
