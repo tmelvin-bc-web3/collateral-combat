@@ -182,9 +182,9 @@ export function OnboardingTour() {
   };
 
   const overlay = (
-    <div className="fixed inset-0 z-[100]">
+    <div className="fixed inset-0 z-[100] pointer-events-none">
       {/* Dark overlay with cutout */}
-      <svg className="absolute inset-0 w-full h-full">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
           <mask id="tour-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -225,7 +225,7 @@ export function OnboardingTour() {
 
       {/* Tooltip */}
       <div
-        className="absolute w-80 bg-bg-secondary border border-border-primary rounded-2xl shadow-2xl overflow-hidden"
+        className="absolute w-80 bg-bg-secondary border border-border-primary rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
         style={getTooltipStyle()}
       >
         {/* Progress bar */}
