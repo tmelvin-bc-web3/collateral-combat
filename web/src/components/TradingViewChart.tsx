@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 // TradingView symbol mapping
 const SYMBOL_MAP: Record<string, string> = {
@@ -23,15 +23,37 @@ interface TradingViewChartProps {
 }
 
 export function TradingViewChart({ symbol, height = 400, minimal = false }: TradingViewChartProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<any>(null);
   const [selectedIndicators, setSelectedIndicators] = useState<Indicator[]>(['VOLUME']);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   // Note: TradingView free widget minimum is 1 minute ('1').
   // For sub-minute, would need TradingView Pro or custom charting library.
   const [interval, setInterval] = useState('1');
 
   const tvSymbol = SYMBOL_MAP[symbol] || 'BINANCE:SOLUSDT';
+  const isFullHeight = height === '100%';
 
+  // Measure container size
   useEffect(() => {
+    if (!isFullHeight || !wrapperRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerSize({ width: Math.floor(width), height: Math.floor(height) });
+        }
+      }
+    });
+
+    resizeObserver.observe(wrapperRef.current);
+    return () => resizeObserver.disconnect();
+  }, [isFullHeight]);
+
+  // Create TradingView widget
+  const createWidget = useCallback(() => {
     if (!containerRef.current) return;
 
     // Clear previous widget
@@ -48,14 +70,29 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
       if (selectedIndicators.includes('VOLUME')) studies.push('Volume@tv-basicstudies');
     }
 
+    // Determine dimensions
+    let widgetWidth: number | undefined;
+    let widgetHeight: number | undefined;
+    let useAutosize = true;
+
+    if (isFullHeight && containerSize) {
+      widgetWidth = containerSize.width;
+      widgetHeight = containerSize.height;
+      useAutosize = false;
+    } else if (typeof height === 'number') {
+      widgetHeight = height;
+    }
+
     // Create TradingView widget
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
     script.async = true;
     script.onload = () => {
       if (typeof (window as any).TradingView !== 'undefined' && containerRef.current) {
-        new (window as any).TradingView.widget({
-          autosize: true,
+        widgetRef.current = new (window as any).TradingView.widget({
+          autosize: useAutosize,
+          width: widgetWidth,
+          height: widgetHeight,
           symbol: tvSymbol,
           interval: minimal ? '1' : interval,
           timezone: 'Etc/UTC',
@@ -84,7 +121,15 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
         script.parentNode.removeChild(script);
       }
     };
-  }, [tvSymbol, interval, selectedIndicators, minimal]);
+  }, [tvSymbol, interval, selectedIndicators, minimal, isFullHeight, containerSize, height]);
+
+  // Initialize widget when ready
+  useEffect(() => {
+    // For full height mode, wait until we have container dimensions
+    if (isFullHeight && !containerSize) return;
+
+    return createWidget();
+  }, [createWidget, isFullHeight, containerSize]);
 
   const toggleIndicator = (indicator: Indicator) => {
     setSelectedIndicators(prev =>
@@ -112,7 +157,6 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
     { value: 'D', label: '1D' },
   ];
 
-  const isFullHeight = height === '100%';
   const heightStyle = typeof height === 'string' ? height : `${height}px`;
 
   // For minimal mode, just return the chart
@@ -127,10 +171,68 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
     );
   }
 
+  // Full height mode: use flex layout with measured dimensions
+  if (isFullHeight) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-2 px-2 py-2 bg-black/60 border-b border-white/10 flex-shrink-0">
+          {/* Timeframe */}
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            {intervals.map((int) => (
+              <button
+                key={int.value}
+                onClick={() => setInterval(int.value)}
+                className={`px-2 py-1 text-xs rounded transition-all ${
+                  interval === int.value
+                    ? 'bg-warning text-black font-bold'
+                    : 'text-white/50 hover:text-white'
+                }`}
+              >
+                {int.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-white/20" />
+
+          {/* Indicators */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-white/40 mr-1">Indicators:</span>
+            {indicators.map((ind) => (
+              <button
+                key={ind.id}
+                onClick={() => toggleIndicator(ind.id)}
+                className={`px-2 py-1 text-xs rounded transition-all ${
+                  selectedIndicators.includes(ind.id)
+                    ? 'bg-warning/20 text-warning border border-warning/30'
+                    : 'bg-white/5 text-white/50 hover:text-white'
+                }`}
+              >
+                {ind.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chart Wrapper - measures available space */}
+        <div ref={wrapperRef} className="flex-1 min-h-0 relative">
+          {/* Chart Container - gets explicit dimensions */}
+          <div
+            id={`tradingview_${symbol}`}
+            ref={containerRef}
+            className="absolute inset-0"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Fixed height mode
   return (
-    <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'space-y-3'}`}>
+    <div className="space-y-3">
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2 px-2 py-2 bg-black/60 border-b border-white/10 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-2 px-2 py-2 bg-black/60 border-b border-white/10">
         {/* Timeframe */}
         <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
           {intervals.map((int) => (
@@ -169,12 +271,12 @@ export function TradingViewChart({ symbol, height = 400, minimal = false }: Trad
         </div>
       </div>
 
-      {/* Chart Container - fills remaining space */}
+      {/* Chart Container */}
       <div
         id={`tradingview_${symbol}`}
         ref={containerRef}
-        style={isFullHeight ? undefined : { height: heightStyle }}
-        className={`overflow-hidden ${isFullHeight ? 'flex-1 min-h-0' : 'rounded-lg border border-white/5'}`}
+        style={{ height: heightStyle }}
+        className="rounded-lg overflow-hidden border border-white/5"
       />
     </div>
   );
