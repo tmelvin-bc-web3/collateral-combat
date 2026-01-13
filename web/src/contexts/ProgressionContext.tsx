@@ -17,6 +17,8 @@ import {
   UserCosmetic,
   XpGainEvent,
   LevelUpEvent,
+  RebateSummary,
+  RebateReceivedEvent,
 } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -30,6 +32,11 @@ interface ProgressionContextValue {
   activeRake: number;
   isLoading: boolean;
 
+  // Rebate state
+  rebateSummary: RebateSummary | null;
+  totalRebatesEarned: number;
+  effectiveRakeBps: number;
+
   // Level-up modal state
   levelUpData: LevelUpEvent | null;
   dismissLevelUp: () => void;
@@ -38,9 +45,14 @@ interface ProgressionContextValue {
   xpGain: XpGainEvent | null;
   dismissXpGain: () => void;
 
+  // Rebate toast state
+  rebateReceived: RebateReceivedEvent | null;
+  dismissRebateReceived: () => void;
+
   // Actions
   fetchProgression: () => Promise<void>;
   fetchXpHistory: (limit?: number) => Promise<void>;
+  fetchRebateSummary: () => Promise<void>;
   activatePerk: (perkId: number) => Promise<UserPerk | null>;
 }
 
@@ -58,13 +70,20 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
   const [activeRake, setActiveRake] = useState(10); // Default 10% rake
   const [isLoading, setIsLoading] = useState(false);
 
+  // Rebate state
+  const [rebateSummary, setRebateSummary] = useState<RebateSummary | null>(null);
+  const [totalRebatesEarned, setTotalRebatesEarned] = useState(0);
+  const [effectiveRakeBps, setEffectiveRakeBps] = useState(500); // Default 5% (500 bps)
+
   // UI state for toasts/modals
   const [levelUpData, setLevelUpData] = useState<LevelUpEvent | null>(null);
   const [xpGain, setXpGain] = useState<XpGainEvent | null>(null);
+  const [rebateReceived, setRebateReceived] = useState<RebateReceivedEvent | null>(null);
 
   // Dismiss handlers
   const dismissLevelUp = useCallback(() => setLevelUpData(null), []);
   const dismissXpGain = useCallback(() => setXpGain(null), []);
+  const dismissRebateReceived = useCallback(() => setRebateReceived(null), []);
 
   // Fetch progression data
   const fetchProgression = useCallback(async () => {
@@ -122,6 +141,25 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
     }
   }, [walletAddress]);
 
+  // Fetch rebate summary
+  const fetchRebateSummary = useCallback(async () => {
+    if (!walletAddress) return;
+
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/progression/${walletAddress}/rebates/summary`
+      );
+      if (res.ok) {
+        const data: RebateSummary = await res.json();
+        setRebateSummary(data);
+        setTotalRebatesEarned(data.totalRebatesEarned);
+        setEffectiveRakeBps(data.effectiveRakeBps);
+      }
+    } catch (error) {
+      console.error('Failed to fetch rebate summary:', error);
+    }
+  }, [walletAddress]);
+
   // Activate a perk
   const activatePerk = useCallback(async (perkId: number): Promise<UserPerk | null> => {
     if (!walletAddress) return null;
@@ -169,11 +207,15 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
       setCosmetics([]);
       setXpHistory([]);
       setActiveRake(10);
+      setRebateSummary(null);
+      setTotalRebatesEarned(0);
+      setEffectiveRakeBps(500);
       return;
     }
 
     // Fetch initial data (errors handled inside)
     fetchProgression();
+    fetchRebateSummary();
 
     // Subscribe to real-time updates - wrapped in try-catch for resilience
     let socket: ReturnType<typeof getSocket> | null = null;
@@ -221,11 +263,20 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
       setActiveRake(10); // Reset to default
     };
 
+    // Handle rebate received - show toast and update totals
+    const handleRebateReceived = (data: RebateReceivedEvent) => {
+      setRebateReceived(data);
+      setTotalRebatesEarned(data.newTotal);
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => setRebateReceived(null), 5000);
+    };
+
     socket.on('progression_update', handleProgressionUpdate);
     socket.on('xp_gained', handleXpGain);
     socket.on('level_up', handleLevelUp);
     socket.on('perk_activated', handlePerkActivated);
     socket.on('perk_expired', handlePerkExpired);
+    socket.on('rebate_received', handleRebateReceived);
 
     return () => {
       if (socket) {
@@ -236,12 +287,13 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
           socket.off('level_up', handleLevelUp);
           socket.off('perk_activated', handlePerkActivated);
           socket.off('perk_expired', handlePerkExpired);
+          socket.off('rebate_received', handleRebateReceived);
         } catch (err) {
           console.error('Failed to cleanup progression socket:', err);
         }
       }
     };
-  }, [walletAddress, fetchProgression]);
+  }, [walletAddress, fetchProgression, fetchRebateSummary]);
 
   return (
     <ProgressionContext.Provider
@@ -252,12 +304,18 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
         xpHistory,
         activeRake,
         isLoading,
+        rebateSummary,
+        totalRebatesEarned,
+        effectiveRakeBps,
         levelUpData,
         dismissLevelUp,
         xpGain,
         dismissXpGain,
+        rebateReceived,
+        dismissRebateReceived,
         fetchProgression,
         fetchXpHistory,
+        fetchRebateSummary,
         activatePerk,
       }}
     >
@@ -274,12 +332,18 @@ const defaultContextValue: ProgressionContextValue = {
   xpHistory: [],
   activeRake: 10,
   isLoading: false,
+  rebateSummary: null,
+  totalRebatesEarned: 0,
+  effectiveRakeBps: 500,
   levelUpData: null,
   dismissLevelUp: () => {},
   xpGain: null,
   dismissXpGain: () => {},
+  rebateReceived: null,
+  dismissRebateReceived: () => {},
   fetchProgression: async () => {},
   fetchXpHistory: async () => {},
+  fetchRebateSummary: async () => {},
   activatePerk: async () => null,
 };
 

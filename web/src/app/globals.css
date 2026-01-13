@@ -1386,6 +1386,124 @@ input[type="number"] {
   }
 }
 
+/* ==================== */
+/* Mobile Touch Interactions */
+/* ==================== */
+
+/* Tap feedback animation */
+@keyframes tapFeedback {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.tap-feedback:active {
+  animation: tapFeedback 0.15s ease-out;
+}
+
+/* Touch-friendly button base styles */
+.touch-btn {
+  min-height: 44px;
+  min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Mobile-only: Remove hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable hover states on touch devices - use active states instead */
+  .btn:hover:not(:active),
+  .card-hover:hover:not(:active),
+  .btn-tab:hover:not(:active),
+  .btn-action:hover:not(:active),
+  .table-row:hover:not(:active) {
+    background: inherit;
+    box-shadow: none;
+    border-color: inherit;
+    transform: none;
+  }
+
+  /* Ensure active states work well on mobile */
+  .btn:active,
+  .btn-tab:active,
+  .btn-action:active {
+    transform: scale(0.98);
+  }
+
+  /* Tap highlight for cards and interactive elements */
+  .card-hover:active {
+    background: var(--bg-tertiary);
+    transform: scale(0.99);
+  }
+
+  /* Prevent text selection during touch */
+  button,
+  a,
+  .touch-manipulation {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Better tap targets for links */
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Touch device haptic-style feedback (visual) */
+@media (hover: none) {
+  .haptic-feedback:active {
+    filter: brightness(0.9);
+    transition: filter 0.1s ease;
+  }
+}
+
+/* Safe area padding for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Scrolling improvements for mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 640px) {
+  .hide-scrollbar-mobile {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar-mobile::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media screen and (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

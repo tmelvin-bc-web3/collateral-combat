@@ -412,3 +412,49 @@ export const STREAK_BONUSES = [
   { minDays: 4, bonus: 25 },
   { minDays: 2, bonus: 10 },
 ] as const;
+
+// Free Bet Position types (escrow-based)
+export type FreeBetPositionStatus = 'pending' | 'won' | 'lost' | 'claimed' | 'settled';
+
+export interface FreeBetPosition {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  side: PredictionSide;
+  amountLamports: number;
+  status: FreeBetPositionStatus;
+  payoutLamports?: number;
+  txSignatureBet?: string;
+  txSignatureClaim?: string;
+  txSignatureSettlement?: string;
+  createdAt: number;
+}
+
+// Rake Rebate types
+export type RakeRebateStatus = 'pending' | 'sent' | 'failed';
+
+export interface RakeRebate {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  grossWinningsLamports: number;
+  effectiveFeeBps: number;
+  perkType: ProgressionPerkType | null;
+  rebateLamports: number;
+  status: RakeRebateStatus;
+  claimTxSignature: string;
+  rebateTxSignature?: string;
+  createdAt: number;
+}
+
+export interface RebateSummary {
+  totalRebatesEarned: number;
+  totalRebateCount: number;
+  effectiveRakeBps: number;
+  perkType: ProgressionPerkType | null;
+}
+
+export interface RebateReceivedEvent {
+  rebate: RakeRebate;
+  newTotal: number;
+}

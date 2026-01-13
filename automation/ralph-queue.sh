@@ -12,12 +12,16 @@ set -eo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUEUE_DIR="$PROJECT_DIR/.ralph/queue"
 LOCKS_DIR="$QUEUE_DIR/locks"
-PRD_FILE="$PROJECT_DIR/.agents/tasks/prd-parallel.md"
+PRD_FILE="$PROJECT_DIR/.agents/tasks/prd-free-bets-rebates.md"
 
 # Get worker scope pattern
 get_worker_scope() {
   local worker="$1"
   case "$worker" in
+    backend-db) echo "backend/src/db" ;;
+    backend-services) echo "backend/src/services" ;;
+    backend-api) echo "backend/src/index" ;;
+    frontend) echo "web/src" ;;
     backend) echo "backend/" ;;
     frontend-lib) echo "web/src/lib|web/src/hooks|web/src/contexts" ;;
     frontend-ui) echo "web/src/app|web/src/components" ;;

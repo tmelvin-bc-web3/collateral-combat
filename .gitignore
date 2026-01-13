@@ -36,3 +36,4 @@ test-ledger/
 **/*.so
 handoff/
 handoff.zip
+.wallets/

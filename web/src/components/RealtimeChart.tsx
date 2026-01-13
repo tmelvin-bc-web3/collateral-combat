@@ -33,9 +33,9 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
   const displayMaxRef = useRef<number | null>(null);
 
   const VISIBLE_DURATION = 60 * 1000;
-  const SMOOTHING_FACTOR = 0.12;
-  const AXIS_SMOOTHING = 0.04;
-  const CURVE_TENSION = 0.25;
+  const SMOOTHING_FACTOR = 0.2;
+  const AXIS_SMOOTHING = 0.05;
+  const CURVE_TENSION = 0.4;
   const TARGET_FPS = 60;
   const FRAME_DURATION = 1000 / TARGET_FPS;
   const UP_COLOR = '#22c55e';
@@ -125,7 +125,8 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
     }
 
     if (path.length > 1) {
-      const drawSmoothLine = (points: { x: number; y: number }[], tension = CURVE_TENSION) => {
+      // Monotonic cubic spline - prevents overshooting at direction changes
+      const drawSmoothLine = (points: { x: number; y: number }[]) => {
         if (points.length < 2) return;
 
         ctx.beginPath();
@@ -137,18 +138,25 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
         }
 
         for (let i = 0; i < points.length - 1; i++) {
-          const p0 = points[Math.max(0, i - 1)];
-          const p1 = points[i];
-          const p2 = points[i + 1];
-          const p3 = points[Math.min(points.length - 1, i + 2)];
+          const p0 = points[i];
+          const p1 = points[i + 1];
 
-          const cp1x = p1.x + (p2.x - p0.x) * tension;
-          const cp1y = p1.y + (p2.y - p0.y) * tension;
-          const cp2x = p2.x - (p3.x - p1.x) * tension;
-          const cp2y = p2.y - (p3.y - p1.y) * tension;
+          // Simple quadratic curve through midpoint - no overshooting
+          const midX = (p0.x + p1.x) / 2;
+          const midY = (p0.y + p1.y) / 2;
 
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+          if (i === 0) {
+            ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
+          } else if (i === points.length - 2) {
+            ctx.quadraticCurveTo(p1.x, p1.y, p1.x, p1.y);
+          } else {
+            ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
+          }
         }
+
+        // Connect to final point
+        const last = points[points.length - 1];
+        ctx.lineTo(last.x, last.y);
       };
 
       ctx.save();

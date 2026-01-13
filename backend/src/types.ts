@@ -193,6 +193,9 @@ export interface ServerToClientEvents {
   level_up: (data: LevelUpResult & { walletAddress: string }) => void;
   perk_activated: (perk: UserPerk) => void;
   perk_expired: (data: { perkId: number }) => void;
+  // Rebate events
+  rebate_received: (data: { walletAddress: string; roundId: number; rebateLamports: number; rebateSol: number; perkType?: string }) => void;
+  rebate_summary: (data: { totalRebates: number; totalRebateLamports: number; totalRebateSol: number; pendingRebateLamports: number; pendingRebateSol: number }) => void;
   // Notification events
   notification: (notification: Notification) => void;
   notification_count: (count: number) => void;
@@ -235,6 +238,9 @@ export interface ClientToServerEvents {
   // Notification events
   subscribe_notifications: (walletAddress: string) => void;
   unsubscribe_notifications: (walletAddress: string) => void;
+  // Rebate events
+  subscribe_rebates: (walletAddress: string) => void;
+  unsubscribe_rebates: (walletAddress: string) => void;
 }
 
 // ===================
@@ -458,6 +464,46 @@ export interface FreeBetTransaction {
   createdAt: number;
 }
 
+// ===================
+// Free Bet Position Types (Escrow-based)
+// ===================
+
+export type FreeBetPositionStatus = 'pending' | 'placed' | 'won' | 'lost' | 'settled' | 'failed';
+
+export interface FreeBetPosition {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  side: 'long' | 'short';
+  amountLamports: number;
+  status: FreeBetPositionStatus;
+  payoutLamports?: number;
+  txSignatureBet?: string;
+  txSignatureClaim?: string;
+  txSignatureSettlement?: string;
+  createdAt: number;
+}
+
+// ===================
+// Rake Rebate Types
+// ===================
+
+export type RakeRebateStatus = 'pending' | 'processing' | 'sent' | 'failed';
+
+export interface RakeRebate {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  grossWinningsLamports: number;
+  effectiveFeeBps: number;
+  perkType?: string;
+  rebateLamports: number;
+  status: RakeRebateStatus;
+  claimTxSignature: string;
+  rebateTxSignature?: string;
+  createdAt: number;
+}
+
 // Progression WebSocket events
 export interface ProgressionServerToClientEvents {
   xp_gained: (data: XpGainEvent) => void;
@@ -592,4 +638,36 @@ export interface AchievementListResponse {
   achievements: AchievementProgress[];
   totalUnlocked: number;
   totalAchievements: number;
+}
+
+// ===================
+// Referral Types
+// ===================
+
+export interface ReferralCode {
+  walletAddress: string;
+  code: string;
+  createdAt: number;
+}
+
+export interface Referral {
+  id: number;
+  referrerWallet: string;
+  referredWallet: string;
+  referralCode: string;
+  status: 'pending' | 'active' | 'expired';
+  createdAt: number;
+  activatedAt: number | null;
+  discountExpiresAt: number | null;
+}
+
+export interface ReferralStats {
+  totalReferrals: number;
+  activeReferrals: number;
+  totalXpEarned: number;
+  totalRakeEarned: number;
+  myCode: string;
+  referrals: Referral[];
+  hasDiscount: boolean;
+  discountExpiresAt: number | null;
 }

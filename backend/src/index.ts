@@ -12,10 +12,13 @@ import { predictionService } from './services/predictionService';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';
+import { freeBetEscrowService } from './services/freeBetEscrowService';
+import { rakeRebateService } from './services/rakeRebateService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
 import * as achievementDb from './db/achievementDatabase';
+import * as progressionDb from './db/progressionDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { WHITELISTED_TOKENS } from './tokens';
@@ -296,6 +299,85 @@ app.get('/api/predictions/round/:roundId', (req, res) => {
 });
 
 // ===================
+// Free Bet Position Endpoints (Escrow-based)
+// ===================
+
+// Place a free bet using escrow service (requires auth, rate limited)
+app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: Request, res: Response) => {
+  try {
+    const { walletAddress, roundId, side } = req.body;
+    const authenticatedWallet = req.headers['x-wallet-address'] as string;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'walletAddress required' });
+    }
+
+    // Verify wallet ownership
+    if (walletAddress !== authenticatedWallet) {
+      return res.status(403).json({ error: 'Wallet mismatch - can only place free bets for your own wallet' });
+    }
+
+    if (!roundId || typeof roundId !== 'number') {
+      return res.status(400).json({ error: 'Valid roundId required' });
+    }
+
+    if (!side || !['long', 'short'].includes(side)) {
+      return res.status(400).json({ error: 'side must be "long" or "short"' });
+    }
+
+    // Check if user has available free bet credits
+    const balance = progressionService.getFreeBetBalance(walletAddress);
+    if (balance.balance < 1) {
+      return res.status(400).json({ error: 'No free bets available', balance });
+    }
+
+    // Check if user already has a pending/placed bet for this round
+    const existingPosition = progressionDb.getFreeBetPositionForWalletAndRound(walletAddress, roundId);
+    if (existingPosition && ['pending', 'placed', 'active'].includes(existingPosition.status)) {
+      return res.status(400).json({ error: 'Already have a free bet for this round', position: existingPosition });
+    }
+
+    // Place bet on-chain via escrow service
+    const result = await freeBetEscrowService.placeFreeBet(walletAddress, roundId, side as 'long' | 'short');
+    if (!result.success) {
+      return res.status(500).json({ error: result.error || 'Failed to place free bet on-chain' });
+    }
+
+    // Deduct free bet credit only after successful on-chain bet
+    const useResult = progressionService.useFreeBetCredit(walletAddress, 'oracle', `Free bet on round ${roundId}`);
+    if (!useResult.success) {
+      console.warn('[FreeBet] Failed to deduct credit after successful bet:', walletAddress);
+    }
+
+    res.json({
+      success: true,
+      position: result.position,
+      txSignature: result.txSignature,
+      remainingFreeBets: useResult.success ? useResult.balance.balance : balance.balance - 1,
+    });
+  } catch (error: any) {
+    console.error('Error placing free bet:', error);
+    res.status(500).json({ error: error.message || 'Failed to place free bet' });
+  }
+});
+
+// Get user's free bet positions
+app.get('/api/prediction/:wallet/free-bet-positions', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  // For pagination we need to implement it - for now just get with limit
+  const positions = progressionDb.getFreeBetPositionsForWallet(req.params.wallet, limit);
+
+  res.json({
+    positions,
+    total: positions.length,
+    limit,
+    offset,
+  });
+});
+
+// ===================
 // Draft Tournament Endpoints
 // ===================
 
@@ -553,6 +635,44 @@ app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimit
   }
 
   res.json({ success: true, balance: result.balance });
+});
+
+// ===================
+// Rake Rebate Endpoints
+// ===================
+
+// Get rebate history (requires wallet ownership - sensitive data)
+app.get('/api/progression/:wallet/rebates', requireOwnWallet, (req: Request, res: Response) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  const rebates = progressionDb.getRakeRebatesForWallet(req.params.wallet, limit);
+
+  res.json({
+    rebates,
+    total: rebates.length,
+    limit,
+    offset,
+  });
+});
+
+// Get rebate summary (total earned, pending, etc.)
+app.get('/api/progression/:wallet/rebates/summary', requireOwnWallet, (req: Request, res: Response) => {
+  const summary = progressionDb.getRakeRebateSummary(req.params.wallet);
+
+  // Convert lamports to SOL for display
+  const LAMPORTS_PER_SOL = 1_000_000_000;
+
+  res.json({
+    walletAddress: req.params.wallet,
+    totalRebates: summary.totalRebates,
+    totalRebateLamports: summary.totalRebateLamports,
+    totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
+    sentRebateLamports: summary.sentRebateLamports,
+    sentRebateSol: summary.sentRebateLamports / LAMPORTS_PER_SOL,
+    pendingRebateLamports: summary.pendingRebateLamports,
+    pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
+  });
 });
 
 // ===================
@@ -1096,6 +1216,28 @@ io.on('connection', (socket) => {
     socket.leave(`notifications_${wallet}`);
   });
 
+  // ===================
+  // Rebate Events
+  // ===================
+
+  socket.on('subscribe_rebates', (wallet: string) => {
+    socket.join(`rebates_${wallet}`);
+    // Send current rebate summary
+    const summary = progressionDb.getRakeRebateSummary(wallet);
+    const LAMPORTS_PER_SOL = 1_000_000_000;
+    socket.emit('rebate_summary' as any, {
+      totalRebates: summary.totalRebates,
+      totalRebateLamports: summary.totalRebateLamports,
+      totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
+      pendingRebateLamports: summary.pendingRebateLamports,
+      pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
+    });
+  });
+
+  socket.on('unsubscribe_rebates', (wallet: string) => {
+    socket.leave(`rebates_${wallet}`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -1264,6 +1406,35 @@ async function start() {
 
   // Start draft tournament manager
   draftTournamentManager.start();
+
+  // Initialize and start free bet escrow service
+  const escrowInitialized = await freeBetEscrowService.init();
+  if (escrowInitialized) {
+    freeBetEscrowService.startProcessing();
+    console.log('[Startup] Free bet escrow service started');
+  } else {
+    console.warn('[Startup] Free bet escrow service not initialized (missing ESCROW_WALLET_PRIVATE_KEY)');
+  }
+
+  // Initialize and start rake rebate service
+  const rebateInitialized = await rakeRebateService.initialize();
+  if (rebateInitialized) {
+    rakeRebateService.startPolling();
+    console.log('[Startup] Rake rebate service started');
+
+    // Subscribe to rebate events for WebSocket notifications
+    rakeRebateService.subscribe((event, data: any) => {
+      if (event === 'rebate_sent' && data.walletAddress) {
+        // Emit to the user's room
+        io.to(data.walletAddress).emit('rebate_received' as any, {
+          rebate: data.rebate,
+          txSignature: data.txSignature,
+        });
+      }
+    });
+  } else {
+    console.warn('[Startup] Rake rebate service not initialized (missing REBATE_WALLET_PRIVATE_KEY)');
+  }
 
   httpServer.listen(PORT, () => {
     console.log(`

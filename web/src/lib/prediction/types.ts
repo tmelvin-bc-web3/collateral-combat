@@ -8,7 +8,7 @@ export const PREDICTION_PROGRAM_ID = new PublicKey('9fDpLYmAR1WtaVwSczxz1BZqQGiS
 
 // Constants from the smart contract
 export const ROUND_DURATION = 30; // 30 seconds
-export const PLATFORM_FEE_BPS = 1000; // 10%
+export const PLATFORM_FEE_BPS = 500; // 5%
 export const MIN_BET_LAMPORTS = 10_000_000; // 0.01 SOL
 export const DRAW_THRESHOLD_BPS = 10; // 0.1%
 export const LOCK_REWARD_LAMPORTS = 1_000_000; // 0.001 SOL

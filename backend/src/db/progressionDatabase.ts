@@ -94,6 +94,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_user_perks_wallet ON user_perks(wallet_address);
   CREATE INDEX IF NOT EXISTS idx_user_cosmetics_wallet ON user_cosmetics(wallet_address);
   CREATE INDEX IF NOT EXISTS idx_free_bet_history_wallet ON free_bet_history(wallet_address);
+
+  -- Free bet positions (escrow-based free bets)
+  CREATE TABLE IF NOT EXISTS free_bet_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    round_id INTEGER NOT NULL,
+    side TEXT NOT NULL,
+    amount_lamports INTEGER DEFAULT 10000000,
+    status TEXT DEFAULT 'pending',
+    payout_lamports INTEGER,
+    tx_signature_bet TEXT,
+    tx_signature_claim TEXT,
+    tx_signature_settlement TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  -- Rake rebates
+  CREATE TABLE IF NOT EXISTS rake_rebates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_address TEXT NOT NULL,
+    round_id INTEGER NOT NULL,
+    gross_winnings_lamports INTEGER NOT NULL,
+    effective_fee_bps INTEGER NOT NULL,
+    perk_type TEXT,
+    rebate_lamports INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending',
+    claim_tx_signature TEXT NOT NULL,
+    rebate_tx_signature TEXT,
+    created_at INTEGER NOT NULL,
+    UNIQUE(round_id, wallet_address)
+  );
+
+  -- Indexes for new tables
+  CREATE INDEX IF NOT EXISTS idx_free_bet_positions_wallet ON free_bet_positions(wallet_address);
+  CREATE INDEX IF NOT EXISTS idx_free_bet_positions_status ON free_bet_positions(status);
+  CREATE INDEX IF NOT EXISTS idx_rake_rebates_wallet ON rake_rebates(wallet_address);
+  CREATE INDEX IF NOT EXISTS idx_rake_rebates_status ON rake_rebates(status);
 `);
 
 // ===================
@@ -167,6 +204,40 @@ export interface FreeBetTransaction {
   transactionType: FreeBetTransactionType;
   gameMode?: GameMode;
   description?: string;
+  createdAt: number;
+}
+
+// Free Bet Position Types (Escrow-based)
+export type FreeBetPositionStatus = 'pending' | 'placed' | 'won' | 'lost' | 'settled' | 'failed';
+
+export interface FreeBetPosition {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  side: 'long' | 'short';
+  amountLamports: number;
+  status: FreeBetPositionStatus;
+  payoutLamports?: number;
+  txSignatureBet?: string;
+  txSignatureClaim?: string;
+  txSignatureSettlement?: string;
+  createdAt: number;
+}
+
+// Rake Rebate Types
+export type RakeRebateStatus = 'pending' | 'processing' | 'sent' | 'failed';
+
+export interface RakeRebate {
+  id: number;
+  walletAddress: string;
+  roundId: number;
+  grossWinningsLamports: number;
+  effectiveFeeBps: number;
+  perkType?: string;
+  rebateLamports: number;
+  status: RakeRebateStatus;
+  claimTxSignature: string;
+  rebateTxSignature?: string;
   createdAt: number;
 }
 
@@ -702,5 +773,317 @@ function mapStreakRow(row: any): UserStreak {
     longestStreak: row.longest_streak,
     lastActivityDate: row.last_activity_date,
     updatedAt: row.updated_at,
+  };
+}
+
+// ===================
+// Free Bet Position Operations
+// ===================
+
+const insertFreeBetPosition = db.prepare(`
+  INSERT INTO free_bet_positions (wallet_address, round_id, side, amount_lamports, status, created_at)
+  VALUES (?, ?, ?, ?, 'pending', ?)
+`);
+
+const getFreeBetPositionById = db.prepare(`
+  SELECT * FROM free_bet_positions WHERE id = ?
+`);
+
+const getFreeBetPositionsByWalletLimited = db.prepare(`
+  SELECT * FROM free_bet_positions WHERE wallet_address = ? ORDER BY created_at DESC LIMIT ?
+`);
+
+const getFreeBetPositionsByStatusQuery = db.prepare(`
+  SELECT * FROM free_bet_positions WHERE status = ? ORDER BY created_at ASC
+`);
+
+const getFreeBetPositionsByWalletQuery = db.prepare(`
+  SELECT * FROM free_bet_positions WHERE wallet_address = ? ORDER BY created_at DESC
+`);
+
+const getFreeBetPositionByWalletAndRound = db.prepare(`
+  SELECT * FROM free_bet_positions WHERE wallet_address = ? AND round_id = ?
+`);
+
+const updateFreeBetPositionStatusQuery = db.prepare(`
+  UPDATE free_bet_positions SET status = ? WHERE id = ?
+`);
+
+const updateFreeBetPositionStatusWithTx = db.prepare(`
+  UPDATE free_bet_positions SET status = ?, tx_signature_bet = COALESCE(?, tx_signature_bet), tx_signature_claim = COALESCE(?, tx_signature_claim) WHERE id = ?
+`);
+
+const updateFreeBetPositionBetTx = db.prepare(`
+  UPDATE free_bet_positions SET status = 'placed', tx_signature_bet = ? WHERE id = ?
+`);
+
+const updateFreeBetPositionClaim = db.prepare(`
+  UPDATE free_bet_positions SET status = ?, payout_lamports = ?, tx_signature_claim = ? WHERE id = ?
+`);
+
+const updateFreeBetPositionPayoutQuery = db.prepare(`
+  UPDATE free_bet_positions SET payout_lamports = ?, status = ?, tx_signature_settlement = ? WHERE id = ?
+`);
+
+const updateFreeBetPositionSettlement = db.prepare(`
+  UPDATE free_bet_positions SET status = 'settled', tx_signature_settlement = ? WHERE id = ?
+`);
+
+export function createFreeBetPosition(
+  walletAddress: string,
+  roundId: number,
+  side: 'long' | 'short',
+  amountLamports: number = 10000000
+): FreeBetPosition {
+  const now = Date.now();
+  const result = insertFreeBetPosition.run(walletAddress, roundId, side, amountLamports, now);
+
+  return {
+    id: Number(result.lastInsertRowid),
+    walletAddress,
+    roundId,
+    side,
+    amountLamports,
+    status: 'pending',
+    createdAt: now,
+  };
+}
+
+export function getFreeBetPosition(id: number): FreeBetPosition | null {
+  const row = getFreeBetPositionById.get(id) as any;
+  if (!row) return null;
+  return mapFreeBetPositionRow(row);
+}
+
+export function getFreeBetPositionsForWallet(walletAddress: string, limit: number = 50): FreeBetPosition[] {
+  const rows = getFreeBetPositionsByWalletLimited.all(walletAddress, limit) as any[];
+  return rows.map(mapFreeBetPositionRow);
+}
+
+export function getFreeBetPositionsByStatusType(status: FreeBetPositionStatus): FreeBetPosition[] {
+  const rows = getFreeBetPositionsByStatusQuery.all(status) as any[];
+  return rows.map(mapFreeBetPositionRow);
+}
+
+// Alias for compatibility with freeBetEscrowService
+export function getFreeBetPositionsByStatus(status: FreeBetPositionStatus): FreeBetPosition[] {
+  return getFreeBetPositionsByStatusType(status);
+}
+
+// Get positions by wallet (no limit) for freeBetEscrowService
+export function getFreeBetPositionsByWallet(walletAddress: string): FreeBetPosition[] {
+  const rows = getFreeBetPositionsByWalletQuery.all(walletAddress) as any[];
+  return rows.map(mapFreeBetPositionRow);
+}
+
+export function getFreeBetPositionForWalletAndRound(walletAddress: string, roundId: number): FreeBetPosition | null {
+  const row = getFreeBetPositionByWalletAndRound.get(walletAddress, roundId) as any;
+  if (!row) return null;
+  return mapFreeBetPositionRow(row);
+}
+
+export function updateFreeBetPositionToPlaced(id: number, txSignature: string): FreeBetPosition | null {
+  updateFreeBetPositionBetTx.run(txSignature, id);
+  return getFreeBetPosition(id);
+}
+
+export function updateFreeBetPositionToClaimed(
+  id: number,
+  status: 'won' | 'lost',
+  payoutLamports: number,
+  txSignature: string
+): FreeBetPosition | null {
+  updateFreeBetPositionClaim.run(status, payoutLamports, txSignature, id);
+  return getFreeBetPosition(id);
+}
+
+export function updateFreeBetPositionToSettled(id: number, txSignature: string): FreeBetPosition | null {
+  updateFreeBetPositionSettlement.run(txSignature, id);
+  return getFreeBetPosition(id);
+}
+
+export function updateFreeBetPositionStatusOnly(id: number, status: FreeBetPositionStatus): FreeBetPosition | null {
+  updateFreeBetPositionStatusQuery.run(status, id);
+  return getFreeBetPosition(id);
+}
+
+// Function expected by freeBetEscrowService
+export function updateFreeBetPositionStatus(
+  id: number,
+  status: FreeBetPositionStatus,
+  txSignatureBet?: string,
+  txSignatureClaim?: string
+): FreeBetPosition | null {
+  updateFreeBetPositionStatusWithTx.run(status, txSignatureBet || null, txSignatureClaim || null, id);
+  return getFreeBetPosition(id);
+}
+
+// Function expected by freeBetEscrowService
+export function updateFreeBetPositionPayout(
+  id: number,
+  payoutLamports: number,
+  status: FreeBetPositionStatus,
+  txSignatureSettlement?: string
+): FreeBetPosition | null {
+  updateFreeBetPositionPayoutQuery.run(payoutLamports, status, txSignatureSettlement || null, id);
+  return getFreeBetPosition(id);
+}
+
+function mapFreeBetPositionRow(row: any): FreeBetPosition {
+  return {
+    id: row.id,
+    walletAddress: row.wallet_address,
+    roundId: row.round_id,
+    side: row.side as 'long' | 'short',
+    amountLamports: row.amount_lamports,
+    status: row.status as FreeBetPositionStatus,
+    payoutLamports: row.payout_lamports || undefined,
+    txSignatureBet: row.tx_signature_bet || undefined,
+    txSignatureClaim: row.tx_signature_claim || undefined,
+    txSignatureSettlement: row.tx_signature_settlement || undefined,
+    createdAt: row.created_at,
+  };
+}
+
+// ===================
+// Rake Rebate Operations
+// ===================
+
+const insertRakeRebate = db.prepare(`
+  INSERT INTO rake_rebates (wallet_address, round_id, gross_winnings_lamports, effective_fee_bps, perk_type, rebate_lamports, status, claim_tx_signature, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+`);
+
+const getRakeRebateById = db.prepare(`
+  SELECT * FROM rake_rebates WHERE id = ?
+`);
+
+const getRakeRebatesByWallet = db.prepare(`
+  SELECT * FROM rake_rebates WHERE wallet_address = ? ORDER BY created_at DESC LIMIT ?
+`);
+
+const getRakeRebatesByStatus = db.prepare(`
+  SELECT * FROM rake_rebates WHERE status = ? ORDER BY created_at ASC
+`);
+
+const getRakeRebateByWalletAndRound = db.prepare(`
+  SELECT * FROM rake_rebates WHERE wallet_address = ? AND round_id = ?
+`);
+
+const updateRakeRebateStatus = db.prepare(`
+  UPDATE rake_rebates SET status = ? WHERE id = ?
+`);
+
+const updateRakeRebateSent = db.prepare(`
+  UPDATE rake_rebates SET status = 'sent', rebate_tx_signature = ? WHERE id = ?
+`);
+
+const getRakeRebateSummaryByWallet = db.prepare(`
+  SELECT
+    COUNT(*) as total_rebates,
+    SUM(rebate_lamports) as total_rebate_lamports,
+    SUM(CASE WHEN status = 'sent' THEN rebate_lamports ELSE 0 END) as sent_rebate_lamports,
+    SUM(CASE WHEN status = 'pending' THEN rebate_lamports ELSE 0 END) as pending_rebate_lamports
+  FROM rake_rebates
+  WHERE wallet_address = ?
+`);
+
+export function createRakeRebate(
+  walletAddress: string,
+  roundId: number,
+  grossWinningsLamports: number,
+  effectiveFeeBps: number,
+  rebateLamports: number,
+  claimTxSignature: string,
+  perkType?: string
+): RakeRebate {
+  const now = Date.now();
+  const result = insertRakeRebate.run(
+    walletAddress,
+    roundId,
+    grossWinningsLamports,
+    effectiveFeeBps,
+    perkType || null,
+    rebateLamports,
+    claimTxSignature,
+    now
+  );
+
+  return {
+    id: Number(result.lastInsertRowid),
+    walletAddress,
+    roundId,
+    grossWinningsLamports,
+    effectiveFeeBps,
+    perkType,
+    rebateLamports,
+    status: 'pending',
+    claimTxSignature,
+    createdAt: now,
+  };
+}
+
+export function getRakeRebate(id: number): RakeRebate | null {
+  const row = getRakeRebateById.get(id) as any;
+  if (!row) return null;
+  return mapRakeRebateRow(row);
+}
+
+export function getRakeRebatesForWallet(walletAddress: string, limit: number = 50): RakeRebate[] {
+  const rows = getRakeRebatesByWallet.all(walletAddress, limit) as any[];
+  return rows.map(mapRakeRebateRow);
+}
+
+export function getRakeRebatesByStatusType(status: RakeRebateStatus): RakeRebate[] {
+  const rows = getRakeRebatesByStatus.all(status) as any[];
+  return rows.map(mapRakeRebateRow);
+}
+
+export function getRakeRebateForWalletAndRound(walletAddress: string, roundId: number): RakeRebate | null {
+  const row = getRakeRebateByWalletAndRound.get(walletAddress, roundId) as any;
+  if (!row) return null;
+  return mapRakeRebateRow(row);
+}
+
+export function updateRakeRebateStatusOnly(id: number, status: RakeRebateStatus): RakeRebate | null {
+  updateRakeRebateStatus.run(status, id);
+  return getRakeRebate(id);
+}
+
+export function updateRakeRebateToSent(id: number, txSignature: string): RakeRebate | null {
+  updateRakeRebateSent.run(txSignature, id);
+  return getRakeRebate(id);
+}
+
+export interface RakeRebateSummary {
+  totalRebates: number;
+  totalRebateLamports: number;
+  sentRebateLamports: number;
+  pendingRebateLamports: number;
+}
+
+export function getRakeRebateSummary(walletAddress: string): RakeRebateSummary {
+  const row = getRakeRebateSummaryByWallet.get(walletAddress) as any;
+  return {
+    totalRebates: row?.total_rebates || 0,
+    totalRebateLamports: row?.total_rebate_lamports || 0,
+    sentRebateLamports: row?.sent_rebate_lamports || 0,
+    pendingRebateLamports: row?.pending_rebate_lamports || 0,
+  };
+}
+
+function mapRakeRebateRow(row: any): RakeRebate {
+  return {
+    id: row.id,
+    walletAddress: row.wallet_address,
+    roundId: row.round_id,
+    grossWinningsLamports: row.gross_winnings_lamports,
+    effectiveFeeBps: row.effective_fee_bps,
+    perkType: row.perk_type || undefined,
+    rebateLamports: row.rebate_lamports,
+    status: row.status as RakeRebateStatus,
+    claimTxSignature: row.claim_tx_signature,
+    rebateTxSignature: row.rebate_tx_signature || undefined,
+    createdAt: row.created_at,
   };
 }

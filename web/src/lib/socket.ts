@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -42,6 +42,8 @@ interface ServerToClientEvents {
   level_up: (data: LevelUpEvent) => void;
   perk_activated: (perk: UserPerk) => void;
   perk_expired: (data: { perkId: number }) => void;
+  // Rebate events
+  rebate_received: (data: RebateReceivedEvent) => void;
 }
 
 interface ClientToServerEvents {

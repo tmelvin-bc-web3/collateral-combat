@@ -187,10 +187,10 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 data-tour={tourId}
-                className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
                   isActive
                     ? 'text-fire bg-rust/20 border border-rust/40'
-                    : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
+                    : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
                 }`}
               >
                 <NavIcon type={link.icon} active={isActive} />
@@ -203,10 +203,10 @@ export function Header() {
           <div className="relative" ref={moreMenuRef}>
             <button
               onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-              className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+              className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
                 isSecondaryActive || isMoreMenuOpen
                   ? 'text-fire bg-rust/20 border border-rust/40'
-                  : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
+                  : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
               }`}
             >
               <svg className={`w-4 h-4 ${isSecondaryActive || isMoreMenuOpen ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -228,10 +228,10 @@ export function Header() {
                       key={link.href}
                       href={link.href}
                       onClick={() => setIsMoreMenuOpen(false)}
-                      className={`flex items-start gap-3 px-4 py-3 transition-all ${
+                      className={`flex items-start gap-3 px-4 py-3 min-h-[44px] transition-all touch-manipulation active:scale-[0.98] ${
                         isActive
                           ? 'bg-rust/20 text-fire'
-                          : 'hover:bg-rust/10 text-text-secondary hover:text-text-primary'
+                          : 'hover:bg-rust/10 active:bg-rust/20 text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       <div className="mt-0.5">
@@ -253,8 +253,9 @@ export function Header() {
         <div className="md:hidden flex items-center justify-self-center" ref={mobileMenuRef}>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded text-text-secondary hover:text-fire hover:bg-rust/10 transition-all"
+            className="min-w-[44px] min-h-[44px] p-2.5 rounded-lg text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 transition-all touch-manipulation"
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -270,18 +271,18 @@ export function Header() {
           {/* Mobile menu dropdown */}
           {isMobileMenuOpen && (
             <div className="absolute top-full left-0 right-0 bg-bg-secondary border-b border-rust/30 shadow-xl z-50">
-              <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
-                {/* Primary nav items */}
+              <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
+                {/* Primary nav items - with 44px+ touch targets */}
                 {PRIMARY_NAV.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`flex items-center gap-3 px-4 py-3 rounded text-sm font-bold uppercase tracking-wider transition-all ${
+                      className={`flex items-center gap-3 px-4 py-3.5 min-h-[48px] rounded-lg text-sm font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
                         isActive
                           ? 'text-fire bg-rust/20 border border-rust/40'
-                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 border border-transparent'
+                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
                       }`}
                     >
                       <NavIcon type={link.icon} active={isActive} />
@@ -293,17 +294,17 @@ export function Header() {
                 {/* Divider */}
                 <div className="h-px bg-rust/20 my-2" />
 
-                {/* Secondary nav items */}
+                {/* Secondary nav items - with 44px+ touch targets */}
                 {SECONDARY_NAV.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`flex items-start gap-3 px-4 py-3 rounded transition-all ${
+                      className={`flex items-start gap-3 px-4 py-3.5 min-h-[48px] rounded-lg transition-all touch-manipulation active:scale-[0.98] ${
                         isActive
                           ? 'bg-rust/20 text-fire'
-                          : 'hover:bg-rust/10 text-text-secondary hover:text-text-primary'
+                          : 'hover:bg-rust/10 active:bg-rust/20 text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       <div className="mt-0.5">
