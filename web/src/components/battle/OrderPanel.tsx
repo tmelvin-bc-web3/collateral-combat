@@ -86,7 +86,7 @@ export function OrderPanel({
                 onClick={() => setLeverage(lev)}
                 className={`py-2 text-xs font-bold rounded transition-all ${
                   leverage === lev
-                    ? 'bg-accent text-bg-primary'
+                    ? 'bg-warning text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
                 }`}
               >
