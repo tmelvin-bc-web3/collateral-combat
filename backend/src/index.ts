@@ -14,6 +14,7 @@ import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';
 import { freeBetEscrowService } from './services/freeBetEscrowService';
 import { rakeRebateService } from './services/rakeRebateService';
+import { battleSettlementService } from './services/battleSettlementService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -996,15 +997,18 @@ io.on('connection', (socket) => {
   });
 
   // Start solo practice
-  socket.on('start_solo_practice', (config: BattleConfig, wallet: string) => {
+  socket.on('start_solo_practice', (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => {
     try {
+      const { config, wallet, onChainBattleId } = data;
       walletAddress = wallet;
-      const battle = battleManager.createSoloPractice(config, wallet);
+      const battle = battleManager.createSoloPractice(config, wallet, onChainBattleId);
       currentBattleId = battle.id;
       socket.join(battle.id);
       socket.emit('battle_update', battle);
       socket.emit('battle_started', battle);
+      console.log(`[Battle] Solo practice started - ID: ${battle.id}, On-chain: ${onChainBattleId || 'none'}`);
     } catch (error: any) {
+      console.error('[Battle] Solo practice error:', error);
       socket.emit('error', error.message);
     }
   });
@@ -1253,7 +1257,7 @@ priceService.subscribe((prices) => {
 });
 
 // Subscribe to battle updates and broadcast
-battleManager.subscribe((battle) => {
+battleManager.subscribe(async (battle) => {
   io.to(battle.id).emit('battle_update', battle);
 
   if (battle.status === 'active' && battle.startedAt && Date.now() - battle.startedAt < 1000) {
@@ -1262,6 +1266,31 @@ battleManager.subscribe((battle) => {
 
   if (battle.status === 'completed') {
     io.to(battle.id).emit('battle_ended', battle);
+
+    // Trigger on-chain settlement if this battle has an on-chain ID and hasn't been settled yet
+    if (battle.onChainBattleId && !battle.onChainSettled && battle.winnerId) {
+      console.log(`[Settlement] Triggering on-chain settlement for battle ${battle.id}`);
+
+      // Determine if winner is creator (for solo practice, always true)
+      const isCreator = battle.players.length === 1 ||
+        battle.players[0]?.walletAddress === battle.winnerId;
+
+      const txSig = await battleSettlementService.settleBattle(
+        battle.onChainBattleId,
+        battle.winnerId,
+        isCreator
+      );
+
+      if (txSig) {
+        // Mark as settled and notify clients
+        battle.onChainSettled = true;
+        io.to(battle.id).emit('battle_settled' as any, {
+          battleId: battle.id,
+          txSignature: txSig,
+          winnerId: battle.winnerId,
+        });
+      }
+    }
   }
 });
 
@@ -1434,6 +1463,14 @@ async function start() {
     });
   } else {
     console.warn('[Startup] Rake rebate service not initialized (missing REBATE_WALLET_PRIVATE_KEY)');
+  }
+
+  // Initialize battle settlement service for on-chain settlements
+  const settlementInitialized = battleSettlementService.initialize();
+  if (settlementInitialized) {
+    console.log('[Startup] Battle settlement service started');
+  } else {
+    console.warn('[Startup] Battle settlement service not initialized (missing BATTLE_AUTHORITY_PRIVATE_KEY)');
   }
 
   httpServer.listen(PORT, () => {

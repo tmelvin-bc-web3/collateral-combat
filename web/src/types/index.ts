@@ -74,6 +74,9 @@ export interface Battle {
   prizePool: number;
   spectatorCount?: number;
   totalBetPool?: number;
+  // On-chain tracking
+  onChainBattleId?: string;
+  onChainSettled?: boolean;
 }
 
 // Spectator Betting Types

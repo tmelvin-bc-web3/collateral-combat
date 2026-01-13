@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
+import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { BattleConfig, BattleDuration } from '@/types';
 import { FeaturedBattle } from './FeaturedBattle';
 import { AssetIcon } from './AssetIcon';
@@ -55,6 +56,7 @@ export function BattleLobby() {
   const { connected } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [hoveredFee, setHoveredFee] = useState<number | null>(null);
+  const [isCreatingOnChain, setIsCreatingOnChain] = useState(false);
 
   const {
     battle,
@@ -65,6 +67,13 @@ export function BattleLobby() {
     startSoloPractice,
     leaveBattle,
   } = useBattleContext();
+
+  const {
+    createBattle: createOnChainBattle,
+    isLoading: isOnChainLoading,
+    error: onChainError,
+    isConnected: isOnChainReady,
+  } = useBattleOnChain();
 
   const [selectedDuration, setSelectedDuration] = useState<BattleDuration>(1800);
   const [selectedFee, setSelectedFee] = useState(0.5);
@@ -85,15 +94,43 @@ export function BattleLobby() {
     queueMatchmaking(config);
   };
 
-  const handleSoloPractice = () => {
+  const handleSoloPractice = async () => {
     const config: BattleConfig = {
       entryFee: selectedFee,
       duration: selectedDuration,
       mode: 'paper',
       maxPlayers: 1,
     };
-    startSoloPractice(config);
+
+    // Try to create on-chain battle first if wallet is ready
+    if (isOnChainReady) {
+      setIsCreatingOnChain(true);
+      try {
+        const result = await createOnChainBattle(selectedFee);
+        if (result) {
+          console.log('[BattleLobby] On-chain battle created:', result.battlePDA);
+          // Start the battle with the on-chain ID
+          startSoloPractice(config, result.battlePDA);
+        } else {
+          console.log('[BattleLobby] On-chain creation failed, starting off-chain');
+          // Fall back to off-chain battle
+          startSoloPractice(config);
+        }
+      } catch (err) {
+        console.error('[BattleLobby] On-chain error:', err);
+        // Fall back to off-chain battle
+        startSoloPractice(config);
+      } finally {
+        setIsCreatingOnChain(false);
+      }
+    } else {
+      // Off-chain only (no wallet connected to Solana)
+      startSoloPractice(config);
+    }
   };
+
+  const combinedError = error || onChainError;
+  const combinedLoading = isLoading || isOnChainLoading || isCreatingOnChain;
 
   // Loading state
   if (!mounted) {
@@ -450,14 +487,14 @@ export function BattleLobby() {
             </div>
 
             <div className="p-6">
-              {error && (
+              {combinedError && (
                 <div className="mb-6 p-4 rounded-xl bg-danger/10 border border-danger/30 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center flex-shrink-0">
                     <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <span className="text-danger text-sm">{error}</span>
+                  <span className="text-danger text-sm">{combinedError}</span>
                 </div>
               )}
 
@@ -576,23 +613,32 @@ export function BattleLobby() {
               <div className="flex gap-3">
                 <button
                   onClick={handleSoloPractice}
-                  disabled={isLoading}
+                  disabled={combinedLoading}
                   className="flex-1 py-3.5 px-6 rounded-xl bg-bg-tertiary border border-border-primary text-text-secondary font-semibold hover:bg-bg-hover hover:text-text-primary hover:border-border-secondary transition-all disabled:opacity-50"
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    Solo Practice
+                    {isCreatingOnChain ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Solo Practice
+                      </>
+                    )}
                   </div>
                 </button>
                 <button
                   onClick={handleFindMatch}
-                  disabled={isLoading}
+                  disabled={combinedLoading}
                   className="flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-accent to-accent/80 text-bg-primary font-bold hover:shadow-[0_0_30px_rgba(0,212,170,0.4)] transition-all disabled:opacity-50 active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-center gap-2">
-                    {isLoading ? (
+                    {combinedLoading && !isCreatingOnChain ? (
                       <>
                         <div className="w-4 h-4 border-2 border-bg-primary border-t-transparent rounded-full animate-spin" />
                         Finding...

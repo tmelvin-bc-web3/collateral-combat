@@ -99,7 +99,7 @@ export function useBattle(walletAddress: string | null) {
   );
 
   const startSoloPractice = useCallback(
-    (config: BattleConfig) => {
+    (config: BattleConfig, onChainBattleId?: string) => {
       if (!walletAddress) {
         setError('Wallet not connected');
         return;
@@ -108,7 +108,11 @@ export function useBattle(walletAddress: string | null) {
       setIsLoading(true);
       setError(null);
       const socket = getSocket();
-      socket.emit('start_solo_practice', config, walletAddress);
+      socket.emit('start_solo_practice', {
+        config,
+        wallet: walletAddress,
+        onChainBattleId,
+      });
     },
     [walletAddress]
   );

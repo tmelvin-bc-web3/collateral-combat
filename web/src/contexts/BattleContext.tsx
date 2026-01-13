@@ -4,11 +4,18 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { getSocket } from '@/lib/socket';
 import { Battle, BattleConfig, PositionSide, Leverage } from '@/types';
 
+interface BattleSettledData {
+  battleId: string;
+  txSignature: string;
+  winnerId: string;
+}
+
 interface BattleContextType {
   battle: Battle | null;
   currentPlayer: Battle['players'][0] | undefined;
   isLoading: boolean;
   error: string | null;
+  settlementTx: string | null;
   matchmakingStatus: {
     inQueue: boolean;
     position: number;
@@ -17,7 +24,7 @@ interface BattleContextType {
   createBattle: (config: BattleConfig) => void;
   joinBattle: (battleId: string) => void;
   queueMatchmaking: (config: BattleConfig) => void;
-  startSoloPractice: (config: BattleConfig) => void;
+  startSoloPractice: (config: BattleConfig, onChainBattleId?: string) => void;
   openPosition: (asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   closePosition: (positionId: string) => void;
   leaveBattle: () => void;
@@ -36,6 +43,7 @@ export function BattleProvider({
   const [battle, setBattle] = useState<Battle | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [settlementTx, setSettlementTx] = useState<string | null>(null);
   const [matchmakingStatus, setMatchmakingStatus] = useState<{
     inQueue: boolean;
     position: number;
@@ -74,11 +82,17 @@ export function BattleProvider({
       setTimeout(() => setError(null), 3000);
     };
 
+    const handleBattleSettled = (data: BattleSettledData) => {
+      console.log('[Battle] Settled on-chain:', data.txSignature);
+      setSettlementTx(data.txSignature);
+    };
+
     socket.on('battle_update', handleBattleUpdate);
     socket.on('battle_started', handleBattleStarted);
     socket.on('battle_ended', handleBattleEnded);
     socket.on('matchmaking_status', handleMatchmakingStatus);
     socket.on('error', handleError);
+    socket.on('battle_settled', handleBattleSettled);
 
     return () => {
       socket.off('battle_update', handleBattleUpdate);
@@ -86,6 +100,7 @@ export function BattleProvider({
       socket.off('battle_ended', handleBattleEnded);
       socket.off('matchmaking_status', handleMatchmakingStatus);
       socket.off('error', handleError);
+      socket.off('battle_settled', handleBattleSettled);
     };
   }, []);
 
@@ -132,15 +147,21 @@ export function BattleProvider({
   );
 
   const startSoloPractice = useCallback(
-    (config: BattleConfig) => {
+    (config: BattleConfig, onChainBattleId?: string) => {
       if (!walletAddress) {
         setError('Wallet not connected');
         return;
       }
       setIsLoading(true);
       setError(null);
+      setSettlementTx(null);
       const socket = getSocket();
-      socket.emit('start_solo_practice', config, walletAddress);
+      socket.emit('start_solo_practice', {
+        config,
+        wallet: walletAddress,
+        onChainBattleId,
+      });
+      console.log('[Battle] Starting solo practice', onChainBattleId ? `(on-chain: ${onChainBattleId})` : '(off-chain)');
     },
     [walletAddress]
   );
@@ -197,6 +218,7 @@ export function BattleProvider({
         currentPlayer,
         isLoading,
         error,
+        settlementTx,
         matchmakingStatus,
         createBattle,
         joinBattle,

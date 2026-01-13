@@ -74,6 +74,9 @@ export interface Battle {
   prizePool: number;
   spectatorCount?: number;
   totalBetPool?: number;
+  // On-chain tracking
+  onChainBattleId?: string;  // Pubkey of on-chain battle account
+  onChainSettled?: boolean;  // Whether settle_battle has been called
 }
 
 // Spectator Betting Types
@@ -205,7 +208,7 @@ export interface ClientToServerEvents {
   join_battle: (battleId: string, walletAddress: string) => void;
   create_battle: (config: BattleConfig, walletAddress: string) => void;
   queue_matchmaking: (config: BattleConfig, walletAddress: string) => void;
-  start_solo_practice: (config: BattleConfig, walletAddress: string) => void;
+  start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
   leave_battle: (battleId: string) => void;

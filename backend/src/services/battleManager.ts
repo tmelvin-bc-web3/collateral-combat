@@ -519,7 +519,7 @@ class BattleManager {
   }
 
   // Create a solo practice battle (no opponent needed)
-  createSoloPractice(config: BattleConfig, walletAddress: string): Battle {
+  createSoloPractice(config: BattleConfig, walletAddress: string, onChainBattleId?: string): Battle {
     const battle: Battle = {
       id: uuidv4(),
       config: { ...config, maxPlayers: 1 },
@@ -527,6 +527,8 @@ class BattleManager {
       players: [],
       createdAt: Date.now(),
       prizePool: 0,
+      onChainBattleId,
+      onChainSettled: false,
     };
 
     this.battles.set(battle.id, battle);
@@ -544,7 +546,7 @@ class BattleManager {
     // Start immediately
     this.startBattle(battle.id);
 
-    console.log(`Solo practice ${battle.id} started by ${walletAddress}`);
+    console.log(`Solo practice ${battle.id} started by ${walletAddress}${onChainBattleId ? ` (on-chain: ${onChainBattleId})` : ''}`);
     return battle;
   }
 

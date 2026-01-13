@@ -10,6 +10,7 @@ interface ServerToClientEvents {
   position_closed: (trade: TradeRecord) => void;
   battle_started: (battle: Battle) => void;
   battle_ended: (battle: Battle) => void;
+  battle_settled: (data: { battleId: string; txSignature: string; winnerId: string }) => void;
   error: (message: string) => void;
   matchmaking_status: (status: { position: number; estimated: number }) => void;
   // Spectator events
@@ -50,7 +51,7 @@ interface ClientToServerEvents {
   join_battle: (battleId: string, walletAddress: string) => void;
   create_battle: (config: BattleConfig, walletAddress: string) => void;
   queue_matchmaking: (config: BattleConfig, walletAddress: string) => void;
-  start_solo_practice: (config: BattleConfig, walletAddress: string) => void;
+  start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
   leave_battle: (battleId: string) => void;
@@ -94,15 +95,19 @@ export function getSocket(): TypedSocket {
     }) as TypedSocket;
 
     socket.on('connect', () => {
-      // Connection established
+      console.log('[Socket] Connected to backend:', socket?.id);
     });
 
-    socket.on('disconnect', () => {
-      // Connection lost
+    socket.on('disconnect', (reason) => {
+      console.log('[Socket] Disconnected:', reason);
     });
 
-    socket.on('error', () => {
-      // Socket error handled by context
+    socket.on('connect_error', (error) => {
+      console.error('[Socket] Connection error:', error.message);
+    });
+
+    socket.on('error', (message) => {
+      console.error('[Socket] Error:', message);
     });
   }
 

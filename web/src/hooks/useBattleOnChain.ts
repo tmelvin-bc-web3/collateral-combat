@@ -157,7 +157,7 @@ export function useBattleOnChain() {
   }, [client, wallet.publicKey, convertBattle, convertSpectatorBet]);
 
   // Create a new battle
-  const createBattle = useCallback(async (entryFeeSol: number): Promise<{ tx: string; battleId: number } | null> => {
+  const createBattle = useCallback(async (entryFeeSol: number): Promise<{ tx: string; battleId: number; battlePDA: string } | null> => {
     if (!client) {
       setError('Not connected');
       return null;
@@ -168,9 +168,22 @@ export function useBattleOnChain() {
       setError(null);
 
       const result = await client.createBattle(entryFeeSol);
+
+      // Get the battle PDA for on-chain tracking
+      const [battlePDA] = client.getBattlePDA(result.battleId);
+      console.log('[OnChain] Battle created:', {
+        tx: result.tx,
+        battleId: result.battleId.toNumber(),
+        battlePDA: battlePDA.toBase58(),
+      });
+
       await refresh();
 
-      return { tx: result.tx, battleId: result.battleId.toNumber() };
+      return {
+        tx: result.tx,
+        battleId: result.battleId.toNumber(),
+        battlePDA: battlePDA.toBase58(),
+      };
     } catch (err) {
       console.error('Failed to create battle:', err);
       const errorMsg = err instanceof Error ? err.message : 'Transaction failed';
