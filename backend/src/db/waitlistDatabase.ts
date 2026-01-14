@@ -253,6 +253,7 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
 
   // Check for disposable email
   if (isDisposableEmail(data.email)) {
+    console.log(`[SECURITY] DISPOSABLE_EMAIL_BLOCKED | email: ${data.email} | ip: ${data.ipAddress}`);
     throw new Error('Please use a permanent email address');
   }
 
@@ -328,7 +329,7 @@ export async function creditReferrer(referralCode: string, newUserId: string, ne
 
     // Check for same-IP abuse - don't credit if IPs match
     if (newUserIp && referrer.ipAddress && newUserIp === referrer.ipAddress) {
-      console.log(`[WaitlistDB] Same-IP referral blocked: ${newUserIp}`);
+      console.log(`[SECURITY] SAME_IP_REFERRAL_BLOCKED | ip: ${newUserIp} | referrer: ${referralCode}`);
       // Log the referral but don't credit it
       await pool.query(
         `INSERT INTO waitlist_referrals (id, referrer_code, referee_id, timestamp, credited)

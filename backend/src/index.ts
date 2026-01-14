@@ -67,12 +67,21 @@ function getClientIp(req: Request): string | undefined {
   return req.ip || req.socket?.remoteAddress;
 }
 
+// SECURITY: Logging for security events
+function logSecurityEvent(event: string, details: Record<string, any>) {
+  const timestamp = new Date().toISOString();
+  console.log(`[SECURITY] ${timestamp} | ${event} |`, JSON.stringify(details));
+}
+
 const app = express();
 const httpServer = createServer(app);
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: socketCorsOptions,
 });
+
+// SECURITY: Freeze Object prototype to prevent prototype pollution attacks
+Object.freeze(Object.prototype);
 
 // Security middleware
 app.use(helmet({
@@ -292,6 +301,12 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    // SECURITY: Block email aliases (john+tag@gmail.com) to prevent self-referral abuse
+    if (email.includes('+')) {
+      logSecurityEvent('EMAIL_ALIAS_BLOCKED', { email, ip: getClientIp(req) });
+      return res.status(400).json({ error: 'Email aliases with + are not allowed' });
+    }
+
     // Require wallet address
     if (!walletAddress || typeof walletAddress !== 'string') {
       return res.status(400).json({ error: 'Wallet connection required to join waitlist' });
@@ -303,6 +318,7 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
     }
 
     if (!verifyWalletSignature(walletAddress, signature, timestamp)) {
+      logSecurityEvent('SIGNATURE_VERIFICATION_FAILED', { wallet: walletAddress, ip: getClientIp(req) });
       return res.status(400).json({ error: 'Wallet verification failed. Please try again.' });
     }
 
