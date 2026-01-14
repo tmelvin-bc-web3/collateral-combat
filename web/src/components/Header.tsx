@@ -8,9 +8,11 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import dynamic from 'next/dynamic';
 import { UserAvatar } from './UserAvatar';
 import { ProfilePicker } from './ProfilePicker';
+import { WalletBalance, WalletBalanceButton } from './WalletBalance';
 import { LevelBadge } from './progression';
 import { useProgressionContext } from '@/contexts/ProgressionContext';
 import { UserStreak } from '@/types';
+import { BACKEND_URL } from '@/config/api';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -99,6 +101,7 @@ export function Header() {
   const pathname = usePathname();
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
+  const [isBalanceOpen, setIsBalanceOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [streak, setStreak] = useState<UserStreak | null>(null);
@@ -116,8 +119,7 @@ export function Header() {
 
     const fetchStreak = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-        const res = await fetch(`${backendUrl}/api/progression/${walletAddress}/streak`);
+        const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`);
         if (res.ok) {
           const data = await res.json();
           setStreak(data);
@@ -369,6 +371,11 @@ export function Header() {
             </div>
           )}
 
+          {/* Balance Button */}
+          {walletAddress && (
+            <WalletBalanceButton onClick={() => setIsBalanceOpen(true)} />
+          )}
+
           {/* Wallet */}
           <div data-tour="wallet">
             <WalletMultiButton />
@@ -380,6 +387,12 @@ export function Header() {
       <ProfilePicker
         isOpen={isProfilePickerOpen}
         onClose={() => setIsProfilePickerOpen(false)}
+      />
+
+      {/* Wallet Balance Modal */}
+      <WalletBalance
+        isOpen={isBalanceOpen}
+        onClose={() => setIsBalanceOpen(false)}
       />
     </header>
   );

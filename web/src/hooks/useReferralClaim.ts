@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 const STORAGE_KEY = 'pending_referral_code';
 
 export function useReferralClaim() {

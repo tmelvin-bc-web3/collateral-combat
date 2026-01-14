@@ -1,7 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload } from '@/types';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+import { BACKEND_URL } from '@/config/api';
 
 interface ServerToClientEvents {
   battle_update: (battle: Battle) => void;

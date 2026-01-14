@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { isWhitelisted } from '@/config/whitelist';
+import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface WaitlistEntry {
   id: string;
@@ -43,6 +44,7 @@ export default function AdminWaitlistPage() {
   const { publicKey, connected } = useWallet();
   const walletAddress = publicKey?.toBase58();
   const isAdmin = isWhitelisted(walletAddress);
+  const { isAuthenticated, isLoading: authLoading, signIn, authenticatedFetch, error: authError } = useAuth();
 
   const [data, setData] = useState<WaitlistData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,25 +52,23 @@ export default function AdminWaitlistPage() {
   const [sortBy, setSortBy] = useState<'created_at' | 'referral_count' | 'position'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const fetchData = async () => {
-    if (!walletAddress) return;
+  const fetchData = useCallback(async () => {
+    if (!walletAddress || !isAuthenticated) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/waitlist/admin/entries?sortBy=${sortBy}&sortOrder=${sortOrder}&limit=500`,
-        {
-          headers: {
-            'x-wallet-address': walletAddress,
-          },
-        }
+      const res = await authenticatedFetch(
+        `${BACKEND_URL}/api/waitlist/admin/entries?sortBy=${sortBy}&sortOrder=${sortOrder}&limit=500`
       );
 
       if (!res.ok) {
         if (res.status === 403) {
           throw new Error('Not authorized. Admin access required.');
+        }
+        if (res.status === 401) {
+          throw new Error('Session expired. Please sign in again.');
         }
         throw new Error('Failed to fetch data');
       }
@@ -80,13 +80,21 @@ export default function AdminWaitlistPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [walletAddress, isAuthenticated, authenticatedFetch, sortBy, sortOrder]);
 
+  // Auto sign-in for admin if not authenticated
   useEffect(() => {
-    if (isAdmin && walletAddress) {
+    if (isAdmin && walletAddress && !isAuthenticated && !authLoading) {
+      signIn();
+    }
+  }, [isAdmin, walletAddress, isAuthenticated, authLoading, signIn]);
+
+  // Fetch data once authenticated
+  useEffect(() => {
+    if (isAdmin && isAuthenticated) {
       fetchData();
     }
-  }, [isAdmin, walletAddress, sortBy, sortOrder]);
+  }, [isAdmin, isAuthenticated, sortBy, sortOrder, fetchData]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
@@ -199,10 +207,27 @@ export default function AdminWaitlistPage() {
           </div>
         )}
 
+        {/* Auth status */}
+        {!isAuthenticated && isAdmin && (
+          <div className="bg-warning/20 border border-warning/40 rounded-xl p-4 mb-6 flex items-center justify-between">
+            <span className="text-warning">
+              {authLoading ? 'Signing in...' : 'Please sign in to access admin dashboard'}
+            </span>
+            {!authLoading && (
+              <button
+                onClick={signIn}
+                className="px-4 py-2 bg-warning text-black font-bold rounded-lg hover:bg-warning/80 transition-colors"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Error */}
-        {error && (
+        {(error || authError) && (
           <div className="bg-danger/20 border border-danger/40 rounded-xl p-4 mb-6 text-danger">
-            {error}
+            {error || authError}
           </div>
         )}
 

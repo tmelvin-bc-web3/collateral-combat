@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
+import { BACKEND_URL } from '@/config/api';
 import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance, PredictionBet, FreeBetPosition } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
@@ -123,7 +124,6 @@ type BetAmountSol = typeof BET_AMOUNTS_SOL[number];
 // Free wager is always the minimum amount
 const FREE_BET_AMOUNT_SOL = 0.01;
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export default function PredictPage() {
   const { publicKey } = useWallet();

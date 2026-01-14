@@ -3,8 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+// SECURITY: Validate referral code format (DEGEN followed by 4 alphanumeric chars)
+function isValidReferralCodeFormat(code: string): boolean {
+  return /^DEGEN[A-HJ-NP-Z2-9]{4}$/.test(code);
+}
 
 export default function ReferralRedirect() {
   const router = useRouter();
@@ -19,8 +23,18 @@ export default function ReferralRedirect() {
       return;
     }
 
-    // Validate the referral code
-    fetch(`${BACKEND_URL}/api/waitlist/validate/${code}`)
+    // SECURITY: Check code format before making API call
+    if (!isValidReferralCodeFormat(code)) {
+      setIsValid(false);
+      setIsValidating(false);
+      setTimeout(() => {
+        router.push('/waitlist');
+      }, 1500);
+      return;
+    }
+
+    // Validate the referral code with backend
+    fetch(`${BACKEND_URL}/api/waitlist/validate/${encodeURIComponent(code)}`)
       .then((res) => res.json())
       .then((data) => {
         setIsValid(data.valid);

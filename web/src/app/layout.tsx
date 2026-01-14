@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { WalletProvider } from '@/components/WalletProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { ProgressionProvider } from '@/contexts/ProgressionContext';
 import { Header } from '@/components/Header';
@@ -45,24 +46,28 @@ export default function RootLayout({
         {COMING_SOON_MODE ? (
           // Coming Soon Mode - whitelisted wallets get full layout
           <WalletProvider>
-            <WhitelistLayoutWrapper>
-              {children}
-            </WhitelistLayoutWrapper>
+            <AuthProvider>
+              <WhitelistLayoutWrapper>
+                {children}
+              </WhitelistLayoutWrapper>
+            </AuthProvider>
           </WalletProvider>
         ) : (
           // Live Mode - full layout with navigation
           <WalletProvider>
-            <ProfileProvider>
-              <ProgressionProvider>
-                <Header />
-                <main className="pt-24 pb-12 px-4 min-h-screen relative z-10">
-                  <div className="max-w-7xl mx-auto">{children}</div>
-                </main>
-                <Footer />
-                <ProfileSetupWrapper />
-                <OnboardingTourWrapper />
-              </ProgressionProvider>
-            </ProfileProvider>
+            <AuthProvider>
+              <ProfileProvider>
+                <ProgressionProvider>
+                  <Header />
+                  <main className="pt-24 pb-12 px-4 min-h-screen relative z-10">
+                    <div className="max-w-7xl mx-auto">{children}</div>
+                  </main>
+                  <Footer />
+                  <ProfileSetupWrapper />
+                  <OnboardingTourWrapper />
+                </ProgressionProvider>
+              </ProfileProvider>
+            </AuthProvider>
           </WalletProvider>
         )}
       </body>

@@ -26,13 +26,29 @@ import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
+import { createToken } from './utils/jwt';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
 
 // ===================
-// Wallet Signature Verification
+// Wallet Signature Verification with Replay Protection
 // ===================
+
+// SECURITY: In-memory cache to prevent signature replay attacks
+// Maps signature hash to expiry timestamp
+const usedSignatures = new Map<string, number>();
+const SIGNATURE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+// Clean up expired signatures every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [sig, expiry] of usedSignatures.entries()) {
+    if (now > expiry) {
+      usedSignatures.delete(sig);
+    }
+  }
+}, 60 * 1000);
 
 function verifyWalletSignature(
   walletAddress: string,
@@ -48,11 +64,26 @@ function verifyWalletSignature(
     // Check timestamp is within 5 minutes
     const now = Date.now();
     const signedAt = parseInt(timestamp);
-    if (isNaN(signedAt) || Math.abs(now - signedAt) > 5 * 60 * 1000) {
+    if (isNaN(signedAt) || Math.abs(now - signedAt) > SIGNATURE_EXPIRY_MS) {
       return false;
     }
 
-    return nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+    // SECURITY: Check for signature replay
+    const sigKey = `${walletAddress}:${signature}`;
+    if (usedSignatures.has(sigKey)) {
+      logSecurityEvent('SIGNATURE_REPLAY_BLOCKED', { wallet: walletAddress });
+      return false;
+    }
+
+    // Verify the signature
+    const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+
+    if (isValid) {
+      // Mark signature as used with expiry time
+      usedSignatures.set(sigKey, now + SIGNATURE_EXPIRY_MS);
+    }
+
+    return isValid;
   } catch {
     return false;
   }
@@ -276,6 +307,211 @@ app.get('/api/profiles', (req, res) => {
 app.delete('/api/profile/:wallet', requireOwnWallet, (req: Request, res: Response) => {
   const deleted = deleteProfile(req.params.wallet);
   res.json({ deleted });
+});
+
+// ===================
+// Authentication Endpoints
+// ===================
+
+/**
+ * POST /api/auth/login
+ * Sign in with wallet signature to get a JWT token
+ *
+ * Headers:
+ *   x-wallet-address: Wallet public key (base58)
+ *   x-signature: Signature of "DegenDome:login:{timestamp}"
+ *   x-timestamp: Unix timestamp (ms)
+ *
+ * Returns: { token: string, expiresIn: string }
+ */
+app.post('/api/auth/login', strictLimiter, (req: Request, res: Response) => {
+  try {
+    const walletAddress = req.headers['x-wallet-address'] as string;
+    const signature = req.headers['x-signature'] as string;
+    const timestamp = req.headers['x-timestamp'] as string;
+
+    // Validate required headers
+    if (!walletAddress || !signature || !timestamp) {
+      return res.status(400).json({
+        error: 'Missing required headers: x-wallet-address, x-signature, x-timestamp',
+      });
+    }
+
+    // Validate wallet address format
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+
+    // Verify signature (using login-specific message)
+    const message = `DegenDome:login:${timestamp}`;
+    const messageBytes = new TextEncoder().encode(message);
+
+    try {
+      const signatureBytes = bs58.decode(signature);
+      const publicKeyBytes = bs58.decode(walletAddress);
+
+      // Check timestamp is within 5 minutes
+      const now = Date.now();
+      const signedAt = parseInt(timestamp);
+      if (isNaN(signedAt) || Math.abs(now - signedAt) > 5 * 60 * 1000) {
+        return res.status(401).json({ error: 'Signature expired' });
+      }
+
+      // Check for replay attack
+      const sigKey = `login:${walletAddress}:${signature}`;
+      if (usedSignatures.has(sigKey)) {
+        logSecurityEvent('LOGIN_REPLAY_BLOCKED', { wallet: walletAddress });
+        return res.status(401).json({ error: 'Signature already used' });
+      }
+
+      // Verify the signature
+      const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+
+      if (!isValid) {
+        logSecurityEvent('LOGIN_INVALID_SIGNATURE', { wallet: walletAddress });
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      // Mark signature as used
+      usedSignatures.set(sigKey, now + 5 * 60 * 1000);
+
+      // Create JWT token
+      const token = createToken(walletAddress);
+
+      console.log(`[Auth] Login successful: ${walletAddress.slice(0, 8)}...`);
+
+      res.json({
+        token,
+        expiresIn: '24h',
+        wallet: walletAddress,
+      });
+    } catch {
+      return res.status(401).json({ error: 'Signature verification failed' });
+    }
+  } catch (error) {
+    console.error('[Auth] Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+/**
+ * GET /api/auth/verify
+ * Verify a JWT token is still valid
+ *
+ * Headers:
+ *   Authorization: Bearer <token>
+ *
+ * Returns: { valid: boolean, wallet?: string }
+ */
+app.get('/api/auth/verify', (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.json({ valid: false });
+  }
+
+  const token = authHeader.slice(7);
+
+  try {
+    const { verifyToken } = require('./utils/jwt');
+    const wallet = verifyToken(token);
+
+    if (wallet) {
+      res.json({ valid: true, wallet });
+    } else {
+      res.json({ valid: false });
+    }
+  } catch {
+    res.json({ valid: false });
+  }
+});
+
+// ===================
+// NFT API Proxy (hides Helius API key)
+// ===================
+
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+const HELIUS_RPC_URL = HELIUS_API_KEY
+  ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+  : null;
+
+// Get wallet NFTs (proxied through backend to hide API key)
+app.get('/api/nfts/:wallet', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const walletAddress = req.params.wallet;
+
+    // SECURITY: Validate wallet address format (base58, 32-44 chars)
+    if (!walletAddress || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(walletAddress)) {
+      return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+
+    if (!HELIUS_RPC_URL) {
+      return res.status(503).json({ error: 'NFT service unavailable', nfts: [] });
+    }
+
+    const response = await fetch(HELIUS_RPC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 'nft-fetch',
+        method: 'getAssetsByOwner',
+        params: {
+          ownerAddress: walletAddress,
+          page: 1,
+          limit: 100,
+          displayOptions: { showCollectionMetadata: true },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('[NFT API] Helius error:', response.status);
+      return res.status(502).json({ error: 'NFT service error', nfts: [] });
+    }
+
+    const data: any = await response.json();
+
+    if (!data.result?.items) {
+      return res.json({ nfts: [] });
+    }
+
+    // Filter and map NFTs
+    const nfts = data.result.items
+      .filter((asset: any) => {
+        const hasImage =
+          asset.content?.links?.image ||
+          asset.content?.files?.some((f: any) => f.mime?.startsWith('image/'));
+        return hasImage;
+      })
+      .map((asset: any) => {
+        let image = asset.content?.links?.image || '';
+        const imageFile = asset.content?.files?.find((f: any) =>
+          f.mime?.startsWith('image/')
+        );
+        if (imageFile?.cdn_uri) {
+          image = imageFile.cdn_uri;
+        } else if (imageFile?.uri) {
+          image = imageFile.uri;
+        }
+
+        const collectionGroup = asset.grouping?.find(
+          (g: any) => g.group_key === 'collection'
+        );
+
+        return {
+          mint: asset.id,
+          name: asset.content?.metadata?.name || 'Unknown NFT',
+          image,
+          collection: collectionGroup?.group_value,
+        };
+      });
+
+    res.json({ nfts });
+  } catch (error) {
+    console.error('[NFT API] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch NFTs', nfts: [] });
+  }
 });
 
 // ===================

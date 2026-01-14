@@ -5,9 +5,25 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { BACKEND_URL } from '@/config/api';
 import bs58 from 'bs58';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+// SECURITY: Validate email format
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email) && email.length <= 254 && !email.includes('+');
+}
+
+// SECURITY: Validate referral code format (DEGEN followed by 4 alphanumeric chars)
+function isValidReferralCodeFormat(code: string): boolean {
+  if (!code) return true; // Optional field
+  return /^DEGEN[A-HJ-NP-Z2-9]{4}$/.test(code);
+}
+
+// SECURITY: Validate wallet address format (Solana base58)
+function isValidWalletAddress(address: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+}
 
 const TIER_INFO = {
   standard: { color: 'text-white/60', benefits: ['Beta access lottery'] },
@@ -54,9 +70,23 @@ export default function WaitlistPage() {
     setIsSubmitting(true);
 
     try {
+      // SECURITY: Client-side validation before API call
+      if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address (no + aliases allowed)');
+      }
+
+      if (!isValidReferralCodeFormat(referralCode)) {
+        throw new Error('Invalid referral code format');
+      }
+
       // Require wallet connection
       if (!connected || !publicKey) {
         throw new Error('Please connect your wallet to join the waitlist');
+      }
+
+      // SECURITY: Validate wallet address format
+      if (!isValidWalletAddress(publicKey.toBase58())) {
+        throw new Error('Invalid wallet address');
       }
 
       if (!signMessage) {

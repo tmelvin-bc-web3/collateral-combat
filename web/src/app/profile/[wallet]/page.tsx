@@ -9,6 +9,7 @@ import { getCachedProfile, setCachedProfile } from '@/lib/profileStorage';
 import { PageLoading } from '@/components/ui/skeleton';
 import { UserProfile, UserProgression, UserStreak, RakeRebate, RebateSummary } from '@/types';
 import Link from 'next/link';
+import { BACKEND_URL } from '@/config/api';
 
 // User stats from the backend
 interface UserStats {
@@ -195,8 +196,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-
   // Fetch all profile data
   useEffect(() => {
     if (!walletAddress) return;
@@ -214,14 +213,14 @@ export default function ProfilePage() {
 
         // Fetch all data in parallel
         const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes] = await Promise.all([
-          fetch(`${backendUrl}/api/profile/${walletAddress}`),
-          fetch(`${backendUrl}/api/progression/${walletAddress}`),
-          fetch(`${backendUrl}/api/stats/${walletAddress}`),
-          fetch(`${backendUrl}/api/stats/${walletAddress}/rank`),
-          fetch(`${backendUrl}/api/predictions/history/${walletAddress}?limit=50`),
-          fetch(`${backendUrl}/api/progression/${walletAddress}/streak`),
-          fetch(`${backendUrl}/api/progression/${walletAddress}/rebates`),
-          fetch(`${backendUrl}/api/progression/${walletAddress}/rebates/summary`),
+          fetch(`${BACKEND_URL}/api/profile/${walletAddress}`),
+          fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
+          fetch(`${BACKEND_URL}/api/stats/${walletAddress}`),
+          fetch(`${BACKEND_URL}/api/stats/${walletAddress}/rank`),
+          fetch(`${BACKEND_URL}/api/predictions/history/${walletAddress}?limit=50`),
+          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`),
+          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates`),
+          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates/summary`),
         ]);
 
         // Process profile
@@ -281,7 +280,7 @@ export default function ProfilePage() {
     };
 
     fetchData();
-  }, [walletAddress, backendUrl]);
+  }, [walletAddress]);
 
   // Calculate biggest win from history
   const biggestWin = useMemo(() => {

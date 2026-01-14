@@ -8,7 +8,6 @@ import { DraftPick, Memecoin } from '@/types';
 import { PageLoading } from '@/components/ui/skeleton';
 import Link from 'next/link';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 // Animated card reveal for draft options
 function AnimatedCoinCard({

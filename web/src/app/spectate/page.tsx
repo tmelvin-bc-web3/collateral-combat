@@ -8,6 +8,7 @@ import { LiveBattleCard } from '@/components/LiveBattleCard';
 import { SpectatorView } from '@/components/SpectatorView';
 import { SpectatorClaimsPanel } from '@/components/SpectatorClaimsPanel';
 import { SkeletonBattleCard, PageLoading } from '@/components/ui/skeleton';
+import { BACKEND_URL } from '@/config/api';
 
 type Tab = 'live' | 'my-wagers' | 'claims';
 
@@ -27,7 +28,7 @@ export default function SpectatePage() {
     // Fetch initial data via REST API as fallback
     const fetchLiveBattles = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/battles/live`);
+        const res = await fetch(`${BACKEND_URL}/api/battles/live`);
         if (res.ok) {
           const battles = await res.json();
           setLiveBattles(battles);

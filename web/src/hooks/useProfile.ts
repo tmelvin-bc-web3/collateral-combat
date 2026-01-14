@@ -7,10 +7,11 @@ import {
   getOwnProfile,
   clearOwnProfile,
 } from '@/lib/profileStorage';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useProfile(walletAddress: string | null) {
+  const { authenticatedFetch, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,18 +63,25 @@ export function useProfile(walletAddress: string | null) {
         return null;
       }
 
+      if (!isAuthenticated) {
+        setError('Please sign in first');
+        return null;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
-        const res = await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-wallet-address': walletAddress,
-          },
-          body: JSON.stringify(updates),
-        });
+        const res = await authenticatedFetch(
+          `${BACKEND_URL}/api/profile/${walletAddress}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updates),
+          }
+        );
 
         if (!res.ok) {
           const data = await res.json();
@@ -91,28 +99,27 @@ export function useProfile(walletAddress: string | null) {
         setIsLoading(false);
       }
     },
-    [walletAddress]
+    [walletAddress, isAuthenticated, authenticatedFetch]
   );
 
   const resetProfile = useCallback(async () => {
     if (!walletAddress) return;
 
-    // Delete from backend
-    try {
-      await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
-        method: 'DELETE',
-        headers: {
-          'x-wallet-address': walletAddress,
-        },
-      });
-    } catch {
-      // Delete failed - continue with local cleanup
+    // Delete from backend (requires authentication)
+    if (isAuthenticated) {
+      try {
+        await authenticatedFetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
+          method: 'DELETE',
+        });
+      } catch {
+        // Delete failed - continue with local cleanup
+      }
     }
 
     // Clear localStorage
     clearOwnProfile();
     setProfile(null);
-  }, [walletAddress]);
+  }, [walletAddress, isAuthenticated, authenticatedFetch]);
 
   const clearLocalProfile = useCallback(() => {
     clearOwnProfile();

@@ -1,0 +1,23 @@
+[toolchain]
+anchor_version = "0.31.1"
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+session_betting = "4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.devnet]
+session_betting = "4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

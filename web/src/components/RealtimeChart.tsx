@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getSocket } from '@/lib/socket';
+import { BACKEND_URL } from '@/config/api';
 
 interface RealtimeChartProps {
   symbol: string;
@@ -285,8 +286,7 @@ export function RealtimeChart({ symbol, height = 240, lockPrice, timeRemaining, 
 
     const fetchHistory = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/api/prices/history/${symbol}?duration=${VISIBLE_DURATION}`);
+        const response = await fetch(`${BACKEND_URL}/api/prices/history/${symbol}?duration=${VISIBLE_DURATION}`);
         if (response.ok) {
           const history: { time: number; price: number }[] = await response.json();
           if (history.length > 0) {

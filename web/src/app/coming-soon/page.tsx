@@ -7,9 +7,9 @@ import { useSearchParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { isWhitelisted } from '@/config/whitelist';
+import { BACKEND_URL } from '@/config/api';
 import bs58 from 'bs58';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface WaitlistSuccess {
   referralCode: string;

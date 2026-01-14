@@ -1,4 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
+import { verifyToken, extractToken } from '../utils/jwt';
 
 // ===================
 // Auth Middleware Configuration
@@ -12,6 +15,24 @@ declare global {
     }
   }
 }
+
+// ===================
+// Signature Replay Protection
+// ===================
+
+// SECURITY: In-memory cache to prevent signature replay attacks
+const usedAuthSignatures = new Map<string, number>();
+const AUTH_SIGNATURE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+// Clean up expired signatures every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [sig, expiry] of usedAuthSignatures.entries()) {
+    if (now > expiry) {
+      usedAuthSignatures.delete(sig);
+    }
+  }
+}, 60 * 1000);
 
 // ===================
 // Wallet Address Validation
@@ -32,27 +53,102 @@ function isValidSolanaAddress(address: string): boolean {
 }
 
 // ===================
+// Signature Verification
+// ===================
+
+/**
+ * Verifies a wallet signature for authentication.
+ * Message format: "DegenDome:auth:{timestamp}"
+ */
+function verifyAuthSignature(
+  walletAddress: string,
+  signature: string,
+  timestamp: string
+): { valid: boolean; error?: string } {
+  try {
+    // Check timestamp is within 5 minutes
+    const now = Date.now();
+    const signedAt = parseInt(timestamp);
+    if (isNaN(signedAt) || Math.abs(now - signedAt) > AUTH_SIGNATURE_EXPIRY_MS) {
+      return { valid: false, error: 'Signature expired' };
+    }
+
+    // Check for replay attack
+    const sigKey = `${walletAddress}:${signature}`;
+    if (usedAuthSignatures.has(sigKey)) {
+      console.log(`[SECURITY] AUTH_SIGNATURE_REPLAY_BLOCKED | wallet: ${walletAddress}`);
+      return { valid: false, error: 'Signature already used' };
+    }
+
+    // Verify signature
+    const message = `DegenDome:auth:${timestamp}`;
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = bs58.decode(signature);
+    const publicKeyBytes = bs58.decode(walletAddress);
+
+    const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+
+    if (isValid) {
+      // Mark signature as used
+      usedAuthSignatures.set(sigKey, now + AUTH_SIGNATURE_EXPIRY_MS);
+    }
+
+    return { valid: isValid, error: isValid ? undefined : 'Invalid signature' };
+  } catch (error) {
+    return { valid: false, error: 'Signature verification failed' };
+  }
+}
+
+// ===================
 // Auth Middleware
 // ===================
 
 /**
- * Middleware that requires wallet authentication via header.
+ * Middleware that requires wallet authentication.
  *
- * Expected header:
- *   - x-wallet-address: The wallet public key (base58 encoded)
+ * Supports two authentication methods:
  *
- * NOTE: This is a basic implementation that trusts the header.
- * For production, implement signature verification using tweetnacl/bs58:
- *   - x-signature: Signature of "DegenDome:{timestamp}" message
- *   - x-timestamp: Unix timestamp when signature was created
+ * 1. JWT Token (preferred - session-based):
+ *    - Authorization: Bearer <token>
+ *
+ * 2. Wallet Signature (for one-time actions like waitlist):
+ *    - x-wallet-address: The wallet public key (base58 encoded)
+ *    - x-signature: Signature of "DegenDome:auth:{timestamp}" message
+ *    - x-timestamp: Unix timestamp when signature was created
+ *
+ * JWT is checked first. If no JWT, falls back to signature verification.
  */
 export function requireAuth(): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
+    // Method 1: Check for JWT token first
+    const token = extractToken(req.headers.authorization);
+
+    if (token) {
+      const walletFromToken = verifyToken(token);
+
+      if (walletFromToken) {
+        // Valid JWT - authenticated via session
+        req.authenticatedWallet = walletFromToken;
+        next();
+        return;
+      } else {
+        // Invalid or expired token
+        res.status(401).json({
+          error: 'Invalid or expired token. Please sign in again.',
+          code: 'INVALID_TOKEN',
+        });
+        return;
+      }
+    }
+
+    // Method 2: Fall back to signature-based auth
     const walletAddress = req.headers['x-wallet-address'] as string;
+    const signature = req.headers['x-signature'] as string;
+    const timestamp = req.headers['x-timestamp'] as string;
 
     if (!walletAddress) {
       res.status(401).json({
-        error: 'Authentication required. Provide x-wallet-address header.',
+        error: 'Authentication required. Provide Authorization header or x-wallet-address.',
         code: 'AUTH_REQUIRED',
       });
       return;
@@ -64,6 +160,34 @@ export function requireAuth(): RequestHandler {
         code: 'INVALID_WALLET',
       });
       return;
+    }
+
+    // SECURITY: Signature verification required for non-JWT auth
+    const requireSignatures = process.env.REQUIRE_WALLET_SIGNATURES === 'true';
+
+    if (requireSignatures) {
+      if (!signature || !timestamp) {
+        res.status(401).json({
+          error: 'Please sign in first or provide signature headers.',
+          code: 'SIGNATURE_REQUIRED',
+        });
+        return;
+      }
+
+      const verification = verifyAuthSignature(walletAddress, signature, timestamp);
+      if (!verification.valid) {
+        res.status(401).json({
+          error: verification.error || 'Signature verification failed',
+          code: 'INVALID_SIGNATURE',
+        });
+        return;
+      }
+    } else if (signature && timestamp) {
+      // If signatures provided but not required, still verify them
+      const verification = verifyAuthSignature(walletAddress, signature, timestamp);
+      if (!verification.valid) {
+        console.warn(`[Auth] Signature verification failed: ${verification.error}`);
+      }
     }
 
     // Store authenticated wallet in request

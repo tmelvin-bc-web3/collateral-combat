@@ -10,8 +10,8 @@ import { ProgressionStats } from './progression';
 import { UserAvatar } from './UserAvatar';
 import { PresetPFP, NFTAsset } from '@/types';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface ProfilePickerProps {
   isOpen: boolean;

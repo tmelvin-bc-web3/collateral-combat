@@ -20,8 +20,8 @@ import {
   RebateSummary,
   RebateReceivedEvent,
 } from '@/types';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface ProgressionContextValue {
   // State

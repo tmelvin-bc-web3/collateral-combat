@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { getSocket } from '@/lib/socket';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export function usePrices() {
   const [prices, setPrices] = useState<Record<string, number>>({});

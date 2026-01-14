@@ -6,6 +6,7 @@ import { getSocket } from '@/lib/socket';
 import { LiveBattle } from '@/types';
 import { UserAvatar } from './UserAvatar';
 import { Card } from './ui/Card';
+import { BACKEND_URL } from '@/config/api';
 
 export function FeaturedBattle() {
   const [featuredBattle, setFeaturedBattle] = useState<LiveBattle | null>(null);
@@ -17,7 +18,7 @@ export function FeaturedBattle() {
     // Fetch initial data via REST API
     const fetchFeaturedBattle = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/battles/live`);
+        const res = await fetch(`${BACKEND_URL}/api/battles/live`);
         if (res.ok) {
           const battles = await res.json();
           const featured = battles.find((b: LiveBattle) => b.featured) || battles[0] || null;

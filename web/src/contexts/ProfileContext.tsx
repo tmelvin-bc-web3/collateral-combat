@@ -16,8 +16,8 @@ import {
   setCachedProfile,
   setCachedProfiles,
 } from '@/lib/profileStorage';
+import { BACKEND_URL } from '@/config/api';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 interface ProfileContextValue {
   ownProfile: UserProfile | null;

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
 import { UserStreak, STREAK_BONUSES } from '@/types';
 import { PageLoading } from '@/components/ui/skeleton';
+import { BACKEND_URL } from '@/config/api';
 
 // Reward type definition
 interface LevelReward {
@@ -154,8 +155,7 @@ export default function ProgressionPage() {
 
     const fetchStreak = async () => {
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-        const res = await fetch(`${backendUrl}/api/progression/${walletAddress}/streak`);
+        const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`);
         if (res.ok) {
           const data = await res.json();
           setStreak(data);

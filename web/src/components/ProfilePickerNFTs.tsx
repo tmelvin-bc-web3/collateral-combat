@@ -62,7 +62,7 @@ export function ProfilePickerNFTs({
       <div className="py-8 text-center">
         <p className="text-danger mb-2">{error}</p>
         <p className="text-sm text-text-tertiary">
-          Make sure NEXT_PUBLIC_HELIUS_API_KEY is configured
+          Please try again later
         </p>
       </div>
     );
