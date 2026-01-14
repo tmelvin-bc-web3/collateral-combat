@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { isWhitelisted } from '@/config/whitelist';
+import bs58 from 'bs58';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -28,7 +29,7 @@ export default function ComingSoon() {
   const [waitlistData, setWaitlistData] = useState<WaitlistSuccess | null>(null);
   const [totalSignups, setTotalSignups] = useState(0);
   const [copied, setCopied] = useState(false);
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
 
   const walletAddress = publicKey?.toBase58();
   const hasAccess = isWhitelisted(walletAddress);
@@ -58,12 +59,34 @@ export default function ComingSoon() {
     setStatus('loading');
 
     try {
+      // Require wallet connection
+      if (!connected || !publicKey) {
+        throw new Error('Please connect your wallet above to join the waitlist');
+      }
+
+      if (!signMessage) {
+        throw new Error('Your wallet does not support message signing');
+      }
+
+      // Create signature for verification
+      const timestamp = Date.now().toString();
+      const message = `DegenDome:waitlist:${timestamp}`;
+      const messageBytes = new TextEncoder().encode(message);
+
+      // Request wallet signature
+      const signature = await signMessage(messageBytes);
+      const signatureBase58 = bs58.encode(signature);
+
       const res = await fetch(`${BACKEND_URL}/api/waitlist/join`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-signature': signatureBase58,
+          'x-timestamp': timestamp,
+        },
         body: JSON.stringify({
           email,
-          walletAddress: connected ? walletAddress : undefined,
+          walletAddress: walletAddress,
           referralCode: refCode || undefined,
           utmSource: searchParams.get('utm_source') || undefined,
           utmCampaign: searchParams.get('utm_campaign') || undefined,
@@ -86,9 +109,14 @@ export default function ComingSoon() {
         setStatus('error');
         setMessage(data.error || 'Something went wrong');
       }
-    } catch {
+    } catch (err: any) {
       setStatus('error');
-      setMessage('Failed to join waitlist. Please try again.');
+      // Handle user rejection
+      if (err.message?.includes('User rejected')) {
+        setMessage('Wallet signature was rejected. Please try again.');
+      } else {
+        setMessage(err.message || 'Failed to join waitlist. Please try again.');
+      }
     }
   };
 
@@ -344,16 +372,23 @@ export default function ComingSoon() {
                     disabled={status === 'loading'}
                   />
                 </div>
+                {!connected && (
+                  <p className="text-xs text-[#ff5500] text-center">
+                    Connect your wallet above to join
+                  </p>
+                )}
                 <button
                   type="submit"
-                  disabled={status === 'loading' || !email}
+                  disabled={status === 'loading' || !email || !connected}
                   className="w-full py-4 rounded-xl bg-gradient-to-r from-[#ff5500] to-[#e63900] hover:from-[#ff6622] hover:to-[#ff5500] disabled:opacity-50 disabled:cursor-not-allowed font-bold uppercase tracking-wider transition-all text-[#e8dfd4] shadow-lg shadow-[#ff5500]/20 hover:shadow-[#ff5500]/40"
                 >
                   {status === 'loading' ? (
                     <span className="flex items-center justify-center gap-3">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Joining...
+                      Signing & Joining...
                     </span>
+                  ) : !connected ? (
+                    'Connect Wallet First'
                   ) : (
                     'Enter the Waitlist'
                   )}

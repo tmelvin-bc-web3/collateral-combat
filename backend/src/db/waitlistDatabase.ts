@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
+import { isDisposableEmail } from '../utils/disposableEmails';
 
 // ===================
 // PostgreSQL Connection
@@ -43,8 +44,12 @@ async function initializeDatabase(): Promise<void> {
         converted_at BIGINT,
         utm_source TEXT,
         utm_campaign TEXT,
-        ip_country TEXT
+        ip_country TEXT,
+        ip_address TEXT
       );
+
+      -- Add ip_address column if it doesn't exist (for existing databases)
+      ALTER TABLE waitlist_entries ADD COLUMN IF NOT EXISTS ip_address TEXT;
 
       CREATE TABLE IF NOT EXISTS waitlist_referrals (
         id TEXT PRIMARY KEY,
@@ -89,6 +94,7 @@ export interface WaitlistEntry {
   utmSource?: string;
   utmCampaign?: string;
   ipCountry?: string;
+  ipAddress?: string;
 }
 
 export interface WaitlistReferral {
@@ -101,11 +107,12 @@ export interface WaitlistReferral {
 
 export interface WaitlistJoinRequest {
   email: string;
-  walletAddress?: string;
+  walletAddress: string; // Now required
   referralCode?: string;
   utmSource?: string;
   utmCampaign?: string;
   ipCountry?: string;
+  ipAddress?: string;
 }
 
 // ===================
@@ -161,6 +168,7 @@ function rowToEntry(row: any): WaitlistEntry {
     utmSource: row.utm_source || undefined,
     utmCampaign: row.utm_campaign || undefined,
     ipCountry: row.ip_country || undefined,
+    ipAddress: row.ip_address || undefined,
   };
 }
 
@@ -235,6 +243,16 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
     throw new Error('Database not configured');
   }
 
+  // Require wallet address
+  if (!data.walletAddress) {
+    throw new Error('Wallet connection required');
+  }
+
+  // Check for disposable email
+  if (isDisposableEmail(data.email)) {
+    throw new Error('Please use a permanent email address');
+  }
+
   // Check if email already registered
   const existing = await findByEmail(data.email);
   if (existing) {
@@ -258,12 +276,12 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
     await pool.query(
       `INSERT INTO waitlist_entries (
         id, email, wallet_address, referral_code, referred_by, referral_count,
-        position, tier, created_at, utm_source, utm_campaign, ip_country
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        position, tier, created_at, utm_source, utm_campaign, ip_country, ip_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         id,
         data.email.toLowerCase().trim(),
-        data.walletAddress || null,
+        data.walletAddress,
         referralCode,
         data.referralCode || null,
         0,
@@ -273,12 +291,13 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
         data.utmSource || 'direct',
         data.utmCampaign || null,
         data.ipCountry || null,
+        data.ipAddress || null,
       ]
     );
 
-    // Credit referrer if applicable
+    // Credit referrer if applicable (pass IP for same-IP check)
     if (data.referralCode) {
-      await creditReferrer(data.referralCode, id);
+      await creditReferrer(data.referralCode, id, data.ipAddress);
     }
 
     const entry = await findById(id);
@@ -287,7 +306,9 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
     }
     return entry;
   } catch (error: any) {
-    if (error.message === 'Email already registered') {
+    if (error.message === 'Email already registered' ||
+        error.message === 'Please use a permanent email address' ||
+        error.message === 'Wallet connection required') {
       throw error;
     }
     console.error('[WaitlistDB] joinWaitlist error:', error);
@@ -295,12 +316,24 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
   }
 }
 
-export async function creditReferrer(referralCode: string, newUserId: string): Promise<boolean> {
+export async function creditReferrer(referralCode: string, newUserId: string, newUserIp?: string): Promise<boolean> {
   if (!pool) return false;
 
   try {
     const referrer = await findByReferralCode(referralCode);
     if (!referrer) return false;
+
+    // Check for same-IP abuse - don't credit if IPs match
+    if (newUserIp && referrer.ipAddress && newUserIp === referrer.ipAddress) {
+      console.log(`[WaitlistDB] Same-IP referral blocked: ${newUserIp}`);
+      // Log the referral but don't credit it
+      await pool.query(
+        `INSERT INTO waitlist_referrals (id, referrer_code, referee_id, timestamp, credited)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [uuidv4(), referralCode, newUserId, Date.now(), 0] // credited = 0
+      );
+      return false;
+    }
 
     // Increment referral count
     const newCount = referrer.referralCount + 1;

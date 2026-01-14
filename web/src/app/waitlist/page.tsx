@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import bs58 from 'bs58';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -18,7 +19,7 @@ const TIER_INFO = {
 export default function WaitlistPage() {
   const searchParams = useSearchParams();
   const refCode = searchParams.get('ref');
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
 
   const [email, setEmail] = useState('');
   const [referralCode, setReferralCode] = useState(refCode || '');
@@ -53,12 +54,34 @@ export default function WaitlistPage() {
     setIsSubmitting(true);
 
     try {
+      // Require wallet connection
+      if (!connected || !publicKey) {
+        throw new Error('Please connect your wallet to join the waitlist');
+      }
+
+      if (!signMessage) {
+        throw new Error('Your wallet does not support message signing');
+      }
+
+      // Create signature for verification
+      const timestamp = Date.now().toString();
+      const message = `DegenDome:waitlist:${timestamp}`;
+      const messageBytes = new TextEncoder().encode(message);
+
+      // Request wallet signature
+      const signature = await signMessage(messageBytes);
+      const signatureBase58 = bs58.encode(signature);
+
       const res = await fetch(`${BACKEND_URL}/api/waitlist/join`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-signature': signatureBase58,
+          'x-timestamp': timestamp,
+        },
         body: JSON.stringify({
           email,
-          walletAddress: connected ? publicKey?.toBase58() : undefined,
+          walletAddress: publicKey.toBase58(),
           referralCode: referralCode || undefined,
           utmSource: searchParams.get('utm_source') || undefined,
           utmCampaign: searchParams.get('utm_campaign') || undefined,
@@ -78,7 +101,12 @@ export default function WaitlistPage() {
         referralLink: data.referralLink,
       });
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      // Handle user rejection
+      if (err.message?.includes('User rejected')) {
+        setError('Wallet signature was rejected. Please try again.');
+      } else {
+        setError(err.message || 'Something went wrong');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -225,7 +253,7 @@ export default function WaitlistPage() {
           {/* Wallet connect */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
-              Wallet <span className="text-white/40">(optional)</span>
+              Wallet <span className="text-danger">*</span>
             </label>
             <div className="flex items-center gap-3">
               <WalletMultiButton className="!bg-black/40 !border !border-white/10 !rounded-xl !h-12 !px-4 hover:!border-warning/50 !transition-colors" />
@@ -233,6 +261,11 @@ export default function WaitlistPage() {
                 <span className="text-success text-sm">Connected</span>
               )}
             </div>
+            {!connected && (
+              <p className="text-white/40 text-xs mt-2">
+                Wallet required to verify your identity and prevent abuse
+              </p>
+            )}
           </div>
 
           {/* Referral code */}
@@ -259,10 +292,10 @@ export default function WaitlistPage() {
           {/* Submit button */}
           <button
             type="submit"
-            disabled={isSubmitting || !email}
+            disabled={isSubmitting || !email || !connected}
             className="w-full py-4 bg-gradient-to-r from-warning to-fire text-black font-bold rounded-xl hover:shadow-lg hover:shadow-warning/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Joining...' : 'Join Waitlist'}
+            {isSubmitting ? 'Signing & Joining...' : !connected ? 'Connect Wallet to Join' : 'Join Waitlist'}
           </button>
 
           {/* Benefits preview */}

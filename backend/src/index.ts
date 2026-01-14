@@ -3,6 +3,8 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 import { corsOptions, socketCorsOptions } from './config';
 import { priceService } from './services/priceService';
 import { battleManager } from './services/battleManager';
@@ -26,6 +28,43 @@ import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } fr
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
+
+// ===================
+// Wallet Signature Verification
+// ===================
+
+function verifyWalletSignature(
+  walletAddress: string,
+  signature: string,
+  timestamp: string
+): boolean {
+  try {
+    const message = `DegenDome:waitlist:${timestamp}`;
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = bs58.decode(signature);
+    const publicKeyBytes = bs58.decode(walletAddress);
+
+    // Check timestamp is within 5 minutes
+    const now = Date.now();
+    const signedAt = parseInt(timestamp);
+    if (isNaN(signedAt) || Math.abs(now - signedAt) > 5 * 60 * 1000) {
+      return false;
+    }
+
+    return nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+  } catch {
+    return false;
+  }
+}
+
+// Helper to extract client IP from request
+function getClientIp(req: Request): string | undefined {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress;
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -216,6 +255,10 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
   try {
     const { email, walletAddress, referralCode, utmSource, utmCampaign } = req.body;
 
+    // Get signature verification headers
+    const signature = req.headers['x-signature'] as string;
+    const timestamp = req.headers['x-timestamp'] as string;
+
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'Email is required' });
     }
@@ -225,6 +268,23 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
+
+    // Require wallet address
+    if (!walletAddress || typeof walletAddress !== 'string') {
+      return res.status(400).json({ error: 'Wallet connection required to join waitlist' });
+    }
+
+    // Verify wallet signature
+    if (!signature || !timestamp) {
+      return res.status(400).json({ error: 'Wallet verification required. Please sign with your wallet.' });
+    }
+
+    if (!verifyWalletSignature(walletAddress, signature, timestamp)) {
+      return res.status(400).json({ error: 'Wallet verification failed. Please try again.' });
+    }
+
+    // Extract client IP for abuse prevention
+    const clientIp = getClientIp(req);
 
     // Validate referral code if provided
     let validReferralCode: string | undefined;
@@ -243,6 +303,7 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
       referralCode: validReferralCode,
       utmSource,
       utmCampaign,
+      ipAddress: clientIp,
     });
 
     res.json({
