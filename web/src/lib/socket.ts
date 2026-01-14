@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification } from '@/types';
 import { BACKEND_URL } from '@/config/api';
 
 interface ServerToClientEvents {
@@ -49,6 +49,12 @@ interface ServerToClientEvents {
   perk_expired: (data: { perkId: number }) => void;
   // Rebate events
   rebate_received: (data: RebateReceivedEvent) => void;
+  // Ready check events
+  match_found: (data: ReadyCheckResponse) => void;
+  ready_check_update: (data: ReadyCheckUpdate) => void;
+  ready_check_cancelled: (data: ReadyCheckCancelled) => void;
+  // Challenge notification events
+  challenge_accepted: (data: ChallengeAcceptedNotification) => void;
 }
 
 interface ClientToServerEvents {
@@ -62,6 +68,13 @@ interface ClientToServerEvents {
   close_position_signed: (payload: SignedTradePayload) => void;
   leave_battle: (battleId: string) => void;
   subscribe_prices: (tokens: string[]) => void;
+  // Ready check events
+  register_wallet: (walletAddress: string) => void;
+  accept_match: (battleId: string) => void;
+  decline_match: (battleId: string) => void;
+  // Challenge notification events
+  subscribe_challenge_notifications: (walletAddress: string) => void;
+  unsubscribe_challenge_notifications: (walletAddress: string) => void;
   // Spectator events
   subscribe_live_battles: () => void;
   unsubscribe_live_battles: () => void;

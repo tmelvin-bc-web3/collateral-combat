@@ -18,6 +18,7 @@ import { progressionService } from './services/progressionService';
 import { freeBetEscrowService } from './services/freeBetEscrowService';
 import { rakeRebateService } from './services/rakeRebateService';
 import { battleSettlementService } from './services/battleSettlementService';
+import { challengeNotificationService } from './services/challengeNotificationService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -25,6 +26,7 @@ import * as achievementDb from './db/achievementDatabase';
 import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
+import * as challengesDb from './db/challengesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { createToken } from './utils/jwt';
@@ -1907,10 +1909,67 @@ io.on('connection', (socket) => {
     socket.leave(`rebates_${wallet}`);
   });
 
+  // ===================
+  // Ready Check Events
+  // ===================
+
+  // Register wallet for targeted notifications
+  socket.on('register_wallet', (wallet: string) => {
+    walletAddress = wallet;
+    battleManager.registerWalletSocket(wallet, socket.id);
+  });
+
+  // Accept a match from ready check
+  socket.on('accept_match', (battleId: string) => {
+    try {
+      if (!walletAddress) {
+        throw new Error('Not authenticated');
+      }
+      const accepted = battleManager.acceptReadyCheck(battleId, walletAddress);
+      if (!accepted) {
+        socket.emit('error', 'Failed to accept match - may be expired');
+      }
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
+  });
+
+  // Decline a match from ready check
+  socket.on('decline_match', (battleId: string) => {
+    try {
+      if (!walletAddress) {
+        throw new Error('Not authenticated');
+      }
+      battleManager.declineReadyCheck(battleId, walletAddress);
+    } catch (error: any) {
+      socket.emit('error', error.message);
+    }
+  });
+
+  // ===================
+  // Challenge Notification Events
+  // ===================
+
+  // Subscribe to friend challenge notifications
+  socket.on('subscribe_challenge_notifications', (wallet: string) => {
+    walletAddress = wallet;
+    challengeNotificationService.subscribe(wallet, socket.id);
+    battleManager.registerWalletSocket(wallet, socket.id);
+    console.log(`[Challenge] ${wallet.slice(0, 8)}... subscribed to challenge notifications`);
+  });
+
+  // Unsubscribe from challenge notifications
+  socket.on('unsubscribe_challenge_notifications', (wallet: string) => {
+    challengeNotificationService.unsubscribe(wallet);
+    console.log(`[Challenge] ${wallet.slice(0, 8)}... unsubscribed from challenge notifications`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
       battleManager.leaveMatchmaking(walletAddress);
+      battleManager.unregisterWalletSocket(walletAddress);
+      // Keep challenge notification subscription active for grace period (don't unsubscribe on disconnect)
     }
   });
 });
@@ -1983,6 +2042,66 @@ spectatorService.subscribe((event, data) => {
       io.to(`spectate_${data.battleId}`).emit('spectator_count', data);
       io.to('live_battles').emit('spectator_count', data);
       break;
+  }
+});
+
+// Subscribe to ready check events and broadcast to players
+battleManager.subscribeToReadyCheckEvents((event, data) => {
+  switch (event) {
+    case 'match_found': {
+      // Send match_found to both players individually
+      const { battleId, player1Wallet, player2Wallet, config, expiresAt } = data;
+
+      const player1Socket = battleManager.getSocketIdForWallet(player1Wallet);
+      const player2Socket = battleManager.getSocketIdForWallet(player2Wallet);
+
+      if (player1Socket) {
+        io.to(player1Socket).emit('match_found', {
+          battleId,
+          opponentWallet: player2Wallet,
+          config,
+          expiresAt,
+        });
+      }
+
+      if (player2Socket) {
+        io.to(player2Socket).emit('match_found', {
+          battleId,
+          opponentWallet: player1Wallet,
+          config,
+          expiresAt,
+        });
+      }
+
+      console.log(`[ReadyCheck] Match found emitted for battle ${battleId}`);
+      break;
+    }
+
+    case 'ready_check_update': {
+      // Broadcast update to both players in the battle
+      const readyCheck = battleManager.getReadyCheck(data.battleId);
+      if (readyCheck) {
+        const player1Socket = battleManager.getSocketIdForWallet(readyCheck.player1Wallet);
+        const player2Socket = battleManager.getSocketIdForWallet(readyCheck.player2Wallet);
+
+        if (player1Socket) {
+          io.to(player1Socket).emit('ready_check_update', data);
+        }
+        if (player2Socket) {
+          io.to(player2Socket).emit('ready_check_update', data);
+        }
+      }
+      break;
+    }
+
+    case 'ready_check_cancelled': {
+      // Send cancelled event to both players - need to get wallet info from the event data
+      // The readyCheck is already deleted at this point, so we broadcast to the battle room
+      // Players should have joined the battle room when match_found was emitted
+      io.to(data.battleId).emit('ready_check_cancelled', data);
+      console.log(`[ReadyCheck] Cancelled event emitted for battle ${data.battleId}: ${data.reason}`);
+      break;
+    }
   }
 });
 
@@ -2085,6 +2204,273 @@ progressionService.subscribe((event, data) => {
     case 'perk_expired':
       io.to(`progression_${data.walletAddress}`).emit('perk_expired' as any, { perkId: data.perkId });
       break;
+  }
+});
+
+// ==================== BATTLE CHALLENGES ====================
+
+// Get user's challenges (must be before /:code route)
+app.get('/api/challenges/mine', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const walletAddress = req.headers['x-wallet-address'] as string;
+
+    if (!walletAddress) {
+      return res.status(401).json({ error: 'Wallet address required' });
+    }
+
+    const sent = challengesDb.getChallengesBySender(walletAddress);
+
+    res.json({
+      sent,
+      received: [], // For now, we don't track received challenges separately
+    });
+  } catch (error: any) {
+    console.error('[Challenges] Error getting challenges:', error);
+    res.status(500).json({ error: error.message || 'Failed to get challenges' });
+  }
+});
+
+// Get challenge stats (must be before /:code route)
+app.get('/api/challenges/stats', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const stats = challengesDb.getChallengeStats();
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to get challenge stats' });
+  }
+});
+
+// Create a new battle challenge
+app.post('/api/challenges/create', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const walletAddress = req.headers['x-wallet-address'] as string;
+    if (!walletAddress) {
+      return res.status(401).json({ error: 'Wallet address required' });
+    }
+
+    const { entryFee, leverage, duration } = req.body;
+
+    // Validate entry fee
+    if (typeof entryFee !== 'number' ||
+        entryFee < challengesDb.CHALLENGE_CONFIG.minEntryFee ||
+        entryFee > challengesDb.CHALLENGE_CONFIG.maxEntryFee) {
+      return res.status(400).json({
+        error: `Entry fee must be between ${challengesDb.CHALLENGE_CONFIG.minEntryFee} and ${challengesDb.CHALLENGE_CONFIG.maxEntryFee} SOL`
+      });
+    }
+
+    // Validate leverage
+    if (!challengesDb.CHALLENGE_CONFIG.leverageOptions.includes(leverage)) {
+      return res.status(400).json({
+        error: `Leverage must be one of: ${challengesDb.CHALLENGE_CONFIG.leverageOptions.join(', ')}`
+      });
+    }
+
+    // Validate duration
+    if (!challengesDb.CHALLENGE_CONFIG.durationOptions.includes(duration)) {
+      return res.status(400).json({
+        error: `Duration must be one of: ${challengesDb.CHALLENGE_CONFIG.durationOptions.join(', ')} seconds`
+      });
+    }
+
+    // Check pending challenge limit
+    const pendingCount = challengesDb.getPendingChallengeCount(walletAddress);
+    if (pendingCount >= challengesDb.CHALLENGE_CONFIG.maxPendingPerUser) {
+      return res.status(400).json({
+        error: `Maximum ${challengesDb.CHALLENGE_CONFIG.maxPendingPerUser} pending challenges allowed`
+      });
+    }
+
+    // Get username from profile if available
+    const profile = getProfile(walletAddress);
+    const username = profile?.username;
+
+    // Create the challenge
+    const challenge = challengesDb.createChallenge({
+      challengerWallet: walletAddress,
+      challengerUsername: username,
+      entryFee,
+      leverage,
+      duration,
+    });
+
+    // Register challenge for notification when accepted
+    challengeNotificationService.registerChallenge(
+      challenge.id,
+      walletAddress,
+      challenge.challengeCode,
+      entryFee,
+      duration
+    );
+
+    // Generate share URLs
+    const shareUrl = `https://degendome.xyz/fight/${challenge.challengeCode}`;
+    const shareText = `${username || 'A degen'} challenges you to a ${leverage}x Battle Arena fight!\n\nEntry: ${entryFee} SOL\nDuration: ${duration / 60} min\n\nAccept if you dare:\n${shareUrl}`;
+
+    res.json({
+      challengeId: challenge.id,
+      challengeCode: challenge.challengeCode,
+      shareUrl,
+      shareLinks: {
+        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
+        telegram: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+      },
+      expiresAt: challenge.expiresAt,
+    });
+  } catch (error: any) {
+    console.error('[Challenges] Error creating challenge:', error);
+    res.status(500).json({ error: error.message || 'Failed to create challenge' });
+  }
+});
+
+// Get challenge details by code (public)
+app.get('/api/challenges/:code', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const walletAddress = req.headers['x-wallet-address'] as string;
+
+    // Validate code format
+    const codePattern = new RegExp(`^${challengesDb.CHALLENGE_CONFIG.codePrefix}[A-HJ-NP-Z2-9]{${challengesDb.CHALLENGE_CONFIG.codeLength}}$`, 'i');
+    if (!codePattern.test(code)) {
+      return res.status(400).json({ error: 'Invalid challenge code format' });
+    }
+
+    const challenge = challengesDb.getChallengeByCode(code);
+
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+
+    // Increment view count
+    challengesDb.incrementViewCount(code);
+
+    // Determine if user can accept
+    let canAccept = true;
+    let reason: string | null = null;
+
+    if (challenge.status !== 'pending') {
+      canAccept = false;
+      reason = challenge.status === 'accepted' ? 'Challenge already accepted' :
+               challenge.status === 'expired' ? 'Challenge expired' :
+               challenge.status === 'completed' ? 'Challenge completed' :
+               'Challenge not available';
+    } else if (Date.now() > challenge.expiresAt) {
+      canAccept = false;
+      reason = 'Challenge expired';
+    } else if (walletAddress && walletAddress === challenge.challengerWallet) {
+      canAccept = false;
+      reason = 'Cannot accept your own challenge';
+    }
+
+    res.json({
+      challenge: {
+        challengeCode: challenge.challengeCode,
+        challengerWallet: challenge.challengerWallet,
+        challengerUsername: challenge.challengerUsername,
+        entryFee: challenge.entryFee,
+        leverage: challenge.leverage,
+        duration: challenge.duration,
+        status: challenge.status,
+        expiresAt: challenge.expiresAt,
+        createdAt: challenge.createdAt,
+      },
+      canAccept,
+      reason,
+    });
+  } catch (error: any) {
+    console.error('[Challenges] Error getting challenge:', error);
+    res.status(500).json({ error: error.message || 'Failed to get challenge' });
+  }
+});
+
+// Accept a challenge
+app.post('/api/challenges/:code/accept', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const walletAddress = req.headers['x-wallet-address'] as string;
+
+    if (!walletAddress) {
+      return res.status(401).json({ error: 'Wallet address required' });
+    }
+
+    const challenge = challengesDb.getChallengeByCode(code);
+
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+
+    if (challenge.status !== 'pending') {
+      return res.status(400).json({ error: 'Challenge no longer available' });
+    }
+
+    if (Date.now() > challenge.expiresAt) {
+      return res.status(400).json({ error: 'Challenge expired' });
+    }
+
+    if (walletAddress === challenge.challengerWallet) {
+      return res.status(400).json({ error: 'Cannot accept your own challenge' });
+    }
+
+    // Create a battle via WebSocket
+    // For now, we'll create a simple battle ID and let the frontend handle the actual battle creation
+    const battleId = `challenge-${challenge.id}-${Date.now()}`;
+
+    // Update challenge to accepted
+    const updatedChallenge = challengesDb.acceptChallenge(code, walletAddress, battleId);
+
+    if (!updatedChallenge) {
+      return res.status(400).json({ error: 'Failed to accept challenge' });
+    }
+
+    // Notify the challenger that their challenge was accepted
+    const notificationTarget = challengeNotificationService.getNotificationTarget(challenge.id);
+    if (notificationTarget) {
+      notificationTarget.notification.acceptedBy = walletAddress;
+      notificationTarget.notification.battleId = battleId;
+
+      io.to(notificationTarget.socketId).emit('challenge_accepted', notificationTarget.notification);
+      challengeNotificationService.markChallengeAccepted(challenge.id);
+      console.log(`[Challenge] Notified ${challenge.challengerWallet.slice(0, 8)}... that challenge ${code} was accepted`);
+    }
+
+    res.json({
+      success: true,
+      battleId,
+      challenge: {
+        challengeCode: updatedChallenge.challengeCode,
+        entryFee: updatedChallenge.entryFee,
+        leverage: updatedChallenge.leverage,
+        duration: updatedChallenge.duration,
+        challengerWallet: updatedChallenge.challengerWallet,
+        challengerUsername: updatedChallenge.challengerUsername,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Challenges] Error accepting challenge:', error);
+    res.status(500).json({ error: error.message || 'Failed to accept challenge' });
+  }
+});
+
+// Cancel a pending challenge
+app.delete('/api/challenges/:id', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const walletAddress = req.headers['x-wallet-address'] as string;
+
+    if (!walletAddress) {
+      return res.status(401).json({ error: 'Wallet address required' });
+    }
+
+    const success = challengesDb.cancelChallenge(id, walletAddress);
+
+    if (!success) {
+      return res.status(400).json({ error: 'Failed to cancel challenge. It may not exist or is not pending.' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[Challenges] Error cancelling challenge:', error);
+    res.status(500).json({ error: error.message || 'Failed to cancel challenge' });
   }
 });
 

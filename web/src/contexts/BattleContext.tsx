@@ -2,7 +2,16 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
-import { Battle, BattleConfig, PositionSide, Leverage, SignedTradeMessage } from '@/types';
+import {
+  Battle,
+  BattleConfig,
+  PositionSide,
+  Leverage,
+  SignedTradeMessage,
+  ReadyCheckResponse,
+  ReadyCheckUpdate,
+  ReadyCheckCancelled,
+} from '@/types';
 import bs58 from 'bs58';
 
 interface BattleSettledData {
@@ -22,6 +31,11 @@ interface BattleContextType {
     position: number;
     estimated: number;
   };
+  // Ready check state
+  readyCheck: ReadyCheckResponse | null;
+  readyCheckStatus: ReadyCheckUpdate | null;
+  readyCheckCancelled: ReadyCheckCancelled | null;
+  // Actions
   createBattle: (config: BattleConfig) => void;
   joinBattle: (battleId: string) => void;
   queueMatchmaking: (config: BattleConfig) => void;
@@ -30,6 +44,10 @@ interface BattleContextType {
   closePosition: (positionId: string) => Promise<void>;
   leaveBattle: () => void;
   getTimeRemaining: () => number;
+  // Ready check actions
+  acceptMatch: () => void;
+  declineMatch: () => void;
+  clearReadyCheckCancelled: () => void;
 }
 
 const BattleContext = createContext<BattleContextType | null>(null);
@@ -55,6 +73,11 @@ export function BattleProvider({
     position: number;
     estimated: number;
   }>({ inQueue: false, position: 0, estimated: 0 });
+
+  // Ready check state
+  const [readyCheck, setReadyCheck] = useState<ReadyCheckResponse | null>(null);
+  const [readyCheckStatus, setReadyCheckStatus] = useState<ReadyCheckUpdate | null>(null);
+  const [readyCheckCancelled, setReadyCheckCancelled] = useState<ReadyCheckCancelled | null>(null);
 
   // Track nonce per battle for replay protection
   const nonceRef = useRef<Map<string, number>>(new Map());
@@ -123,12 +146,38 @@ export function BattleProvider({
       setSettlementTx(data.txSignature);
     };
 
+    // Ready check handlers
+    const handleMatchFound = (data: ReadyCheckResponse) => {
+      console.log('[Battle] Match found!', data.battleId);
+      setReadyCheck(data);
+      setReadyCheckStatus(null);
+      setReadyCheckCancelled(null);
+      setMatchmakingStatus({ inQueue: false, position: 0, estimated: 0 });
+    };
+
+    const handleReadyCheckUpdate = (data: ReadyCheckUpdate) => {
+      console.log('[Battle] Ready check update:', data);
+      setReadyCheckStatus(data);
+    };
+
+    const handleReadyCheckCancelled = (data: ReadyCheckCancelled) => {
+      console.log('[Battle] Ready check cancelled:', data.reason);
+      setReadyCheck(null);
+      setReadyCheckStatus(null);
+      setReadyCheckCancelled(data);
+      // Auto-clear cancelled notification after 10 seconds
+      setTimeout(() => setReadyCheckCancelled(null), 10000);
+    };
+
     socket.on('battle_update', handleBattleUpdate);
     socket.on('battle_started', handleBattleStarted);
     socket.on('battle_ended', handleBattleEnded);
     socket.on('matchmaking_status', handleMatchmakingStatus);
     socket.on('error', handleError);
     socket.on('battle_settled', handleBattleSettled);
+    socket.on('match_found', handleMatchFound);
+    socket.on('ready_check_update', handleReadyCheckUpdate);
+    socket.on('ready_check_cancelled', handleReadyCheckCancelled);
 
     return () => {
       socket.off('battle_update', handleBattleUpdate);
@@ -137,7 +186,46 @@ export function BattleProvider({
       socket.off('matchmaking_status', handleMatchmakingStatus);
       socket.off('error', handleError);
       socket.off('battle_settled', handleBattleSettled);
+      socket.off('match_found', handleMatchFound);
+      socket.off('ready_check_update', handleReadyCheckUpdate);
+      socket.off('ready_check_cancelled', handleReadyCheckCancelled);
     };
+  }, []);
+
+  // Register wallet for ready check notifications
+  useEffect(() => {
+    if (walletAddress) {
+      const socket = getSocket();
+      socket.emit('register_wallet', walletAddress);
+      console.log('[Battle] Registered wallet for notifications:', walletAddress.slice(0, 8));
+    }
+  }, [walletAddress]);
+
+  // Ready check actions
+  const acceptMatch = useCallback(() => {
+    if (!readyCheck) {
+      console.warn('[Battle] No ready check to accept');
+      return;
+    }
+    const socket = getSocket();
+    socket.emit('accept_match', readyCheck.battleId);
+    console.log('[Battle] Accepting match:', readyCheck.battleId);
+  }, [readyCheck]);
+
+  const declineMatch = useCallback(() => {
+    if (!readyCheck) {
+      console.warn('[Battle] No ready check to decline');
+      return;
+    }
+    const socket = getSocket();
+    socket.emit('decline_match', readyCheck.battleId);
+    setReadyCheck(null);
+    setReadyCheckStatus(null);
+    console.log('[Battle] Declining match:', readyCheck.battleId);
+  }, [readyCheck]);
+
+  const clearReadyCheckCancelled = useCallback(() => {
+    setReadyCheckCancelled(null);
   }, []);
 
   const createBattle = useCallback(
@@ -320,6 +408,9 @@ export function BattleProvider({
         error,
         settlementTx,
         matchmakingStatus,
+        readyCheck,
+        readyCheckStatus,
+        readyCheckCancelled,
         createBattle,
         joinBattle,
         queueMatchmaking,
@@ -328,6 +419,9 @@ export function BattleProvider({
         closePosition,
         leaveBattle,
         getTimeRemaining,
+        acceptMatch,
+        declineMatch,
+        clearReadyCheckCancelled,
       }}
     >
       {children}

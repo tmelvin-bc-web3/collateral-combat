@@ -4,11 +4,16 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
 import { useBattleOnChain } from '@/hooks/useBattleOnChain';
+import { useChallengeNotifications } from '@/hooks/useChallengeNotifications';
 import { BattleConfig, BattleDuration } from '@/types';
 import { FeaturedBattle } from './FeaturedBattle';
 import { AssetIcon } from './AssetIcon';
 import { ASSETS } from '@/lib/assets';
 import { Card } from './ui/Card';
+import { CreateChallengeModal, CreatedChallenge } from './CreateChallengeModal';
+import { ShareChallengeModal } from './ShareChallengeModal';
+import { MatchFoundModal } from './MatchFoundModal';
+import { ChallengeAcceptedModal } from './ChallengeAcceptedModal';
 
 const DURATION_OPTIONS: { value: BattleDuration; label: string; icon: string }[] = [
   { value: 1800, label: '30 min', icon: 'flash' },
@@ -53,7 +58,8 @@ const STEPS = [
 ];
 
 export function BattleLobby() {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
+  const walletAddress = publicKey?.toBase58() || null;
   const [mounted, setMounted] = useState(false);
   const [hoveredFee, setHoveredFee] = useState<number | null>(null);
   const [isCreatingOnChain, setIsCreatingOnChain] = useState(false);
@@ -66,7 +72,17 @@ export function BattleLobby() {
     queueMatchmaking,
     startSoloPractice,
     leaveBattle,
+    readyCheck,
+    readyCheckCancelled,
+    clearReadyCheckCancelled,
   } = useBattleContext();
+
+  // Challenge notifications for friend challenges
+  const {
+    notification: challengeNotification,
+    clearNotification: clearChallengeNotification,
+    requestPermission: requestNotificationPermission,
+  } = useChallengeNotifications({ walletAddress, enabled: connected });
 
   const {
     createBattle: createOnChainBattle,
@@ -78,9 +94,20 @@ export function BattleLobby() {
   const [selectedDuration, setSelectedDuration] = useState<BattleDuration>(1800);
   const [selectedFee, setSelectedFee] = useState(0.5);
 
+  // Challenge modal state
+  const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
+  const [createdChallenge, setCreatedChallenge] = useState<CreatedChallenge | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Request notification permission when creating a challenge
+  useEffect(() => {
+    if (showCreateChallengeModal) {
+      requestNotificationPermission();
+    }
+  }, [showCreateChallengeModal, requestNotificationPermission]);
 
   const isConnected = mounted && connected;
 
@@ -127,6 +154,10 @@ export function BattleLobby() {
       // Off-chain only (no wallet connected to Solana)
       startSoloPractice(config);
     }
+  };
+
+  const handleChallengeCreated = (challenge: CreatedChallenge) => {
+    setCreatedChallenge(challenge);
   };
 
   const combinedError = error || onChainError;
@@ -654,6 +685,22 @@ export function BattleLobby() {
                   </div>
                 </button>
               </div>
+
+              {/* Challenge a Friend */}
+              <div className="mt-4 pt-4 border-t border-border-primary">
+                <button
+                  onClick={() => setShowCreateChallengeModal(true)}
+                  className="w-full py-3 px-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 font-semibold hover:bg-purple-500/20 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Challenge a Friend
+                </button>
+                <p className="text-center text-text-tertiary text-xs mt-2">
+                  Create a shareable 1v1 battle link
+                </p>
+              </div>
             </div>
           </Card>
         </div>
@@ -726,6 +773,82 @@ export function BattleLobby() {
           </Card>
         </div>
       </div>
+
+      {/* Challenge Modals */}
+      <CreateChallengeModal
+        isOpen={showCreateChallengeModal}
+        onClose={() => setShowCreateChallengeModal(false)}
+        onChallengeCreated={handleChallengeCreated}
+      />
+      <ShareChallengeModal
+        challenge={createdChallenge}
+        onClose={() => setCreatedChallenge(null)}
+      />
+
+      {/* Ready Check Modal */}
+      <MatchFoundModal />
+
+      {/* Challenge Accepted Notification Modal */}
+      <ChallengeAcceptedModal
+        notification={challengeNotification}
+        onClose={clearChallengeNotification}
+      />
+
+      {/* Ready Check Cancelled Toast */}
+      {readyCheckCancelled && (
+        <div className="fixed bottom-4 right-4 z-50 animate-fadeIn">
+          <div className="bg-[#0d0b09] border border-white/20 rounded-xl p-4 shadow-2xl max-w-sm">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                readyCheckCancelled.reason === 'declined'
+                  ? 'bg-[#cc2200]/20'
+                  : 'bg-[#ff5500]/20'
+              }`}>
+                {readyCheckCancelled.reason === 'declined' ? (
+                  <svg className="w-5 h-5 text-[#cc2200]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-[#ff5500]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-white">
+                  {readyCheckCancelled.reason === 'declined'
+                    ? 'Match Cancelled'
+                    : 'Match Timed Out'}
+                </p>
+                <p className="text-sm text-white/60 mt-1">
+                  {readyCheckCancelled.reason === 'declined'
+                    ? 'Your opponent declined the match.'
+                    : 'The ready check timed out.'}
+                </p>
+                {readyCheckCancelled.readyPlayer && (
+                  <button
+                    onClick={() => {
+                      clearReadyCheckCancelled();
+                      handleFindMatch();
+                    }}
+                    className="mt-3 px-4 py-2 bg-[#7fba00]/20 border border-[#7fba00]/30 rounded-lg text-[#7fba00] text-sm font-medium hover:bg-[#7fba00]/30 transition-colors"
+                  >
+                    Find New Match
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={clearReadyCheckCancelled}
+                className="text-white/40 hover:text-white/60 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -63,7 +63,7 @@ export interface SignedTradePayload {
   walletAddress: string;
 }
 
-export type BattleStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
+export type BattleStatus = 'waiting' | 'ready_check' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
 export type BattleDuration = 1800 | 3600;
 
@@ -491,4 +491,43 @@ export interface RebateSummary {
 export interface RebateReceivedEvent {
   rebate: RakeRebate;
   newTotal: number;
+}
+
+// ===================
+// Ready Check Types
+// ===================
+
+export interface ReadyCheckResponse {
+  battleId: string;
+  opponentWallet: string;
+  config: BattleConfig;
+  expiresAt: number;
+}
+
+export interface ReadyCheckUpdate {
+  battleId: string;
+  player1Ready: boolean;
+  player2Ready: boolean;
+  timeRemaining: number;
+}
+
+export interface ReadyCheckCancelled {
+  battleId: string;
+  reason: 'declined' | 'timeout';
+  declinedBy?: string;
+  timedOutPlayer?: string;
+  readyPlayer?: string;
+}
+
+// ===================
+// Challenge Notification Types
+// ===================
+
+export interface ChallengeAcceptedNotification {
+  challengeId: string;
+  challengeCode: string;
+  acceptedBy: string;
+  battleId: string;
+  entryFee: number;
+  duration: number;
 }

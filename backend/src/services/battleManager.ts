@@ -12,6 +12,10 @@ import {
   SignedTradeMessage,
   SignedTradePayload,
   SignedTrade,
+  ReadyCheckState,
+  ReadyCheckResponse,
+  ReadyCheckUpdate,
+  ReadyCheckCancelled,
 } from '../types';
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
@@ -23,12 +27,34 @@ const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
 const MAINTENANCE_MARGIN = 0.05; // 5% maintenance margin for liquidation
 
+// Ready check constants
+const READY_CHECK_TIMEOUT_MS = 30000; // 30 seconds
+
+// Ready check event types
+type ReadyCheckEventType = 'match_found' | 'ready_check_update' | 'ready_check_cancelled';
+type ReadyCheckEventData = {
+  match_found: { battleId: string; player1Wallet: string; player2Wallet: string; config: BattleConfig; expiresAt: number };
+  ready_check_update: ReadyCheckUpdate;
+  ready_check_cancelled: ReadyCheckCancelled;
+};
+
 class BattleManager {
   private battles: Map<string, Battle> = new Map();
   private playerBattles: Map<string, string> = new Map(); // wallet -> battleId
   private matchmakingQueue: Map<string, { config: BattleConfig; walletAddress: string; timestamp: number }[]> = new Map();
   private battleTimers: Map<string, NodeJS.Timeout> = new Map();
   private listeners: Set<(battle: Battle) => void> = new Set();
+
+  // Ready check tracking
+  private readyChecks: Map<string, ReadyCheckState> = new Map();
+  private readyCheckTimers: Map<string, NodeJS.Timeout> = new Map();
+  private readyCheckListeners: Set<(event: ReadyCheckEventType, data: any) => void> = new Set();
+
+  // Wallet to socket mapping for notifications
+  private walletToSocketId: Map<string, string> = new Map();
+
+  // Track wallets in ready check to prevent re-queueing
+  private walletsInReadyCheck: Set<string> = new Set();
 
   constructor() {
     // Start matchmaking loop
@@ -592,6 +618,12 @@ class BattleManager {
 
   // Queue for matchmaking
   queueForMatchmaking(config: BattleConfig, walletAddress: string): void {
+    // Prevent re-queueing if already in a ready check
+    if (this.walletsInReadyCheck.has(walletAddress)) {
+      console.log(`[Matchmaking] ${walletAddress.slice(0, 8)}... already in ready check, cannot queue`);
+      return;
+    }
+
     const key = this.getMatchmakingKey(config);
     const queue = this.matchmakingQueue.get(key) || [];
 
@@ -620,13 +652,32 @@ class BattleManager {
   private processMatchmaking(): void {
     this.matchmakingQueue.forEach((queue, key) => {
       if (queue.length >= 2) {
-        const player1 = queue.shift()!;
-        const player2 = queue.shift()!;
+        // Filter out players who are already in a ready check
+        const availablePlayers = queue.filter(
+          q => !this.walletsInReadyCheck.has(q.walletAddress)
+        );
 
-        const battle = this.createBattle(player1.config, player1.walletAddress);
-        this.joinBattle(battle.id, player2.walletAddress);
+        if (availablePlayers.length >= 2) {
+          const player1 = availablePlayers[0];
+          const player2 = availablePlayers[1];
 
-        console.log(`Matched ${player1.walletAddress} vs ${player2.walletAddress}`);
+          // Remove matched players from queue
+          const idx1 = queue.findIndex(q => q.walletAddress === player1.walletAddress);
+          const idx2 = queue.findIndex(q => q.walletAddress === player2.walletAddress);
+          // Remove higher index first to avoid shifting issues
+          if (idx1 > idx2) {
+            queue.splice(idx1, 1);
+            queue.splice(idx2, 1);
+          } else {
+            queue.splice(idx2, 1);
+            queue.splice(idx1, 1);
+          }
+
+          // Create ready check instead of immediately starting battle
+          this.createReadyCheck(player1.walletAddress, player2.walletAddress, player1.config);
+
+          console.log(`[Matchmaking] Matched ${player1.walletAddress.slice(0, 8)}... vs ${player2.walletAddress.slice(0, 8)}... - awaiting ready check`);
+        }
       }
     });
   }
@@ -723,6 +774,280 @@ class BattleManager {
 
   private notifyListeners(battle: Battle): void {
     this.listeners.forEach(listener => listener(battle));
+  }
+
+  // ==================== WALLET-SOCKET REGISTRATION ====================
+
+  // Register wallet-to-socket mapping for targeted notifications
+  registerWalletSocket(walletAddress: string, socketId: string): void {
+    this.walletToSocketId.set(walletAddress, socketId);
+    console.log(`[BattleManager] Registered socket ${socketId} for wallet ${walletAddress.slice(0, 8)}...`);
+  }
+
+  // Unregister wallet-socket mapping
+  unregisterWalletSocket(walletAddress: string): void {
+    this.walletToSocketId.delete(walletAddress);
+    console.log(`[BattleManager] Unregistered socket for wallet ${walletAddress.slice(0, 8)}...`);
+  }
+
+  // Get socket ID for a wallet
+  getSocketIdForWallet(walletAddress: string): string | undefined {
+    return this.walletToSocketId.get(walletAddress);
+  }
+
+  // ==================== READY CHECK SYSTEM ====================
+
+  // Subscribe to ready check events
+  subscribeToReadyCheckEvents(listener: (event: ReadyCheckEventType, data: any) => void): () => void {
+    this.readyCheckListeners.add(listener);
+    return () => this.readyCheckListeners.delete(listener);
+  }
+
+  // Emit ready check events to all listeners
+  private emitReadyCheckEvent<T extends ReadyCheckEventType>(
+    event: T,
+    data: ReadyCheckEventData[T]
+  ): void {
+    this.readyCheckListeners.forEach(listener => listener(event, data));
+  }
+
+  // Check if wallet is in a ready check
+  isWalletInReadyCheck(walletAddress: string): boolean {
+    return this.walletsInReadyCheck.has(walletAddress);
+  }
+
+  // Create a ready check between two matched players
+  private createReadyCheck(
+    player1Wallet: string,
+    player2Wallet: string,
+    config: BattleConfig
+  ): void {
+    // Create battle in waiting state
+    const battle = this.createBattle(config, player1Wallet);
+
+    // Join second player (but don't start yet - battle will start via joinBattle if ready_check isn't used)
+    // Override the normal flow - we need to manually add the second player
+    const player2: BattlePlayer = {
+      walletAddress: player2Wallet,
+      account: this.createInitialAccount(),
+      trades: [],
+    };
+    battle.players.push(player2);
+    battle.prizePool += battle.config.entryFee;
+    this.playerBattles.set(player2Wallet, battle.id);
+
+    // Set status to ready_check instead of starting
+    battle.status = 'ready_check';
+
+    const now = Date.now();
+    const expiresAt = now + READY_CHECK_TIMEOUT_MS;
+
+    const readyCheck: ReadyCheckState = {
+      battleId: battle.id,
+      player1Wallet,
+      player2Wallet,
+      player1Ready: false,
+      player2Ready: false,
+      startedAt: now,
+      expiresAt,
+    };
+
+    this.readyChecks.set(battle.id, readyCheck);
+    this.walletsInReadyCheck.add(player1Wallet);
+    this.walletsInReadyCheck.add(player2Wallet);
+
+    // Set timeout for ready check expiration
+    const timer = setTimeout(() => {
+      this.handleReadyCheckTimeout(battle.id);
+    }, READY_CHECK_TIMEOUT_MS);
+    this.readyCheckTimers.set(battle.id, timer);
+
+    // Emit match_found event for both players
+    this.emitReadyCheckEvent('match_found', {
+      battleId: battle.id,
+      player1Wallet,
+      player2Wallet,
+      config,
+      expiresAt,
+    });
+
+    console.log(`[BattleManager] Ready check started for battle ${battle.id}: ${player1Wallet.slice(0, 8)}... vs ${player2Wallet.slice(0, 8)}...`);
+    this.notifyListeners(battle);
+  }
+
+  // Accept ready check
+  acceptReadyCheck(battleId: string, walletAddress: string): boolean {
+    const readyCheck = this.readyChecks.get(battleId);
+    if (!readyCheck) {
+      console.log(`[BattleManager] Ready check not found for battle ${battleId}`);
+      return false;
+    }
+
+    // Check if expired
+    if (Date.now() > readyCheck.expiresAt) {
+      console.log(`[BattleManager] Ready check expired for battle ${battleId}`);
+      return false;
+    }
+
+    // Mark player as ready
+    if (walletAddress === readyCheck.player1Wallet) {
+      readyCheck.player1Ready = true;
+    } else if (walletAddress === readyCheck.player2Wallet) {
+      readyCheck.player2Ready = true;
+    } else {
+      console.log(`[BattleManager] Wallet ${walletAddress} not in ready check for battle ${battleId}`);
+      return false;
+    }
+
+    console.log(`[BattleManager] Player ${walletAddress.slice(0, 8)}... accepted ready check for battle ${battleId}`);
+
+    // Emit update
+    const timeRemaining = Math.max(0, Math.ceil((readyCheck.expiresAt - Date.now()) / 1000));
+    this.emitReadyCheckEvent('ready_check_update', {
+      battleId,
+      player1Ready: readyCheck.player1Ready,
+      player2Ready: readyCheck.player2Ready,
+      timeRemaining,
+    });
+
+    // Check if both ready
+    if (readyCheck.player1Ready && readyCheck.player2Ready) {
+      this.completeReadyCheck(battleId);
+    }
+
+    return true;
+  }
+
+  // Decline ready check
+  declineReadyCheck(battleId: string, walletAddress: string): boolean {
+    const readyCheck = this.readyChecks.get(battleId);
+    if (!readyCheck) {
+      console.log(`[BattleManager] Ready check not found for battle ${battleId}`);
+      return false;
+    }
+
+    // Determine who declined and who was ready
+    const isPlayer1 = walletAddress === readyCheck.player1Wallet;
+    const isPlayer2 = walletAddress === readyCheck.player2Wallet;
+
+    if (!isPlayer1 && !isPlayer2) {
+      console.log(`[BattleManager] Wallet ${walletAddress} not in ready check for battle ${battleId}`);
+      return false;
+    }
+
+    const readyPlayer = isPlayer1
+      ? (readyCheck.player2Ready ? readyCheck.player2Wallet : undefined)
+      : (readyCheck.player1Ready ? readyCheck.player1Wallet : undefined);
+
+    console.log(`[BattleManager] Player ${walletAddress.slice(0, 8)}... declined ready check for battle ${battleId}`);
+
+    // Cancel the ready check
+    this.cancelReadyCheck(battleId, 'declined', walletAddress, readyPlayer);
+
+    return true;
+  }
+
+  // Handle ready check timeout
+  private handleReadyCheckTimeout(battleId: string): void {
+    const readyCheck = this.readyChecks.get(battleId);
+    if (!readyCheck) return;
+
+    // Determine who timed out (whoever wasn't ready)
+    let timedOutPlayer: string | undefined;
+    let readyPlayer: string | undefined;
+
+    if (!readyCheck.player1Ready && !readyCheck.player2Ready) {
+      // Both timed out
+      timedOutPlayer = undefined; // Both
+    } else if (!readyCheck.player1Ready) {
+      timedOutPlayer = readyCheck.player1Wallet;
+      readyPlayer = readyCheck.player2Wallet;
+    } else if (!readyCheck.player2Ready) {
+      timedOutPlayer = readyCheck.player2Wallet;
+      readyPlayer = readyCheck.player1Wallet;
+    }
+
+    console.log(`[BattleManager] Ready check timed out for battle ${battleId}`);
+    this.cancelReadyCheck(battleId, 'timeout', timedOutPlayer, readyPlayer);
+  }
+
+  // Complete ready check and start battle
+  private completeReadyCheck(battleId: string): void {
+    const readyCheck = this.readyChecks.get(battleId);
+    if (!readyCheck) return;
+
+    // Clear timer
+    const timer = this.readyCheckTimers.get(battleId);
+    if (timer) {
+      clearTimeout(timer);
+      this.readyCheckTimers.delete(battleId);
+    }
+
+    // Clean up ready check state
+    this.readyChecks.delete(battleId);
+    this.walletsInReadyCheck.delete(readyCheck.player1Wallet);
+    this.walletsInReadyCheck.delete(readyCheck.player2Wallet);
+
+    // Start the battle
+    console.log(`[BattleManager] Both players ready, starting battle ${battleId}`);
+    this.startBattle(battleId);
+  }
+
+  // Cancel ready check
+  private cancelReadyCheck(
+    battleId: string,
+    reason: 'declined' | 'timeout',
+    declinedOrTimedOutBy?: string,
+    readyPlayer?: string
+  ): void {
+    const readyCheck = this.readyChecks.get(battleId);
+    if (!readyCheck) return;
+
+    // Clear timer
+    const timer = this.readyCheckTimers.get(battleId);
+    if (timer) {
+      clearTimeout(timer);
+      this.readyCheckTimers.delete(battleId);
+    }
+
+    // Cancel the battle
+    const battle = this.battles.get(battleId);
+    if (battle) {
+      battle.status = 'cancelled';
+
+      // Clear player battle mappings
+      battle.players.forEach(player => {
+        this.playerBattles.delete(player.walletAddress);
+      });
+
+      this.notifyListeners(battle);
+    }
+
+    // Clean up ready check state
+    this.readyChecks.delete(battleId);
+    this.walletsInReadyCheck.delete(readyCheck.player1Wallet);
+    this.walletsInReadyCheck.delete(readyCheck.player2Wallet);
+
+    // Emit cancelled event
+    const cancelledData: ReadyCheckCancelled = {
+      battleId,
+      reason,
+      readyPlayer,
+    };
+
+    if (reason === 'declined') {
+      cancelledData.declinedBy = declinedOrTimedOutBy;
+    } else {
+      cancelledData.timedOutPlayer = declinedOrTimedOutBy;
+    }
+
+    this.emitReadyCheckEvent('ready_check_cancelled', cancelledData);
+    console.log(`[BattleManager] Ready check cancelled for battle ${battleId}: ${reason}`);
+  }
+
+  // Get ready check state for a battle
+  getReadyCheck(battleId: string): ReadyCheckState | undefined {
+    return this.readyChecks.get(battleId);
   }
 }
 

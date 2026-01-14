@@ -71,9 +71,52 @@ export interface SignedTrade extends TradeRecord {
   walletAddress: string;
 }
 
-export type BattleStatus = 'waiting' | 'active' | 'completed' | 'cancelled';
+export type BattleStatus = 'waiting' | 'ready_check' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
 export type BattleDuration = 1800 | 3600; // 30min, 1hr in seconds
+
+// Ready Check Types
+export interface ReadyCheckState {
+  battleId: string;
+  player1Wallet: string;
+  player2Wallet: string;
+  player1Ready: boolean;
+  player2Ready: boolean;
+  startedAt: number;
+  expiresAt: number;
+}
+
+export interface ReadyCheckResponse {
+  battleId: string;
+  opponentWallet: string;
+  config: BattleConfig;
+  expiresAt: number;
+}
+
+export interface ReadyCheckUpdate {
+  battleId: string;
+  player1Ready: boolean;
+  player2Ready: boolean;
+  timeRemaining: number;
+}
+
+export interface ReadyCheckCancelled {
+  battleId: string;
+  reason: 'declined' | 'timeout';
+  declinedBy?: string;
+  timedOutPlayer?: string;
+  readyPlayer?: string;
+}
+
+// Challenge Notification Types
+export interface ChallengeAcceptedNotification {
+  challengeId: string;
+  challengeCode: string;
+  acceptedBy: string;
+  battleId: string;
+  entryFee: number;
+  duration: number;
+}
 
 export interface BattleConfig {
   entryFee: number; // in SOL
@@ -219,6 +262,12 @@ export interface ServerToClientEvents {
   battle_ended: (battle: Battle) => void;
   error: (message: string) => void;
   matchmaking_status: (status: { position: number; estimated: number }) => void;
+  // Ready check events
+  match_found: (data: ReadyCheckResponse) => void;
+  ready_check_update: (data: ReadyCheckUpdate) => void;
+  ready_check_cancelled: (data: ReadyCheckCancelled) => void;
+  // Challenge notification events
+  challenge_accepted: (data: ChallengeAcceptedNotification) => void;
   // Spectator events
   live_battles: (battles: LiveBattle[]) => void;
   spectator_battle_update: (battle: LiveBattle) => void;
@@ -262,6 +311,13 @@ export interface ClientToServerEvents {
   close_position_signed: (payload: SignedTradePayload) => void;
   leave_battle: (battleId: string) => void;
   subscribe_prices: (tokens: string[]) => void;
+  // Ready check events
+  register_wallet: (walletAddress: string) => void;
+  accept_match: (battleId: string) => void;
+  decline_match: (battleId: string) => void;
+  // Challenge notification events
+  subscribe_challenge_notifications: (walletAddress: string) => void;
+  unsubscribe_challenge_notifications: (walletAddress: string) => void;
   // Spectator events
   subscribe_live_battles: () => void;
   unsubscribe_live_battles: () => void;
