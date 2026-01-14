@@ -24,6 +24,7 @@ import * as notificationDb from './db/notificationDatabase';
 import * as achievementDb from './db/achievementDatabase';
 import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
+import * as sharesDb from './db/sharesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { createToken } from './utils/jwt';
@@ -683,6 +684,82 @@ app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (r
     res.json(data);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch entries' });
+  }
+});
+
+// ===================
+// Win Sharing Endpoints
+// ===================
+
+const SHARE_XP_REWARD = 25;
+
+// Track a share event and award XP
+app.post('/api/shares/track', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { walletAddress, gameMode, winAmountLamports, roundId, platform } = req.body;
+
+    // Validate required fields
+    if (!walletAddress || !gameMode || !roundId || !platform) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate platform
+    if (!['twitter', 'copy', 'download'].includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform' });
+    }
+
+    // Validate game mode
+    if (!['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
+      return res.status(400).json({ error: 'Invalid game mode' });
+    }
+
+    // Check if already shared on this platform for this round
+    if (sharesDb.hasShared(walletAddress, roundId, platform)) {
+      return res.json({ success: true, xpEarned: 0, message: 'Already shared' });
+    }
+
+    // Only award XP for Twitter shares (can't verify other platforms)
+    let xpEarned = 0;
+    if (platform === 'twitter') {
+      const xpEvent = await progressionService.awardXp(
+        walletAddress,
+        SHARE_XP_REWARD,
+        'share',
+        `${roundId}-${platform}`,
+        `Shared ${gameMode} win on ${platform}`
+      );
+      xpEarned = xpEvent.amount;
+    }
+
+    // Record the share (for analytics, even if no XP)
+    sharesDb.recordShare({
+      walletAddress,
+      gameMode,
+      winAmountLamports: winAmountLamports || 0,
+      roundId,
+      platform,
+      xpAwarded: xpEarned,
+    });
+
+    res.json({
+      success: true,
+      xpEarned,
+      message: xpEarned > 0 ? `+${xpEarned} XP for sharing!` : 'Share recorded',
+    });
+  } catch (error: any) {
+    console.error('[Shares] Error tracking share:', error);
+    res.status(500).json({ error: error.message || 'Failed to track share' });
+  }
+});
+
+// Get share stats for a wallet
+app.get('/api/shares/stats/:wallet', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    const stats = sharesDb.getShareStats(wallet);
+    res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to get share stats' });
   }
 });
 

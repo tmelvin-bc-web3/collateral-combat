@@ -11,6 +11,8 @@ import { AssetIcon } from './AssetIcon';
 import { TradingViewChart } from './TradingViewChart';
 import { PositionsTable } from './battle/PositionsTable';
 import { TradeHistoryTable } from './battle/TradeHistoryTable';
+import { useWinShare } from '@/hooks/useWinShare';
+import { WinShareModal } from './WinShareModal';
 
 interface BattleArenaProps {
   battle: Battle;
@@ -400,6 +402,16 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   const [claimStatus, setClaimStatus] = useState<'idle' | 'claiming' | 'claimed' | 'error'>('idle');
   const [claimTxSignature, setClaimTxSignature] = useState<string | null>(null);
 
+  // Win share modal hook
+  const {
+    pendingWin,
+    showWinShare,
+    trackShare,
+    hasSharedOn,
+    dismissWin,
+    referralCode,
+  } = useWinShare();
+
   const sortedPlayers = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
   const isWinner = battle.winnerId === walletAddress;
   const prize = battle.prizePool * 0.95;
@@ -416,6 +428,13 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
       if (tx) {
         setClaimStatus('claimed');
         setClaimTxSignature(tx);
+
+        // Show win share modal after successful claim
+        showWinShare({
+          winAmount: prize,
+          gameMode: 'battle',
+          roundId: battle.id,
+        });
       } else {
         setClaimStatus('error');
       }
@@ -596,6 +615,15 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
           </div>
         </div>
       </div>
+
+      {/* Win Share Modal */}
+      <WinShareModal
+        winData={pendingWin}
+        onClose={dismissWin}
+        onTrackShare={trackShare}
+        hasSharedOn={hasSharedOn}
+        referralCode={referralCode}
+      />
     </div>
   );
 }

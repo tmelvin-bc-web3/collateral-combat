@@ -8,6 +8,8 @@ import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance, Predic
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
+import { useWinShare } from '@/hooks/useWinShare';
+import { WinShareModal } from '@/components/WinShareModal';
 
 // Mobile panel tab type
 type MobilePanel = 'none' | 'wagers' | 'history';
@@ -178,6 +180,16 @@ export default function PredictPage() {
 
   // Mobile panel state
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
+
+  // Win share modal hook
+  const {
+    pendingWin,
+    showWinShare,
+    trackShare,
+    hasSharedOn,
+    dismissWin,
+    referralCode,
+  } = useWinShare();
 
   // On-chain prediction hook
   const {
@@ -443,7 +455,7 @@ export default function PredictPage() {
 
   // Handle claim winnings
   const handleClaim = async () => {
-    if (!onChainRound || !canClaim) return;
+    if (!onChainRound || !canClaim || !myPosition) return;
 
     setIsClaiming(true);
     setError(null);
@@ -454,6 +466,15 @@ export default function PredictPage() {
     if (tx) {
       setClaimSuccess(tx);
       setTimeout(() => setClaimSuccess(null), 5000);
+
+      // Show win share modal after successful claim
+      // Estimate win amount as approximately 2x the bet (typical for balanced pools)
+      const estimatedWinAmount = myPosition.amount * 1.9;
+      showWinShare({
+        winAmount: estimatedWinAmount,
+        gameMode: 'oracle',
+        roundId: String(onChainRound.roundId),
+      });
     } else if (onChainError) {
       setError(onChainError);
     }
@@ -1118,6 +1139,15 @@ export default function PredictPage() {
           </aside>
         )}
       </div>
+
+      {/* Win Share Modal */}
+      <WinShareModal
+        winData={pendingWin}
+        onClose={dismissWin}
+        onTrackShare={trackShare}
+        hasSharedOn={hasSharedOn}
+        referralCode={referralCode}
+      />
     </div>
   );
 }

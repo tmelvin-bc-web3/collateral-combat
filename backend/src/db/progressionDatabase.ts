@@ -137,7 +137,7 @@ db.exec(`
 // Type Definitions
 // ===================
 
-export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
+export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator' | 'share';
 export type PerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
 export type CosmeticType = 'border' | 'pfp' | 'title';
 export type FreeBetTransactionType = 'earned' | 'used';
