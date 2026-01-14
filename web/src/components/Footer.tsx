@@ -38,7 +38,7 @@ export function Footer() {
           {/* Social Links */}
           <div className="flex items-center gap-4">
             <a
-              href="https://twitter.com/degendome"
+              href="https://x.com/DegenDomeSolana"
               target="_blank"
               rel="noopener noreferrer"
               className="text-text-tertiary hover:text-text-primary transition-colors"

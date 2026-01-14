@@ -311,7 +311,7 @@ export default function ComingSoon() {
         {/* Social links */}
         <div className="mt-16 flex items-center gap-4">
           <a
-            href="https://twitter.com"
+            href="https://x.com/DegenDomeSolana"
             target="_blank"
             rel="noopener noreferrer"
             className="p-4 rounded-xl bg-[#151210] border border-[#2a2218] text-[#5c5348] hover:text-[#e8dfd4] hover:border-[#8b4513]/50 hover:bg-[#1f1a16] transition-all duration-300"
