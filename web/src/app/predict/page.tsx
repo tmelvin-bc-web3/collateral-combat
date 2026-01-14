@@ -680,7 +680,7 @@ export default function PredictPage() {
       <div className="flex gap-2 sm:gap-4 flex-1 min-h-0">
 
         {/* LEFT SIDEBAR - Live Wagers (fixed width) */}
-        <div className="hidden lg:flex lg:flex-col w-72 flex-shrink-0 overflow-hidden">
+        <aside className="hidden lg:flex lg:flex-col w-72 min-w-[288px] flex-shrink-0 overflow-hidden">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Wagers</div>
 
@@ -748,7 +748,7 @@ export default function PredictPage() {
               </div>
             </div>
           </div>
-        </div>
+        </aside>
 
         {/* MAIN GAME AREA - takes remaining space */}
         <div className="flex-1 flex flex-col min-h-0 gap-2">
@@ -1055,7 +1055,7 @@ export default function PredictPage() {
         </div>
 
         {/* RIGHT SIDEBAR - History (fixed width) */}
-        <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 overflow-hidden">
+        <aside className="hidden lg:flex lg:flex-col w-64 min-w-[256px] flex-shrink-0 overflow-hidden">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">History</div>
 
@@ -1089,7 +1089,7 @@ export default function PredictPage() {
               )}
             </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
