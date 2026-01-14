@@ -212,7 +212,7 @@ app.delete('/api/profile/:wallet', requireOwnWallet, (req: Request, res: Respons
 // ===================
 
 // Join the waitlist
-app.post('/api/waitlist/join', strictLimiter, (req: Request, res: Response) => {
+app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response) => {
   try {
     const { email, walletAddress, referralCode, utmSource, utmCampaign } = req.body;
 
@@ -227,15 +227,20 @@ app.post('/api/waitlist/join', strictLimiter, (req: Request, res: Response) => {
     }
 
     // Validate referral code if provided
-    if (referralCode && !waitlistDb.validateReferralCode(referralCode)) {
-      // Don't error, just ignore invalid referral codes
-      console.log(`[Waitlist] Invalid referral code attempted: ${referralCode}`);
+    let validReferralCode: string | undefined;
+    if (referralCode) {
+      const isValid = await waitlistDb.validateReferralCode(referralCode);
+      if (isValid) {
+        validReferralCode = referralCode;
+      } else {
+        console.log(`[Waitlist] Invalid referral code attempted: ${referralCode}`);
+      }
     }
 
-    const entry = waitlistDb.joinWaitlist({
+    const entry = await waitlistDb.joinWaitlist({
       email,
       walletAddress,
-      referralCode: referralCode && waitlistDb.validateReferralCode(referralCode) ? referralCode : undefined,
+      referralCode: validReferralCode,
       utmSource,
       utmCampaign,
     });
@@ -250,7 +255,7 @@ app.post('/api/waitlist/join', strictLimiter, (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.message === 'Email already registered') {
       // Return existing entry info
-      const existing = waitlistDb.findByEmail(req.body.email);
+      const existing = await waitlistDb.findByEmail(req.body.email);
       if (existing) {
         return res.json({
           success: true,
@@ -267,9 +272,9 @@ app.post('/api/waitlist/join', strictLimiter, (req: Request, res: Response) => {
 });
 
 // Get waitlist status by email
-app.get('/api/waitlist/status/:email', (req: Request, res: Response) => {
+app.get('/api/waitlist/status/:email', async (req: Request, res: Response) => {
   const email = decodeURIComponent(req.params.email);
-  const status = waitlistDb.getWaitlistStatus(email);
+  const status = await waitlistDb.getWaitlistStatus(email);
 
   if (!status) {
     return res.status(404).json({ error: 'Email not found on waitlist' });
@@ -279,25 +284,26 @@ app.get('/api/waitlist/status/:email', (req: Request, res: Response) => {
 });
 
 // Get waitlist leaderboard
-app.get('/api/waitlist/leaderboard', (req: Request, res: Response) => {
+app.get('/api/waitlist/leaderboard', async (req: Request, res: Response) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
-  const leaderboard = waitlistDb.getLeaderboard(limit);
+  const leaderboard = await waitlistDb.getLeaderboard(limit);
   res.json(leaderboard);
 });
 
 // Validate a referral code
-app.get('/api/waitlist/validate/:code', (req: Request, res: Response) => {
-  const isValid = waitlistDb.validateReferralCode(req.params.code);
+app.get('/api/waitlist/validate/:code', async (req: Request, res: Response) => {
+  const isValid = await waitlistDb.validateReferralCode(req.params.code);
   res.json({ valid: isValid, code: req.params.code });
 });
 
 // Get total waitlist count (public)
-app.get('/api/waitlist/count', (req: Request, res: Response) => {
-  res.json({ count: waitlistDb.getTotalCount() });
+app.get('/api/waitlist/count', async (req: Request, res: Response) => {
+  const count = await waitlistDb.getTotalCount();
+  res.json({ count });
 });
 
 // Update wallet address for existing waitlist entry
-app.put('/api/waitlist/wallet', strictLimiter, (req: Request, res: Response) => {
+app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Response) => {
   try {
     const { email, walletAddress } = req.body;
 
@@ -305,7 +311,7 @@ app.put('/api/waitlist/wallet', strictLimiter, (req: Request, res: Response) => 
       return res.status(400).json({ error: 'Email and wallet address required' });
     }
 
-    const updated = waitlistDb.updateWalletAddress(email, walletAddress);
+    const updated = await waitlistDb.updateWalletAddress(email, walletAddress);
     if (!updated) {
       return res.status(404).json({ error: 'Email not found on waitlist' });
     }

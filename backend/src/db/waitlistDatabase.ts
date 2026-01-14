@@ -1,46 +1,78 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
-// Database setup
-const dbPath = path.join(__dirname, '../../data/waitlist.db');
-const db = new Database(dbPath);
+// ===================
+// PostgreSQL Connection
+// ===================
 
-// Initialize tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS waitlist_entries (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    wallet_address TEXT,
-    referral_code TEXT UNIQUE NOT NULL,
-    referred_by TEXT,
-    referral_count INTEGER DEFAULT 0,
-    position INTEGER NOT NULL,
-    tier TEXT DEFAULT 'standard',
-    created_at INTEGER NOT NULL,
-    converted_at INTEGER,
-    utm_source TEXT,
-    utm_campaign TEXT,
-    ip_country TEXT
-  );
+const DATABASE_URL = process.env.DATABASE_URL;
 
-  CREATE TABLE IF NOT EXISTS waitlist_referrals (
-    id TEXT PRIMARY KEY,
-    referrer_code TEXT NOT NULL,
-    referee_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    credited INTEGER DEFAULT 0,
-    FOREIGN KEY (referee_id) REFERENCES waitlist_entries(id)
-  );
+if (!DATABASE_URL) {
+  console.warn('[WaitlistDB] WARNING: DATABASE_URL not set. Waitlist features will not work.');
+}
 
-  CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist_entries(email);
-  CREATE INDEX IF NOT EXISTS idx_waitlist_referral_code ON waitlist_entries(referral_code);
-  CREATE INDEX IF NOT EXISTS idx_waitlist_referred_by ON waitlist_entries(referred_by);
-  CREATE INDEX IF NOT EXISTS idx_waitlist_tier ON waitlist_entries(tier);
-  CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON waitlist_referrals(referrer_code);
-`);
+const pool = DATABASE_URL
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false }, // Required for most cloud PostgreSQL providers
+    })
+  : null;
 
+// ===================
+// Database Initialization
+// ===================
+
+async function initializeDatabase(): Promise<void> {
+  if (!pool) {
+    console.warn('[WaitlistDB] Skipping initialization - no database connection');
+    return;
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS waitlist_entries (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        wallet_address TEXT,
+        referral_code TEXT UNIQUE NOT NULL,
+        referred_by TEXT,
+        referral_count INTEGER DEFAULT 0,
+        position INTEGER NOT NULL,
+        tier TEXT DEFAULT 'standard',
+        created_at BIGINT NOT NULL,
+        converted_at BIGINT,
+        utm_source TEXT,
+        utm_campaign TEXT,
+        ip_country TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS waitlist_referrals (
+        id TEXT PRIMARY KEY,
+        referrer_code TEXT NOT NULL,
+        referee_id TEXT NOT NULL,
+        timestamp BIGINT NOT NULL,
+        credited INTEGER DEFAULT 0
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist_entries(email);
+      CREATE INDEX IF NOT EXISTS idx_waitlist_referral_code ON waitlist_entries(referral_code);
+      CREATE INDEX IF NOT EXISTS idx_waitlist_referred_by ON waitlist_entries(referred_by);
+      CREATE INDEX IF NOT EXISTS idx_waitlist_tier ON waitlist_entries(tier);
+      CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON waitlist_referrals(referrer_code);
+    `);
+    console.log('[WaitlistDB] Database initialized successfully');
+  } catch (error) {
+    console.error('[WaitlistDB] Failed to initialize database:', error);
+  }
+}
+
+// Initialize on module load
+initializeDatabase();
+
+// ===================
 // Types
+// ===================
+
 export type WaitlistTier = 'standard' | 'priority' | 'vip' | 'founding';
 
 export interface WaitlistEntry {
@@ -76,7 +108,10 @@ export interface WaitlistJoinRequest {
   ipCountry?: string;
 }
 
-// Tier configuration
+// ===================
+// Tier Configuration
+// ===================
+
 export const WAITLIST_TIERS = {
   standard: { minReferrals: 0, benefits: ['Beta access lottery'] },
   priority: { minReferrals: 3, benefits: ['Guaranteed beta access'] },
@@ -84,7 +119,10 @@ export const WAITLIST_TIERS = {
   founding: { minReferrals: 25, benefits: ['Beta access', '500 bonus XP', 'Founding badge', '0.05 SOL free bets'] }
 };
 
-// Generate unique referral code
+// ===================
+// Helper Functions
+// ===================
+
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'DEGEN';
@@ -94,7 +132,6 @@ function generateReferralCode(): string {
   return code;
 }
 
-// Calculate tier from referral count
 function calculateTier(referralCount: number): WaitlistTier {
   if (referralCount >= 25) return 'founding';
   if (referralCount >= 10) return 'vip';
@@ -102,15 +139,13 @@ function calculateTier(referralCount: number): WaitlistTier {
   return 'standard';
 }
 
-// Get referrals needed for next tier
 function getReferralsNeededForNextTier(currentCount: number): number {
-  if (currentCount >= 25) return 0; // Already at max
+  if (currentCount >= 25) return 0;
   if (currentCount >= 10) return 25 - currentCount;
   if (currentCount >= 3) return 10 - currentCount;
   return 3 - currentCount;
 }
 
-// Database row to entry conversion
 function rowToEntry(row: any): WaitlistEntry {
   return {
     id: row.id,
@@ -121,142 +156,185 @@ function rowToEntry(row: any): WaitlistEntry {
     referralCount: row.referral_count,
     position: row.position,
     tier: row.tier as WaitlistTier,
-    createdAt: row.created_at,
-    convertedAt: row.converted_at || undefined,
+    createdAt: parseInt(row.created_at),
+    convertedAt: row.converted_at ? parseInt(row.converted_at) : undefined,
     utmSource: row.utm_source || undefined,
     utmCampaign: row.utm_campaign || undefined,
     ipCountry: row.ip_country || undefined,
   };
 }
 
-// Prepared statements
-const statements = {
-  findByEmail: db.prepare('SELECT * FROM waitlist_entries WHERE LOWER(email) = LOWER(?)'),
-  findByCode: db.prepare('SELECT * FROM waitlist_entries WHERE referral_code = ?'),
-  findById: db.prepare('SELECT * FROM waitlist_entries WHERE id = ?'),
-  getCount: db.prepare('SELECT COUNT(*) as count FROM waitlist_entries'),
-  insert: db.prepare(`
-    INSERT INTO waitlist_entries (
-      id, email, wallet_address, referral_code, referred_by, referral_count,
-      position, tier, created_at, utm_source, utm_campaign, ip_country
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `),
-  updateReferralCount: db.prepare(`
-    UPDATE waitlist_entries SET referral_count = ?, tier = ? WHERE id = ?
-  `),
-  insertReferral: db.prepare(`
-    INSERT INTO waitlist_referrals (id, referrer_code, referee_id, timestamp, credited)
-    VALUES (?, ?, ?, ?, ?)
-  `),
-  getTopReferrers: db.prepare(`
-    SELECT referral_code, referral_count, tier
-    FROM waitlist_entries
-    WHERE referral_count > 0
-    ORDER BY referral_count DESC
-    LIMIT ?
-  `),
-  updateWalletAddress: db.prepare(`
-    UPDATE waitlist_entries SET wallet_address = ? WHERE id = ?
-  `),
-};
-
-// Public functions
-
-export function findByEmail(email: string): WaitlistEntry | null {
-  const row = statements.findByEmail.get(email);
-  return row ? rowToEntry(row) : null;
+function maskReferralCode(code: string): string {
+  if (code.length <= 6) return code;
+  return code.substring(0, 5) + '***' + code.substring(code.length - 1);
 }
 
-export function findByReferralCode(code: string): WaitlistEntry | null {
-  const row = statements.findByCode.get(code);
-  return row ? rowToEntry(row) : null;
+// ===================
+// Database Functions
+// ===================
+
+export async function findByEmail(email: string): Promise<WaitlistEntry | null> {
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM waitlist_entries WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+    return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
+  } catch (error) {
+    console.error('[WaitlistDB] findByEmail error:', error);
+    return null;
+  }
 }
 
-export function findById(id: string): WaitlistEntry | null {
-  const row = statements.findById.get(id);
-  return row ? rowToEntry(row) : null;
+export async function findByReferralCode(code: string): Promise<WaitlistEntry | null> {
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM waitlist_entries WHERE referral_code = $1',
+      [code]
+    );
+    return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
+  } catch (error) {
+    console.error('[WaitlistDB] findByReferralCode error:', error);
+    return null;
+  }
 }
 
-export function getTotalCount(): number {
-  const result = statements.getCount.get() as { count: number };
-  return result.count;
+export async function findById(id: string): Promise<WaitlistEntry | null> {
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM waitlist_entries WHERE id = $1',
+      [id]
+    );
+    return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
+  } catch (error) {
+    console.error('[WaitlistDB] findById error:', error);
+    return null;
+  }
 }
 
-export function joinWaitlist(data: WaitlistJoinRequest): WaitlistEntry {
+export async function getTotalCount(): Promise<number> {
+  if (!pool) return 0;
+
+  try {
+    const result = await pool.query('SELECT COUNT(*) as count FROM waitlist_entries');
+    return parseInt(result.rows[0].count);
+  } catch (error) {
+    console.error('[WaitlistDB] getTotalCount error:', error);
+    return 0;
+  }
+}
+
+export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistEntry> {
+  if (!pool) {
+    throw new Error('Database not configured');
+  }
+
   // Check if email already registered
-  const existing = findByEmail(data.email);
+  const existing = await findByEmail(data.email);
   if (existing) {
     throw new Error('Email already registered');
   }
 
   // Generate unique referral code
   let referralCode = generateReferralCode();
-  while (findByReferralCode(referralCode)) {
+  while (await findByReferralCode(referralCode)) {
     referralCode = generateReferralCode();
   }
 
   // Get current position
-  const position = getTotalCount() + 1;
+  const position = (await getTotalCount()) + 1;
 
   // Create entry
   const id = uuidv4();
   const now = Date.now();
 
-  statements.insert.run(
-    id,
-    data.email.toLowerCase().trim(),
-    data.walletAddress || null,
-    referralCode,
-    data.referralCode || null,
-    0,
-    position,
-    'standard',
-    now,
-    data.utmSource || 'direct',
-    data.utmCampaign || null,
-    data.ipCountry || null
-  );
+  try {
+    await pool.query(
+      `INSERT INTO waitlist_entries (
+        id, email, wallet_address, referral_code, referred_by, referral_count,
+        position, tier, created_at, utm_source, utm_campaign, ip_country
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        id,
+        data.email.toLowerCase().trim(),
+        data.walletAddress || null,
+        referralCode,
+        data.referralCode || null,
+        0,
+        position,
+        'standard',
+        now,
+        data.utmSource || 'direct',
+        data.utmCampaign || null,
+        data.ipCountry || null,
+      ]
+    );
 
-  // Credit referrer if applicable
-  if (data.referralCode) {
-    creditReferrer(data.referralCode, id);
+    // Credit referrer if applicable
+    if (data.referralCode) {
+      await creditReferrer(data.referralCode, id);
+    }
+
+    const entry = await findById(id);
+    if (!entry) {
+      throw new Error('Failed to create waitlist entry');
+    }
+    return entry;
+  } catch (error: any) {
+    if (error.message === 'Email already registered') {
+      throw error;
+    }
+    console.error('[WaitlistDB] joinWaitlist error:', error);
+    throw new Error('Failed to join waitlist');
   }
-
-  return findById(id)!;
 }
 
-export function creditReferrer(referralCode: string, newUserId: string): boolean {
-  const referrer = findByReferralCode(referralCode);
-  if (!referrer) return false;
+export async function creditReferrer(referralCode: string, newUserId: string): Promise<boolean> {
+  if (!pool) return false;
 
-  // Increment referral count
-  const newCount = referrer.referralCount + 1;
-  const newTier = calculateTier(newCount);
+  try {
+    const referrer = await findByReferralCode(referralCode);
+    if (!referrer) return false;
 
-  // Update referrer
-  statements.updateReferralCount.run(newCount, newTier, referrer.id);
+    // Increment referral count
+    const newCount = referrer.referralCount + 1;
+    const newTier = calculateTier(newCount);
 
-  // Log referral event
-  statements.insertReferral.run(
-    uuidv4(),
-    referralCode,
-    newUserId,
-    Date.now(),
-    1
-  );
+    // Update referrer
+    await pool.query(
+      'UPDATE waitlist_entries SET referral_count = $1, tier = $2 WHERE id = $3',
+      [newCount, newTier, referrer.id]
+    );
 
-  return newTier !== referrer.tier; // Return true if tier upgraded
+    // Log referral event
+    await pool.query(
+      `INSERT INTO waitlist_referrals (id, referrer_code, referee_id, timestamp, credited)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [uuidv4(), referralCode, newUserId, Date.now(), 1]
+    );
+
+    return newTier !== referrer.tier; // Return true if tier upgraded
+  } catch (error) {
+    console.error('[WaitlistDB] creditReferrer error:', error);
+    return false;
+  }
 }
 
-export function getWaitlistStatus(email: string): {
+export async function getWaitlistStatus(email: string): Promise<{
   position: number;
   referralCount: number;
   tier: WaitlistTier;
   referralsNeededForNextTier: number;
   rewards: string[];
   referralCode: string;
-} | null {
-  const entry = findByEmail(email);
+} | null> {
+  const entry = await findByEmail(email);
   if (!entry) return null;
 
   return {
@@ -269,7 +347,7 @@ export function getWaitlistStatus(email: string): {
   };
 }
 
-export function getLeaderboard(limit: number = 10): {
+export async function getLeaderboard(limit: number = 10): Promise<{
   topReferrers: Array<{
     position: number;
     referralCode: string;
@@ -277,37 +355,57 @@ export function getLeaderboard(limit: number = 10): {
     tier: WaitlistTier;
   }>;
   totalSignups: number;
-} {
-  const rows = statements.getTopReferrers.all(limit) as any[];
+}> {
+  if (!pool) {
+    return { topReferrers: [], totalSignups: 0 };
+  }
 
-  return {
-    topReferrers: rows.map((row, index) => ({
-      position: index + 1,
-      referralCode: maskReferralCode(row.referral_code),
-      referralCount: row.referral_count,
-      tier: row.tier as WaitlistTier,
-    })),
-    totalSignups: getTotalCount(),
-  };
+  try {
+    const result = await pool.query(
+      `SELECT referral_code, referral_count, tier
+       FROM waitlist_entries
+       WHERE referral_count > 0
+       ORDER BY referral_count DESC
+       LIMIT $1`,
+      [limit]
+    );
+
+    return {
+      topReferrers: result.rows.map((row, index) => ({
+        position: index + 1,
+        referralCode: maskReferralCode(row.referral_code),
+        referralCount: row.referral_count,
+        tier: row.tier as WaitlistTier,
+      })),
+      totalSignups: await getTotalCount(),
+    };
+  } catch (error) {
+    console.error('[WaitlistDB] getLeaderboard error:', error);
+    return { topReferrers: [], totalSignups: 0 };
+  }
 }
 
-// Mask referral code for leaderboard display (DEGENX2Y3 -> DEGEN***3)
-function maskReferralCode(code: string): string {
-  if (code.length <= 6) return code;
-  return code.substring(0, 5) + '***' + code.substring(code.length - 1);
+export async function updateWalletAddress(email: string, walletAddress: string): Promise<boolean> {
+  if (!pool) return false;
+
+  try {
+    const entry = await findByEmail(email);
+    if (!entry) return false;
+
+    await pool.query(
+      'UPDATE waitlist_entries SET wallet_address = $1 WHERE id = $2',
+      [walletAddress, entry.id]
+    );
+    return true;
+  } catch (error) {
+    console.error('[WaitlistDB] updateWalletAddress error:', error);
+    return false;
+  }
 }
 
-export function updateWalletAddress(email: string, walletAddress: string): boolean {
-  const entry = findByEmail(email);
-  if (!entry) return false;
-
-  statements.updateWalletAddress.run(walletAddress, entry.id);
-  return true;
+export async function validateReferralCode(code: string): Promise<boolean> {
+  const entry = await findByReferralCode(code);
+  return entry !== null;
 }
 
-// Get entry by referral code (for referral link validation)
-export function validateReferralCode(code: string): boolean {
-  return findByReferralCode(code) !== null;
-}
-
-console.log('[WaitlistDB] Initialized waitlist database');
+console.log('[WaitlistDB] Waitlist database module loaded');
