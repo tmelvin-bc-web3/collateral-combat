@@ -7,6 +7,7 @@ export const WHITELISTED_WALLETS: string[] = [
   'CythzC1okU4p8on7FzQDCrrHXBzRvdiqite2UjauNE2W',
   '37ZQx6QbmxX93VhSLDNUzmusDvtBcA3G5xHQFqoLpp7r',
   'Fqczgf9KfSVXtMtXccq6SE1yBfWeUXefJ3ithStptTUa',
+  '82RHm6tsGXtiZ8zjymT6D3dmoaMCikdKP4agN67BcRkY',
 ];
 
 // Check if a wallet is whitelisted
