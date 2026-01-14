@@ -104,6 +104,8 @@ export default function ComingSoon() {
           tier: data.tier,
           referralLink: data.referralLink,
         });
+        // Save email to localStorage for dashboard
+        localStorage.setItem('waitlist_email', email);
         setEmail('');
       } else {
         setStatus('error');
@@ -345,7 +347,7 @@ export default function ComingSoon() {
                 {/* Share & Dashboard links */}
                 <div className="flex gap-3 justify-center">
                   <a
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just joined the DegenDome waitlist! PvP trading arena on Solana:`)}&url=${encodeURIComponent(waitlistData.referralLink)}`}
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🏟️ Just secured my spot in the DegenDome arena!\n\n1v1 trading battles on Solana. May the best degen win.\n\nJoin the waitlist:`)}&url=${encodeURIComponent(waitlistData.referralLink)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-4 py-2 bg-[#151210] border border-[#2a2218] rounded-lg text-[#c4a574] text-xs hover:border-[#ff5500]/30 transition-colors"

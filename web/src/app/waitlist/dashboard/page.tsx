@@ -255,7 +255,7 @@ export default function WaitlistDashboard() {
               {/* Share buttons */}
               <div className="flex gap-3 mt-4">
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on the DegenDome waitlist! PvP trading arena on Solana:`)}&url=${encodeURIComponent(`https://www.degendome.xyz/ref/${status.referralCode}`)}`}
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🏟️ Join me in the DegenDome arena!\n\n1v1 trading battles on Solana. May the best degen win.\n\nJoin the waitlist:`)}&url=${encodeURIComponent(`https://www.degendome.xyz/ref/${status.referralCode}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-2 bg-black/40 border border-white/10 rounded-lg text-white/80 text-sm text-center hover:border-white/30 transition-colors"
