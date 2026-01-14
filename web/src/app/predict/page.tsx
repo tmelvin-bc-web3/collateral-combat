@@ -42,6 +42,26 @@ function usePrefersReducedMotion(): boolean {
   return prefersReduced;
 }
 
+// Hook to detect if screen is large enough for sidebars (lg breakpoint = 1024px)
+function useIsLargeScreen(): boolean {
+  const [isLarge, setIsLarge] = useState(false);
+
+  useEffect(() => {
+    const checkSize = () => {
+      setIsLarge(window.innerWidth >= 1024);
+    };
+
+    // Check on mount
+    checkSize();
+
+    // Listen for resize
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
+  }, []);
+
+  return isLarge;
+}
+
 // Hook for smooth price interpolation
 function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolean): number {
   const [displayPrice, setDisplayPrice] = useState(targetPrice);
@@ -138,6 +158,9 @@ export default function PredictPage() {
 
   // Motion preferences
   const prefersReducedMotion = usePrefersReducedMotion();
+
+  // Screen size for sidebar visibility
+  const isLargeScreen = useIsLargeScreen();
 
   // Animated price display (respects reduced motion)
   const animatedPrice = useAnimatedPrice(
@@ -679,12 +702,13 @@ export default function PredictPage() {
       {/* 3-Column Layout: Left Sidebar | Main | Right Sidebar - fills remaining height */}
       <div className="flex gap-2 sm:gap-4 flex-1 min-h-0">
 
-        {/* LEFT SIDEBAR - Live Wagers (fixed width) */}
-        <aside className="w-0 lg:w-72 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto flex flex-col flex-shrink-0 overflow-hidden transition-all duration-200">
-          <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
-            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Wagers</div>
+        {/* LEFT SIDEBAR - Live Wagers (fixed width) - only render on large screens */}
+        {isLargeScreen && (
+          <aside className="w-72 flex flex-col flex-shrink-0 overflow-hidden">
+            <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
+              <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Wagers</div>
 
-            <div className="flex-1 overflow-y-auto space-y-1">
+              <div className="flex-1 overflow-y-auto space-y-1">
               {/* Real-time wagers from socket stream */}
               {liveBets.length > 0 ? (
                 liveBets.map((bet) => (
@@ -746,9 +770,10 @@ export default function PredictPage() {
                   <div className="text-[9px] text-white/30 uppercase">Short Pool</div>
                 </div>
               </div>
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
 
         {/* MAIN GAME AREA - takes remaining space */}
         <div className="flex-1 flex flex-col min-h-0 gap-2">
@@ -1054,42 +1079,44 @@ export default function PredictPage() {
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR - History (fixed width) */}
-        <aside className="w-0 lg:w-64 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto flex flex-col flex-shrink-0 overflow-hidden transition-all duration-200">
-          <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
-            <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">History</div>
+        {/* RIGHT SIDEBAR - History (fixed width) - only render on large screens */}
+        {isLargeScreen && (
+          <aside className="w-64 flex flex-col flex-shrink-0 overflow-hidden">
+            <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
+              <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">History</div>
 
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {recentRounds.slice(0, 15).map((round) => {
-                const change = round.endPrice && round.startPrice
-                  ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
-                  : 0;
-                const isLong = round.winner === 'long';
-                const isShort = round.winner === 'short';
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {recentRounds.slice(0, 15).map((round) => {
+                  const change = round.endPrice && round.startPrice
+                    ? ((round.endPrice - round.startPrice) / round.startPrice * 100)
+                    : 0;
+                  const isLongWinner = round.winner === 'long';
+                  const isShortWinner = round.winner === 'short';
 
-                return (
-                  <div
-                    key={round.id}
-                    className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                      isLong ? 'bg-success/10' : isShort ? 'bg-danger/10' : 'bg-white/5'
-                    }`}
-                  >
-                    <span className={`font-bold text-sm ${isLong ? 'text-success' : isShort ? 'text-danger' : 'text-white/30'}`}>
-                      {isLong ? 'LONG' : isShort ? 'SHORT' : 'PUSH'}
-                    </span>
-                    <span className={`font-mono text-sm ${change >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                    </span>
-                  </div>
-                );
-              })}
+                  return (
+                    <div
+                      key={round.id}
+                      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                        isLongWinner ? 'bg-success/10' : isShortWinner ? 'bg-danger/10' : 'bg-white/5'
+                      }`}
+                    >
+                      <span className={`font-bold text-sm ${isLongWinner ? 'text-success' : isShortWinner ? 'text-danger' : 'text-white/30'}`}>
+                        {isLongWinner ? 'LONG' : isShortWinner ? 'SHORT' : 'PUSH'}
+                      </span>
+                      <span className={`font-mono text-sm ${change >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+                      </span>
+                    </div>
+                  );
+                })}
 
-              {recentRounds.length === 0 && (
-                <div className="text-white/20 text-xs text-center py-8">No rounds yet</div>
-              )}
+                {recentRounds.length === 0 && (
+                  <div className="text-white/20 text-xs text-center py-8">No rounds yet</div>
+                )}
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
     </div>
   );
