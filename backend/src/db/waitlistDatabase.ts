@@ -371,7 +371,7 @@ export async function getLeaderboard(limit: number = 10): Promise<{
     );
 
     return {
-      topReferrers: result.rows.map((row, index) => ({
+      topReferrers: result.rows.map((row: any, index: number) => ({
         position: index + 1,
         referralCode: maskReferralCode(row.referral_code),
         referralCount: row.referral_count,
