@@ -1,15 +1,27 @@
 // Whitelisted wallet addresses that can bypass coming soon mode
-// SECURITY: Wallets are loaded from environment variable to avoid exposing addresses in source code
-// Set NEXT_PUBLIC_WHITELISTED_WALLETS as a comma-separated list of wallet addresses
+// Wallets can be added via environment variable OR hardcoded below
+// Set NEXT_PUBLIC_WHITELISTED_WALLETS as a comma-separated list for additional wallets
+
+// Hardcoded admin/team wallets
+const HARDCODED_WALLETS: string[] = [
+  'GxjjUmgTR9uR63b1xgmnv5RweZgLu3FKrLspY9pCZdEN', // Tayler
+  'CythzC1okU4p8on7FzQDCrrHXBzRvdiqite2UjauNE2W',
+  '37ZQx6QbmxX93VhSLDNUzmusDvtBcA3G5xHQFqoLpp7r',
+  'Fqczgf9KfSVXtMtXccq6SE1yBfWeUXefJ3ithStptTUa',
+  '82RHm6tsGXtiZ8zjymT6D3dmoaMCikdKP4agN67BcRkY',
+];
 
 const parseWhitelistedWallets = (): string[] => {
   const envWallets = process.env.NEXT_PUBLIC_WHITELISTED_WALLETS;
-  if (!envWallets) return [];
+  if (!envWallets) return HARDCODED_WALLETS;
 
-  return envWallets
+  const envList = envWallets
     .split(',')
     .map((addr) => addr.trim())
     .filter((addr) => addr.length > 0);
+
+  // Combine hardcoded + env wallets, removing duplicates
+  return [...new Set([...HARDCODED_WALLETS, ...envList])];
 };
 
 export const WHITELISTED_WALLETS: string[] = parseWhitelistedWallets();
