@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "PvP Trading Battles on Solana - Frontend",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
