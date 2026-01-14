@@ -610,11 +610,11 @@ export function BattleLobby() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleSoloPractice}
                   disabled={combinedLoading}
-                  className="flex-1 py-3.5 px-6 rounded-xl bg-bg-tertiary border border-border-primary text-text-secondary font-semibold hover:bg-bg-hover hover:text-text-primary hover:border-border-secondary transition-all disabled:opacity-50"
+                  className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl bg-bg-tertiary border border-border-primary text-text-secondary font-semibold hover:bg-bg-hover hover:text-text-primary hover:border-border-secondary transition-all disabled:opacity-50"
                 >
                   <div className="flex items-center justify-center gap-2">
                     {isCreatingOnChain ? (
@@ -635,7 +635,7 @@ export function BattleLobby() {
                 <button
                   onClick={handleFindMatch}
                   disabled={combinedLoading}
-                  className="flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold hover:shadow-fire transition-all disabled:opacity-50 active:scale-[0.98]"
+                  className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold hover:shadow-fire transition-all disabled:opacity-50 active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-center gap-2">
                     {combinedLoading && !isCreatingOnChain ? (

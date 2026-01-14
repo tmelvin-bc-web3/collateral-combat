@@ -114,102 +114,130 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const isUrgent = timeRemaining < 60;
   const currentPrice = prices[selectedAsset] || 0;
 
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
+
   return (
-    <div className="h-[calc(100vh-96px)] flex flex-col overflow-hidden animate-fadeIn">
+    <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-96px)] flex flex-col overflow-hidden animate-fadeIn">
       {/* Error Toast */}
       {error && (
-        <div className="fixed top-20 right-4 z-50 p-4 rounded-xl bg-danger/20 border border-danger/30 text-danger text-sm flex items-center gap-3 shadow-xl animate-fadeIn">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="fixed top-20 right-4 z-50 p-3 md:p-4 rounded-xl bg-danger/20 border border-danger/30 text-danger text-sm flex items-center gap-2 md:gap-3 shadow-xl animate-fadeIn max-w-[90vw]">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          {error}
+          <span className="truncate">{error}</span>
         </div>
       )}
 
-      {/* Main Layout: Chart Left + Order Panel Right */}
-      <div className="flex-1 flex min-h-0">
-        {/* Left Side: Chart Area */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-white/10">
-          {/* Chart Header */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-black/40 flex-shrink-0">
+      {/* Main Layout: Responsive - stacked on mobile, side-by-side on desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Chart Area - Full width on mobile, flex-1 on desktop */}
+        <div className="flex-1 flex flex-col min-w-0 lg:border-r border-white/10">
+          {/* Chart Header - Compact on mobile */}
+          <div className="flex items-center justify-between px-2 md:px-4 py-2 border-b border-white/10 bg-black/40 flex-shrink-0 gap-2">
             {/* Asset Selector & Price */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <AssetIcon symbol={selectedAsset} size="md" />
-                <div>
-                  <div className="font-bold text-lg">{selectedAsset}<span className="text-white/40">/USD</span></div>
-                  <div className="text-xs text-white/40">Perpetual</div>
+            <div className="flex items-center gap-2 md:gap-4 min-w-0">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <AssetIcon symbol={selectedAsset} size="sm" />
+                <div className="min-w-0">
+                  <div className="font-bold text-sm md:text-lg truncate">{selectedAsset}<span className="text-white/40">/USD</span></div>
+                  <div className="text-[10px] md:text-xs text-white/40 hidden sm:block">Perpetual</div>
                 </div>
               </div>
-              <div className="text-2xl font-mono font-bold">
+              <div className="text-lg md:text-2xl font-mono font-bold whitespace-nowrap">
                 ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
 
-            {/* Battle Stats */}
-            <div className="flex items-center gap-4">
-              {/* Timer */}
+            {/* Battle Stats - Responsive */}
+            <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+              {/* Timer - Always visible */}
               <div className="text-center">
-                <div className="text-[10px] text-white/40 uppercase">Time Left</div>
-                <div className={`text-xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
+                <div className="text-[8px] md:text-[10px] text-white/40 uppercase">Time</div>
+                <div className={`text-base md:text-xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
                   {formatTime(timeRemaining)}
                 </div>
               </div>
 
-              {/* Account */}
-              <div className="text-center hidden sm:block">
+              {/* Account - Hidden on small */}
+              <div className="text-center hidden md:block">
                 <div className="text-[10px] text-white/40 uppercase">Account</div>
                 <div className="font-mono font-bold">${getAccountValue().toFixed(0)}</div>
               </div>
 
-              {/* P&L */}
+              {/* P&L - Always visible */}
               <div className="text-center">
-                <div className="text-[10px] text-white/40 uppercase">P&L</div>
-                <div className={`font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}%
+                <div className="text-[8px] md:text-[10px] text-white/40 uppercase">P&L</div>
+                <div className={`text-sm md:text-base font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(1)}%
                 </div>
               </div>
 
-              {/* Prize */}
-              <div className="px-3 py-1 rounded bg-warning/10 border border-warning/30 text-center">
-                <div className="text-[10px] text-warning uppercase">Prize</div>
-                <div className="font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
+              {/* Prize - Compact on mobile */}
+              <div className="px-2 md:px-3 py-1 rounded bg-warning/10 border border-warning/30 text-center hidden sm:block">
+                <div className="text-[8px] md:text-[10px] text-warning uppercase">Prize</div>
+                <div className="text-sm md:text-base font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
               </div>
+
+              {/* Mobile Order Panel Toggle */}
+              <button
+                onClick={() => setShowOrderPanel(!showOrderPanel)}
+                className="lg:hidden p-2 rounded bg-warning/20 text-warning border border-warning/30"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          {/* Asset Pills */}
-          <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10 bg-black/20 overflow-x-auto hide-scrollbar flex-shrink-0">
+          {/* Asset Pills - Scrollable */}
+          <div className="flex items-center gap-1 px-2 py-1 md:py-1.5 border-b border-white/10 bg-black/20 overflow-x-auto hide-scrollbar flex-shrink-0">
             {ASSETS.map((asset) => {
               const isSelected = selectedAsset === asset.symbol;
               return (
                 <button
                   key={asset.symbol}
                   onClick={() => setSelectedAsset(asset.symbol)}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-sm font-medium transition-all flex-shrink-0 ${
+                  className={`flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs md:text-sm font-medium transition-all flex-shrink-0 ${
                     isSelected
                       ? 'bg-warning/20 text-warning'
                       : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                   }`}
                 >
                   <AssetIcon symbol={asset.symbol} size="sm" />
-                  {asset.symbol}
+                  <span className="hidden sm:inline">{asset.symbol}</span>
                 </button>
               );
             })}
           </div>
 
           {/* Chart - Takes remaining space */}
-          <div className="flex-1 min-h-0 bg-[#0d0d0d]">
+          <div className="flex-1 min-h-[200px] bg-[#0d0d0d]">
             <TradingViewChart symbol={selectedAsset} height="100%" />
           </div>
         </div>
 
-        {/* Right Side: Order Panel */}
-        <div className="w-[280px] flex-shrink-0 bg-black/40 flex flex-col">
+        {/* Order Panel - Slide-over on mobile, sidebar on desktop */}
+        <div className={`
+          ${showOrderPanel ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+          fixed lg:relative inset-y-0 right-0 z-40
+          w-[280px] md:w-[300px] lg:w-[280px]
+          flex-shrink-0 bg-black/95 lg:bg-black/40
+          flex flex-col
+          transition-transform duration-300 ease-in-out
+          border-l border-white/10 lg:border-l-0
+        `}>
           {/* Panel Header */}
-          <div className="px-4 py-3 border-b border-white/10 flex-shrink-0">
+          <div className="px-4 py-3 border-b border-white/10 flex-shrink-0 flex items-center justify-between">
             <h2 className="font-bold text-sm uppercase tracking-wider text-white/60">Place Order</h2>
+            <button
+              onClick={() => setShowOrderPanel(false)}
+              className="lg:hidden p-1 rounded text-white/40 hover:text-white hover:bg-white/10"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Order Form */}
@@ -314,15 +342,23 @@ export function BattleArena({ battle }: BattleArenaProps) {
             </div>
           </div>
         </div>
+
+        {/* Mobile Overlay */}
+        {showOrderPanel && (
+          <div
+            className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+            onClick={() => setShowOrderPanel(false)}
+          />
+        )}
       </div>
 
-      {/* Bottom: Positions Panel */}
-      <div className="h-[160px] flex-shrink-0 border-t border-white/10 bg-black/40 flex flex-col">
+      {/* Bottom: Positions Panel - Responsive height */}
+      <div className="h-[120px] md:h-[160px] flex-shrink-0 border-t border-white/10 bg-black/40 flex flex-col">
         {/* Tabs */}
         <div className="flex border-b border-white/10 flex-shrink-0">
           <button
             onClick={() => setActiveTab('positions')}
-            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
               activeTab === 'positions'
                 ? 'border-warning text-warning'
                 : 'border-transparent text-white/40 hover:text-white/60'
@@ -332,7 +368,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
               activeTab === 'history'
                 ? 'border-warning text-warning'
                 : 'border-transparent text-white/40 hover:text-white/60'
