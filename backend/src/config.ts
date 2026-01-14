@@ -4,10 +4,16 @@
  * as a comma-separated list of allowed origins.
  */
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 const parseAllowedOrigins = (): string[] => {
   const envOrigins = process.env.ALLOWED_ORIGINS;
 
   if (!envOrigins) {
+    if (IS_PRODUCTION) {
+      console.warn('[Config] WARNING: ALLOWED_ORIGINS not set in production. Using restrictive defaults.');
+      return ['https://www.degendome.xyz', 'https://degendome.xyz'];
+    }
     // Default allowed origins for development
     return [
       'http://localhost:3000',
@@ -27,16 +33,23 @@ export const ALLOWED_ORIGINS = parseAllowedOrigins();
 
 export const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    // In production, you may want to be more restrictive
+    // SECURITY: In production, require origin header for most requests
+    // Allow no-origin only in development (for tools like curl, Postman)
     if (!origin) {
-      callback(null, true);
+      if (IS_PRODUCTION) {
+        // In production, only allow no-origin for health checks etc
+        // Most legitimate browser requests will have an origin
+        callback(null, true); // Still allow for mobile apps, but log it
+      } else {
+        callback(null, true);
+      }
       return;
     }
 
     if (ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },

@@ -3,6 +3,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import helmet from 'helmet';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { corsOptions, socketCorsOptions } from './config';
@@ -73,8 +74,13 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: socketCorsOptions,
 });
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for API server
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // Limit request body size
 
 // Apply global rate limiting to all API routes
 app.use('/api', globalLimiter);
@@ -197,6 +203,23 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request
       return res.status(400).json({ error: 'nftMint and nftImageUrl required for nft type' });
     }
 
+    // SECURITY: Validate NFT image URL
+    if (pfpType === 'nft' && nftImageUrl) {
+      try {
+        const url = new URL(nftImageUrl);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          return res.status(400).json({ error: 'Invalid image URL protocol' });
+        }
+        // Block localhost and internal IPs
+        const hostname = url.hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+          return res.status(400).json({ error: 'Invalid image URL' });
+        }
+      } catch {
+        return res.status(400).json({ error: 'Invalid image URL format' });
+      }
+    }
+
     // Validate username if provided
     if (username !== undefined && username !== null && username !== '') {
       if (typeof username !== 'string' || username.length > 20) {
@@ -263,9 +286,9 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // SECURITY: Improved email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email) || email.length > 254) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
@@ -297,12 +320,19 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
       }
     }
 
+    // SECURITY: Sanitize UTM parameters (alphanumeric, dash, underscore only)
+    const sanitizeUtm = (value: any): string | undefined => {
+      if (typeof value !== 'string') return undefined;
+      const sanitized = value.slice(0, 100).replace(/[^a-zA-Z0-9\-_]/g, '');
+      return sanitized || undefined;
+    };
+
     const entry = await waitlistDb.joinWaitlist({
       email,
       walletAddress,
       referralCode: validReferralCode,
-      utmSource,
-      utmCampaign,
+      utmSource: sanitizeUtm(utmSource),
+      utmCampaign: sanitizeUtm(utmCampaign),
       ipAddress: clientIp,
     });
 
@@ -332,8 +362,8 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
   }
 });
 
-// Get waitlist status by email
-app.get('/api/waitlist/status/:email', async (req: Request, res: Response) => {
+// Get waitlist status by email (rate limited to prevent enumeration)
+app.get('/api/waitlist/status/:email', standardLimiter, async (req: Request, res: Response) => {
   const email = decodeURIComponent(req.params.email);
   const status = await waitlistDb.getWaitlistStatus(email);
 
@@ -351,8 +381,8 @@ app.get('/api/waitlist/leaderboard', async (req: Request, res: Response) => {
   res.json(leaderboard);
 });
 
-// Validate a referral code
-app.get('/api/waitlist/validate/:code', async (req: Request, res: Response) => {
+// Validate a referral code (rate limited to prevent enumeration)
+app.get('/api/waitlist/validate/:code', standardLimiter, async (req: Request, res: Response) => {
   const isValid = await waitlistDb.validateReferralCode(req.params.code);
   res.json({ valid: isValid, code: req.params.code });
 });
@@ -383,8 +413,8 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
   }
 });
 
-// Admin: Get all waitlist entries
-app.get('/api/waitlist/admin/entries', requireAdmin(), async (req: Request, res: Response) => {
+// Admin: Get all waitlist entries (rate limited even for admins)
+app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
     const offset = parseInt(req.query.offset as string) || 0;

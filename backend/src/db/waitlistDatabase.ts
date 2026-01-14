@@ -15,7 +15,10 @@ if (!DATABASE_URL) {
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // Required for most cloud PostgreSQL providers
+      // SECURITY NOTE: rejectUnauthorized: false is required for Neon and most cloud PostgreSQL providers
+      // that use SSL but don't provide custom CA certificates. In a self-hosted environment with
+      // proper certificates, set this to true.
+      ssl: { rejectUnauthorized: false },
     })
   : null;
 
@@ -462,11 +465,18 @@ export async function getAllEntries(options: {
 
   const { limit = 100, offset = 0, sortBy = 'created_at', sortOrder = 'desc' } = options;
 
+  // SECURITY: Whitelist allowed sort columns to prevent SQL injection
+  const validSortColumns = ['position', 'referral_count', 'created_at'];
+  const validSortOrders = ['asc', 'desc'];
+
+  const safeSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
+  const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
+
   try {
     // Get entries
     const result = await pool.query(
       `SELECT * FROM waitlist_entries
-       ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+       ORDER BY ${safeSortBy} ${safeSortOrder}
        LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
