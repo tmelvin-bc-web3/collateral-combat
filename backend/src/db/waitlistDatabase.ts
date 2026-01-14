@@ -408,4 +408,66 @@ export async function validateReferralCode(code: string): Promise<boolean> {
   return entry !== null;
 }
 
+// Admin function to get all entries
+export async function getAllEntries(options: {
+  limit?: number;
+  offset?: number;
+  sortBy?: 'position' | 'referral_count' | 'created_at';
+  sortOrder?: 'asc' | 'desc';
+} = {}): Promise<{
+  entries: WaitlistEntry[];
+  total: number;
+  stats: {
+    totalSignups: number;
+    totalReferrals: number;
+    tierBreakdown: Record<string, number>;
+  };
+}> {
+  if (!pool) {
+    return { entries: [], total: 0, stats: { totalSignups: 0, totalReferrals: 0, tierBreakdown: {} } };
+  }
+
+  const { limit = 100, offset = 0, sortBy = 'created_at', sortOrder = 'desc' } = options;
+
+  try {
+    // Get entries
+    const result = await pool.query(
+      `SELECT * FROM waitlist_entries
+       ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    // Get total count
+    const countResult = await pool.query('SELECT COUNT(*) as count FROM waitlist_entries');
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get total referrals
+    const referralsResult = await pool.query('SELECT COALESCE(SUM(referral_count), 0) as total FROM waitlist_entries');
+    const totalReferrals = parseInt(referralsResult.rows[0].total);
+
+    // Get tier breakdown
+    const tierResult = await pool.query(
+      `SELECT tier, COUNT(*) as count FROM waitlist_entries GROUP BY tier`
+    );
+    const tierBreakdown: Record<string, number> = {};
+    tierResult.rows.forEach((row: any) => {
+      tierBreakdown[row.tier] = parseInt(row.count);
+    });
+
+    return {
+      entries: result.rows.map(rowToEntry),
+      total,
+      stats: {
+        totalSignups: total,
+        totalReferrals,
+        tierBreakdown,
+      },
+    };
+  } catch (error) {
+    console.error('[WaitlistDB] getAllEntries error:', error);
+    return { entries: [], total: 0, stats: { totalSignups: 0, totalReferrals: 0, tierBreakdown: {} } };
+  }
+}
+
 console.log('[WaitlistDB] Waitlist database module loaded');

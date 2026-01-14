@@ -322,6 +322,27 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
   }
 });
 
+// Admin: Get all waitlist entries
+app.get('/api/waitlist/admin/entries', requireAdmin(), async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const sortBy = (req.query.sortBy as string) || 'created_at';
+    const sortOrder = (req.query.sortOrder as string) || 'desc';
+
+    const data = await waitlistDb.getAllEntries({
+      limit,
+      offset,
+      sortBy: sortBy as 'position' | 'referral_count' | 'created_at',
+      sortOrder: sortOrder as 'asc' | 'desc',
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch entries' });
+  }
+});
+
 // Simulator endpoints (admin only)
 app.post('/api/simulator/start', requireAdmin(), (req: Request, res: Response) => {
   const numBattles = parseInt(req.query.battles as string) || 3;
