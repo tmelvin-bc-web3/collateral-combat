@@ -123,7 +123,7 @@ export const WAITLIST_TIERS = {
   standard: { minReferrals: 0, benefits: ['Beta access lottery'] },
   priority: { minReferrals: 3, benefits: ['Guaranteed beta access'] },
   vip: { minReferrals: 10, benefits: ['Beta access', '100 bonus XP', 'Exclusive Discord role'] },
-  founding: { minReferrals: 25, benefits: ['Beta access', '500 bonus XP', 'Founding badge', '0.05 SOL free bets'] }
+  founding: { minReferrals: 25, benefits: ['Beta access', '500 bonus XP', 'Founding badge'] }
 };
 
 // ===================

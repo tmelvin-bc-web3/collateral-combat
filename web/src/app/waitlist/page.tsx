@@ -13,7 +13,7 @@ const TIER_INFO = {
   standard: { color: 'text-white/60', benefits: ['Beta access lottery'] },
   priority: { color: 'text-blue-400', benefits: ['Guaranteed beta access'] },
   vip: { color: 'text-purple-400', benefits: ['Beta access', '100 bonus XP', 'Exclusive Discord role'] },
-  founding: { color: 'text-warning', benefits: ['Beta access', '500 bonus XP', 'Founding badge', '0.05 SOL free bets'] },
+  founding: { color: 'text-warning', benefits: ['Beta access', '500 bonus XP', 'Founding badge'] },
 };
 
 export default function WaitlistPage() {
@@ -177,7 +177,7 @@ export default function WaitlistPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-warning">25 referrals</span>
-                  <span className="text-white/60">Founding + 0.05 SOL</span>
+                  <span className="text-white/60">Founding + 500 XP</span>
                 </div>
               </div>
             </div>

@@ -287,7 +287,7 @@ export default function WaitlistDashboard() {
                 <div className={`p-4 rounded-xl ${status.tier === 'founding' ? 'ring-2 ring-warning' : ''} bg-warning/5 border border-warning/20`}>
                   <p className="text-warning text-sm mb-1">Founding</p>
                   <p className="font-medium mb-2">25+ referrals</p>
-                  <p className="text-xs text-white/40">Beta + 500 XP + 0.05 SOL</p>
+                  <p className="text-xs text-white/40">Beta + 500 XP + Founding badge</p>
                 </div>
               </div>
             </div>
