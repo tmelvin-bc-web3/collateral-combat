@@ -680,7 +680,7 @@ export default function PredictPage() {
       <div className="flex gap-2 sm:gap-4 flex-1 min-h-0">
 
         {/* LEFT SIDEBAR - Live Wagers (fixed width) */}
-        <aside className="hidden lg:flex lg:flex-col w-72 min-w-[288px] flex-shrink-0 overflow-hidden">
+        <aside className="w-0 lg:w-72 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto flex flex-col flex-shrink-0 overflow-hidden transition-all duration-200">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Live Wagers</div>
 
@@ -1055,7 +1055,7 @@ export default function PredictPage() {
         </div>
 
         {/* RIGHT SIDEBAR - History (fixed width) */}
-        <aside className="hidden lg:flex lg:flex-col w-64 min-w-[256px] flex-shrink-0 overflow-hidden">
+        <aside className="w-0 lg:w-64 opacity-0 lg:opacity-100 pointer-events-none lg:pointer-events-auto flex flex-col flex-shrink-0 overflow-hidden transition-all duration-200">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">History</div>
 
