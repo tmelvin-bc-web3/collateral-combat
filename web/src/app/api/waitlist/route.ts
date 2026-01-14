@@ -1,56 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
-const WAITLIST_FILE = path.join(process.cwd(), 'waitlist.json');
-
-function getWaitlist(): string[] {
-  try {
-    if (fs.existsSync(WAITLIST_FILE)) {
-      const data = fs.readFileSync(WAITLIST_FILE, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch {
-    // File doesn't exist or is invalid
-  }
-  return [];
-}
-
-function saveWaitlist(emails: string[]) {
-  fs.writeFileSync(WAITLIST_FILE, JSON.stringify(emails, null, 2));
-}
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const body = await request.json();
 
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-    }
+    const res = await fetch(`${BACKEND_URL}/api/waitlist/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
-    }
-
-    const waitlist = getWaitlist();
-    const normalizedEmail = email.toLowerCase().trim();
-
-    if (waitlist.includes(normalizedEmail)) {
-      return NextResponse.json({ message: 'Already on the waitlist!' }, { status: 200 });
-    }
-
-    waitlist.push(normalizedEmail);
-    saveWaitlist(waitlist);
-
-    return NextResponse.json({ message: 'Successfully joined the waitlist!' }, { status: 200 });
-  } catch {
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (error) {
+    console.error('[Waitlist API] Error:', error);
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
 
 export async function GET() {
-  const waitlist = getWaitlist();
-  return NextResponse.json({ count: waitlist.length });
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/waitlist/count`);
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[Waitlist API] Error:', error);
+    return NextResponse.json({ count: 0 });
+  }
 }

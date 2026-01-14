@@ -20,6 +20,7 @@ import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
 import * as achievementDb from './db/achievementDatabase';
 import * as progressionDb from './db/progressionDatabase';
+import * as waitlistDb from './db/waitlistDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { WHITELISTED_TOKENS } from './tokens';
@@ -204,6 +205,115 @@ app.get('/api/profiles', (req, res) => {
 app.delete('/api/profile/:wallet', requireOwnWallet, (req: Request, res: Response) => {
   const deleted = deleteProfile(req.params.wallet);
   res.json({ deleted });
+});
+
+// ===================
+// Waitlist Endpoints
+// ===================
+
+// Join the waitlist
+app.post('/api/waitlist/join', strictLimiter, (req: Request, res: Response) => {
+  try {
+    const { email, walletAddress, referralCode, utmSource, utmCampaign } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Validate referral code if provided
+    if (referralCode && !waitlistDb.validateReferralCode(referralCode)) {
+      // Don't error, just ignore invalid referral codes
+      console.log(`[Waitlist] Invalid referral code attempted: ${referralCode}`);
+    }
+
+    const entry = waitlistDb.joinWaitlist({
+      email,
+      walletAddress,
+      referralCode: referralCode && waitlistDb.validateReferralCode(referralCode) ? referralCode : undefined,
+      utmSource,
+      utmCampaign,
+    });
+
+    res.json({
+      success: true,
+      referralCode: entry.referralCode,
+      position: entry.position,
+      tier: entry.tier,
+      referralLink: `https://www.degendome.xyz/ref/${entry.referralCode}`,
+    });
+  } catch (error: any) {
+    if (error.message === 'Email already registered') {
+      // Return existing entry info
+      const existing = waitlistDb.findByEmail(req.body.email);
+      if (existing) {
+        return res.json({
+          success: true,
+          message: 'Already on the waitlist!',
+          referralCode: existing.referralCode,
+          position: existing.position,
+          tier: existing.tier,
+          referralLink: `https://www.degendome.xyz/ref/${existing.referralCode}`,
+        });
+      }
+    }
+    res.status(400).json({ error: error.message || 'Failed to join waitlist' });
+  }
+});
+
+// Get waitlist status by email
+app.get('/api/waitlist/status/:email', (req: Request, res: Response) => {
+  const email = decodeURIComponent(req.params.email);
+  const status = waitlistDb.getWaitlistStatus(email);
+
+  if (!status) {
+    return res.status(404).json({ error: 'Email not found on waitlist' });
+  }
+
+  res.json(status);
+});
+
+// Get waitlist leaderboard
+app.get('/api/waitlist/leaderboard', (req: Request, res: Response) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+  const leaderboard = waitlistDb.getLeaderboard(limit);
+  res.json(leaderboard);
+});
+
+// Validate a referral code
+app.get('/api/waitlist/validate/:code', (req: Request, res: Response) => {
+  const isValid = waitlistDb.validateReferralCode(req.params.code);
+  res.json({ valid: isValid, code: req.params.code });
+});
+
+// Get total waitlist count (public)
+app.get('/api/waitlist/count', (req: Request, res: Response) => {
+  res.json({ count: waitlistDb.getTotalCount() });
+});
+
+// Update wallet address for existing waitlist entry
+app.put('/api/waitlist/wallet', strictLimiter, (req: Request, res: Response) => {
+  try {
+    const { email, walletAddress } = req.body;
+
+    if (!email || !walletAddress) {
+      return res.status(400).json({ error: 'Email and wallet address required' });
+    }
+
+    const updated = waitlistDb.updateWalletAddress(email, walletAddress);
+    if (!updated) {
+      return res.status(404).json({ error: 'Email not found on waitlist' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message || 'Failed to update wallet' });
+  }
 });
 
 // Simulator endpoints (admin only)

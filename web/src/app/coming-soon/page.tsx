@@ -2,15 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { isWhitelisted } from '@/config/whitelist';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
+interface WaitlistSuccess {
+  referralCode: string;
+  position: number;
+  tier: string;
+  referralLink: string;
+}
+
 export default function ComingSoon() {
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref');
+
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [waitlistData, setWaitlistData] = useState<WaitlistSuccess | null>(null);
+  const [totalSignups, setTotalSignups] = useState(0);
+  const [copied, setCopied] = useState(false);
   const { publicKey, connected } = useWallet();
 
   const walletAddress = publicKey?.toBase58();
@@ -18,6 +35,11 @@ export default function ComingSoon() {
 
   useEffect(() => {
     setMounted(true);
+    // Fetch total signups
+    fetch(`${BACKEND_URL}/api/waitlist/count`)
+      .then((res) => res.json())
+      .then((data) => setTotalSignups(data.count))
+      .catch(() => {});
   }, []);
 
   // Redirect whitelisted users to the full app
@@ -36,17 +58,29 @@ export default function ComingSoon() {
     setStatus('loading');
 
     try {
-      const res = await fetch('/api/waitlist', {
+      const res = await fetch(`${BACKEND_URL}/api/waitlist/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          walletAddress: connected ? walletAddress : undefined,
+          referralCode: refCode || undefined,
+          utmSource: searchParams.get('utm_source') || undefined,
+          utmCampaign: searchParams.get('utm_campaign') || undefined,
+        }),
       });
 
       const data = await res.json();
 
-      if (res.ok) {
+      if (res.ok && data.success) {
         setStatus('success');
-        setMessage(data.message);
+        setMessage(data.message || 'Successfully joined!');
+        setWaitlistData({
+          referralCode: data.referralCode,
+          position: data.position,
+          tier: data.tier,
+          referralLink: data.referralLink,
+        });
         setEmail('');
       } else {
         setStatus('error');
@@ -55,6 +89,14 @@ export default function ComingSoon() {
     } catch {
       setStatus('error');
       setMessage('Failed to join waitlist. Please try again.');
+    }
+  };
+
+  const copyReferralLink = () => {
+    if (waitlistData) {
+      navigator.clipboard.writeText(waitlistData.referralLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -229,17 +271,65 @@ export default function ComingSoon() {
             <h2 className="text-xl font-bold text-[#e8dfd4] mb-2 text-center">
               Join the Waitlist
             </h2>
-            <p className="text-sm text-[#5c5348] text-center mb-6">
+            <p className="text-sm text-[#5c5348] text-center mb-2">
               Be first to enter when the dome opens
             </p>
+            {totalSignups > 0 && (
+              <p className="text-xs text-[#ff5500] text-center mb-6">
+                {totalSignups.toLocaleString()} degens already waiting
+              </p>
+            )}
+            {totalSignups === 0 && <div className="mb-4" />}
 
-            {status === 'success' ? (
-              <div className="text-center py-4">
-                <div className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-[#7fba00]/10 border border-[#7fba00]/30">
-                  <svg className="w-6 h-6 text-[#7fba00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            {status === 'success' && waitlistData ? (
+              <div className="text-center py-2">
+                {/* Success message */}
+                <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-[#7fba00]/10 border border-[#7fba00]/30 mb-4">
+                  <svg className="w-5 h-5 text-[#7fba00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="font-semibold text-[#7fba00]">{message}</span>
+                  <span className="font-semibold text-[#7fba00]">You&apos;re #{waitlistData.position} on the list!</span>
+                </div>
+
+                {/* Referral link */}
+                <div className="bg-[#0d0b09] rounded-xl p-4 mb-4">
+                  <p className="text-xs text-[#5c5348] mb-2">Share your referral link to move up:</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={waitlistData.referralLink}
+                      readOnly
+                      className="flex-1 bg-[#151210] border border-[#2a2218] rounded-lg px-3 py-2 text-xs font-mono text-[#c4a574]"
+                    />
+                    <button
+                      onClick={copyReferralLink}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        copied
+                          ? 'bg-[#7fba00]/20 border border-[#7fba00]/40 text-[#7fba00]'
+                          : 'bg-[#ff5500]/20 border border-[#ff5500]/40 text-[#ff5500] hover:bg-[#ff5500]/30'
+                      }`}
+                    >
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Share & Dashboard links */}
+                <div className="flex gap-3 justify-center">
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just joined the DegenDome waitlist! PvP trading arena on Solana:`)}&url=${encodeURIComponent(waitlistData.referralLink)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-[#151210] border border-[#2a2218] rounded-lg text-[#c4a574] text-xs hover:border-[#ff5500]/30 transition-colors"
+                  >
+                    Share on X
+                  </a>
+                  <Link
+                    href="/waitlist/dashboard"
+                    className="px-4 py-2 bg-[#ff5500]/20 border border-[#ff5500]/40 rounded-lg text-[#ff5500] text-xs hover:bg-[#ff5500]/30 transition-colors"
+                  >
+                    View Dashboard
+                  </Link>
                 </div>
               </div>
             ) : (

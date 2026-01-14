@@ -51,26 +51,45 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     resetProfile,
   } = useProfile(walletAddress);
 
-  // Track if user needs to complete setup
-  const [setupCompleted, setSetupCompleted] = useState(false);
+  // Track if user needs to complete setup (persisted in localStorage)
+  const [setupCompleted, setSetupCompleted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('sol_battles_setup_completed') === 'true';
+  });
 
   // Check if this is a new user who needs setup
-  // A user needs setup if they have a wallet connected, profile loaded, and updatedAt is 0 (never saved)
+  // A user needs setup if:
+  // 1. Wallet connected
+  // 2. Profile loaded (not loading)
+  // 3. Profile has no username AND no custom pfp (presetId is undefined or default)
+  // 4. Setup not already completed this session
+  const hasCustomProfile = ownProfile && (
+    ownProfile.username ||
+    ownProfile.presetId ||
+    ownProfile.nftMint ||
+    ownProfile.updatedAt > 0
+  );
+
   const needsSetup = !!(
     walletAddress &&
     !isLoading &&
     ownProfile &&
-    ownProfile.updatedAt === 0 &&
+    !hasCustomProfile &&
     !setupCompleted
   );
 
   const completeSetup = useCallback(() => {
     setSetupCompleted(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sol_battles_setup_completed', 'true');
+    }
   }, []);
 
-  // Reset setupCompleted when wallet changes
+  // Load setupCompleted from localStorage when wallet changes
   useEffect(() => {
-    setSetupCompleted(false);
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('sol_battles_setup_completed') === 'true';
+    setSetupCompleted(saved);
   }, [walletAddress]);
 
   // Cache for other users' profiles (in-memory for quick access)

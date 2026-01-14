@@ -82,14 +82,18 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     setIsSaving(true);
 
     try {
-      await updateProfile({
+      const result = await updateProfile({
         pfpType: selectedPreset ? 'preset' : 'default',
         presetId: selectedPreset?.id,
         username: username || undefined,
       });
-      onComplete();
-    } catch {
-      // Save failed
+      if (result) {
+        onComplete();
+      } else {
+        console.error('Failed to save profile');
+      }
+    } catch (err) {
+      console.error('Profile save error:', err);
     } finally {
       setIsSaving(false);
     }
@@ -98,10 +102,14 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const handleSkip = async () => {
     setIsSaving(true);
     try {
-      await updateProfile({ pfpType: 'default' });
-      onComplete();
-    } catch {
-      // Skip failed
+      const result = await updateProfile({ pfpType: 'default' });
+      if (result) {
+        onComplete();
+      } else {
+        console.error('Failed to skip profile setup');
+      }
+    } catch (err) {
+      console.error('Profile skip error:', err);
     } finally {
       setIsSaving(false);
     }
