@@ -141,7 +141,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', requireOwnWallet, writeLimiter, (req: Request, res: Response) => {
+app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request, res: Response) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
