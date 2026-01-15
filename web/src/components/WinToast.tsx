@@ -6,11 +6,19 @@ import { cn } from '@/lib/utils';
 import { WinData } from '@/hooks/useWinShare';
 import { GameMode } from '@/lib/shareImageGenerator';
 
+interface CooldownStatus {
+  isOnCooldown: boolean;
+  cooldownRemainingHours: number;
+  bigWinBypassThreshold: number;
+}
+
 interface WinToastProps {
   winData: WinData | null;
   onExpand: () => void; // Called when user clicks to expand to full modal
   onDismiss: () => void;
   autoDismissMs?: number; // Auto-dismiss after this many ms (default 8000)
+  cooldownStatus?: CooldownStatus | null;
+  winBypassesCooldown?: boolean;
 }
 
 // Game mode display labels
@@ -29,6 +37,8 @@ export function WinToast({
   onExpand,
   onDismiss,
   autoDismissMs = 8000,
+  cooldownStatus,
+  winBypassesCooldown,
 }: WinToastProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -145,7 +155,10 @@ export function WinToast({
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            Share on X for +25 XP
+            {cooldownStatus?.isOnCooldown && !winBypassesCooldown
+              ? `Share on X (XP in ${cooldownStatus.cooldownRemainingHours}h)`
+              : 'Share on X for +25 XP'
+            }
           </button>
         </div>
       </div>

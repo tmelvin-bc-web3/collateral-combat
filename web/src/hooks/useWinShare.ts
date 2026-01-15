@@ -18,6 +18,12 @@ interface TrackShareResponse {
   message?: string;
 }
 
+interface CooldownStatus {
+  isOnCooldown: boolean;
+  cooldownRemainingHours: number;
+  bigWinBypassThreshold: number; // In SOL
+}
+
 // Threshold for showing full modal vs toast (in SOL)
 // Wins >= this amount show full modal, smaller wins show toast
 export const BIG_WIN_THRESHOLD_SOL = 0.5;
@@ -34,6 +40,8 @@ export function useWinShare() {
   const [toastWin, setToastWin] = useState<WinData | null>(null);
   const [sharedPlatforms, setSharedPlatforms] = useState<Set<string>>(new Set());
   const [referralCode, setReferralCode] = useState<string>('');
+  const [cooldownStatus, setCooldownStatus] = useState<CooldownStatus | null>(null);
+  const [lastShareMessage, setLastShareMessage] = useState<string | null>(null);
   const { publicKey } = useWallet();
 
   // Fetch or generate referral code
@@ -67,9 +75,30 @@ export function useWinShare() {
     }
   }, [publicKey]);
 
+  // Fetch cooldown status
+  const fetchCooldownStatus = useCallback(async () => {
+    if (!publicKey) return;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/shares/cooldown/${publicKey.toBase58()}`);
+      const data = await res.json();
+      setCooldownStatus({
+        isOnCooldown: data.isOnCooldown,
+        cooldownRemainingHours: data.cooldownRemainingHours,
+        bigWinBypassThreshold: data.bigWinBypassThreshold,
+      });
+    } catch (error) {
+      console.error('[useWinShare] Error fetching cooldown:', error);
+    }
+  }, [publicKey]);
+
   // Show win notification - decides toast vs modal based on amount
   const showWinShare = useCallback((winData: WinData) => {
     setSharedPlatforms(new Set()); // Reset shared platforms for new win
+    setLastShareMessage(null); // Reset last message
+
+    // Fetch cooldown status when showing a win
+    fetchCooldownStatus();
 
     if (winData.winAmount >= BIG_WIN_THRESHOLD_SOL) {
       // Big win - show full modal
@@ -80,7 +109,7 @@ export function useWinShare() {
       setToastWin(winData);
       setPendingWin(null);
     }
-  }, []);
+  }, [fetchCooldownStatus]);
 
   // Force show full modal (e.g., when user clicks toast)
   const expandToModal = useCallback(() => {
@@ -118,13 +147,21 @@ export function useWinShare() {
           setSharedPlatforms((prev) => new Set([...prev, platform]));
         }
 
+        // Store the message (could be cooldown info)
+        if (data.message) {
+          setLastShareMessage(data.message);
+        }
+
+        // Refresh cooldown status after sharing
+        fetchCooldownStatus();
+
         return data;
       } catch (error) {
         console.error('[useWinShare] Error tracking share:', error);
         return { success: false, xpEarned: 0 };
       }
     },
-    [pendingWin, toastWin, publicKey]
+    [pendingWin, toastWin, publicKey, fetchCooldownStatus]
   );
 
   // Check if already shared on a platform
@@ -145,6 +182,12 @@ export function useWinShare() {
     setToastWin(null);
   }, []);
 
+  // Check if this win bypasses cooldown (>= 3 SOL)
+  const activeWin = pendingWin || toastWin;
+  const winBypassesCooldown = activeWin
+    ? activeWin.winAmount >= (cooldownStatus?.bigWinBypassThreshold || 3)
+    : false;
+
   return {
     // Full modal state
     pendingWin,
@@ -158,5 +201,9 @@ export function useWinShare() {
     trackShare,
     hasSharedOn,
     referralCode,
+    // Cooldown
+    cooldownStatus,
+    lastShareMessage,
+    winBypassesCooldown,
   };
 }

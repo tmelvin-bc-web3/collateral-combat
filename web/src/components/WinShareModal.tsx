@@ -15,12 +15,20 @@ import {
 } from '@/lib/shareImageGenerator';
 import { Confetti } from '@/components/Confetti';
 
+interface CooldownStatus {
+  isOnCooldown: boolean;
+  cooldownRemainingHours: number;
+  bigWinBypassThreshold: number;
+}
+
 interface WinShareModalProps {
   winData: WinData | null;
   onClose: () => void;
-  onTrackShare: (platform: 'twitter' | 'copy' | 'download') => Promise<{ xpEarned: number }>;
+  onTrackShare: (platform: 'twitter' | 'copy' | 'download') => Promise<{ xpEarned: number; message?: string }>;
   hasSharedOn: (platform: string) => boolean;
   referralCode: string;
+  cooldownStatus?: CooldownStatus | null;
+  winBypassesCooldown?: boolean;
 }
 
 // Game mode display labels
@@ -40,6 +48,8 @@ export function WinShareModal({
   onTrackShare,
   hasSharedOn,
   referralCode,
+  cooldownStatus,
+  winBypassesCooldown,
 }: WinShareModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -222,7 +232,13 @@ export function WinShareModal({
                 )}
                 <span className="text-xs mt-1 text-white/60">Share on X</span>
                 {!hasSharedOn('twitter') && (
-                  <span className="text-xs text-[#FFD700] mt-0.5">+25 XP</span>
+                  cooldownStatus?.isOnCooldown && !winBypassesCooldown ? (
+                    <span className="text-xs text-white/40 mt-0.5">
+                      XP cooldown ({cooldownStatus.cooldownRemainingHours}h)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[#FFD700] mt-0.5">+25 XP</span>
+                  )
                 )}
               </button>
 

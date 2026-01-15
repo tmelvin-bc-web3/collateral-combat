@@ -104,6 +104,37 @@ export function getShareStats(walletAddress: string): {
   };
 }
 
+// Get the timestamp of user's last share that awarded XP
+export function getLastXpShareTimestamp(walletAddress: string): number | null {
+  const stmt = db.prepare(`
+    SELECT timestamp FROM share_events
+    WHERE wallet_address = ? AND xp_awarded > 0
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `);
+  const result = stmt.get(walletAddress) as { timestamp: number } | undefined;
+  return result?.timestamp || null;
+}
+
+// Check if user is on XP cooldown (last XP share was within last 24 hours)
+export function isOnShareXpCooldown(walletAddress: string): boolean {
+  const lastTimestamp = getLastXpShareTimestamp(walletAddress);
+  if (!lastTimestamp) return false;
+
+  const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+  return Date.now() - lastTimestamp < twentyFourHoursMs;
+}
+
+// Get time remaining on cooldown in milliseconds (0 if not on cooldown)
+export function getShareXpCooldownRemaining(walletAddress: string): number {
+  const lastTimestamp = getLastXpShareTimestamp(walletAddress);
+  if (!lastTimestamp) return 0;
+
+  const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+  const elapsed = Date.now() - lastTimestamp;
+  return Math.max(0, twentyFourHoursMs - elapsed);
+}
+
 // Get recent shares (for analytics)
 export function getRecentShares(limit: number = 100): Array<{
   walletAddress: string;

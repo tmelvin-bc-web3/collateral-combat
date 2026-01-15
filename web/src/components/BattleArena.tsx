@@ -414,6 +414,8 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
     dismissToast,
     expandToModal,
     referralCode,
+    cooldownStatus,
+    winBypassesCooldown,
   } = useWinShare();
 
   const sortedPlayers = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
@@ -627,6 +629,8 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         onTrackShare={trackShare}
         hasSharedOn={hasSharedOn}
         referralCode={referralCode}
+        cooldownStatus={cooldownStatus}
+        winBypassesCooldown={winBypassesCooldown}
       />
 
       {/* Win Toast for smaller wins */}
@@ -634,6 +638,8 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         winData={toastWin}
         onExpand={expandToModal}
         onDismiss={dismissToast}
+        cooldownStatus={cooldownStatus}
+        winBypassesCooldown={winBypassesCooldown}
       />
     </div>
   );

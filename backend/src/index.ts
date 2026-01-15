@@ -694,6 +694,7 @@ app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (r
 // ===================
 
 const SHARE_XP_REWARD = 25;
+const BIG_WIN_THRESHOLD_LAMPORTS = 3_000_000_000; // 3 SOL - bypasses cooldown
 
 // Track a share event and award XP
 app.post('/api/shares/track', standardLimiter, async (req: Request, res: Response) => {
@@ -722,15 +723,29 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
 
     // Only award XP for Twitter shares (can't verify other platforms)
     let xpEarned = 0;
+    let cooldownMessage: string | undefined;
+
     if (platform === 'twitter') {
-      const xpEvent = await progressionService.awardXp(
-        walletAddress,
-        SHARE_XP_REWARD,
-        'share',
-        `${roundId}-${platform}`,
-        `Shared ${gameMode} win on ${platform}`
-      );
-      xpEarned = xpEvent.amount;
+      const amount = winAmountLamports || 0;
+      const isBigWin = amount >= BIG_WIN_THRESHOLD_LAMPORTS;
+      const isOnCooldown = sharesDb.isOnShareXpCooldown(walletAddress);
+
+      // Big wins (>= 3 SOL) bypass cooldown, smaller wins have 24h cooldown
+      if (isBigWin || !isOnCooldown) {
+        const xpEvent = await progressionService.awardXp(
+          walletAddress,
+          SHARE_XP_REWARD,
+          'share',
+          `${roundId}-${platform}`,
+          `Shared ${gameMode} win on ${platform}`
+        );
+        xpEarned = xpEvent.amount;
+      } else {
+        // On cooldown for smaller wins
+        const cooldownRemaining = sharesDb.getShareXpCooldownRemaining(walletAddress);
+        const hoursRemaining = Math.ceil(cooldownRemaining / (60 * 60 * 1000));
+        cooldownMessage = `Share XP on cooldown (~${hoursRemaining}h remaining). Win 3+ SOL to bypass!`;
+      }
     }
 
     // Record the share (for analytics, even if no XP)
@@ -746,7 +761,9 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
     res.json({
       success: true,
       xpEarned,
-      message: xpEarned > 0 ? `+${xpEarned} XP for sharing!` : 'Share recorded',
+      message: xpEarned > 0
+        ? `+${xpEarned} XP for sharing!`
+        : cooldownMessage || 'Share recorded',
     });
   } catch (error: any) {
     console.error('[Shares] Error tracking share:', error);
@@ -762,6 +779,24 @@ app.get('/api/shares/stats/:wallet', standardLimiter, async (req: Request, res: 
     res.json(stats);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to get share stats' });
+  }
+});
+
+// Get share XP cooldown status for a wallet
+app.get('/api/shares/cooldown/:wallet', standardLimiter, async (req: Request, res: Response) => {
+  try {
+    const { wallet } = req.params;
+    const isOnCooldown = sharesDb.isOnShareXpCooldown(wallet);
+    const cooldownRemainingMs = sharesDb.getShareXpCooldownRemaining(wallet);
+
+    res.json({
+      isOnCooldown,
+      cooldownRemainingMs,
+      cooldownRemainingHours: Math.ceil(cooldownRemainingMs / (60 * 60 * 1000)),
+      bigWinBypassThreshold: BIG_WIN_THRESHOLD_LAMPORTS / 1_000_000_000, // In SOL
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to get cooldown status' });
   }
 });
 

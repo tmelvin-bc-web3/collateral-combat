@@ -190,6 +190,8 @@ export default function PredictPage() {
     dismissToast,
     expandToModal,
     referralCode,
+    cooldownStatus,
+    winBypassesCooldown,
   } = useWinShare();
 
   // Session betting hook for balance management
@@ -1132,6 +1134,8 @@ export default function PredictPage() {
         onTrackShare={trackShare}
         hasSharedOn={hasSharedOn}
         referralCode={referralCode}
+        cooldownStatus={cooldownStatus}
+        winBypassesCooldown={winBypassesCooldown}
       />
 
       {/* Win Toast (for smaller wins < 0.5 SOL) */}
@@ -1139,6 +1143,8 @@ export default function PredictPage() {
         winData={toastWin}
         onExpand={expandToModal}
         onDismiss={dismissToast}
+        cooldownStatus={cooldownStatus}
+        winBypassesCooldown={winBypassesCooldown}
       />
 
       {/* Deposit Modal */}
