@@ -3,8 +3,21 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { BACKEND_URL } from '@/config/api';
 import { GameMode } from '@/lib/shareImageGenerator';
+
+/**
+ * Generate the share verification message
+ * Must match backend/src/utils/signatureVerification.ts generateShareMessage
+ */
+function generateShareMessage(
+  walletAddress: string,
+  roundId: string,
+  timestamp: number
+): string {
+  return `DegenDome Share Verification\n\nWallet: ${walletAddress}\nRound: ${roundId}\nTimestamp: ${timestamp}`;
+}
 
 export interface WinData {
   winAmount: number; // In SOL
@@ -42,7 +55,7 @@ export function useWinShare() {
   const [referralCode, setReferralCode] = useState<string>('');
   const [cooldownStatus, setCooldownStatus] = useState<CooldownStatus | null>(null);
   const [lastShareMessage, setLastShareMessage] = useState<string | null>(null);
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
 
   // Fetch or generate referral code
   useEffect(() => {
@@ -127,16 +140,40 @@ export function useWinShare() {
         return { success: false, xpEarned: 0 };
       }
 
+      // Check if wallet supports signing
+      if (!signMessage) {
+        console.error('[useWinShare] Wallet does not support message signing');
+        return { success: false, xpEarned: 0, message: 'Wallet does not support signing' };
+      }
+
       try {
+        const walletAddress = publicKey.toBase58();
+        const timestamp = Date.now();
+
+        // Generate and sign the verification message
+        const message = generateShareMessage(walletAddress, activeWin.roundId, timestamp);
+        const messageBytes = new TextEncoder().encode(message);
+
+        let signature: string;
+        try {
+          const signatureBytes = await signMessage(messageBytes);
+          signature = bs58.encode(signatureBytes);
+        } catch (signError) {
+          console.error('[useWinShare] User rejected signing:', signError);
+          return { success: false, xpEarned: 0, message: 'Signature required to verify share' };
+        }
+
         const res = await fetch(`${BACKEND_URL}/api/shares/track`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            walletAddress: publicKey.toBase58(),
+            walletAddress,
             gameMode: activeWin.gameMode,
             winAmountLamports: Math.floor(activeWin.winAmount * LAMPORTS_PER_SOL),
             roundId: activeWin.roundId,
             platform,
+            signature,
+            timestamp,
           }),
         });
 
@@ -161,7 +198,7 @@ export function useWinShare() {
         return { success: false, xpEarned: 0 };
       }
     },
-    [pendingWin, toastWin, publicKey, fetchCooldownStatus]
+    [pendingWin, toastWin, publicKey, signMessage, fetchCooldownStatus]
   );
 
   // Check if already shared on a platform

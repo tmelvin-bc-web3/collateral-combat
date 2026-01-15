@@ -102,9 +102,23 @@ function getClientIp(req: Request): string | undefined {
 }
 
 // SECURITY: Logging for security events
+// Automatically masks sensitive fields to prevent PII leakage
 function logSecurityEvent(event: string, details: Record<string, any>) {
   const timestamp = new Date().toISOString();
-  console.log(`[SECURITY] ${timestamp} | ${event} |`, JSON.stringify(details));
+
+  // Mask sensitive fields before logging
+  const maskedDetails = { ...details };
+  if (maskedDetails.email && typeof maskedDetails.email === 'string') {
+    maskedDetails.email = maskedDetails.email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
+  }
+  if (maskedDetails.ip && typeof maskedDetails.ip === 'string') {
+    maskedDetails.ip = maskedDetails.ip.replace(/\.\d+$/, '.***');
+  }
+  if (maskedDetails.wallet && typeof maskedDetails.wallet === 'string') {
+    maskedDetails.wallet = maskedDetails.wallet.slice(0, 8) + '...';
+  }
+
+  console.log(`[SECURITY] ${timestamp} | ${event} |`, JSON.stringify(maskedDetails));
 }
 
 const app = express();
@@ -693,17 +707,30 @@ app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (r
 // Win Sharing Endpoints
 // ===================
 
+import { verifyShareSignature } from './utils/signatureVerification';
+
 const SHARE_XP_REWARD = 25;
 const BIG_WIN_THRESHOLD_LAMPORTS = 3_000_000_000; // 3 SOL - bypasses cooldown
 
 // Track a share event and award XP
 app.post('/api/shares/track', standardLimiter, async (req: Request, res: Response) => {
   try {
-    const { walletAddress, gameMode, roundId, platform } = req.body;
+    const { walletAddress, gameMode, roundId, platform, signature, timestamp } = req.body;
 
     // Validate required fields
     if (!walletAddress || !gameMode || !roundId || !platform) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // SECURITY: Require signature verification to prove wallet ownership
+    if (!signature || !timestamp) {
+      return res.status(400).json({ error: 'Signature required for share verification' });
+    }
+
+    const signatureResult = verifyShareSignature(walletAddress, roundId, timestamp, signature);
+    if (!signatureResult.valid) {
+      console.warn(`[Shares] Invalid signature from ${walletAddress.slice(0, 8)}...: ${signatureResult.error}`);
+      return res.status(401).json({ error: signatureResult.error || 'Invalid signature' });
     }
 
     // Validate platform
@@ -2271,12 +2298,12 @@ progressionService.subscribe((event, data) => {
 // ==================== BATTLE CHALLENGES ====================
 
 // Get user's challenges (must be before /:code route)
-app.get('/api/challenges/mine', standardLimiter, async (req: Request, res: Response) => {
+app.get('/api/challenges/mine', requireAuth(), standardLimiter, async (req: Request, res: Response) => {
   try {
-    const walletAddress = req.headers['x-wallet-address'] as string;
+    const walletAddress = req.authenticatedWallet;
 
     if (!walletAddress) {
-      return res.status(401).json({ error: 'Wallet address required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const sent = challengesDb.getChallengesBySender(walletAddress);
@@ -2302,11 +2329,11 @@ app.get('/api/challenges/stats', standardLimiter, async (req: Request, res: Resp
 });
 
 // Create a new battle challenge
-app.post('/api/challenges/create', standardLimiter, async (req: Request, res: Response) => {
+app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: Request, res: Response) => {
   try {
-    const walletAddress = req.headers['x-wallet-address'] as string;
+    const walletAddress = req.authenticatedWallet;
     if (!walletAddress) {
-      return res.status(401).json({ error: 'Wallet address required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const { entryFee, leverage, duration } = req.body;
@@ -2445,13 +2472,13 @@ app.get('/api/challenges/:code', standardLimiter, async (req: Request, res: Resp
 });
 
 // Accept a challenge
-app.post('/api/challenges/:code/accept', standardLimiter, async (req: Request, res: Response) => {
+app.post('/api/challenges/:code/accept', requireAuth(), standardLimiter, async (req: Request, res: Response) => {
   try {
     const { code } = req.params;
-    const walletAddress = req.headers['x-wallet-address'] as string;
+    const walletAddress = req.authenticatedWallet;
 
     if (!walletAddress) {
-      return res.status(401).json({ error: 'Wallet address required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const challenge = challengesDb.getChallengeByCode(code);
@@ -2513,13 +2540,13 @@ app.post('/api/challenges/:code/accept', standardLimiter, async (req: Request, r
 });
 
 // Cancel a pending challenge
-app.delete('/api/challenges/:id', standardLimiter, async (req: Request, res: Response) => {
+app.delete('/api/challenges/:id', requireAuth(), standardLimiter, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const walletAddress = req.headers['x-wallet-address'] as string;
+    const walletAddress = req.authenticatedWallet;
 
     if (!walletAddress) {
-      return res.status(401).json({ error: 'Wallet address required' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const success = challengesDb.cancelChallenge(id, walletAddress);

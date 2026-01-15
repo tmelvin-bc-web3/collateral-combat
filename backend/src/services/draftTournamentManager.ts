@@ -13,6 +13,7 @@ import {
   DRAFT_TIER_TO_LAMPORTS,
 } from '../types';
 import * as db from '../db/draftDatabase';
+import * as userStatsDb from '../db/userStatsDatabase';
 import { coinMarketCapService } from './coinMarketCapService';
 import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
@@ -685,12 +686,51 @@ class DraftTournamentManager {
           // Log but continue - we'll need to handle failed credits separately
         }
       }
+
+      // Record win to user_wagers for stats tracking and share verification
+      try {
+        const entryFeeSol = this.getEntryFeeForTournament(tournamentId);
+        const payoutSol = payoutLamports / 1_000_000_000;
+        const profitLoss = payoutSol - entryFeeSol;
+        userStatsDb.recordWager(
+          entry.walletAddress,
+          'draft',
+          entryFeeSol,
+          'won',
+          profitLoss,
+          tournamentId
+        );
+      } catch (error) {
+        console.error(`[Draft] Failed to record win for ${entry.walletAddress}:`, error);
+      }
     }
 
-    // Set ranks for non-winning entries
+    // Set ranks for non-winning entries and record their losses
     for (let i = topCount; i < rankedEntries.length; i++) {
-      db.setEntryRankAndPayout(rankedEntries[i].id, i + 1, 0);
+      const entry = rankedEntries[i];
+      db.setEntryRankAndPayout(entry.id, i + 1, 0);
+
+      // Record loss to user_wagers for stats tracking
+      try {
+        const entryFeeSol = this.getEntryFeeForTournament(tournamentId);
+        userStatsDb.recordWager(
+          entry.walletAddress,
+          'draft',
+          entryFeeSol,
+          'lost',
+          -entryFeeSol,
+          tournamentId
+        );
+      } catch (error) {
+        console.error(`[Draft] Failed to record loss for ${entry.walletAddress}:`, error);
+      }
     }
+  }
+
+  // Helper to get entry fee in SOL for a tournament
+  private getEntryFeeForTournament(tournamentId: string): number {
+    const tournament = db.getTournament(tournamentId);
+    return tournament ? tournament.entryFeeLamports / 1_000_000_000 : 0;
   }
 
   // Award XP based on tournament placement

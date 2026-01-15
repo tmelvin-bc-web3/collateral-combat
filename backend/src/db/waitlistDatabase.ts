@@ -15,10 +15,11 @@ if (!DATABASE_URL) {
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
-      // SECURITY NOTE: rejectUnauthorized: false is required for Neon and most cloud PostgreSQL providers
-      // that use SSL but don't provide custom CA certificates. In a self-hosted environment with
-      // proper certificates, set this to true.
-      ssl: { rejectUnauthorized: false },
+      // Neon uses Let's Encrypt certificates which are in the default CA bundle
+      // Enable TLS verification in production to prevent MITM attacks
+      ssl: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+      },
     })
   : null;
 
@@ -253,7 +254,10 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
 
   // Check for disposable email
   if (isDisposableEmail(data.email)) {
-    console.log(`[SECURITY] DISPOSABLE_EMAIL_BLOCKED | email: ${data.email} | ip: ${data.ipAddress}`);
+    // SECURITY: Don't log full email/IP - mask sensitive data
+    const maskedEmail = data.email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
+    const maskedIp = data.ipAddress ? data.ipAddress.replace(/\.\d+$/, '.***') : 'unknown';
+    console.log(`[SECURITY] DISPOSABLE_EMAIL_BLOCKED | email: ${maskedEmail} | ip: ${maskedIp}`);
     throw new Error('Please use a permanent email address');
   }
 
@@ -329,7 +333,9 @@ export async function creditReferrer(referralCode: string, newUserId: string, ne
 
     // Check for same-IP abuse - don't credit if IPs match
     if (newUserIp && referrer.ipAddress && newUserIp === referrer.ipAddress) {
-      console.log(`[SECURITY] SAME_IP_REFERRAL_BLOCKED | ip: ${newUserIp} | referrer: ${referralCode}`);
+      // SECURITY: Don't log full IP - mask last octet
+      const maskedIp = newUserIp.replace(/\.\d+$/, '.***');
+      console.log(`[SECURITY] SAME_IP_REFERRAL_BLOCKED | ip: ${maskedIp} | referrer: ${referralCode}`);
       // Log the referral but don't credit it
       await pool.query(
         `INSERT INTO waitlist_referrals (id, referrer_code, referee_id, timestamp, credited)

@@ -63,21 +63,22 @@ export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all';
 // XP thresholds for each level (index = level - 1)
 // Balanced to ensure profitability before perks unlock
 // ~25 XP per bet average, 0.005 SOL rake per 0.1 SOL bet
+// Level 5: First free bet unlocks AFTER we've collected enough rake to cover it
 // Level 15 perks: ~200 bets = ~1 SOL rake paid
 // Level 40 perks: ~4,000 bets = ~20 SOL rake paid
 // Level 75 perks: ~24,000 bets = ~120 SOL rake paid
 // Level 100 perks: ~60,000 bets = ~300 SOL rake paid
 const LEVEL_THRESHOLDS: number[] = [
   0,       // Level 1
-  50,      // Level 2
-  125,     // Level 3
-  225,     // Level 4
-  350,     // Level 5 - 1 free bet (~14 bets)
-  500,     // Level 6
-  700,     // Level 7
-  950,     // Level 8
-  1250,    // Level 9
-  1600,    // Level 10 - Contender + border (~64 bets, ~0.32 SOL rake)
+  75,      // Level 2 (~3 bets)
+  175,     // Level 3 (~7 bets)
+  350,     // Level 4 (~14 bets)
+  625,     // Level 5 - 1 free bet (~25 bets = 0.125 SOL rake, 25% profit margin)
+  900,     // Level 6
+  1150,    // Level 7
+  1400,    // Level 8
+  1600,    // Level 9
+  1850,    // Level 10 - Contender + border (~74 bets, ~0.37 SOL rake)
   2000,    // Level 11
   2500,    // Level 12
   3100,    // Level 13
