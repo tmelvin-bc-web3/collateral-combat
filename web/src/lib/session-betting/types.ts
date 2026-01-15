@@ -32,6 +32,24 @@ export enum WinnerSide {
   Draw = 'draw',
 }
 
+/// Game type for tracking winnings source
+export enum GameType {
+  Oracle = 0,     // Price prediction rounds
+  Battle = 1,     // PvP trading battles
+  Draft = 2,      // Draft tournaments
+  Spectator = 3,  // Spectator wagering
+}
+
+// Convert game type to program format
+export function gameTypeToProgram(gameType: GameType): object {
+  switch (gameType) {
+    case GameType.Oracle: return { oracle: {} };
+    case GameType.Battle: return { battle: {} };
+    case GameType.Draft: return { draft: {} };
+    case GameType.Spectator: return { spectator: {} };
+  }
+}
+
 // Account Types
 export interface GameState {
   authority: PublicKey;

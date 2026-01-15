@@ -3,6 +3,7 @@ import { Battle, LiveBattle, BattleOdds, SpectatorBet, BetStatus } from '../type
 import { battleManager } from './battleManager';
 import { progressionService } from './progressionService';
 import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
+import { balanceService } from './balanceService';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
 const MAX_BET = 10; // Maximum bet in SOL
@@ -32,7 +33,10 @@ class SpectatorService {
     // Subscribe to battle updates to settle bets
     battleManager.subscribe((battle) => {
       if (battle.status === 'completed') {
-        this.settleBets(battle.id);
+        // Settle bets asynchronously
+        this.settleBets(battle.id).catch(err => {
+          console.error(`[SpectatorService] Error settling bets for battle ${battle.id}:`, err);
+        });
       }
       // Broadcast spectator battle updates
       this.notifyListeners('spectator_battle_update', this.enrichBattleWithOdds(battle));
@@ -169,13 +173,13 @@ class SpectatorService {
     };
   }
 
-  // Place a bet (legacy - for backward compatibility)
-  placeBet(
+  // Place a bet using PDA balance
+  async placeBet(
     battleId: string,
     backedPlayer: string,
     amount: number,
     bettor: string
-  ): SpectatorBet {
+  ): Promise<SpectatorBet> {
     const battle = battleManager.getBattle(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -202,6 +206,19 @@ class SpectatorService {
     if (battle.players.some(p => p.walletAddress === bettor)) {
       throw new Error('Cannot bet on your own battle');
     }
+
+    // Calculate bet amount in lamports
+    const amountLamports = Math.round(amount * LAMPORTS_PER_SOL);
+
+    // Check PDA balance
+    const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
+    if (!hasSufficient) {
+      const available = await balanceService.getAvailableBalance(bettor);
+      throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
+    }
+
+    // Create pending debit
+    const pendingId = await balanceService.debitPending(bettor, amountLamports, 'spectator', battleId);
 
     // Get current odds
     const odds = this.calculateOdds(battleId);
@@ -240,7 +257,7 @@ class SpectatorService {
       onChainBattleId: battle.onChainBattleId || null,
       bettorWallet: bettor,
       backedPlayer: backedPlayerSide,
-      amountLamports: Math.round(amount * LAMPORTS_PER_SOL),
+      amountLamports,
       oddsAtPlacement: playerOdds,
       potentialPayoutLamports: Math.round(bet.potentialPayout * LAMPORTS_PER_SOL),
       txSignature: null,
@@ -250,7 +267,10 @@ class SpectatorService {
       settledAt: null,
     });
 
-    console.log(`Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x`);
+    // Confirm the debit
+    balanceService.confirmDebit(pendingId);
+
+    console.log(`[SpectatorService] Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x`);
 
     // Notify about new bet and updated odds
     this.notifyListeners('bet_placed', bet);
@@ -475,7 +495,7 @@ class SpectatorService {
   }
 
   // Settle all bets for a completed battle
-  private settleBets(battleId: string): void {
+  private async settleBets(battleId: string): Promise<void> {
     const battle = battleManager.getBattle(battleId);
     if (!battle || !battle.winnerId) return;
 
@@ -485,7 +505,7 @@ class SpectatorService {
     const bets = this.bets.get(battleId) || [];
     const pendingBets = bets.filter(b => b.status === 'pending');
 
-    pendingBets.forEach(bet => {
+    for (const bet of pendingBets) {
       const isWinner = bet.backedPlayer === battle.winnerId;
       const newStatus: BetStatus = isWinner ? 'won' : 'lost';
 
@@ -496,7 +516,14 @@ class SpectatorService {
       spectatorBetDatabase.updateBetStatus(bet.id, newStatus, now);
 
       if (isWinner) {
-        console.log(`Bet won: ${bet.bettor} won ${bet.potentialPayout.toFixed(2)} SOL`);
+        // Credit winnings to PDA balance
+        const payoutLamports = Math.round(bet.potentialPayout * LAMPORTS_PER_SOL);
+        const tx = await balanceService.creditWinnings(bet.bettor, payoutLamports, 'spectator', battleId);
+        if (tx) {
+          console.log(`[SpectatorService] Bet won: ${bet.bettor} credited ${bet.potentialPayout.toFixed(4)} SOL (tx: ${tx.slice(0, 8)}...)`);
+        } else {
+          console.error(`[SpectatorService] Failed to credit winnings for bet ${bet.id}`);
+        }
 
         // Award XP for winning spectator bet: 30 XP + (bet × 0.1)
         const xpAmount = 30 + Math.floor(bet.amount * 0.1);
@@ -508,7 +535,7 @@ class SpectatorService {
           'Won spectator bet'
         );
       } else {
-        console.log(`Bet lost: ${bet.bettor} lost ${bet.amount} SOL`);
+        console.log(`[SpectatorService] Bet lost: ${bet.bettor} lost ${bet.amount} SOL`);
 
         // Award XP for losing spectator bet: 10 XP + (bet × 0.02)
         const xpAmount = 10 + Math.floor(bet.amount * 0.02);
@@ -522,19 +549,25 @@ class SpectatorService {
       }
 
       this.notifyListeners('bet_settled', bet);
-    });
+    }
 
     // Also settle any database-only bets (from on-chain flow)
     const dbBets = spectatorBetDatabase.getPendingBets(battleId);
     const winnerSide = this.getBackedPlayerSide(battle, battle.winnerId);
 
-    dbBets.forEach(dbBet => {
+    for (const dbBet of dbBets) {
       // Skip if already processed in memory
-      if (this.allBets.has(dbBet.id)) return;
+      if (this.allBets.has(dbBet.id)) continue;
 
       const isWinner = dbBet.backedPlayer === winnerSide;
       spectatorBetDatabase.updateBetStatus(dbBet.id, isWinner ? 'won' : 'lost', now);
-    });
+
+      // Credit winnings for database-only bets too
+      if (isWinner) {
+        const payoutLamports = dbBet.potentialPayoutLamports;
+        await balanceService.creditWinnings(dbBet.bettorWallet, payoutLamports, 'spectator', battleId);
+      }
+    }
   }
 
   // Get user's bets

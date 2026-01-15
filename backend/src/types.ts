@@ -359,9 +359,17 @@ export interface ClientToServerEvents {
 // Memecoin Draft Types
 // ===================
 
-export type DraftTournamentTier = '$5' | '$25' | '$100';
+// Updated to SOL tiers (previously USD which was never collected!)
+export type DraftTournamentTier = '0.1 SOL' | '0.5 SOL' | '1 SOL';
 export type DraftTournamentStatus = 'upcoming' | 'drafting' | 'active' | 'completed';
 export type PowerUpType = 'swap' | 'boost' | 'freeze';
+
+// Tier to lamports mapping
+export const DRAFT_TIER_TO_LAMPORTS: Record<DraftTournamentTier, number> = {
+  '0.1 SOL': 100_000_000,   // 0.1 SOL
+  '0.5 SOL': 500_000_000,   // 0.5 SOL
+  '1 SOL': 1_000_000_000,   // 1 SOL
+};
 
 export interface Memecoin {
   id: string;
@@ -377,13 +385,13 @@ export interface Memecoin {
 export interface DraftTournament {
   id: string;
   tier: DraftTournamentTier;
-  entryFeeUsd: number;
+  entryFeeLamports: number; // Changed from USD to lamports
   status: DraftTournamentStatus;
   weekStartUtc: number;
   weekEndUtc: number;
   draftDeadlineUtc: number;
   totalEntries: number;
-  prizePoolUsd: number;
+  prizePoolLamports: number; // Changed from USD to lamports
   createdAt: number;
   settledAt?: number;
 }
@@ -410,13 +418,13 @@ export interface DraftEntry {
   id: string;
   tournamentId: string;
   walletAddress: string;
-  entryFeePaid: number;
+  entryFeePaidLamports: number; // Changed from USD to lamports
   draftCompleted: boolean;
   picks: DraftPick[];
   powerUpsUsed: PowerUpUsage[];
   finalScore?: number;
   finalRank?: number;
-  payoutUsd?: number;
+  payoutLamports?: number; // Changed from USD to lamports
   createdAt: number;
 }
 

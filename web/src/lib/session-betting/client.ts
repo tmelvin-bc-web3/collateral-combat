@@ -13,10 +13,12 @@ import {
   PlayerPosition,
   SessionToken,
   BetSide,
+  GameType,
   parseRoundStatus,
   parseWinnerSide,
   parseBetSide,
   betSideToProgram,
+  gameTypeToProgram,
 } from './types';
 import idlJson from './session_betting.json';
 
@@ -29,6 +31,7 @@ const ROUND_SEED = Buffer.from('round');
 const POOL_SEED = Buffer.from('pool');
 const BALANCE_SEED = Buffer.from('balance');
 const VAULT_SEED = Buffer.from('vault');
+const GLOBAL_VAULT_SEED = Buffer.from('global_vault');
 const POSITION_SEED = Buffer.from('position');
 const SESSION_SEED = Buffer.from('session');
 
@@ -104,6 +107,13 @@ export class SessionBettingClient {
   getSessionPDA(authority: PublicKey, sessionSigner: PublicKey): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
       [SESSION_SEED, authority.toBuffer(), sessionSigner.toBuffer()],
+      SESSION_BETTING_PROGRAM_ID
+    );
+  }
+
+  getGlobalVaultPDA(): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [GLOBAL_VAULT_SEED],
       SESSION_BETTING_PROGRAM_ID
     );
   }
@@ -440,6 +450,134 @@ export class SessionBettingClient {
       .rpc();
 
     return tx;
+  }
+
+  // ============================================
+  // Authority-Only Game Settlement Instructions
+  // These are called by the backend to settle games
+  // ============================================
+
+  /**
+   * Transfer lamports from user's vault to global vault
+   * AUTHORITY ONLY - used when user loses a game
+   * @param userWallet The wallet address of the user whose balance to debit
+   * @param amountLamports Amount to transfer in lamports
+   * @param authorityKeypair The authority keypair (backend's keypair)
+   */
+  async transferToGlobalVault(
+    userWallet: PublicKey,
+    amountLamports: BN | number,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const amount = typeof amountLamports === 'number' ? new BN(amountLamports) : amountLamports;
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [userBalancePDA] = this.getBalancePDA(userWallet);
+    const [userVaultPDA] = this.getVaultPDA(userWallet);
+    const [globalVaultPDA] = this.getGlobalVaultPDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .transferToGlobalVault(amount)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+        owner: userWallet,
+        userBalance: userBalancePDA,
+        userVault: userVaultPDA,
+        globalVault: globalVaultPDA,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Credit winnings to user's balance
+   * AUTHORITY ONLY - used to pay out game winners
+   * @param userWallet The wallet address of the user to credit
+   * @param amountLamports Amount to credit in lamports
+   * @param gameType Type of game (Oracle, Battle, Draft, Spectator)
+   * @param gameId Unique game identifier (32 bytes)
+   * @param authorityKeypair The authority keypair (backend's keypair)
+   */
+  async creditWinnings(
+    userWallet: PublicKey,
+    amountLamports: BN | number,
+    gameType: GameType,
+    gameId: Uint8Array,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const amount = typeof amountLamports === 'number' ? new BN(amountLamports) : amountLamports;
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [userBalancePDA] = this.getBalancePDA(userWallet);
+    const [userVaultPDA] = this.getVaultPDA(userWallet);
+    const [globalVaultPDA] = this.getGlobalVaultPDA();
+
+    // Ensure gameId is exactly 32 bytes
+    const gameIdArray = Array.from(gameId.slice(0, 32));
+    while (gameIdArray.length < 32) {
+      gameIdArray.push(0);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .creditWinnings(amount, gameTypeToProgram(gameType), gameIdArray)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+        owner: userWallet,
+        userBalance: userBalancePDA,
+        userVault: userVaultPDA,
+        globalVault: globalVaultPDA,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Fund the global vault with SOL for payouts
+   * AUTHORITY ONLY - authority deposits funds
+   * @param amountLamports Amount to deposit in lamports
+   * @param authorityKeypair The authority keypair (backend's keypair)
+   */
+  async fundGlobalVault(
+    amountLamports: BN | number,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const amount = typeof amountLamports === 'number' ? new BN(amountLamports) : amountLamports;
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [globalVaultPDA] = this.getGlobalVaultPDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .fundGlobalVault(amount)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+        globalVault: globalVaultPDA,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Get the current balance in the global vault
+   */
+  async getGlobalVaultBalance(): Promise<number> {
+    const [globalVaultPDA] = this.getGlobalVaultPDA();
+    const accountInfo = await this.connection.getAccountInfo(globalVaultPDA);
+    return accountInfo?.lamports || 0;
   }
 
   // ============================================

@@ -184,6 +184,144 @@ pub mod session_betting {
     }
 
     // =====================
+    // Game Settlement Instructions (Authority Only)
+    // =====================
+
+    /// Transfer lamports from user's vault to global vault
+    /// Used when user loses a game - their entry fee/bet goes to the pool
+    /// AUTHORITY ONLY - backend calls this during settlement
+    pub fn transfer_to_global_vault(ctx: Context<TransferToGlobalVault>, amount: u64) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: User must have sufficient balance
+        let user_balance = &mut ctx.accounts.user_balance;
+        require!(
+            user_balance.balance >= amount,
+            SessionBettingError::InsufficientBalance
+        );
+
+        // Update balance BEFORE transfer (reentrancy protection)
+        user_balance.balance = user_balance.balance
+            .checked_sub(amount)
+            .ok_or(SessionBettingError::MathOverflow)?;
+
+        // Transfer from user's vault to global vault
+        let owner_key = ctx.accounts.owner.key();
+        let seeds = &[
+            b"vault",
+            owner_key.as_ref(),
+            &[ctx.bumps.user_vault],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        let cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.user_vault.to_account_info(),
+                to: ctx.accounts.global_vault.to_account_info(),
+            },
+            signer_seeds,
+        );
+        transfer(cpi_context, amount)?;
+
+        msg!("Transferred {} lamports from {} to global vault", amount, owner_key);
+        Ok(())
+    }
+
+    /// Credit winnings to user's balance and transfer lamports from global vault
+    /// AUTHORITY ONLY - backend calls this to pay out winners
+    pub fn credit_winnings(
+        ctx: Context<CreditWinnings>,
+        amount: u64,
+        game_type: GameType,
+        game_id: [u8; 32],
+    ) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: Amount must be positive
+        require!(amount > 0, SessionBettingError::AmountTooSmall);
+
+        let user_balance = &mut ctx.accounts.user_balance;
+
+        // Credit to user balance
+        user_balance.balance = user_balance.balance
+            .checked_add(amount)
+            .ok_or(SessionBettingError::MathOverflow)?;
+        user_balance.total_winnings = user_balance.total_winnings
+            .checked_add(amount)
+            .ok_or(SessionBettingError::MathOverflow)?;
+
+        // Transfer from global vault to user's vault
+        let bump = ctx.bumps.global_vault;
+        let seeds: &[&[u8]] = &[
+            b"global_vault",
+            &[bump],
+        ];
+        let signer_seeds = &[seeds];
+
+        let cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.global_vault.to_account_info(),
+                to: ctx.accounts.user_vault.to_account_info(),
+            },
+            signer_seeds,
+        );
+        transfer(cpi_context, amount)?;
+
+        emit!(WinningsCredited {
+            user: ctx.accounts.owner.key(),
+            amount,
+            game_type,
+            game_id,
+        });
+
+        msg!(
+            "Credited {} lamports to {} for {:?}",
+            amount,
+            ctx.accounts.owner.key(),
+            game_type
+        );
+        Ok(())
+    }
+
+    /// Fund the global vault (authority deposits funds for payouts)
+    /// AUTHORITY ONLY
+    pub fn fund_global_vault(ctx: Context<FundGlobalVault>, amount: u64) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.global_vault.to_account_info(),
+            },
+        );
+        transfer(cpi_context, amount)?;
+
+        msg!("Funded global vault with {} lamports", amount);
+        Ok(())
+    }
+
+    // =====================
     // Session Key Instructions
     // =====================
 
@@ -586,6 +724,14 @@ pub struct InitializeGame<'info> {
     )]
     pub game_state: Account<'info, GameState>,
 
+    /// CHECK: Global vault PDA for pooled game funds
+    #[account(
+        mut,
+        seeds = [b"global_vault"],
+        bump
+    )]
+    pub global_vault: AccountInfo<'info>,
+
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -858,6 +1004,115 @@ pub struct ClaimWinnings<'info> {
 }
 
 // ===================
+// Game Settlement Account Structs (Authority Only)
+// ===================
+
+/// Transfer lamports from user vault to global vault (for losses)
+#[derive(Accounts)]
+pub struct TransferToGlobalVault<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// CHECK: User wallet (not signer - backend acts on their behalf)
+    pub owner: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"balance", owner.key().as_ref()],
+        bump = user_balance.bump
+    )]
+    pub user_balance: Account<'info, UserBalance>,
+
+    /// CHECK: User's vault PDA
+    #[account(
+        mut,
+        seeds = [b"vault", owner.key().as_ref()],
+        bump
+    )]
+    pub user_vault: AccountInfo<'info>,
+
+    /// CHECK: Global vault PDA for pooled funds
+    #[account(
+        mut,
+        seeds = [b"global_vault"],
+        bump
+    )]
+    pub global_vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+/// Credit winnings from global vault to user vault
+#[derive(Accounts)]
+pub struct CreditWinnings<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// CHECK: User wallet (not signer - backend credits on their behalf)
+    pub owner: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"balance", owner.key().as_ref()],
+        bump = user_balance.bump
+    )]
+    pub user_balance: Account<'info, UserBalance>,
+
+    /// CHECK: User's vault PDA
+    #[account(
+        mut,
+        seeds = [b"vault", owner.key().as_ref()],
+        bump
+    )]
+    pub user_vault: AccountInfo<'info>,
+
+    /// CHECK: Global vault PDA for pooled funds
+    #[account(
+        mut,
+        seeds = [b"global_vault"],
+        bump
+    )]
+    pub global_vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+/// Fund the global vault (authority deposits for payouts)
+#[derive(Accounts)]
+pub struct FundGlobalVault<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// CHECK: Global vault PDA for pooled funds
+    #[account(
+        mut,
+        seeds = [b"global_vault"],
+        bump
+    )]
+    pub global_vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// ===================
 // State Accounts
 // ===================
 
@@ -954,6 +1209,28 @@ pub enum WinnerSide {
     Up,
     Down,
     Draw,
+}
+
+/// Game type for tracking winnings source
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
+pub enum GameType {
+    Oracle,     // 0 - Price prediction rounds
+    Battle,     // 1 - PvP trading battles
+    Draft,      // 2 - Draft tournaments
+    Spectator,  // 3 - Spectator wagering
+}
+
+// ===================
+// Events
+// ===================
+
+/// Emitted when winnings are credited to a user's balance
+#[event]
+pub struct WinningsCredited {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub game_type: GameType,
+    pub game_id: [u8; 32],
 }
 
 // ===================

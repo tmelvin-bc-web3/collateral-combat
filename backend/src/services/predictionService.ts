@@ -3,11 +3,16 @@ import { PredictionRound, PredictionBet, PredictionSide, RoundStatus, Prediction
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
 import * as userStatsDb from '../db/userStatsDatabase';
+import { balanceService } from './balanceService';
 
 const ROUND_DURATION = 30; // 30 seconds per round
 const LOCK_BEFORE_END = 5; // Stop accepting bets 5 seconds before end
 const PLATFORM_FEE_PERCENT = 5; // 5% fee on winnings
 const EARLY_BIRD_MAX_BONUS = 0.20; // 20% max bonus for early bets
+const LAMPORTS_PER_SOL = 1_000_000_000;
+
+// Valid bet amounts in SOL
+const VALID_BET_AMOUNTS = [0.01, 0.05, 0.1, 0.25, 0.5];
 
 class PredictionService {
   private rounds: Map<string, PredictionRound[]> = new Map(); // asset -> rounds
@@ -109,7 +114,9 @@ class PredictionService {
 
     // Schedule end time
     const endTimer = setTimeout(() => {
-      this.settleRound(asset);
+      this.settleRound(asset).catch(err => {
+        console.error(`[PredictionService] Error settling round for ${asset}:`, err);
+      });
     }, ROUND_DURATION * 1000);
 
     this.roundTimers.set(`${asset}_lock`, lockTimer);
@@ -127,7 +134,7 @@ class PredictionService {
   }
 
   // Settle round and determine winner
-  private settleRound(asset: string): void {
+  private async settleRound(asset: string): Promise<void> {
     const round = this.currentRounds.get(asset);
     if (!round) return;
 
@@ -144,8 +151,8 @@ class PredictionService {
       round.winner = 'push';
     }
 
-    // Calculate payouts
-    this.calculatePayouts(round);
+    // Calculate payouts and credit winners
+    await this.calculatePayouts(round);
 
     // Update stats
     const stats = this.stats.get(asset)!;
@@ -156,7 +163,7 @@ class PredictionService {
     else stats.pushes++;
 
     const priceChange = ((endPrice - round.startPrice) / round.startPrice * 100).toFixed(3);
-    console.log(`✅ Round ${round.id.slice(0, 8)}... settled | ${asset}: $${round.startPrice.toFixed(2)} → $${endPrice.toFixed(2)} (${priceChange}%) | Winner: ${round.winner?.toUpperCase()}`);
+    console.log(`[PredictionService] Round ${round.id.slice(0, 8)}... settled | ${asset}: $${round.startPrice.toFixed(2)} → $${endPrice.toFixed(2)} (${priceChange}%) | Winner: ${round.winner?.toUpperCase()}`);
 
     this.notifyListeners('round_settled', round);
 
@@ -179,8 +186,8 @@ class PredictionService {
     return 1 + (EARLY_BIRD_MAX_BONUS * (1 - timeRatio));
   }
 
-  // Calculate payouts for a settled round
-  private calculatePayouts(round: PredictionRound): void {
+  // Calculate payouts for a settled round and credit winners
+  private async calculatePayouts(round: PredictionRound): Promise<void> {
     const winningBets = round.winner === 'long' ? round.longBets :
                         round.winner === 'short' ? round.shortBets : [];
     const losingPool = round.winner === 'long' ? round.shortPool :
@@ -190,12 +197,17 @@ class PredictionService {
 
     // If push or no losing side, refund everyone
     if (round.winner === 'push' || losingPool === 0) {
-      [...round.longBets, ...round.shortBets].forEach(bet => {
+      for (const bet of [...round.longBets, ...round.shortBets]) {
         bet.status = round.winner === 'push' ? 'push' : 'cancelled';
         bet.payout = bet.amount; // Refund
+
+        // Credit refund to PDA balance
+        const refundLamports = Math.round(bet.amount * LAMPORTS_PER_SOL);
+        await balanceService.creditWinnings(bet.bettor, refundLamports, 'oracle', round.id);
+
         // Record wager to database
         this.recordBetToDatabase(bet, round);
-      });
+      }
       return;
     }
 
@@ -203,25 +215,33 @@ class PredictionService {
     // Winners split the losing pool proportionally, minus platform fee
     const distributablePool = losingPool * (1 - PLATFORM_FEE_PERCENT / 100);
 
-    winningBets.forEach(bet => {
+    for (const bet of winningBets) {
       const share = bet.amount / winningPool;
       const basePayout = bet.amount + (distributablePool * share);
       // Apply early bird bonus - earlier bets get up to 20% more
       const earlyBirdMultiplier = this.getEarlyBirdMultiplier(bet, round);
       bet.payout = basePayout * earlyBirdMultiplier;
       bet.status = 'won';
+
+      // Credit winnings to PDA balance
+      const payoutLamports = Math.round(bet.payout * LAMPORTS_PER_SOL);
+      const tx = await balanceService.creditWinnings(bet.bettor, payoutLamports, 'oracle', round.id);
+      if (tx) {
+        console.log(`[PredictionService] Won: ${bet.bettor.slice(0, 8)}... credited ${bet.payout.toFixed(4)} SOL`);
+      }
+
       // Record wager to database
       this.recordBetToDatabase(bet, round);
-    });
+    }
 
-    // Mark losing bets
+    // Mark losing bets (already debited at bet placement time)
     const losingBets = round.winner === 'long' ? round.shortBets : round.longBets;
-    losingBets.forEach(bet => {
+    for (const bet of losingBets) {
       bet.status = 'lost';
       bet.payout = 0;
       // Record wager to database
       this.recordBetToDatabase(bet, round);
-    });
+    }
 
     // Award XP to all participants
     this.awardPredictionXp(round, winningBets, losingBets);
@@ -277,8 +297,8 @@ class PredictionService {
     });
   }
 
-  // Place a bet
-  placeBet(asset: string, side: PredictionSide, amount: number, bettor: string): PredictionBet {
+  // Place a bet using PDA balance
+  async placeBet(asset: string, side: PredictionSide, amount: number, bettor: string): Promise<PredictionBet> {
     const round = this.currentRounds.get(asset);
 
     if (!round) {
@@ -289,9 +309,22 @@ class PredictionService {
       throw new Error('Betting is closed for this round');
     }
 
-    if (![5, 15, 25, 50, 100].includes(amount)) {
-      throw new Error('Invalid bet amount');
+    if (!VALID_BET_AMOUNTS.includes(amount)) {
+      throw new Error(`Invalid bet amount. Valid amounts: ${VALID_BET_AMOUNTS.join(', ')} SOL`);
     }
+
+    // Calculate bet amount in lamports
+    const amountLamports = Math.round(amount * LAMPORTS_PER_SOL);
+
+    // Check PDA balance
+    const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
+    if (!hasSufficient) {
+      const available = await balanceService.getAvailableBalance(bettor);
+      throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
+    }
+
+    // Create pending debit
+    const pendingId = await balanceService.debitPending(bettor, amountLamports, 'oracle', round.id);
 
     const bet: PredictionBet = {
       id: uuidv4(),
@@ -318,7 +351,10 @@ class PredictionService {
     userBets.push(bet);
     this.userBets.set(bettor, userBets);
 
-    console.log(`📊 ${bettor.slice(0, 8)}... bet $${amount} ${side.toUpperCase()} on ${asset}`);
+    // Confirm the debit
+    balanceService.confirmDebit(pendingId);
+
+    console.log(`[PredictionService] ${bettor.slice(0, 8)}... bet ${amount} SOL ${side.toUpperCase()} on ${asset}`);
     this.notifyListeners('bet_placed', { round, bet });
 
     return bet;

@@ -19,9 +19,13 @@ import {
 } from '../types';
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
+import { balanceService } from './balanceService';
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+
+// Lamports per SOL for entry fee conversion
+const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
@@ -62,7 +66,7 @@ class BattleManager {
   }
 
   // Create a new battle
-  createBattle(config: BattleConfig, creatorWallet: string): Battle {
+  async createBattle(config: BattleConfig, creatorWallet: string): Promise<Battle> {
     const battle: Battle = {
       id: uuidv4(),
       config,
@@ -73,14 +77,14 @@ class BattleManager {
     };
 
     this.battles.set(battle.id, battle);
-    this.joinBattle(battle.id, creatorWallet);
+    await this.joinBattle(battle.id, creatorWallet);
 
     console.log(`Battle ${battle.id} created by ${creatorWallet}`);
     return battle;
   }
 
   // Join an existing battle
-  joinBattle(battleId: string, walletAddress: string): Battle | null {
+  async joinBattle(battleId: string, walletAddress: string): Promise<Battle | null> {
     const battle = this.battles.get(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -107,16 +111,40 @@ class BattleManager {
       }
     }
 
+    // Convert entry fee from SOL to lamports (entry fee is stored as SOL value)
+    const entryFeeLamports = Math.floor(battle.config.entryFee * LAMPORTS_PER_SOL);
+
+    // Check if user has sufficient balance in PDA
+    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+    if (!hasSufficient) {
+      const available = await balanceService.getAvailableBalance(walletAddress);
+      throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+    }
+
+    // Create pending debit for entry fee
+    const pendingId = await balanceService.debitPending(
+      walletAddress,
+      entryFeeLamports,
+      'battle',
+      battleId
+    );
+
     // Create player with starting account
     const player: BattlePlayer = {
       walletAddress,
       account: this.createInitialAccount(),
       trades: [],
+      pendingDebitId: pendingId, // Track pending debit for refunds if needed
     };
 
     battle.players.push(player);
     battle.prizePool += battle.config.entryFee;
     this.playerBattles.set(walletAddress, battleId);
+
+    // Confirm the debit now that player is in battle
+    balanceService.confirmDebit(pendingId);
+
+    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL`);
 
     // Start battle if full
     if (battle.players.length === battle.config.maxPlayers) {
@@ -526,7 +554,7 @@ class BattleManager {
   }
 
   // End a battle
-  private endBattle(battleId: string): void {
+  private async endBattle(battleId: string): Promise<void> {
     const battle = this.battles.get(battleId);
     if (!battle || battle.status !== 'active') return;
 
@@ -576,6 +604,24 @@ class BattleManager {
     }
 
     console.log(`Battle ${battleId} ended! Winner: ${battle.winnerId}`);
+
+    // Credit winner with prize pool (minus rake)
+    if (battle.winnerId && battle.prizePool > 0) {
+      const prizeLamports = Math.floor(battle.prizePool * LAMPORTS_PER_SOL * (1 - RAKE_PERCENT / 100));
+      try {
+        const tx = await balanceService.creditWinnings(
+          battle.winnerId,
+          prizeLamports,
+          'battle',
+          battleId
+        );
+        console.log(`[Battle] Credited ${prizeLamports / LAMPORTS_PER_SOL} SOL to winner ${battle.winnerId}. TX: ${tx}`);
+      } catch (error) {
+        console.error(`[Battle] Failed to credit winner ${battle.winnerId}:`, error);
+        // Log but continue - winner will need manual credit
+      }
+    }
+
     this.notifyListeners(battle);
 
     // Award XP to participants

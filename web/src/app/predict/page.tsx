@@ -6,10 +6,10 @@ import { getSocket } from '@/lib/socket';
 import { BACKEND_URL } from '@/config/api';
 import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance, PredictionBet, FreeBetPosition } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
-import { usePrediction } from '@/hooks/usePrediction';
 import { PageLoading } from '@/components/ui/skeleton';
 import { useWinShare } from '@/hooks/useWinShare';
 import { WinShareModal } from '@/components/WinShareModal';
+import { useSessionBetting } from '@/hooks/useSessionBetting';
 
 // Mobile panel tab type
 type MobilePanel = 'none' | 'wagers' | 'history';
@@ -151,9 +151,6 @@ export default function PredictPage() {
   // Live wagers from socket stream
   const [liveBets, setLiveBets] = useState<LiveBetDisplay[]>([]);
 
-  // Claim state
-  const [isClaiming, setIsClaiming] = useState(false);
-  const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
 
   // Animation tick for smooth progress border (updates every 50ms)
   const [, setAnimationTick] = useState(0);
@@ -191,17 +188,18 @@ export default function PredictPage() {
     referralCode,
   } = useWinShare();
 
-  // On-chain prediction hook
+  // Session betting hook for balance management
   const {
-    currentRound: onChainRound,
-    myPosition,
-    placeBet: placeBetOnChain,
-    claimWinnings,
-    canClaim,
-    isLoading: isOnChainLoading,
-    error: onChainError,
-    refresh: refreshOnChain,
-  } = usePrediction();
+    balanceInSol,
+    deposit,
+    fetchBalance,
+    isLoading: isSessionLoading,
+    error: sessionError,
+  } = useSessionBetting();
+
+  // Show deposit modal state
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('0.5');
 
   const asset = 'SOL';
 
@@ -439,47 +437,74 @@ export default function PredictPage() {
       return;
     }
 
-    // On-chain betting with real SOL
-    const onChainSide = side === 'long' ? 'up' : 'down';
-    const tx = await placeBetOnChain(onChainSide, selectedAmountSol);
-
-    if (tx) {
-      setSuccessTx(tx);
-      setHasWagerThisRound(true);
-      setTimeout(() => setSuccessTx(null), 5000);
-    } else if (onChainError) {
-      setError(onChainError);
+    // Check session balance before placing bet
+    if (balanceInSol < selectedAmountSol) {
+      setError(`Insufficient balance. Need ${selectedAmountSol} SOL, have ${balanceInSol.toFixed(4)} SOL`);
+      setShowDepositModal(true);
+      setIsPlacing(false);
+      return;
     }
-    setIsPlacing(false);
+
+    // Place bet via backend (uses PDA balance)
+    try {
+      const walletAddress = publicKey.toBase58();
+      const socket = getSocket();
+
+      // Emit bet via socket
+      socket.emit('place_prediction_bet', {
+        asset,
+        side,
+        amount: selectedAmountSol,
+        bettor: walletAddress,
+      });
+
+      // Wait for response
+      const response = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+        const timeout = setTimeout(() => {
+          resolve({ success: false, error: 'Bet placement timed out' });
+        }, 10000);
+
+        socket.once('prediction_bet_result', (result: { success: boolean; error?: string }) => {
+          clearTimeout(timeout);
+          resolve(result);
+        });
+
+        socket.once('error', (error: string) => {
+          clearTimeout(timeout);
+          resolve({ success: false, error });
+        });
+      });
+
+      if (response.success) {
+        setSuccessTx('bet_placed');
+        setHasWagerThisRound(true);
+        setTimeout(() => setSuccessTx(null), 5000);
+        // Refresh balance after bet
+        fetchBalance();
+      } else {
+        setError(response.error || 'Failed to place bet');
+      }
+    } catch (err) {
+      setError('Network error placing bet');
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
-  // Handle claim winnings
-  const handleClaim = async () => {
-    if (!onChainRound || !canClaim || !myPosition) return;
-
-    setIsClaiming(true);
-    setError(null);
-    setClaimSuccess(null);
-
-    const tx = await claimWinnings(onChainRound.roundId);
-
-    if (tx) {
-      setClaimSuccess(tx);
-      setTimeout(() => setClaimSuccess(null), 5000);
-
-      // Show win share modal after successful claim
-      // Estimate win amount as approximately 2x the bet (typical for balanced pools)
-      const estimatedWinAmount = myPosition.amount * 1.9;
-      showWinShare({
-        winAmount: estimatedWinAmount,
-        gameMode: 'oracle',
-        roundId: String(onChainRound.roundId),
-      });
-    } else if (onChainError) {
-      setError(onChainError);
+  // Handle deposit
+  const handleDeposit = async () => {
+    try {
+      const amount = parseFloat(depositAmount);
+      if (isNaN(amount) || amount <= 0) {
+        setError('Invalid deposit amount');
+        return;
+      }
+      await deposit(amount);
+      setShowDepositModal(false);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to deposit');
     }
-
-    setIsClaiming(false);
   };
 
   const getBaseOdds = (side: PredictionSide): number => {
@@ -989,63 +1014,19 @@ export default function PredictPage() {
             </div>
           )}
 
-          {/* Claim Success Message */}
-          {claimSuccess && (
-            <div className="p-2 rounded-lg text-center text-sm font-medium flex-shrink-0 bg-accent/20 border border-accent/50 text-accent">
-              <div className="flex items-center justify-center gap-2">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Winnings claimed!</span>
+          {/* Balance Display */}
+          {publicKey && (
+            <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-xs uppercase">Balance:</span>
+                <span className="text-white font-bold">{balanceInSol.toFixed(4)} SOL</span>
               </div>
-            </div>
-          )}
-
-          {/* Prominent Claim Winnings Button - shown when user can claim */}
-          {canClaim && (
-            <button
-              onClick={handleClaim}
-              disabled={isClaiming}
-              className="w-full min-h-[48px] p-3 rounded-xl bg-gradient-to-r from-accent to-purple-500 text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/30 animate-pulse touch-manipulation active:scale-[0.98]"
-            >
-              {isClaiming ? (
-                <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Claiming...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Claim Winnings</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* My Position Display - compact */}
-          {myPosition && !myPosition.claimed && (
-            <div className={`p-2 rounded-lg border flex-shrink-0 ${
-              myPosition.side === 'up'
-                ? 'bg-success/10 border-success/30'
-                : 'bg-danger/10 border-danger/30'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className={`text-sm font-bold ${
-                  myPosition.side === 'up' ? 'text-success' : 'text-danger'
-                }`}>
-                  {myPosition.side === 'up' ? 'LONG' : 'SHORT'} {myPosition.amount.toFixed(3)} SOL
-                </div>
-                <div className={`text-xs ${
-                  canClaim ? 'text-accent' : 'text-white/40'
-                }`}>
-                  {canClaim ? 'Winner!' : currentRound?.status === 'settled' ? 'Lost' : 'Pending'}
-                </div>
-              </div>
+              <button
+                onClick={() => setShowDepositModal(true)}
+                className="px-3 py-1 rounded-lg bg-warning/20 text-warning text-xs font-bold hover:bg-warning/30 transition-colors touch-manipulation"
+              >
+                Deposit
+              </button>
             </div>
           )}
 
@@ -1148,6 +1129,69 @@ export default function PredictPage() {
         hasSharedOn={hasSharedOn}
         referralCode={referralCode}
       />
+
+      {/* Deposit Modal */}
+      {showDepositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white">Deposit SOL</h3>
+              <button
+                onClick={() => setShowDepositModal(false)}
+                className="text-white/40 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-white/60 text-sm mb-4">
+              Deposit SOL to your game balance. Winnings are automatically credited to this balance.
+            </p>
+
+            <div className="mb-4">
+              <label className="text-white/40 text-xs uppercase mb-1 block">Amount (SOL)</label>
+              <input
+                type="number"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                min="0.01"
+                step="0.1"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono focus:border-warning/50 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              {['0.1', '0.5', '1', '2'].map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => setDepositAmount(amount)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
+                    depositAmount === amount
+                      ? 'bg-warning/20 text-warning border border-warning/50'
+                      : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {amount}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleDeposit}
+              disabled={isSessionLoading}
+              className="w-full py-3 rounded-xl bg-warning text-black font-bold hover:bg-warning/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSessionLoading ? 'Depositing...' : 'Deposit'}
+            </button>
+
+            {sessionError && (
+              <p className="text-danger text-sm mt-2 text-center">{sessionError}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

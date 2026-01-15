@@ -149,7 +149,7 @@ export default function FAQPage() {
       {/* FAQ Accordion */}
       <div className="space-y-2">
         {filteredFAQ.map((item, index) => (
-          <div key={index} className="card overflow-hidden">
+          <div key={item.question} className="card overflow-hidden">
             <button
               onClick={() => setOpenIndex(openIndex === index ? null : index)}
               className="w-full flex justify-between items-center p-4 text-left hover:bg-bg-tertiary/50 transition-colors"

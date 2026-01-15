@@ -29,6 +29,7 @@ interface ServerToClientEvents {
   prediction_history: (rounds: PredictionRound[]) => void;
   prediction_settled: (round: PredictionRound) => void;
   prediction_bet_placed: (bet: PredictionBet) => void;
+  prediction_bet_result: (result: { success: boolean; error?: string; bet?: PredictionBet }) => void;
   // Draft events
   draft_tournament_update: (tournament: DraftTournament) => void;
   draft_session_update: (session: DraftSession) => void;
@@ -90,6 +91,7 @@ interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
+  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => void;
   // Draft events
   start_draft: (entryId: string) => void;
   make_draft_pick: (entryId: string, roundNumber: number, coinId: string) => void;

@@ -975,7 +975,7 @@ app.get('/api/draft/tournaments/:id/leaderboard', (req, res) => {
 });
 
 // Enter tournament (requires auth, wallet in body must match authenticated wallet)
-app.post('/api/draft/tournaments/:id/enter', requireAuth(), strictLimiter, (req: Request, res: Response) => {
+app.post('/api/draft/tournaments/:id/enter', requireAuth(), strictLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress } = req.body;
     if (!walletAddress) {
@@ -985,7 +985,7 @@ app.post('/api/draft/tournaments/:id/enter', requireAuth(), strictLimiter, (req:
     if (walletAddress !== req.authenticatedWallet) {
       return res.status(403).json({ error: 'Wallet address does not match authenticated wallet', code: 'FORBIDDEN' });
     }
-    const entry = draftTournamentManager.enterTournament(req.params.id, walletAddress);
+    const entry = await draftTournamentManager.enterTournament(req.params.id, walletAddress);
     res.json(entry);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1466,10 +1466,10 @@ io.on('connection', (socket) => {
   let walletAddress: string | null = null;
 
   // Create a new battle
-  socket.on('create_battle', (config: BattleConfig, wallet: string) => {
+  socket.on('create_battle', async (config: BattleConfig, wallet: string) => {
     try {
       walletAddress = wallet;
-      const battle = battleManager.createBattle(config, wallet);
+      const battle = await battleManager.createBattle(config, wallet);
       currentBattleId = battle.id;
       socket.join(battle.id);
       socket.emit('battle_update', battle);
@@ -1479,10 +1479,10 @@ io.on('connection', (socket) => {
   });
 
   // Join existing battle
-  socket.on('join_battle', (battleId: string, wallet: string) => {
+  socket.on('join_battle', async (battleId: string, wallet: string) => {
     try {
       walletAddress = wallet;
-      const battle = battleManager.joinBattle(battleId, wallet);
+      const battle = await battleManager.joinBattle(battleId, wallet);
       if (battle) {
         currentBattleId = battleId;
         socket.join(battleId);
@@ -1656,9 +1656,9 @@ io.on('connection', (socket) => {
     spectatorService.leaveSpectate(battleId, socket.id);
   });
 
-  socket.on('place_bet', (battleId: string, backedPlayer: string, amount: number, wallet: string) => {
+  socket.on('place_bet', async (battleId: string, backedPlayer: string, amount: number, wallet: string) => {
     try {
-      const bet = spectatorService.placeBet(battleId, backedPlayer, amount, wallet);
+      const bet = await spectatorService.placeBet(battleId, backedPlayer, amount, wallet);
       socket.emit('bet_placed', bet);
     } catch (error: any) {
       socket.emit('error', error.message);
@@ -1745,12 +1745,24 @@ io.on('connection', (socket) => {
     socket.leave(`prediction_${asset}`);
   });
 
-  socket.on('place_prediction', (asset: string, side: PredictionSide, amount: number, wallet: string) => {
+  // Legacy handler - kept for compatibility
+  socket.on('place_prediction', async (asset: string, side: PredictionSide, amount: number, wallet: string) => {
     try {
-      const bet = predictionService.placeBet(asset, side, amount, wallet);
+      const bet = await predictionService.placeBet(asset, side, amount, wallet);
       socket.emit('prediction_bet_placed', bet);
     } catch (error: any) {
       socket.emit('error', error.message);
+    }
+  });
+
+  // New handler using PDA balance
+  socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => {
+    try {
+      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, data.bettor);
+      socket.emit('prediction_bet_result', { success: true, bet });
+      socket.emit('prediction_bet_placed', bet);
+    } catch (error: any) {
+      socket.emit('prediction_bet_result', { success: false, error: error.message });
     }
   });
 

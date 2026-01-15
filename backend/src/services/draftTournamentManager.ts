@@ -10,10 +10,12 @@ import {
   PowerUpType,
   PowerUpUsage,
   Memecoin,
+  DRAFT_TIER_TO_LAMPORTS,
 } from '../types';
 import * as db from '../db/draftDatabase';
 import { coinMarketCapService } from './coinMarketCapService';
 import { progressionService } from './progressionService';
+import { balanceService } from './balanceService';
 
 // In-memory state for active draft sessions
 interface ActiveDraftSession {
@@ -96,7 +98,7 @@ class DraftTournamentManager {
     const { weekStart, weekEnd } = this.getCurrentWeekBounds();
 
     // Create tournaments for each tier if they don't exist
-    const tiers: DraftTournamentTier[] = ['$5', '$25', '$100'];
+    const tiers: DraftTournamentTier[] = ['0.1 SOL', '0.5 SOL', '1 SOL'];
     for (const tier of tiers) {
       const existing = db.getTournamentForTierAndWeek(tier, weekStart);
       if (!existing) {
@@ -174,7 +176,7 @@ class DraftTournamentManager {
   // Entry Management
   // ===================
 
-  enterTournament(tournamentId: string, walletAddress: string): DraftEntry {
+  async enterTournament(tournamentId: string, walletAddress: string): Promise<DraftEntry> {
     const tournament = db.getTournament(tournamentId);
     if (!tournament) {
       throw new Error('Tournament not found');
@@ -190,7 +192,34 @@ class DraftTournamentManager {
       throw new Error('Already entered this tournament');
     }
 
-    const entry = db.createEntry(tournamentId, walletAddress, tournament.entryFeeUsd);
+    // CRITICAL FIX: Actually collect entry fee from PDA balance!
+    const entryFeeLamports = tournament.entryFeeLamports;
+
+    // Check if user has sufficient balance
+    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+    if (!hasSufficient) {
+      const available = await balanceService.getAvailableBalance(walletAddress);
+      throw new Error(`Insufficient balance. Need ${entryFeeLamports / 1_000_000_000} SOL, have ${available / 1_000_000_000} SOL`);
+    }
+
+    // Create pending debit for the entry fee
+    const pendingId = await balanceService.debitPending(
+      walletAddress,
+      entryFeeLamports,
+      'draft',
+      tournamentId
+    );
+
+    // Create entry in database
+    const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports);
+
+    // Confirm the debit
+    balanceService.confirmDebit(pendingId);
+
+    // Update prize pool
+    db.incrementPrizePool(tournamentId, entryFeeLamports);
+
+    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL`);
 
     // Award XP for entering: 50 XP
     progressionService.awardXp(
@@ -543,7 +572,7 @@ class DraftTournamentManager {
           isFrozen: pick.isFrozen,
         };
       }),
-      payout: entry.payoutUsd,
+      payout: entry.payoutLamports,
     }));
   }
 
@@ -551,7 +580,7 @@ class DraftTournamentManager {
   // Settlement
   // ===================
 
-  settleTournament(tournamentId: string): void {
+  async settleTournament(tournamentId: string): Promise<void> {
     const tournament = db.getTournament(tournamentId);
     if (!tournament || tournament.status === 'completed') {
       return;
@@ -585,17 +614,20 @@ class DraftTournamentManager {
       }))
       .sort((a, b) => b.finalScore - a.finalScore);
 
-    // Calculate payouts (top 10%)
-    const prizePool = tournament.prizePoolUsd * (1 - this.RAKE_PERCENT / 100);
+    // Calculate payouts (top 10%) - now in lamports!
+    const prizePoolLamports = tournament.prizePoolLamports * (1 - this.RAKE_PERCENT / 100);
     const topCount = Math.max(1, Math.floor(rankedEntries.length * 0.1));
 
-    this.distributePayouts(rankedEntries, topCount, prizePool);
+    // Distribute payouts and credit winners on-chain
+    await this.distributePayouts(rankedEntries, topCount, prizePoolLamports, tournamentId);
 
     // Award XP based on placement
     this.awardTournamentXp(rankedEntries, topCount, tournament);
 
     // Mark tournament as settled
     db.settleTournament(tournamentId);
+
+    console.log(`[Draft] Tournament ${tournamentId} settled. ${rankedEntries.length} entries, ${topCount} winners.`);
 
     // Notify
     this.notify('tournament_settled', {
@@ -604,11 +636,12 @@ class DraftTournamentManager {
     });
   }
 
-  private distributePayouts(
+  private async distributePayouts(
     rankedEntries: DraftEntry[],
     topCount: number,
-    prizePool: number
-  ): void {
+    prizePoolLamports: number,
+    tournamentId: string
+  ): Promise<void> {
     // Fixed percentages for top 3
     const fixedPayouts = [
       { rank: 1, percent: 30 },
@@ -625,16 +658,33 @@ class DraftTournamentManager {
       const entry = rankedEntries[i];
       const rank = i + 1;
 
-      let payout: number;
+      let payoutLamports: number;
       const fixedPayout = fixedPayouts.find(p => p.rank === rank);
 
       if (fixedPayout) {
-        payout = (prizePool * fixedPayout.percent) / 100;
+        payoutLamports = Math.floor((prizePoolLamports * fixedPayout.percent) / 100);
       } else {
-        payout = (prizePool * perRemainingPercent) / 100;
+        payoutLamports = Math.floor((prizePoolLamports * perRemainingPercent) / 100);
       }
 
-      db.setEntryRankAndPayout(entry.id, rank, payout);
+      // Record payout in database
+      db.setEntryRankAndPayout(entry.id, rank, payoutLamports);
+
+      // CRITICAL: Actually credit winnings on-chain!
+      if (payoutLamports > 0) {
+        try {
+          const tx = await balanceService.creditWinnings(
+            entry.walletAddress,
+            payoutLamports,
+            'draft',
+            tournamentId
+          );
+          console.log(`[Draft] Credited ${payoutLamports / 1_000_000_000} SOL to ${entry.walletAddress} (rank ${rank}). TX: ${tx}`);
+        } catch (error) {
+          console.error(`[Draft] Failed to credit winnings to ${entry.walletAddress}:`, error);
+          // Log but continue - we'll need to handle failed credits separately
+        }
+      }
     }
 
     // Set ranks for non-winning entries
@@ -649,7 +699,8 @@ class DraftTournamentManager {
     topCount: number,
     tournament: DraftTournament
   ): void {
-    const entryFee = tournament.entryFeeUsd;
+    // Convert lamports to SOL for XP calculation (XP based on SOL value)
+    const entryFeeSOL = tournament.entryFeeLamports / 1_000_000_000;
 
     for (let i = 0; i < rankedEntries.length; i++) {
       const entry = rankedEntries[i];
@@ -659,16 +710,16 @@ class DraftTournamentManager {
       let description: string;
 
       if (rank === 1) {
-        // Winner: 1000 XP + (entry × 10)
-        xpAmount = 1000 + Math.floor(entryFee * 10);
+        // Winner: 1000 XP + (entrySOL × 1000)
+        xpAmount = 1000 + Math.floor(entryFeeSOL * 1000);
         description = 'Won tournament!';
       } else if (rank <= 3) {
-        // Top 3: 500 XP + (entry × 5)
-        xpAmount = 500 + Math.floor(entryFee * 5);
+        // Top 3: 500 XP + (entrySOL × 500)
+        xpAmount = 500 + Math.floor(entryFeeSOL * 500);
         description = `Top 3 finish (#${rank})`;
       } else if (rank <= topCount) {
-        // Top 10%: 200 XP + (entry × 2)
-        xpAmount = 200 + Math.floor(entryFee * 2);
+        // Top 10%: 200 XP + (entrySOL × 200)
+        xpAmount = 200 + Math.floor(entryFeeSOL * 200);
         description = `Top 10% finish (#${rank})`;
       } else {
         // Participated but didn't place: minimal XP (already got 50 XP for entering)
