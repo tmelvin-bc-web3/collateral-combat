@@ -103,10 +103,17 @@ pub mod session_betting {
         Ok(())
     }
 
-    /// Lock the round with end price - permissionless after lock_time
-    /// Anyone can call after the lock time has passed
+    /// Lock the round with end price - AUTHORITY ONLY
+    /// Only the authority can submit the end price to prevent price manipulation
     pub fn lock_round(ctx: Context<LockRound>, end_price: u64) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
         let round = &mut ctx.accounts.round;
+
+        // SECURITY: Authority only - prevents price manipulation attacks
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
 
         // SECURITY: Round must be open
         require!(round.status == RoundStatus::Open, SessionBettingError::RoundNotOpen);
@@ -252,6 +259,12 @@ pub mod session_betting {
 
         // SECURITY: Amount must be positive
         require!(amount > 0, SessionBettingError::AmountTooSmall);
+
+        // SECURITY: Global vault must have sufficient balance to pay out
+        require!(
+            ctx.accounts.global_vault.lamports() >= amount,
+            SessionBettingError::InsufficientVaultBalance
+        );
 
         let user_balance = &mut ctx.accounts.user_balance;
 
@@ -724,13 +737,13 @@ pub struct InitializeGame<'info> {
     )]
     pub game_state: Account<'info, GameState>,
 
-    /// CHECK: Global vault PDA for pooled game funds
+    /// Global vault PDA for pooled game funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"global_vault"],
         bump
     )]
-    pub global_vault: AccountInfo<'info>,
+    pub global_vault: SystemAccount<'info>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -774,13 +787,20 @@ pub struct StartRound<'info> {
 #[derive(Accounts)]
 pub struct LockRound<'info> {
     #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(
         mut,
         seeds = [b"round", round.round_id.to_le_bytes().as_ref()],
         bump = round.bump
     )]
     pub round: Account<'info, BettingRound>,
 
-    pub caller: Signer<'info>,
+    /// Authority must sign to prevent price manipulation
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -866,13 +886,13 @@ pub struct Deposit<'info> {
     )]
     pub user_balance: Account<'info, UserBalance>,
 
-    /// CHECK: Vault PDA to hold user's funds
+    /// Vault PDA to hold user's funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"vault", user.key().as_ref()],
         bump
     )]
-    pub vault: AccountInfo<'info>,
+    pub vault: SystemAccount<'info>,
 
     #[account(mut)]
     pub user: Signer<'info>,
@@ -890,13 +910,13 @@ pub struct Withdraw<'info> {
     )]
     pub user_balance: Account<'info, UserBalance>,
 
-    /// CHECK: Vault PDA that holds user's funds
+    /// Vault PDA that holds user's funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"vault", user.key().as_ref()],
         bump
     )]
-    pub vault: AccountInfo<'info>,
+    pub vault: SystemAccount<'info>,
 
     #[account(mut)]
     pub user: Signer<'info>,
@@ -1029,21 +1049,21 @@ pub struct TransferToGlobalVault<'info> {
     )]
     pub user_balance: Account<'info, UserBalance>,
 
-    /// CHECK: User's vault PDA
+    /// User's vault PDA - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"vault", owner.key().as_ref()],
         bump
     )]
-    pub user_vault: AccountInfo<'info>,
+    pub user_vault: SystemAccount<'info>,
 
-    /// CHECK: Global vault PDA for pooled funds
+    /// Global vault PDA for pooled funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"global_vault"],
         bump
     )]
-    pub global_vault: AccountInfo<'info>,
+    pub global_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -1070,21 +1090,21 @@ pub struct CreditWinnings<'info> {
     )]
     pub user_balance: Account<'info, UserBalance>,
 
-    /// CHECK: User's vault PDA
+    /// User's vault PDA - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"vault", owner.key().as_ref()],
         bump
     )]
-    pub user_vault: AccountInfo<'info>,
+    pub user_vault: SystemAccount<'info>,
 
-    /// CHECK: Global vault PDA for pooled funds
+    /// Global vault PDA for pooled funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"global_vault"],
         bump
     )]
-    pub global_vault: AccountInfo<'info>,
+    pub global_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -1101,13 +1121,13 @@ pub struct FundGlobalVault<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    /// CHECK: Global vault PDA for pooled funds
+    /// Global vault PDA for pooled funds - uses SystemAccount for type safety
     #[account(
         mut,
         seeds = [b"global_vault"],
         bump
     )]
-    pub global_vault: AccountInfo<'info>,
+    pub global_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -1274,6 +1294,9 @@ pub enum SessionBettingError {
 
     #[msg("Insufficient balance")]
     InsufficientBalance,
+
+    #[msg("Insufficient global vault balance for payout")]
+    InsufficientVaultBalance,
 
     #[msg("Not the owner of this balance account")]
     NotBalanceOwner,

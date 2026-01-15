@@ -3,6 +3,9 @@
 This document describes the security measures implemented in Sol Battles / DegenDome and important considerations for future development.
 
 ## Table of Contents
+- [Solana Program Security](#solana-program-security)
+- [PDA Balance System](#pda-balance-system)
+- [Session Key Security](#session-key-security)
 - [API Key Protection](#api-key-protection)
 - [Wallet Authentication](#wallet-authentication)
 - [Input Validation](#input-validation)
@@ -12,6 +15,90 @@ This document describes the security measures implemented in Sol Battles / Degen
 - [Environment Variables](#environment-variables)
 - [Common Security Mistakes to Avoid](#common-security-mistakes-to-avoid)
 - [Future Improvements](#future-improvements)
+
+---
+
+## Solana Program Security
+
+The Session Betting program (`4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`) implements multiple security layers:
+
+### Authority Controls
+- **Authority-only price submission**: `lock_round` requires authority signature to prevent price manipulation
+- **Authority-only settlement**: `credit_winnings` and `transfer_to_global_vault` are authority-only
+- **Game pause functionality**: Authority can pause all betting in emergencies
+
+### Balance Protection
+- **Reentrancy protection**: All state is updated BEFORE transfers
+- **Math overflow protection**: All arithmetic uses Rust `checked_*` operations
+- **Sufficient balance checks**: Both user balance and global vault verified before operations
+- **SystemAccount validation**: All vault PDAs use `SystemAccount<'info>` for ownership verification
+
+### PDA Validation
+- All PDAs validated with proper seeds and bumps
+- Seeds: `balance`, `vault`, `global_vault`, `session`, `round`, `pool`, `position`
+
+---
+
+## PDA Balance System
+
+### How It Works
+1. Users deposit SOL to their personal vault PDA (seeds: `["vault", user_pubkey]`)
+2. Balance tracked in UserBalance PDA (seeds: `["balance", user_pubkey]`)
+3. When playing games, backend verifies on-chain balance before allowing entry
+4. Winners credited via `credit_winnings`, losers debited via `transfer_to_global_vault`
+
+### Security Model
+| Operation | Signer Required | Can Use Session Key |
+|-----------|-----------------|---------------------|
+| Deposit | Wallet | No |
+| Withdraw | Wallet | **No** (critical) |
+| Place Bet | Wallet or Session | Yes |
+| Claim Winnings | Wallet or Session | Yes |
+| Credit Winnings | Authority | N/A |
+
+### Backend Balance Verification
+```typescript
+// Before any game entry:
+const onChainBalance = await balanceService.getOnChainBalance(wallet);
+const pendingDebits = getTotalPendingDebits(wallet);
+const availableBalance = onChainBalance - pendingDebits;
+
+if (availableBalance < entryFee) {
+  throw new Error('Insufficient balance');
+}
+```
+
+---
+
+## Session Key Security
+
+### Design Principles
+1. **Wallet signature required to create session** - Attackers cannot create sessions
+2. **Sessions cannot withdraw** - Even if session key leaked, funds are safe
+3. **Time-limited** - Maximum 7 days validity
+4. **Per-device** - Each session has unique keypair
+
+### Validation Flow
+```rust
+fn verify_session_or_authority(session_token, signer, expected_authority) {
+    // If signer IS the wallet owner, allow
+    if signer.key() == expected_authority { return Ok(()); }
+
+    // Otherwise, validate session:
+    // 1. Session authority matches user
+    // 2. Signer matches session_signer
+    // 3. Session not expired (clock check)
+}
+```
+
+### What Session Keys CAN Do
+- Place bets in Oracle prediction
+- Claim winnings (to balance, not wallet)
+
+### What Session Keys CANNOT Do
+- Withdraw funds
+- Create new sessions
+- Transfer funds out of system
 
 ---
 
@@ -206,20 +293,35 @@ const safeSortBy = validColumns.includes(sortBy) ? sortBy : 'created_at';
 
 ## Future Improvements
 
+### Before Mainnet (Critical)
+1. **Multi-sig authority:** Implement Squads multi-sig for program authority
+2. **Authority key in HSM:** Move authority private key to Hardware Security Module
+3. **Rate limiting on settlements:** Max credits per hour per user
+
 ### High Priority
-1. **Enable wallet signatures:** Set `REQUIRE_WALLET_SIGNATURES=true` after updating frontend
-2. **Add CSRF protection:** Implement anti-CSRF tokens for state-changing requests
-3. **Database encryption:** Encrypt sensitive fields (email, IP addresses)
+1. **CSRF protection:** Implement anti-CSRF tokens for state-changing requests
+2. **Database encryption:** Encrypt sensitive fields (email, IP addresses)
+3. **Global vault monitoring:** Alert when vault balance drops below threshold
 
 ### Medium Priority
-1. **Audit logging:** Log all admin actions and security events to database
-2. **Session management:** Implement proper sessions instead of per-request auth
+1. **Audit logging:** Log all admin/authority actions to database
+2. **Pending transaction reconciliation:** Periodic on-chain/off-chain balance sync
 3. **2FA for admin:** Add TOTP for admin dashboard access
 
 ### Low Priority
 1. **Content Security Policy:** Add CSP headers to frontend
 2. **Subresource Integrity:** Add SRI hashes for external scripts
 3. **Security headers:** Add X-Frame-Options, X-Content-Type-Options
+
+### Completed
+- [x] Authority-only price submission (prevents manipulation)
+- [x] Global vault balance verification before payouts
+- [x] SystemAccount validation for all vault PDAs
+- [x] Session key isolation (cannot withdraw)
+- [x] Reentrancy protection on all transfers
+- [x] Math overflow protection
+- [x] Wallet signature authentication
+- [x] PDA balance verification in backend
 
 ---
 
