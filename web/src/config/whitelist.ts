@@ -9,6 +9,7 @@ const HARDCODED_WALLETS: string[] = [
   '37ZQx6QbmxX93VhSLDNUzmusDvtBcA3G5xHQFqoLpp7r',
   'Fqczgf9KfSVXtMtXccq6SE1yBfWeUXefJ3ithStptTUa',
   '82RHm6tsGXtiZ8zjymT6D3dmoaMCikdKP4agN67BcRkY',
+  'ATajJu4rmqNZSmr45QG94sCxDM4dMc7Xoq6a1BuKmFUq',
 ];
 
 const parseWhitelistedWallets = (): string[] => {
