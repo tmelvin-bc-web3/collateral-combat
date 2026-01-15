@@ -43,7 +43,7 @@ export default function OraclePage() {
               <div>
                 <h3 className="font-medium mb-1">Round Locks</h3>
                 <p className="text-text-secondary text-sm">
-                  5 seconds before the round ends, wagerting closes. The lock price is recorded.
+                  5 seconds before the round ends, betting closes. The lock price is recorded.
                   Watch the final seconds play out!
                 </p>
               </div>
@@ -64,16 +64,26 @@ export default function OraclePage() {
         </div>
       </section>
 
-      {/* Supported Assets */}
+      {/* Trading Asset */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Supported Assets</h2>
-        <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-          {['SOL', 'BTC', 'ETH', 'WIF', 'BONK', 'JUP', 'RAY', 'JTO'].map((asset) => (
-            <div key={asset} className="card p-3 text-center">
-              <span className="font-mono text-accent text-sm">{asset}</span>
+        <h2 className="text-xl font-semibold mb-4">Trading Asset</h2>
+        <div className="card p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+              <span className="font-bold text-white">SOL</span>
             </div>
-          ))}
+            <div>
+              <h3 className="font-medium">SOL/USD</h3>
+              <p className="text-text-secondary text-sm">
+                Oracle predictions track the SOL/USD price via Pyth Network oracle.
+                Predict whether SOL will go up or down in the next 30 seconds.
+              </p>
+            </div>
+          </div>
         </div>
+        <p className="text-text-tertiary text-sm mt-3">
+          More assets coming soon! Battle mode supports additional tokens for trading.
+        </p>
       </section>
 
       {/* Payouts */}
@@ -112,19 +122,19 @@ export default function OraclePage() {
 
         <div className="card p-4">
           <div className="space-y-3">
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">First 5 seconds</span>
               <span className="text-success font-medium">+20% bonus</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">5-15 seconds</span>
               <span className="text-success font-medium">+10% to +20% (decaying)</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">15-25 seconds</span>
               <span className="text-yellow-400 font-medium">+0% to +10% (decaying)</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">After 25 seconds</span>
               <span className="text-text-tertiary">Round locked - no wagers</span>
             </div>
@@ -172,13 +182,13 @@ export default function OraclePage() {
           <li className="flex gap-3">
             <span className="text-accent">•</span>
             <span className="text-text-secondary">
-              <strong>Watch the pool balance</strong> — Wagerter odds come from being on the minority side.
+              <strong>Watch the pool balance</strong> — Better odds come from being on the minority side.
             </span>
           </li>
           <li className="flex gap-3">
             <span className="text-accent">•</span>
             <span className="text-text-secondary">
-              <strong>Consider volatility</strong> — More volatile assets (WIF, BONK) move more in 30 seconds.
+              <strong>Consider volatility</strong> — SOL can move significantly in 30 seconds during high activity periods.
             </span>
           </li>
           <li className="flex gap-3">
