@@ -863,13 +863,13 @@ class BattleManager {
   }
 
   // Create a ready check between two matched players
-  private createReadyCheck(
+  private async createReadyCheck(
     player1Wallet: string,
     player2Wallet: string,
     config: BattleConfig
-  ): void {
+  ): Promise<void> {
     // Create battle in waiting state
-    const battle = this.createBattle(config, player1Wallet);
+    const battle = await this.createBattle(config, player1Wallet);
 
     // Join second player (but don't start yet - battle will start via joinBattle if ready_check isn't used)
     // Override the normal flow - we need to manually add the second player

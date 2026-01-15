@@ -2,6 +2,17 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  DraftTournament,
+  DraftTournamentTier,
+  DraftTournamentStatus,
+  DraftEntry,
+  DraftPick,
+  PowerUpUsage,
+  PowerUpType,
+  Memecoin,
+  DRAFT_TIER_TO_LAMPORTS,
+} from '../types';
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'draft.db');
@@ -100,77 +111,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tournaments_week ON draft_tournaments(week_start_utc);
 `);
 
-// ===================
-// Type Definitions
-// ===================
-
-export type DraftTournamentTier = '$5' | '$25' | '$100';
-export type DraftTournamentStatus = 'upcoming' | 'drafting' | 'active' | 'completed';
-export type PowerUpType = 'swap' | 'boost' | 'freeze';
-
-export interface DraftTournament {
-  id: string;
-  tier: DraftTournamentTier;
-  entryFeeUsd: number;
-  status: DraftTournamentStatus;
-  weekStartUtc: number;
-  weekEndUtc: number;
-  draftDeadlineUtc: number;
-  totalEntries: number;
-  prizePoolUsd: number;
-  createdAt: number;
-  settledAt?: number;
-}
-
-export interface DraftEntry {
-  id: string;
-  tournamentId: string;
-  walletAddress: string;
-  entryFeePaid: number;
-  draftCompleted: boolean;
-  finalScore?: number;
-  finalRank?: number;
-  payoutUsd?: number;
-  createdAt: number;
-}
-
-export interface DraftPick {
-  id: string;
-  entryId: string;
-  coinId: string;
-  coinSymbol: string;
-  coinName: string;
-  coinLogoUrl?: string;
-  pickOrder: number;
-  priceAtDraft: number;
-  priceAtEnd?: number;
-  percentChange?: number;
-  boostMultiplier: number;
-  isFrozen: boolean;
-  frozenAtPrice?: number;
-  frozenPercentChange?: number;
-  createdAt: number;
-}
-
-export interface PowerUpUsage {
-  id: string;
-  entryId: string;
-  powerupType: PowerUpType;
-  usedAt: number;
-  targetPickId?: string;
-  details?: string;
-}
-
-export interface Memecoin {
-  id: string;
-  symbol: string;
-  name: string;
-  marketCapRank: number;
-  currentPrice: number;
-  priceChange24h?: number;
-  logoUrl?: string;
-  lastUpdated: number;
-}
+// Re-export types for backward compatibility
+export type { DraftTournament, DraftTournamentTier, DraftTournamentStatus, DraftEntry, DraftPick, PowerUpUsage, PowerUpType, Memecoin };
 
 // ===================
 // Tournament Operations
@@ -218,21 +160,23 @@ export function createTournament(
   draftDeadlineUtc: number
 ): DraftTournament {
   const id = uuidv4();
-  const entryFeeUsd = parseInt(tier.replace('$', ''));
+  // Use the lamports mapping from types.ts
+  const entryFeeLamports = DRAFT_TIER_TO_LAMPORTS[tier];
   const now = Date.now();
 
-  insertTournament.run(id, tier, entryFeeUsd, 'upcoming', weekStartUtc, weekEndUtc, draftDeadlineUtc, 0, 0, now);
+  // Note: DB columns still named _usd for backwards compat, but values are now lamports
+  insertTournament.run(id, tier, entryFeeLamports, 'upcoming', weekStartUtc, weekEndUtc, draftDeadlineUtc, 0, 0, now);
 
   return {
     id,
     tier,
-    entryFeeUsd,
+    entryFeeLamports,
     status: 'upcoming',
     weekStartUtc,
     weekEndUtc,
     draftDeadlineUtc,
     totalEntries: 0,
-    prizePoolUsd: 0,
+    prizePoolLamports: 0,
     createdAt: now,
   };
 }
@@ -266,13 +210,14 @@ function mapTournamentRow(row: any): DraftTournament {
   return {
     id: row.id,
     tier: row.tier as DraftTournamentTier,
-    entryFeeUsd: row.entry_fee_usd,
+    // Map DB column (still named _usd) to new lamports property
+    entryFeeLamports: row.entry_fee_usd,
     status: row.status as DraftTournamentStatus,
     weekStartUtc: row.week_start_utc,
     weekEndUtc: row.week_end_utc,
     draftDeadlineUtc: row.draft_deadline_utc,
     totalEntries: row.total_entries,
-    prizePoolUsd: row.prize_pool_usd,
+    prizePoolLamports: row.prize_pool_usd,
     createdAt: row.created_at,
     settledAt: row.settled_at || undefined,
   };
@@ -315,21 +260,28 @@ const updateEntryRankAndPayout = db.prepare(`
   UPDATE draft_entries SET final_rank = ?, payout_usd = ? WHERE id = ?
 `);
 
-export function createEntry(tournamentId: string, walletAddress: string, entryFeePaid: number): DraftEntry {
+export function createEntry(tournamentId: string, walletAddress: string, entryFeePaidLamports: number): DraftEntry {
   const id = uuidv4();
   const now = Date.now();
 
-  insertEntry.run(id, tournamentId, walletAddress, entryFeePaid, now);
-  incrementTournamentEntries.run(entryFeePaid, tournamentId);
+  insertEntry.run(id, tournamentId, walletAddress, entryFeePaidLamports, now);
+  // Note: We no longer auto-increment prize pool here - done separately via incrementPrizePool
 
   return {
     id,
     tournamentId,
     walletAddress,
-    entryFeePaid,
+    entryFeePaidLamports,
     draftCompleted: false,
+    picks: [],
+    powerUpsUsed: [],
     createdAt: now,
   };
+}
+
+// Increment prize pool for a tournament (called when entry fee is collected)
+export function incrementPrizePool(tournamentId: string, amountLamports: number): void {
+  incrementTournamentEntries.run(amountLamports, tournamentId);
 }
 
 export function getEntry(id: string): DraftEntry | null {
@@ -371,11 +323,14 @@ function mapEntryRow(row: any): DraftEntry {
     id: row.id,
     tournamentId: row.tournament_id,
     walletAddress: row.wallet_address,
-    entryFeePaid: row.entry_fee_paid,
+    // Map to new property name
+    entryFeePaidLamports: row.entry_fee_paid,
     draftCompleted: Boolean(row.draft_completed),
+    picks: [], // Populated by getFullEntry in manager
+    powerUpsUsed: [], // Populated by getFullEntry in manager
     finalScore: row.final_score ?? undefined,
     finalRank: row.final_rank ?? undefined,
-    payoutUsd: row.payout_usd ?? undefined,
+    payoutLamports: row.payout_usd ?? undefined, // Map old column to new name
     createdAt: row.created_at,
   };
 }

@@ -55,7 +55,7 @@ class BattleSimulator {
   }
 
   // Create a single simulated battle
-  private createSimulatedBattle(index: number): void {
+  private async createSimulatedBattle(index: number): Promise<void> {
     const wallet1 = FAKE_WALLETS[index * 2] || FAKE_WALLETS[0];
     const wallet2 = FAKE_WALLETS[index * 2 + 1] || FAKE_WALLETS[1];
 
@@ -69,10 +69,10 @@ class BattleSimulator {
 
     try {
       // Create battle with first player
-      const battle = battleManager.createBattle(config, wallet1);
+      const battle = await battleManager.createBattle(config, wallet1);
 
       // Join with second player (this starts the battle)
-      battleManager.joinBattle(battle.id, wallet2);
+      await battleManager.joinBattle(battle.id, wallet2);
 
       this.simulatedBattles.push(battle.id);
 

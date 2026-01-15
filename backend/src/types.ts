@@ -131,6 +131,7 @@ export interface BattlePlayer {
   trades: TradeRecord[];
   finalPnl?: number;
   rank?: number;
+  pendingDebitId?: string; // For PDA balance tracking
 }
 
 export interface Battle {
@@ -285,6 +286,7 @@ export interface ServerToClientEvents {
   prediction_history: (rounds: PredictionRound[]) => void;
   prediction_settled: (round: PredictionRound) => void;
   prediction_bet_placed: (bet: PredictionBet) => void;
+  prediction_bet_result: (result: { success: boolean; error?: string; bet?: PredictionBet }) => void;
   // Progression events
   progression_update: (progression: UserProgression) => void;
   xp_gained: (data: XpGainEvent) => void;
@@ -333,6 +335,7 @@ export interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
+  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => void;
   // Draft events
   join_draft_lobby: (tier: DraftTournamentTier) => void;
   leave_draft_lobby: () => void;
