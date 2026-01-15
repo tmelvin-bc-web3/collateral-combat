@@ -18,6 +18,10 @@ interface TrackShareResponse {
   message?: string;
 }
 
+// Threshold for showing full modal vs toast (in SOL)
+// Wins >= this amount show full modal, smaller wins show toast
+export const BIG_WIN_THRESHOLD_SOL = 0.5;
+
 // Generate a referral code from wallet address (fallback)
 function generateReferralCodeFromWallet(walletAddress: string): string {
   // Use last 4 characters of wallet, converted to uppercase
@@ -27,6 +31,7 @@ function generateReferralCodeFromWallet(walletAddress: string): string {
 
 export function useWinShare() {
   const [pendingWin, setPendingWin] = useState<WinData | null>(null);
+  const [toastWin, setToastWin] = useState<WinData | null>(null);
   const [sharedPlatforms, setSharedPlatforms] = useState<Set<string>>(new Set());
   const [referralCode, setReferralCode] = useState<string>('');
   const { publicKey } = useWallet();
@@ -62,16 +67,34 @@ export function useWinShare() {
     }
   }, [publicKey]);
 
-  // Show the win share modal
+  // Show win notification - decides toast vs modal based on amount
   const showWinShare = useCallback((winData: WinData) => {
-    setPendingWin(winData);
     setSharedPlatforms(new Set()); // Reset shared platforms for new win
+
+    if (winData.winAmount >= BIG_WIN_THRESHOLD_SOL) {
+      // Big win - show full modal
+      setPendingWin(winData);
+      setToastWin(null);
+    } else {
+      // Small win - show toast
+      setToastWin(winData);
+      setPendingWin(null);
+    }
   }, []);
+
+  // Force show full modal (e.g., when user clicks toast)
+  const expandToModal = useCallback(() => {
+    if (toastWin) {
+      setPendingWin(toastWin);
+      setToastWin(null);
+    }
+  }, [toastWin]);
 
   // Track share and award XP
   const trackShare = useCallback(
     async (platform: 'twitter' | 'copy' | 'download'): Promise<TrackShareResponse> => {
-      if (!pendingWin || !publicKey) {
+      const activeWin = pendingWin || toastWin;
+      if (!activeWin || !publicKey) {
         return { success: false, xpEarned: 0 };
       }
 
@@ -81,9 +104,9 @@ export function useWinShare() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             walletAddress: publicKey.toBase58(),
-            gameMode: pendingWin.gameMode,
-            winAmountLamports: Math.floor(pendingWin.winAmount * LAMPORTS_PER_SOL),
-            roundId: pendingWin.roundId,
+            gameMode: activeWin.gameMode,
+            winAmountLamports: Math.floor(activeWin.winAmount * LAMPORTS_PER_SOL),
+            roundId: activeWin.roundId,
             platform,
           }),
         });
@@ -101,7 +124,7 @@ export function useWinShare() {
         return { success: false, xpEarned: 0 };
       }
     },
-    [pendingWin, publicKey]
+    [pendingWin, toastWin, publicKey]
   );
 
   // Check if already shared on a platform
@@ -112,17 +135,28 @@ export function useWinShare() {
     [sharedPlatforms]
   );
 
-  // Dismiss the win share modal
+  // Dismiss the full win share modal
   const dismissWin = useCallback(() => {
     setPendingWin(null);
   }, []);
 
+  // Dismiss the toast
+  const dismissToast = useCallback(() => {
+    setToastWin(null);
+  }, []);
+
   return {
+    // Full modal state
     pendingWin,
+    dismissWin,
+    // Toast state
+    toastWin,
+    dismissToast,
+    expandToModal,
+    // Common
     showWinShare,
     trackShare,
     hasSharedOn,
-    dismissWin,
     referralCode,
   };
 }

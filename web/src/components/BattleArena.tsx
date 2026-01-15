@@ -13,6 +13,7 @@ import { PositionsTable } from './battle/PositionsTable';
 import { TradeHistoryTable } from './battle/TradeHistoryTable';
 import { useWinShare } from '@/hooks/useWinShare';
 import { WinShareModal } from './WinShareModal';
+import { WinToast } from './WinToast';
 
 interface BattleArenaProps {
   battle: Battle;
@@ -405,10 +406,13 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   // Win share modal hook
   const {
     pendingWin,
+    toastWin,
     showWinShare,
     trackShare,
     hasSharedOn,
     dismissWin,
+    dismissToast,
+    expandToModal,
     referralCode,
   } = useWinShare();
 
@@ -623,6 +627,13 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         onTrackShare={trackShare}
         hasSharedOn={hasSharedOn}
         referralCode={referralCode}
+      />
+
+      {/* Win Toast for smaller wins */}
+      <WinToast
+        winData={toastWin}
+        onExpand={expandToModal}
+        onDismiss={dismissToast}
       />
     </div>
   );

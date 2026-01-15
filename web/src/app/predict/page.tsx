@@ -9,6 +9,7 @@ import { RealtimeChart } from '@/components/RealtimeChart';
 import { PageLoading } from '@/components/ui/skeleton';
 import { useWinShare } from '@/hooks/useWinShare';
 import { WinShareModal } from '@/components/WinShareModal';
+import { WinToast } from '@/components/WinToast';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
 
 // Mobile panel tab type
@@ -178,13 +179,16 @@ export default function PredictPage() {
   // Mobile panel state
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
-  // Win share modal hook
+  // Win share modal/toast hook
   const {
     pendingWin,
+    toastWin,
     showWinShare,
     trackShare,
     hasSharedOn,
     dismissWin,
+    dismissToast,
+    expandToModal,
     referralCode,
   } = useWinShare();
 
@@ -1121,13 +1125,20 @@ export default function PredictPage() {
         )}
       </div>
 
-      {/* Win Share Modal */}
+      {/* Win Share Modal (for big wins >= 0.5 SOL) */}
       <WinShareModal
         winData={pendingWin}
         onClose={dismissWin}
         onTrackShare={trackShare}
         hasSharedOn={hasSharedOn}
         referralCode={referralCode}
+      />
+
+      {/* Win Toast (for smaller wins < 0.5 SOL) */}
+      <WinToast
+        winData={toastWin}
+        onExpand={expandToModal}
+        onDismiss={dismissToast}
       />
 
       {/* Deposit Modal */}
