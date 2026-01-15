@@ -699,7 +699,7 @@ const BIG_WIN_THRESHOLD_LAMPORTS = 3_000_000_000; // 3 SOL - bypasses cooldown
 // Track a share event and award XP
 app.post('/api/shares/track', standardLimiter, async (req: Request, res: Response) => {
   try {
-    const { walletAddress, gameMode, winAmountLamports, roundId, platform } = req.body;
+    const { walletAddress, gameMode, roundId, platform } = req.body;
 
     // Validate required fields
     if (!walletAddress || !gameMode || !roundId || !platform) {
@@ -716,6 +716,20 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
       return res.status(400).json({ error: 'Invalid game mode' });
     }
 
+    // SECURITY: Verify this is a real win from the database
+    // Don't trust client-provided win amounts - look up the actual win
+    const verifiedWinLamports = sharesDb.verifyWinFromWagers(walletAddress, roundId, gameMode);
+
+    if (verifiedWinLamports === null) {
+      // No verified win found - could be fake roundId or user didn't actually win
+      console.warn(`[Shares] Unverified share attempt: wallet=${walletAddress.slice(0, 8)}... round=${roundId} mode=${gameMode}`);
+      return res.status(400).json({
+        success: false,
+        xpEarned: 0,
+        error: 'No verified win found for this round',
+      });
+    }
+
     // Check if already shared on this platform for this round
     if (sharesDb.hasShared(walletAddress, roundId, platform)) {
       return res.json({ success: true, xpEarned: 0, message: 'Already shared' });
@@ -726,8 +740,8 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
     let cooldownMessage: string | undefined;
 
     if (platform === 'twitter') {
-      const amount = winAmountLamports || 0;
-      const isBigWin = amount >= BIG_WIN_THRESHOLD_LAMPORTS;
+      // Use verified win amount, not client-provided
+      const isBigWin = verifiedWinLamports >= BIG_WIN_THRESHOLD_LAMPORTS;
       const isOnCooldown = sharesDb.isOnShareXpCooldown(walletAddress);
 
       // Big wins (>= 3 SOL) bypass cooldown, smaller wins have 24h cooldown
@@ -748,11 +762,11 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
       }
     }
 
-    // Record the share (for analytics, even if no XP)
+    // Record the share with verified amount (for analytics, even if no XP)
     sharesDb.recordShare({
       walletAddress,
       gameMode,
-      winAmountLamports: winAmountLamports || 0,
+      winAmountLamports: verifiedWinLamports,
       roundId,
       platform,
       xpAwarded: xpEarned,

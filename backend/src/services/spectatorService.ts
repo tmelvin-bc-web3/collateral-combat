@@ -4,6 +4,7 @@ import { battleManager } from './battleManager';
 import { progressionService } from './progressionService';
 import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
 import { balanceService } from './balanceService';
+import * as userStatsDb from '../db/userStatsDatabase';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
 const MAX_BET = 10; // Maximum bet in SOL
@@ -548,6 +549,21 @@ class SpectatorService {
         );
       }
 
+      // Record to user_wagers for win verification
+      const profitLoss = isWinner ? (bet.potentialPayout - bet.amount) : -bet.amount;
+      try {
+        userStatsDb.recordWager(
+          bet.bettor,
+          'spectator',
+          bet.amount,
+          isWinner ? 'won' : 'lost',
+          profitLoss,
+          battleId
+        );
+      } catch (error) {
+        console.error(`[SpectatorService] Failed to record wager for ${bet.bettor}:`, error);
+      }
+
       this.notifyListeners('bet_settled', bet);
     }
 
@@ -566,6 +582,23 @@ class SpectatorService {
       if (isWinner) {
         const payoutLamports = dbBet.potentialPayoutLamports;
         await balanceService.creditWinnings(dbBet.bettorWallet, payoutLamports, 'spectator', battleId);
+      }
+
+      // Record to user_wagers for win verification
+      const amountSol = dbBet.amountLamports / LAMPORTS_PER_SOL;
+      const payoutSol = dbBet.potentialPayoutLamports / LAMPORTS_PER_SOL;
+      const profitLoss = isWinner ? (payoutSol - amountSol) : -amountSol;
+      try {
+        userStatsDb.recordWager(
+          dbBet.bettorWallet,
+          'spectator',
+          amountSol,
+          isWinner ? 'won' : 'lost',
+          profitLoss,
+          battleId
+        );
+      } catch (error) {
+        console.error(`[SpectatorService] Failed to record db wager for ${dbBet.bettorWallet}:`, error);
       }
     }
   }

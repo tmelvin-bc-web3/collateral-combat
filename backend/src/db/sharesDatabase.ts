@@ -162,5 +162,39 @@ export function getRecentShares(limit: number = 100): Array<{
   }>;
 }
 
+// Verify a win exists for this wallet/round combination
+// Returns the win amount in lamports if verified, null if not a valid win
+export function verifyWinFromWagers(
+  walletAddress: string,
+  roundId: string,
+  gameMode: string
+): number | null {
+  // Import the user_wagers database to check
+  const userWagersDb = new Database(path.join(dataDir, 'user_stats.db'));
+
+  const stmt = userWagersDb.prepare(`
+    SELECT profit_loss, amount FROM user_wagers
+    WHERE wallet_address = ?
+      AND game_id = ?
+      AND wager_type = ?
+      AND outcome = 'won'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `);
+
+  // Map gameMode to wager_type
+  const wagerType = gameMode === 'oracle' ? 'prediction' : gameMode;
+
+  const result = stmt.get(walletAddress, roundId, wagerType) as { profit_loss: number; amount: number } | undefined;
+
+  if (!result || result.profit_loss <= 0) {
+    return null; // No verified win
+  }
+
+  // Return total payout (original amount + profit) in lamports
+  const payoutSol = result.amount + result.profit_loss;
+  return Math.round(payoutSol * 1_000_000_000);
+}
+
 // Initialize on import
 initializeSharesDatabase();

@@ -20,6 +20,7 @@ import {
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
+import * as userStatsDb from '../db/userStatsDatabase';
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -606,8 +607,9 @@ class BattleManager {
     console.log(`Battle ${battleId} ended! Winner: ${battle.winnerId}`);
 
     // Credit winner with prize pool (minus rake)
+    const prizeAfterRake = battle.prizePool * (1 - RAKE_PERCENT / 100);
     if (battle.winnerId && battle.prizePool > 0) {
-      const prizeLamports = Math.floor(battle.prizePool * LAMPORTS_PER_SOL * (1 - RAKE_PERCENT / 100));
+      const prizeLamports = Math.floor(prizeAfterRake * LAMPORTS_PER_SOL);
       try {
         const tx = await balanceService.creditWinnings(
           battle.winnerId,
@@ -621,6 +623,26 @@ class BattleManager {
         // Log but continue - winner will need manual credit
       }
     }
+
+    // Record battle results to user_wagers for win verification
+    battle.players.forEach(player => {
+      const isWinner = player.walletAddress === battle.winnerId;
+      const entryFee = battle.config.entryFee;
+      const profitLoss = isWinner ? (prizeAfterRake - entryFee) : -entryFee;
+
+      try {
+        userStatsDb.recordWager(
+          player.walletAddress,
+          'battle',
+          entryFee,
+          isWinner ? 'won' : 'lost',
+          profitLoss,
+          battleId
+        );
+      } catch (error) {
+        console.error(`[Battle] Failed to record wager for ${player.walletAddress}:`, error);
+      }
+    });
 
     this.notifyListeners(battle);
 
