@@ -3,21 +3,21 @@ import DocsCallout from '@/components/docs/DocsCallout';
 export default function SessionBettingPage() {
   return (
     <div className="animate-fadeIn">
-      <h1 className="text-3xl font-bold mb-4">Session Betting</h1>
+      <h1 className="text-3xl font-bold mb-4">Session Wagering</h1>
       <p className="text-text-secondary text-lg mb-8">
-        Bet instantly without signing every transaction. Deposit once, bet freely.
+        Wager instantly without signing every transaction. Deposit once, wager freely.
       </p>
 
       {/* The Problem */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">The Problem</h2>
         <p className="text-text-secondary mb-4">
-          Normally, every Solana transaction requires a wallet signature. For fast-paced betting,
+          Normally, every Solana transaction requires a wallet signature. For fast-paced wagering,
           this means constant popups interrupting your flow:
         </p>
         <div className="card p-4 border-red-500/30 mb-4">
           <p className="text-text-secondary text-sm">
-            Click bet &rarr; Popup &rarr; Sign &rarr; Wait &rarr; Click bet &rarr; Popup &rarr; Sign &rarr; Wait...
+            Click wager &rarr; Popup &rarr; Sign &rarr; Wait &rarr; Click wager &rarr; Popup &rarr; Sign &rarr; Wait...
           </p>
         </div>
         <p className="text-text-secondary">
@@ -29,12 +29,12 @@ export default function SessionBettingPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">The Solution: Session Keys</h2>
         <p className="text-text-secondary mb-4">
-          Session betting lets you authorize a temporary key that can place bets on your behalf.
-          You sign once, then bet freely for up to 24 hours.
+          Session wagering lets you authorize a temporary key that can place wagers on your behalf.
+          You sign once, then wager freely for up to 24 hours.
         </p>
         <div className="card p-4 border-success/30">
           <p className="text-text-secondary text-sm">
-            Deposit once &rarr; Create session &rarr; Bet instantly &rarr; Bet instantly &rarr; Bet instantly...
+            Deposit once &rarr; Create session &rarr; Wager instantly &rarr; Wager instantly &rarr; Wager instantly...
           </p>
         </div>
       </section>
@@ -53,7 +53,7 @@ export default function SessionBettingPage() {
               <div>
                 <h3 className="font-medium mb-2">Deposit SOL</h3>
                 <p className="text-text-secondary text-sm mb-2">
-                  Transfer SOL from your wallet to your on-chain betting balance. This requires
+                  Transfer SOL from your wallet to your on-chain wagering balance. This requires
                   one wallet signature.
                 </p>
                 <div className="bg-bg-tertiary rounded p-3 font-mono text-xs text-text-secondary">
@@ -89,13 +89,13 @@ export default function SessionBettingPage() {
                 3
               </div>
               <div>
-                <h3 className="font-medium mb-2">Bet Instantly</h3>
+                <h3 className="font-medium mb-2">Wager Instantly</h3>
                 <p className="text-text-secondary text-sm mb-2">
                   The session key signs transactions automatically &mdash; no wallet popups!
-                  Place bets as fast as you can click.
+                  Place wagers as fast as you can click.
                 </p>
                 <div className="bg-success/10 border border-success/30 rounded p-3 text-sm text-success">
-                  No popups. No waiting. Instant bets.
+                  No popups. No waiting. Instant wagers.
                 </div>
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function SessionBettingPage() {
                 <td className="py-3 px-4">Authorizing a key</td>
               </tr>
               <tr className="border-b border-border-primary">
-                <td className="py-3 px-4">Place Bet</td>
+                <td className="py-3 px-4">Place Wager</td>
                 <td className="py-3 px-4 text-success">Wallet OR Session</td>
                 <td className="py-3 px-4">Core feature</td>
               </tr>
@@ -187,7 +187,7 @@ export default function SessionBettingPage() {
               No Withdrawal Access
             </h3>
             <p className="text-text-secondary text-sm">
-              Session keys can only bet and claim &mdash; never withdraw. Your funds are protected
+              Session keys can only wager and claim &mdash; never withdraw. Your funds are protected
               even if the session key is compromised.
             </p>
           </div>
@@ -208,7 +208,7 @@ export default function SessionBettingPage() {
             </h3>
             <p className="text-text-secondary text-sm">
               Revoke your session anytime with one click. The session key immediately becomes
-              invalid for all future bets.
+              invalid for all future wagers.
             </p>
           </div>
           <div className="card p-4">
@@ -217,7 +217,7 @@ export default function SessionBettingPage() {
               On-Chain Validation
             </h3>
             <p className="text-text-secondary text-sm">
-              The Solana program verifies session validity on every bet. Expired or revoked
+              The Solana program verifies session validity on every wager. Expired or revoked
               sessions are rejected at the blockchain level.
             </p>
           </div>
@@ -228,7 +228,7 @@ export default function SessionBettingPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">On-Chain Program</h2>
         <p className="text-text-secondary mb-4">
-          Session betting is powered by a Solana smart contract built with the Anchor framework.
+          Session wagering is powered by a Solana smart contract built with the Anchor framework.
         </p>
 
         <div className="card p-4 mb-4">
@@ -266,34 +266,34 @@ export default function SessionBettingPage() {
               <span className="text-text-secondary">Authorized session key + expiry</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Betting Round</span>
+              <span className="font-medium">Wagering Round</span>
               <span className="text-text-secondary">Round state and prize pools</span>
             </div>
             <div className="flex justify-between items-center py-2">
               <span className="font-medium">Player Position</span>
-              <span className="text-text-secondary">Individual bet records</span>
+              <span className="text-text-secondary">Individual wager records</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Using Session Betting */}
+      {/* Using Session Wagering */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Using Session Betting</h2>
+        <h2 className="text-xl font-semibold mb-4">Using Session Wagering</h2>
 
         <h3 className="font-medium mb-3">From the Wallet Balance Modal</h3>
         <ol className="list-decimal list-inside space-y-3 text-text-secondary mb-6">
           <li>Click your balance in the header to open the Wallet Balance modal</li>
-          <li>Go to the <strong>Deposit</strong> tab and deposit SOL to your betting balance</li>
+          <li>Go to the <strong>Deposit</strong> tab and deposit SOL to your wagering balance</li>
           <li>Go to the <strong>Session</strong> tab and click &quot;Create Session (24h)&quot;</li>
           <li>Sign the transaction in your wallet &mdash; this is your last signature!</li>
           <li>You&apos;ll see a green dot indicating your session is active</li>
-          <li>Now place bets instantly without any popups</li>
+          <li>Now place wagers instantly without any popups</li>
         </ol>
 
         <DocsCallout type="tip" title="Pro Tip">
-          Create a session before a fast round starts. That way you&apos;re ready to bet
-          the moment the betting window opens.
+          Create a session before a fast round starts. That way you&apos;re ready to wager
+          the moment the wagering window opens.
         </DocsCallout>
       </section>
 
@@ -313,15 +313,15 @@ export default function SessionBettingPage() {
           <div className="card p-4">
             <h3 className="font-medium mb-2">What if someone steals my session key?</h3>
             <p className="text-text-secondary text-sm">
-              They could place bets with your balance, but they cannot withdraw funds. You can
+              They could place wagers with your balance, but they cannot withdraw funds. You can
               also revoke the session immediately from your wallet to stop any further activity.
             </p>
           </div>
 
           <div className="card p-4">
-            <h3 className="font-medium mb-2">Can I use session betting on mobile?</h3>
+            <h3 className="font-medium mb-2">Can I use session wagering on mobile?</h3>
             <p className="text-text-secondary text-sm">
-              Yes! Session betting works on any device with a Solana wallet. It&apos;s especially
+              Yes! Session wagering works on any device with a Solana wallet. It&apos;s especially
               useful on mobile where wallet popups are more disruptive.
             </p>
           </div>

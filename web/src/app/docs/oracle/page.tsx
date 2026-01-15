@@ -43,7 +43,7 @@ export default function OraclePage() {
               <div>
                 <h3 className="font-medium mb-1">Round Locks</h3>
                 <p className="text-text-secondary text-sm">
-                  5 seconds before the round ends, betting closes. The lock price is recorded.
+                  5 seconds before the round ends, wagering closes. The lock price is recorded.
                   Watch the final seconds play out!
                 </p>
               </div>
