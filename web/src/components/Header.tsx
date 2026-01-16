@@ -33,6 +33,8 @@ const PRIMARY_NAV = [
 
 // Secondary nav - in dropdown
 const SECONDARY_NAV = [
+  { href: '/lds', label: 'Last Degen Standing', icon: 'lds', description: 'Elimination prediction game' },
+  { href: '/token-wars', label: 'Token Wars', icon: 'token-wars', description: 'Bet on token performance' },
   { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & wager on battles' },
   { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', description: 'Top warriors' },
   { href: '/progression', label: 'Ranks & Perks', icon: 'progression', description: 'Level up rewards' },
@@ -90,6 +92,18 @@ const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
       return (
         <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      );
+    case 'lds':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'token-wars':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
         </svg>
       );
     default:
