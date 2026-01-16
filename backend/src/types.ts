@@ -168,6 +168,7 @@ export interface SpectatorBet {
   placedAt: number;
   status: BetStatus;
   settledAt?: number;
+  lockTx?: string; // On-chain transaction that locked wager in global vault
 }
 
 export interface BattleOdds {

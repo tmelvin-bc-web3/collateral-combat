@@ -221,6 +221,18 @@ class SpectatorService {
     // Create pending debit
     const pendingId = await balanceService.debitPending(bettor, amountLamports, 'spectator', battleId);
 
+    // SECURITY: Lock funds on-chain IMMEDIATELY
+    // This prevents the withdraw-after-bet exploit where user could:
+    // 1. Place spectator bet (off-chain tracking)
+    // 2. Withdraw from PDA (on-chain)
+    // 3. Win the bet but have no funds to collect from losers
+    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports);
+    if (!lockTx) {
+      // Failed to lock funds on-chain - cancel the bet
+      balanceService.cancelDebit(pendingId);
+      throw new Error('Failed to lock wager on-chain. Please try again.');
+    }
+
     // Get current odds
     const odds = this.calculateOdds(battleId);
     const playerOdds = odds?.player1.wallet === backedPlayer
@@ -236,7 +248,8 @@ class SpectatorService {
       odds: playerOdds,
       potentialPayout: amount * playerOdds * (1 - PLATFORM_FEE_PERCENT / 100),
       placedAt: Date.now(),
-      status: 'pending'
+      status: 'pending',
+      lockTx, // Track the lock transaction
     };
 
     // Store bet in memory
@@ -271,7 +284,7 @@ class SpectatorService {
     // Confirm the debit
     balanceService.confirmDebit(pendingId);
 
-    console.log(`[SpectatorService] Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x`);
+    console.log(`[SpectatorService] Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x. Lock TX: ${lockTx}`);
 
     // Notify about new bet and updated odds
     this.notifyListeners('bet_placed', bet);
