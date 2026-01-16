@@ -13,6 +13,8 @@ const NAV_ITEMS: NavItem[] = [
   { title: 'Overview', href: '/docs', icon: '📖' },
   { title: 'Getting Started', href: '/docs/getting-started', icon: '🚀' },
   { title: 'Oracle', href: '/docs/oracle', icon: '🔮' },
+  { title: 'Last Degen Standing', href: '/docs/lds', icon: '💀' },
+  { title: 'Token Wars', href: '/docs/token-wars', icon: '🏆' },
   { title: 'Battle Mode', href: '/docs/battle', icon: '⚔️' },
   { title: 'Draft', href: '/docs/draft', icon: '🎯' },
   { title: 'Spectate', href: '/docs/spectate', icon: '👁️' },

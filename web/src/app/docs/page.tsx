@@ -35,6 +35,18 @@ export default function DocsOverview() {
             icon="🔮"
           />
           <FeatureCard
+            title="Last Degen Standing"
+            description="Battle royale elimination. Predict SOL up/down each round — wrong prediction means elimination. Last player wins!"
+            href="/docs/lds"
+            icon="💀"
+          />
+          <FeatureCard
+            title="Token Wars"
+            description="Head-to-head token battles. Pick which token will outperform over 5 minutes. Parimutuel odds with continuous 24/7 action."
+            href="/docs/token-wars"
+            icon="🏆"
+          />
+          <FeatureCard
             title="Battle Mode"
             description="1v1 perpetual trading battles. Start with $1,000, use leverage, and compete for the highest P&L percentage."
             href="/docs/battle"
