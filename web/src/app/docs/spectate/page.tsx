@@ -54,15 +54,15 @@ export default function SpectatePage() {
           <div className="card p-4">
             <h3 className="font-medium mb-2">3. Place Your Wager</h3>
             <p className="text-text-secondary text-sm">
-              Choose which player to back and enter your wager amount. Your odds are locked in
-              for 30 seconds while you complete the on-chain transaction.
+              Choose which player to back and enter your wager amount. With a session key,
+              wagers are placed instantly — no wallet popups! Funds are locked on-chain immediately.
             </p>
           </div>
           <div className="card p-4">
-            <h3 className="font-medium mb-2">4. Collect Winnings</h3>
+            <h3 className="font-medium mb-2">4. Automatic Payouts</h3>
             <p className="text-text-secondary text-sm">
-              If your player wins, claim your winnings from the Claims tab.
-              Payouts are automatic and on-chain verified.
+              If your player wins, winnings are automatically credited to your Session Betting balance.
+              No claiming required — check your balance after the battle ends.
             </p>
           </div>
         </div>
@@ -106,59 +106,69 @@ export default function SpectatePage() {
         </DocsCallout>
       </section>
 
-      {/* Odds Lock */}
+      {/* Instant Wagering */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Odds Lock Mechanism</h2>
+        <h2 className="text-xl font-semibold mb-4">Instant Wagering with Sessions</h2>
         <p className="text-text-secondary mb-4">
-          When you place a wager, your odds are <strong>locked for 30 seconds</strong>. This prevents
-          odds manipulation and ensures you get the odds you expect.
+          With a session key, you can place wagers instantly without wallet popups.
+          Create a session once and wager freely for up to 24 hours.
         </p>
 
         <div className="card p-4">
           <div className="space-y-3">
             <div className="flex gap-4">
               <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold">1</div>
-              <p className="text-text-secondary text-sm">Click &quot;Place Wager&quot; and select your amount</p>
+              <p className="text-text-secondary text-sm">Deposit SOL to your Session Betting balance</p>
             </div>
             <div className="flex gap-4">
               <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold">2</div>
-              <p className="text-text-secondary text-sm">Review your locked odds and potential payout</p>
+              <p className="text-text-secondary text-sm">Create a session key (one wallet signature)</p>
             </div>
             <div className="flex gap-4">
               <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold">3</div>
-              <p className="text-text-secondary text-sm">Confirm the transaction in your wallet within 30 seconds</p>
+              <p className="text-text-secondary text-sm">Place wagers instantly — no more popups!</p>
             </div>
             <div className="flex gap-4">
               <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold">4</div>
-              <p className="text-text-secondary text-sm">Your wager is recorded at the locked odds</p>
+              <p className="text-text-secondary text-sm">Funds are locked on-chain immediately when you wager</p>
             </div>
           </div>
         </div>
 
-        <DocsCallout type="warning" title="Lock Expiry">
-          If you don&apos;t complete the transaction within 30 seconds, the lock expires and you&apos;ll
-          need to start over. Current odds may have changed!
+        <DocsCallout type="tip" title="Session Security">
+          Session keys can only place wagers — they cannot withdraw funds.
+          Your SOL is always safe. See <a href="/docs/session-betting" className="text-accent hover:underline">Session Betting</a> for details.
         </DocsCallout>
       </section>
 
-      {/* Claiming Winnings */}
+      {/* Automatic Payouts */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Claiming Winnings</h2>
+        <h2 className="text-xl font-semibold mb-4">Automatic Payouts</h2>
         <p className="text-text-secondary mb-4">
-          When a battle ends and your player wins:
+          Winnings are automatically credited to your Session Betting balance when the battle ends.
+          No claiming required!
         </p>
 
-        <ol className="list-decimal list-inside space-y-2 text-text-secondary mb-4">
-          <li>Go to the Spectate page and open the <strong>Claims</strong> tab</li>
-          <li>You&apos;ll see all your unclaimed winning wagers</li>
-          <li>Click &quot;Claim&quot; to receive your payout</li>
-          <li>Confirm the transaction in your wallet</li>
-          <li>Funds are transferred to your wallet</li>
-        </ol>
+        <div className="card p-4 mb-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Payout Timing</span>
+              <span>Immediate after battle ends</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Where Funds Go</span>
+              <span>Your Session Betting balance</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Claiming Required?</span>
+              <span className="text-success">No — fully automatic</span>
+            </div>
+          </div>
+        </div>
 
-        <DocsCallout type="tip">
-          There&apos;s no time limit on claiming winnings, but we recommend claiming promptly.
-          Unclaimed wagers are visible in your Claims tab indefinitely.
+        <DocsCallout type="info" title="Unified Balance">
+          Your winnings are added to the same balance used across all game modes.
+          Withdraw anytime with your wallet signature.
         </DocsCallout>
       </section>
 

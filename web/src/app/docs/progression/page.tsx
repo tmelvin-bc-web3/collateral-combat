@@ -224,8 +224,8 @@ export default function ProgressionPage() {
         </div>
 
         <DocsCallout type="tip" title="Free Wager Value">
-          Each free wager is worth 0.01 SOL. If you win, you keep the profit!
-          Free wagers are placed through an escrow system for fairness.
+          Each free wager is worth 0.01 SOL. If you win, the profit is credited to your Session Betting balance!
+          Free wagers are funded from the platform pool.
         </DocsCallout>
       </section>
 

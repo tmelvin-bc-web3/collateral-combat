@@ -163,17 +163,41 @@ export default function BattlePage() {
         </p>
       </section>
 
+      {/* Entry & Balance */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Entry Fees & Balance</h2>
+        <p className="text-text-secondary mb-4">
+          Battle entry fees are paid from your Session Betting balance. Deposit SOL once and use it
+          across all game modes — no wallet popups during gameplay.
+        </p>
+
+        <div className="card p-4 mb-4">
+          <h3 className="font-medium mb-3">How It Works</h3>
+          <ol className="list-decimal list-inside space-y-2 text-text-secondary text-sm">
+            <li>Deposit SOL to your Session Betting balance</li>
+            <li>Entry fee is deducted when you join a battle</li>
+            <li>Funds are locked on-chain immediately (prevents withdrawal)</li>
+            <li>Winner receives the prize pool automatically</li>
+          </ol>
+        </div>
+
+        <DocsCallout type="info" title="Unified Balance">
+          Your Session Betting balance works across all game modes: Oracle, Battle, Draft, and Spectator.
+          See <a href="/docs/session-betting" className="text-accent hover:underline">Session Betting</a> for details.
+        </DocsCallout>
+      </section>
+
       {/* Settlement */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Settlement</h2>
         <p className="text-text-secondary mb-4">
-          Battle results are settled on-chain using Solana smart contracts. All trades during
+          Battle results are settled using Solana smart contracts. All trades during
           the battle are cryptographically signed, ensuring trustless verification.
         </p>
 
-        <DocsCallout type="info" title="On-Chain Settlement">
-          The winner is determined by total P&L percentage. The result is submitted to our
-          Battle Program on Solana, and the prize pool is distributed automatically.
+        <DocsCallout type="info" title="Automatic Payouts">
+          The winner is determined by total P&L percentage. Winnings are automatically credited
+          to the winner&apos;s Session Betting balance — no claiming required.
           See the <a href="/docs/security" className="text-accent hover:underline">Security</a> page for more details.
         </DocsCallout>
       </section>

@@ -61,12 +61,12 @@ export default function DocsOverview() {
         <div className="space-y-4">
           <div className="card p-4">
             <div className="flex gap-4">
-              <span className="text-2xl">🔐</span>
+              <span className="text-2xl">💰</span>
               <div>
-                <h3 className="font-medium mb-1">On-Chain Settlement</h3>
+                <h3 className="font-medium mb-1">Unified Balance System</h3>
                 <p className="text-text-secondary text-sm">
-                  All trades are signed and verified. Battle results are settled on Solana smart contracts.
-                  Your funds, your keys.
+                  Deposit once, play everywhere. Your SOL is stored in a personal on-chain vault (PDA).
+                  Use the same balance across Oracle, Battle, Draft, and Spectator modes.
                 </p>
               </div>
             </div>
@@ -75,10 +75,22 @@ export default function DocsOverview() {
             <div className="flex gap-4">
               <span className="text-2xl">⚡</span>
               <div>
-                <h3 className="font-medium mb-1">Real-Time Action</h3>
+                <h3 className="font-medium mb-1">Instant Wagering</h3>
                 <p className="text-text-secondary text-sm">
-                  Live price feeds, instant trade execution, and real-time P&L updates.
-                  No waiting, no delays.
+                  Create a session key and place wagers without wallet popups.
+                  Fast-paced action with no interruptions.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="card p-4">
+            <div className="flex gap-4">
+              <span className="text-2xl">🔐</span>
+              <div>
+                <h3 className="font-medium mb-1">Secure by Design</h3>
+                <p className="text-text-secondary text-sm">
+                  Pyth oracle for tamper-proof prices. Immediate fund locking prevents exploits.
+                  Withdrawals always require your wallet signature.
                 </p>
               </div>
             </div>

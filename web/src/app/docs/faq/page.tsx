@@ -54,7 +54,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'What are the wager limits?',
-    answer: 'Minimum wager is 0.01 SOL across all game modes. Maximum is 10 SOL for Oracle and Spectator wagering. Draft entry fees are fixed at $5, $25, or $100 tiers.',
+    answer: 'Minimum wager is 0.01 SOL across all game modes. Maximum is 10 SOL for Oracle and Spectator wagering. Draft entry fees are 0.1 SOL, 0.5 SOL, or 1 SOL tiers.',
     category: 'gameplay',
   },
   {
@@ -66,12 +66,17 @@ const FAQ_ITEMS: FAQItem[] = [
   // Technical
   {
     question: 'How are prices determined?',
-    answer: 'We aggregate prices from multiple reliable sources including major exchanges and oracles. Prices update every 5 seconds. For Oracle rounds, the start and end prices are locked at specific timestamps.',
+    answer: 'Oracle rounds use Pyth Network, a decentralized oracle used by major DeFi protocols. Prices are verified on-chain at round start, lock, and settlement — tamper-proof and transparent.',
     category: 'technical',
   },
   {
     question: 'What is on-chain settlement?',
-    answer: 'Battle results are submitted to Solana smart contracts (Battle Program and Prediction Program). This ensures the outcome is transparent, verifiable, and cannot be manipulated. Anyone can verify results on-chain.',
+    answer: 'Game results are managed by the Session Betting Program on Solana. Oracle rounds are fully on-chain with Pyth prices. Your funds are stored in personal vault PDAs that only you can withdraw from.',
+    category: 'technical',
+  },
+  {
+    question: 'What is the Session Betting Program?',
+    answer: 'The Session Betting Program (4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA) manages your balance, sessions, and Oracle rounds. It uses PDAs to store your funds securely on-chain.',
     category: 'technical',
   },
   {
@@ -81,7 +86,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'Where can I verify the smart contracts?',
-    answer: 'Battle Program: GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9. Prediction Program: 9fDpLYmAR1WtaVwSczxz1BZqQGiSRavT6kAMLSCAh1dF. Search these on Solscan to view transactions and verify results.',
+    answer: 'Session Betting Program: 4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA (Devnet). Search on Solscan to view transactions and verify results.',
     category: 'technical',
   },
 

@@ -19,21 +19,22 @@ export default function DraftPage() {
 
         <div className="grid md:grid-cols-3 gap-4">
           <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-accent mb-1">$5</div>
+            <div className="text-2xl font-bold text-accent mb-1">0.1 SOL</div>
             <div className="text-text-secondary text-sm">Entry Tier</div>
           </div>
           <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-accent mb-1">$25</div>
+            <div className="text-2xl font-bold text-accent mb-1">0.5 SOL</div>
             <div className="text-text-secondary text-sm">Entry Tier</div>
           </div>
           <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-accent mb-1">$100</div>
+            <div className="text-2xl font-bold text-accent mb-1">1 SOL</div>
             <div className="text-text-secondary text-sm">Entry Tier</div>
           </div>
         </div>
 
-        <DocsCallout type="info" title="One Entry Per Tier">
-          You can enter each tier once per week. Enter all three tiers if you want maximum exposure!
+        <DocsCallout type="info" title="Paid from Session Balance">
+          Entry fees are deducted from your Session Betting balance. Deposit once and use it across all game modes.
+          You can enter each tier once per week.
         </DocsCallout>
       </section>
 
