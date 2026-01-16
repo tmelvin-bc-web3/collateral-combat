@@ -152,7 +152,7 @@ class PythVerificationService {
         return null;
       }
 
-      const data: HermesPriceData[] = await response.json();
+      const data = await response.json() as HermesPriceData[];
 
       if (!data || data.length === 0) {
         console.warn(`[PythVerification] No price data for ${symbol}`);
@@ -204,7 +204,7 @@ class PythVerificationService {
         return results;
       }
 
-      const data: HermesPriceData[] = await response.json();
+      const data = await response.json() as HermesPriceData[];
 
       for (const item of data) {
         // Find symbol by feed ID
