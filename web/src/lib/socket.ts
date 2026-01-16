@@ -56,6 +56,20 @@ interface ServerToClientEvents {
   ready_check_cancelled: (data: ReadyCheckCancelled) => void;
   // Challenge notification events
   challenge_accepted: (data: ChallengeAcceptedNotification) => void;
+  // LDS (Last Degen Standing) events
+  lds_event: (event: any) => void;
+  lds_game_state: (state: any) => void;
+  lds_join_success: (data: { game: any }) => void;
+  lds_join_error: (data: { error: string }) => void;
+  lds_leave_success: (data: {}) => void;
+  lds_leave_error: (data: { error: string }) => void;
+  lds_prediction_success: (data: {}) => void;
+  lds_prediction_error: (data: { error: string }) => void;
+  // Token Wars events
+  token_wars_event: (event: any) => void;
+  token_wars_battle_state: (state: any) => void;
+  token_wars_bet_success: (data: { bet: any }) => void;
+  token_wars_bet_error: (data: { error: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -104,6 +118,16 @@ interface ClientToServerEvents {
   // Progression events
   subscribe_progression: (walletAddress: string) => void;
   unsubscribe_progression: (walletAddress: string) => void;
+  // LDS (Last Degen Standing) events
+  subscribe_lds: () => void;
+  unsubscribe_lds: () => void;
+  lds_join_game: (walletAddress: string) => void;
+  lds_leave_game: (walletAddress: string) => void;
+  lds_submit_prediction: (data: { gameId: string; wallet: string; prediction: 'up' | 'down' }) => void;
+  // Token Wars events
+  subscribe_token_wars: () => void;
+  unsubscribe_token_wars: () => void;
+  token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => void;
 }
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

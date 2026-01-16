@@ -177,7 +177,7 @@ class DraftTournamentManager {
   // Entry Management
   // ===================
 
-  async enterTournament(tournamentId: string, walletAddress: string): Promise<DraftEntry> {
+  async enterTournament(tournamentId: string, walletAddress: string, isFreeBet: boolean = false): Promise<DraftEntry> {
     const tournament = db.getTournament(tournamentId);
     if (!tournament) {
       throw new Error('Tournament not found');
@@ -216,15 +216,15 @@ class DraftTournamentManager {
     // 1. Enter tournament (off-chain tracking)
     // 2. Withdraw from PDA (on-chain)
     // 3. Win tournament but platform has no funds to pay losers' share
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports);
+    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'draft');
     if (!lockTx) {
       // Failed to lock funds on-chain - cancel the entry
       balanceService.cancelDebit(pendingId);
       throw new Error('Failed to lock entry fee on-chain. Please try again.');
     }
 
-    // Create entry in database
-    const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports);
+    // Create entry in database with free bet flag
+    const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports, isFreeBet);
 
     // Confirm the debit
     balanceService.confirmDebit(pendingId);
@@ -232,7 +232,7 @@ class DraftTournamentManager {
     // Update prize pool
     db.incrementPrizePool(tournamentId, entryFeeLamports);
 
-    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL. Lock TX: ${lockTx}`);
+    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament${isFreeBet ? ' (free bet)' : ''}. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL. Lock TX: ${lockTx}`);
 
     // Award XP for entering: 50 XP
     progressionService.awardXp(

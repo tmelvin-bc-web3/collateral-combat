@@ -581,12 +581,36 @@ class PredictionServiceOnChain {
     }
 
     // Pay winners
+    // SECURITY FIX: Early bird bonus could push total payouts above locked pool
+    // Solution: Calculate raw payouts, then normalize if total exceeds available
     const distributablePool = losingPool * (1 - PLATFORM_FEE_PERCENT / 100);
+    const maxAvailablePayout = winningPool + distributablePool; // Winners get stake back + share of losers
+
+    // First pass: calculate raw payouts with early bird bonus
+    const rawPayouts: { bet: PredictionBet; payout: number }[] = [];
+    let totalRawPayout = 0;
+
     for (const bet of winningBets) {
       const share = bet.amount / winningPool;
       const basePayout = bet.amount + distributablePool * share;
       const earlyBirdMultiplier = this.getEarlyBirdMultiplier(bet, round);
-      bet.payout = basePayout * earlyBirdMultiplier;
+      const rawPayout = basePayout * earlyBirdMultiplier;
+      rawPayouts.push({ bet, payout: rawPayout });
+      totalRawPayout += rawPayout;
+    }
+
+    // Normalize if total exceeds available (shouldn't happen often, but prevents insolvency)
+    const scaleFactor = totalRawPayout > maxAvailablePayout
+      ? maxAvailablePayout / totalRawPayout
+      : 1;
+
+    if (scaleFactor < 1) {
+      console.warn(`[PredictionServiceOnChain] Early bird bonus exceeded pool, scaling payouts by ${scaleFactor.toFixed(4)}`);
+    }
+
+    // Second pass: apply scaled payouts
+    for (const { bet, payout } of rawPayouts) {
+      bet.payout = payout * scaleFactor;
       bet.status = 'won';
 
       const payoutLamports = Math.round(bet.payout * LAMPORTS_PER_SOL);
@@ -708,7 +732,7 @@ class PredictionServiceOnChain {
     // 1. Place bet (off-chain tracking)
     // 2. Withdraw from PDA (on-chain)
     // 3. Lose the bet but have no funds to collect
-    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports);
+    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'oracle');
     if (!lockTx) {
       // Failed to lock funds on-chain - cancel the bet
       balanceService.cancelDebit(pendingId);

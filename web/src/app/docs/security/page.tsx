@@ -35,6 +35,7 @@ export default function SecurityPage() {
               <li>Real-time game coordination</li>
               <li>Payout calculations and distribution</li>
               <li>Battle matchmaking</li>
+              <li>Per-game mode accounting and solvency checks</li>
             </ul>
           </div>
         </div>
@@ -97,6 +98,74 @@ export default function SecurityPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Game Mode Fund Isolation */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Game Mode Fund Isolation</h2>
+        <p className="text-text-secondary mb-4">
+          All game modes share one unified balance, but funds are tracked separately per game
+          to prevent cross-game contamination.
+        </p>
+
+        <h3 className="font-medium mb-3">How It Works</h3>
+        <div className="card p-4 mb-4">
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded bg-accent/20 flex items-center justify-center text-accent text-sm font-bold flex-shrink-0">1</div>
+              <div>
+                <p className="font-medium">Per-Game Accounting</p>
+                <p className="text-text-secondary text-sm">
+                  When you enter a game, the system records how much each game mode has collected.
+                  Oracle, Battle, Draft, and Spectator each have separate accounting.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded bg-accent/20 flex items-center justify-center text-accent text-sm font-bold flex-shrink-0">2</div>
+              <div>
+                <p className="font-medium">Solvency Checks</p>
+                <p className="text-text-secondary text-sm">
+                  Before any payout, the system verifies the game mode has enough locked funds.
+                  A game can never pay out more than it collected.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded bg-accent/20 flex items-center justify-center text-accent text-sm font-bold flex-shrink-0">3</div>
+              <div>
+                <p className="font-medium">Cross-Game Protection</p>
+                <p className="text-text-secondary text-sm">
+                  If there&apos;s ever a bug in one game mode, it cannot drain funds locked by
+                  players in other game modes. Each game&apos;s pool is isolated.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-4 mb-4">
+          <h3 className="font-medium mb-3">What&apos;s Tracked Per Game Mode</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1 border-b border-border-primary">
+              <span className="text-text-tertiary">Total Locked</span>
+              <span>Entry fees and bets collected</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-border-primary">
+              <span className="text-text-tertiary">Total Paid Out</span>
+              <span>Winnings distributed to players</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Available Balance</span>
+              <span>Locked minus paid = max payout allowed</span>
+            </div>
+          </div>
+        </div>
+
+        <DocsCallout type="tip" title="Defense in Depth">
+          This accounting layer provides an additional safety net. Even with immediate on-chain
+          fund locking, per-game solvency checks ensure no single game mode can affect others.
+        </DocsCallout>
       </section>
 
       {/* On-Chain Programs */}

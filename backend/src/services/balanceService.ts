@@ -12,8 +12,15 @@ import {
   getTotalPendingDebits,
   getPendingDebits,
   cleanupOldTransactions,
+  recordGameModeLock,
+  recordGameModePayout,
+  recordGameModeRefund,
+  canPayoutFromGameMode,
+  getGameModeBalance,
+  getAllGameModeBalances,
   GameMode,
   PendingTransaction,
+  GameModeBalance,
 } from '../db/balanceDatabase';
 
 const SESSION_BETTING_PROGRAM_ID = new PublicKey('4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA');
@@ -30,6 +37,8 @@ enum GameType {
   Battle = 1,
   Draft = 2,
   Spectator = 3,
+  LDS = 4,
+  TokenWars = 5,
 }
 
 const GAME_MODE_TO_TYPE: Record<GameMode, GameType> = {
@@ -37,6 +46,8 @@ const GAME_MODE_TO_TYPE: Record<GameMode, GameType> = {
   battle: GameType.Battle,
   draft: GameType.Draft,
   spectator: GameType.Spectator,
+  lds: GameType.LDS,
+  token_wars: GameType.TokenWars,
 };
 
 class BalanceService {
@@ -276,11 +287,13 @@ class BalanceService {
 
   /**
    * Transfer lamports from user's vault to global vault
-   * Called when user loses a game
+   * Called when user enters a game (entry fee / bet)
+   * Records the lock in per-game-mode accounting
    */
   async transferToGlobalVault(
     userWallet: string,
-    amountLamports: number
+    amountLamports: number,
+    gameType?: GameMode // Optional for backwards compatibility, but should be provided
   ): Promise<string | null> {
     if (!this.isReady() || !this.program || !this.authority) {
       console.error('[BalanceService] Service not ready for on-chain operations');
@@ -308,6 +321,13 @@ class BalanceService {
         .rpc();
 
       console.log(`[BalanceService] Transferred ${amountLamports} lamports from ${userWallet} to global vault. TX: ${tx}`);
+
+      // CRITICAL: Record this lock in per-game-mode accounting
+      // This tracks how much each game mode has locked, for solvency checks
+      if (gameType) {
+        recordGameModeLock(gameType, amountLamports);
+      }
+
       return tx;
     } catch (error) {
       console.error(`[BalanceService] Error transferring to global vault:`, error);
@@ -318,6 +338,7 @@ class BalanceService {
   /**
    * Credit winnings to user's balance
    * Called when user wins a game
+   * INCLUDES SOLVENCY CHECK - prevents one game mode from draining another's funds
    */
   async creditWinnings(
     userWallet: string,
@@ -327,6 +348,14 @@ class BalanceService {
   ): Promise<string | null> {
     if (!this.isReady() || !this.program || !this.authority) {
       console.error('[BalanceService] Service not ready for on-chain operations');
+      return null;
+    }
+
+    // CRITICAL SOLVENCY CHECK: Ensure this game mode has enough locked funds
+    // This prevents a bug in one game from draining funds locked by another game
+    if (!canPayoutFromGameMode(gameType, amountLamports)) {
+      console.error(`[BalanceService] SOLVENCY CHECK FAILED: ${gameType} cannot pay ${amountLamports} lamports to ${userWallet}`);
+      console.error(`[BalanceService] Game mode ${gameType} balance:`, getGameModeBalance(gameType));
       return null;
     }
 
@@ -360,9 +389,70 @@ class BalanceService {
         .rpc();
 
       console.log(`[BalanceService] Credited ${amountLamports} lamports to ${userWallet} for ${gameType}/${gameId}. TX: ${tx}`);
+
+      // Record the payout in per-game-mode accounting
+      recordGameModePayout(gameType, amountLamports);
+
       return tx;
     } catch (error) {
       console.error(`[BalanceService] Error crediting winnings:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Refund funds from global vault back to user
+   * Called when a game is cancelled
+   */
+  async refundFromGlobalVault(
+    userWallet: string,
+    amountLamports: number,
+    gameType: GameMode,
+    gameId: string
+  ): Promise<string | null> {
+    // For refunds, we use creditWinnings but also record it as a refund
+    // (which reduces totalLocked rather than increasing totalPaidOut)
+    if (!this.isReady() || !this.program || !this.authority) {
+      console.error('[BalanceService] Service not ready for on-chain operations');
+      return null;
+    }
+
+    try {
+      const userPubkey = new PublicKey(userWallet);
+      const gameStatePDA = this.getGameStatePDA();
+      const userBalancePDA = this.getBalancePDA(userPubkey);
+      const userVaultPDA = this.getVaultPDA(userPubkey);
+      const globalVaultPDA = this.getGlobalVaultPDA();
+
+      const gameIdBytes = new Uint8Array(32);
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(gameId);
+      gameIdBytes.set(encoded.slice(0, 32));
+
+      const gameTypeEnum = GAME_MODE_TO_TYPE[gameType];
+      const gameTypeArg = this.gameTypeToArg(gameTypeEnum);
+
+      const tx = await (this.program.methods as any)
+        .creditWinnings(new BN(amountLamports), gameTypeArg, Array.from(gameIdBytes))
+        .accounts({
+          gameState: gameStatePDA,
+          authority: this.authority.publicKey,
+          owner: userPubkey,
+          userBalance: userBalancePDA,
+          userVault: userVaultPDA,
+          globalVault: globalVaultPDA,
+        })
+        .signers([this.authority])
+        .rpc();
+
+      console.log(`[BalanceService] Refunded ${amountLamports} lamports to ${userWallet} for cancelled ${gameType}/${gameId}. TX: ${tx}`);
+
+      // Record as refund (reduces totalLocked, not increases totalPaidOut)
+      recordGameModeRefund(gameType, amountLamports);
+
+      return tx;
+    } catch (error) {
+      console.error(`[BalanceService] Error refunding from global vault:`, error);
       return null;
     }
   }
@@ -405,7 +495,35 @@ class BalanceService {
       case GameType.Battle: return { battle: {} };
       case GameType.Draft: return { draft: {} };
       case GameType.Spectator: return { spectator: {} };
+      case GameType.LDS: return { lds: {} };
+      case GameType.TokenWars: return { tokenWars: {} };
+      default: return { oracle: {} }; // Fallback (should never hit)
     }
+  }
+
+  // ============================================
+  // Per-Game Mode Accounting Getters
+  // ============================================
+
+  /**
+   * Get the balance tracking for a specific game mode
+   */
+  getGameModeBalance(gameType: GameMode): GameModeBalance {
+    return getGameModeBalance(gameType);
+  }
+
+  /**
+   * Get all game mode balances (for monitoring/debugging)
+   */
+  getAllGameModeBalances(): Record<GameMode, GameModeBalance> {
+    return getAllGameModeBalances();
+  }
+
+  /**
+   * Check if a payout is possible from a game mode
+   */
+  canPayout(gameType: GameMode, amountLamports: number): boolean {
+    return canPayoutFromGameMode(gameType, amountLamports);
   }
 }
 
@@ -413,4 +531,4 @@ class BalanceService {
 export const balanceService = new BalanceService();
 
 // Export types
-export { GameMode, PendingTransaction };
+export { GameMode, PendingTransaction, GameModeBalance };

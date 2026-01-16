@@ -19,6 +19,8 @@ import { freeBetEscrowService } from './services/freeBetEscrowService';
 import { rakeRebateService } from './services/rakeRebateService';
 import { battleSettlementService } from './services/battleSettlementService';
 import { challengeNotificationService } from './services/challengeNotificationService';
+import { ldsManager, LDSEvent } from './services/ldsManager';
+import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -28,6 +30,7 @@ import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
+import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { createToken } from './utils/jwt';
 import { WHITELISTED_TOKENS } from './tokens';
@@ -2052,6 +2055,141 @@ io.on('connection', (socket) => {
     console.log(`[Challenge] ${wallet.slice(0, 8)}... unsubscribed from challenge notifications`);
   });
 
+  // ===================
+  // LDS (Last Degen Standing) Socket Handlers
+  // ===================
+
+  socket.on('subscribe_lds', () => {
+    // Rate limit subscriptions
+    const rateCheck = checkSocketRateLimit(socket.id, undefined, 'subscribe_lds', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('lds_join_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    socket.join('lds');
+    // Send current game state
+    const currentGame = ldsManager.getCurrentGame();
+    const activeGame = ldsManager.getActiveGame();
+    const game = activeGame || currentGame;
+    if (game) {
+      const state = ldsManager.getGameState(game.id);
+      socket.emit('lds_game_state' as any, state);
+    }
+    console.log(`[LDS] Client ${socket.id} subscribed`);
+  });
+
+  socket.on('unsubscribe_lds', () => {
+    socket.leave('lds');
+    console.log(`[LDS] Client ${socket.id} unsubscribed`);
+  });
+
+  socket.on('lds_join_game', async (wallet: string) => {
+    // Rate limit game joins (prevents spam joining/leaving)
+    const rateCheck = checkSocketRateLimit(socket.id, wallet, 'lds_join_game', GAME_JOIN_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('lds_join_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    try {
+      const result = await ldsManager.joinGame(wallet);
+      if (result.success) {
+        socket.emit('lds_join_success' as any, { game: result.game });
+      } else {
+        socket.emit('lds_join_error' as any, { error: result.error });
+      }
+    } catch (error: any) {
+      socket.emit('lds_join_error' as any, { error: error.message || 'Failed to join game' });
+    }
+  });
+
+  socket.on('lds_leave_game', async (wallet: string) => {
+    // Rate limit game leaves (same limit as joins)
+    const rateCheck = checkSocketRateLimit(socket.id, wallet, 'lds_leave_game', GAME_JOIN_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('lds_leave_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    try {
+      const result = await ldsManager.leaveGame(wallet);
+      if (result.success) {
+        socket.emit('lds_leave_success' as any, {});
+      } else {
+        socket.emit('lds_leave_error' as any, { error: result.error });
+      }
+    } catch (error: any) {
+      socket.emit('lds_leave_error' as any, { error: error.message || 'Failed to leave game' });
+    }
+  });
+
+  socket.on('lds_submit_prediction', async (data: { gameId: string; wallet: string; prediction: 'up' | 'down' }) => {
+    // Rate limit predictions (more generous - players need to predict each round)
+    const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'lds_submit_prediction', BET_ACTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('lds_prediction_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    try {
+      const result = await ldsManager.submitPrediction(data.gameId, data.wallet, data.prediction);
+      if (result.success) {
+        socket.emit('lds_prediction_success' as any, {});
+      } else {
+        socket.emit('lds_prediction_error' as any, { error: result.error });
+      }
+    } catch (error: any) {
+      socket.emit('lds_prediction_error' as any, { error: error.message || 'Failed to submit prediction' });
+    }
+  });
+
+  // ===================
+  // Token Wars Socket Handlers
+  // ===================
+
+  socket.on('subscribe_token_wars', () => {
+    // Rate limit subscriptions
+    const rateCheck = checkSocketRateLimit(socket.id, undefined, 'subscribe_token_wars', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('token_wars_bet_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    socket.join('token_wars');
+    // Send current battle state
+    const state = tokenWarsManager.getBattleState();
+    if (state) {
+      socket.emit('token_wars_battle_state' as any, state);
+    }
+    console.log(`[TokenWars] Client ${socket.id} subscribed`);
+  });
+
+  socket.on('unsubscribe_token_wars', () => {
+    socket.leave('token_wars');
+    console.log(`[TokenWars] Client ${socket.id} unsubscribed`);
+  });
+
+  socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => {
+    // Rate limit bet placement
+    const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'token_wars_place_bet', BET_ACTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('token_wars_bet_error' as any, { error: rateCheck.error });
+      return;
+    }
+
+    try {
+      const result = await tokenWarsManager.placeBet(data.wallet, data.side, data.amountLamports);
+      if (result.success) {
+        socket.emit('token_wars_bet_success' as any, { bet: result.bet });
+      } else {
+        socket.emit('token_wars_bet_error' as any, { error: result.error });
+      }
+    } catch (error: any) {
+      socket.emit('token_wars_bet_error' as any, { error: error.message || 'Failed to place bet' });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -2562,6 +2700,134 @@ app.delete('/api/challenges/:id', requireAuth(), standardLimiter, async (req: Re
   }
 });
 
+// ===================
+// LDS (Last Degen Standing) Routes
+// ===================
+
+// Get current game state
+app.get('/api/lds/game', (req: Request, res: Response) => {
+  const currentGame = ldsManager.getCurrentGame();
+  const activeGame = ldsManager.getActiveGame();
+
+  if (activeGame) {
+    const state = ldsManager.getGameState(activeGame.id);
+    res.json({ game: state, status: 'active' });
+  } else if (currentGame) {
+    const state = ldsManager.getGameState(currentGame.id);
+    res.json({ game: state, status: 'registering' });
+  } else {
+    res.json({ game: null, status: 'none' });
+  }
+});
+
+// Get specific game state
+app.get('/api/lds/game/:gameId', (req: Request, res: Response) => {
+  const { gameId } = req.params;
+  const state = ldsManager.getGameState(gameId);
+  if (!state) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+  res.json(state);
+});
+
+// Get player status
+app.get('/api/lds/player/:wallet/status', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const status = ldsManager.getPlayerStatus(wallet);
+  res.json(status);
+});
+
+// Get player stats
+app.get('/api/lds/player/:wallet/stats', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const stats = ldsManager.getPlayerStats(wallet);
+  res.json(stats);
+});
+
+// Get player history
+app.get('/api/lds/player/:wallet/history', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const history = ldsManager.getPlayerHistory(wallet, limit);
+  res.json(history);
+});
+
+// Get leaderboard
+app.get('/api/lds/leaderboard', (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  const leaderboard = ldsManager.getLeaderboard(limit);
+  res.json(leaderboard);
+});
+
+// Get recent games
+app.get('/api/lds/games/recent', (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const games = ldsManager.getRecentGames(limit);
+  res.json(games);
+});
+
+// Get LDS config
+app.get('/api/lds/config', (req: Request, res: Response) => {
+  res.json(ldsManager.getConfig());
+});
+
+// ===================
+// Token Wars Routes
+// ===================
+
+// Get current battle state
+app.get('/api/token-wars/battle', (req: Request, res: Response) => {
+  const state = tokenWarsManager.getBattleState();
+  res.json(state || { battle: null, status: 'none' });
+});
+
+// Get user's bet for current battle
+app.get('/api/token-wars/bet/:wallet', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const bet = tokenWarsManager.getUserBet(wallet);
+  res.json(bet);
+});
+
+// Get player stats
+app.get('/api/token-wars/player/:wallet/stats', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const stats = tokenWarsManager.getPlayerStats(wallet);
+  res.json(stats);
+});
+
+// Get player history
+app.get('/api/token-wars/player/:wallet/history', (req: Request, res: Response) => {
+  const { wallet } = req.params;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const history = tokenWarsManager.getPlayerHistory(wallet, limit);
+  res.json(history);
+});
+
+// Get leaderboard
+app.get('/api/token-wars/leaderboard', (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  const leaderboard = tokenWarsManager.getLeaderboard(limit);
+  res.json(leaderboard);
+});
+
+// Get recent battles
+app.get('/api/token-wars/battles/recent', (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 20;
+  const battles = tokenWarsManager.getRecentBattles(limit);
+  res.json(battles);
+});
+
+// Get available tokens
+app.get('/api/token-wars/tokens', (req: Request, res: Response) => {
+  const tokens = tokenWarsManager.getAvailableTokens();
+  res.json(tokens);
+});
+
+// Get Token Wars config
+app.get('/api/token-wars/config', (req: Request, res: Response) => {
+  res.json(tokenWarsManager.getConfig());
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
@@ -2611,6 +2877,26 @@ async function start() {
   } else {
     console.warn('[Startup] Battle settlement service not initialized (missing BATTLE_AUTHORITY_PRIVATE_KEY)');
   }
+
+  // Initialize LDS (Last Degen Standing) manager
+  ldsManager.initialize();
+  console.log('[Startup] LDS manager started');
+
+  // Subscribe to LDS events for WebSocket notifications
+  ldsManager.subscribe((event: LDSEvent) => {
+    // Broadcast to all connected clients in the LDS room
+    io.to('lds').emit('lds_event' as any, event);
+  });
+
+  // Initialize Token Wars manager
+  tokenWarsManager.initialize();
+  console.log('[Startup] Token Wars manager started');
+
+  // Subscribe to Token Wars events for WebSocket notifications
+  tokenWarsManager.subscribe((event: TWEvent) => {
+    // Broadcast to all connected clients in the Token Wars room
+    io.to('token_wars').emit('token_wars_event' as any, event);
+  });
 
   httpServer.listen(PORT, () => {
     console.log(`

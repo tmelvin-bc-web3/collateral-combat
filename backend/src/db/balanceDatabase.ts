@@ -12,7 +12,7 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'lds' | 'token_wars';
 export type TransactionType = 'debit' | 'credit';
 export type TransactionStatus = 'pending' | 'confirmed' | 'cancelled';
 
@@ -28,22 +28,57 @@ export interface PendingTransaction {
   confirmedAt?: number;
 }
 
+// Per-game mode balance tracking for solvency checks
+export interface GameModeBalance {
+  totalLocked: number;    // Total lamports locked from all users
+  totalPaidOut: number;   // Total lamports paid out to winners
+  activeGames: number;    // Number of in-progress games
+}
+
 interface BalanceData {
   transactions: Record<string, PendingTransaction>;
   // Index by wallet for fast lookups
   walletIndex: Record<string, string[]>;
+  // Per-game mode accounting
+  gameModeBalances: Record<GameMode, GameModeBalance>;
+}
+
+const DEFAULT_GAME_MODE_BALANCE: GameModeBalance = {
+  totalLocked: 0,
+  totalPaidOut: 0,
+  activeGames: 0,
+};
+
+function createDefaultGameModeBalances(): Record<GameMode, GameModeBalance> {
+  return {
+    oracle: { ...DEFAULT_GAME_MODE_BALANCE },
+    battle: { ...DEFAULT_GAME_MODE_BALANCE },
+    draft: { ...DEFAULT_GAME_MODE_BALANCE },
+    spectator: { ...DEFAULT_GAME_MODE_BALANCE },
+    lds: { ...DEFAULT_GAME_MODE_BALANCE },
+    token_wars: { ...DEFAULT_GAME_MODE_BALANCE },
+  };
 }
 
 function loadBalanceData(): BalanceData {
   try {
     if (fs.existsSync(BALANCE_FILE)) {
       const data = fs.readFileSync(BALANCE_FILE, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Ensure gameModeBalances exists (migration for existing data)
+      if (!parsed.gameModeBalances) {
+        parsed.gameModeBalances = createDefaultGameModeBalances();
+      }
+      return parsed;
     }
   } catch (error) {
     console.error('[BalanceDB] Error loading balance data:', error);
   }
-  return { transactions: {}, walletIndex: {} };
+  return {
+    transactions: {},
+    walletIndex: {},
+    gameModeBalances: createDefaultGameModeBalances(),
+  };
 }
 
 function saveBalanceData(data: BalanceData): void {
@@ -226,4 +261,106 @@ export function cleanupOldTransactions(): number {
   }
 
   return cleanedCount;
+}
+
+// ============================================
+// Per-Game Mode Accounting (Solvency Tracking)
+// ============================================
+
+/**
+ * Record funds locked for a game mode
+ * Called when a user's funds are transferred to global vault
+ */
+export function recordGameModeLock(gameType: GameMode, amountLamports: number): void {
+  const data = loadBalanceData();
+  data.gameModeBalances[gameType].totalLocked += amountLamports;
+  saveBalanceData(data);
+  console.log(`[BalanceDB] Recorded lock: ${gameType} += ${amountLamports} lamports (total: ${data.gameModeBalances[gameType].totalLocked})`);
+}
+
+/**
+ * Record funds paid out for a game mode
+ * Called when winnings are credited to a user
+ */
+export function recordGameModePayout(gameType: GameMode, amountLamports: number): void {
+  const data = loadBalanceData();
+  data.gameModeBalances[gameType].totalPaidOut += amountLamports;
+  saveBalanceData(data);
+  console.log(`[BalanceDB] Recorded payout: ${gameType} -= ${amountLamports} lamports (total paid: ${data.gameModeBalances[gameType].totalPaidOut})`);
+}
+
+/**
+ * Record a refund (funds returned from global vault to user)
+ * Called when a game is cancelled and entry fees are returned
+ */
+export function recordGameModeRefund(gameType: GameMode, amountLamports: number): void {
+  const data = loadBalanceData();
+  // Refund reduces the locked amount since it goes back to user
+  data.gameModeBalances[gameType].totalLocked = Math.max(0, data.gameModeBalances[gameType].totalLocked - amountLamports);
+  saveBalanceData(data);
+  console.log(`[BalanceDB] Recorded refund: ${gameType} -= ${amountLamports} lamports (total locked: ${data.gameModeBalances[gameType].totalLocked})`);
+}
+
+/**
+ * Increment active game count for a game mode
+ */
+export function incrementActiveGames(gameType: GameMode): void {
+  const data = loadBalanceData();
+  data.gameModeBalances[gameType].activeGames++;
+  saveBalanceData(data);
+}
+
+/**
+ * Decrement active game count for a game mode
+ */
+export function decrementActiveGames(gameType: GameMode): void {
+  const data = loadBalanceData();
+  data.gameModeBalances[gameType].activeGames = Math.max(0, data.gameModeBalances[gameType].activeGames - 1);
+  saveBalanceData(data);
+}
+
+/**
+ * Get the balance for a specific game mode
+ */
+export function getGameModeBalance(gameType: GameMode): GameModeBalance {
+  const data = loadBalanceData();
+  return { ...data.gameModeBalances[gameType] };
+}
+
+/**
+ * Get the available (unpaid) balance for a game mode
+ * This is what can still be paid out to winners
+ */
+export function getGameModeAvailable(gameType: GameMode): number {
+  const data = loadBalanceData();
+  const balance = data.gameModeBalances[gameType];
+  return Math.max(0, balance.totalLocked - balance.totalPaidOut);
+}
+
+/**
+ * Check if a payout amount is within the game mode's available funds
+ * CRITICAL: This prevents one game mode from draining another's funds
+ */
+export function canPayoutFromGameMode(gameType: GameMode, amountLamports: number): boolean {
+  const available = getGameModeAvailable(gameType);
+  const canPayout = available >= amountLamports;
+  if (!canPayout) {
+    console.error(`[BalanceDB] SOLVENCY CHECK FAILED: ${gameType} tried to pay ${amountLamports} but only ${available} available`);
+  }
+  return canPayout;
+}
+
+/**
+ * Get all game mode balances for monitoring/debugging
+ */
+export function getAllGameModeBalances(): Record<GameMode, GameModeBalance> {
+  const data = loadBalanceData();
+  return {
+    oracle: { ...data.gameModeBalances.oracle },
+    battle: { ...data.gameModeBalances.battle },
+    draft: { ...data.gameModeBalances.draft },
+    spectator: { ...data.gameModeBalances.spectator },
+    lds: { ...data.gameModeBalances.lds },
+    token_wars: { ...data.gameModeBalances.token_wars },
+  };
 }

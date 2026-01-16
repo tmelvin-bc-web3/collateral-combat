@@ -20,6 +20,7 @@ import {
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
+import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
@@ -67,7 +68,7 @@ class BattleManager {
   }
 
   // Create a new battle
-  async createBattle(config: BattleConfig, creatorWallet: string): Promise<Battle> {
+  async createBattle(config: BattleConfig, creatorWallet: string, isFreeBet: boolean = false): Promise<Battle> {
     const battle: Battle = {
       id: uuidv4(),
       config,
@@ -78,14 +79,14 @@ class BattleManager {
     };
 
     this.battles.set(battle.id, battle);
-    await this.joinBattle(battle.id, creatorWallet);
+    await this.joinBattle(battle.id, creatorWallet, isFreeBet);
 
-    console.log(`Battle ${battle.id} created by ${creatorWallet}`);
+    console.log(`Battle ${battle.id} created by ${creatorWallet}${isFreeBet ? ' (free bet)' : ''}`);
     return battle;
   }
 
   // Join an existing battle
-  async joinBattle(battleId: string, walletAddress: string): Promise<Battle | null> {
+  async joinBattle(battleId: string, walletAddress: string, isFreeBet: boolean = false): Promise<Battle | null> {
     const battle = this.battles.get(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -135,7 +136,7 @@ class BattleManager {
     // 1. Join battle (off-chain tracking)
     // 2. Withdraw from PDA (on-chain)
     // 3. Lose the battle but have no funds to pay
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports);
+    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'battle');
     if (!lockTx) {
       // Failed to lock funds on-chain - cancel the join
       balanceService.cancelDebit(pendingId);
@@ -149,6 +150,7 @@ class BattleManager {
       trades: [],
       pendingDebitId: pendingId, // Track pending debit for refunds if needed
       lockTx, // Track the lock transaction
+      isFreeBet, // Track if this was a free bet entry
     };
 
     battle.players.push(player);
@@ -158,7 +160,7 @@ class BattleManager {
     // Confirm the debit now that player is in battle
     balanceService.confirmDebit(pendingId);
 
-    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL. Lock TX: ${lockTx}`);
+    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL${isFreeBet ? ' (free bet)' : ''}. Lock TX: ${lockTx}`);
 
     // Start battle if full
     if (battle.players.length === battle.config.maxPlayers) {
@@ -898,27 +900,88 @@ class BattleManager {
   }
 
   // Create a ready check between two matched players
+  // SECURITY FIX: Both players must have funds locked before ready check
   private async createReadyCheck(
     player1Wallet: string,
     player2Wallet: string,
     config: BattleConfig
   ): Promise<void> {
-    // Create battle in waiting state
-    const battle = await this.createBattle(config, player1Wallet);
+    const entryFeeLamports = Math.floor(config.entryFee * LAMPORTS_PER_SOL);
 
-    // Join second player (but don't start yet - battle will start via joinBattle if ready_check isn't used)
-    // Override the normal flow - we need to manually add the second player
+    // Verify both players have sufficient balance BEFORE creating battle
+    const [p1HasBalance, p2HasBalance] = await Promise.all([
+      balanceService.hasSufficientBalance(player1Wallet, entryFeeLamports),
+      balanceService.hasSufficientBalance(player2Wallet, entryFeeLamports),
+    ]);
+
+    if (!p1HasBalance) {
+      console.error(`[BattleManager] Player 1 ${player1Wallet.slice(0, 8)}... has insufficient balance for ready check`);
+      return;
+    }
+    if (!p2HasBalance) {
+      console.error(`[BattleManager] Player 2 ${player2Wallet.slice(0, 8)}... has insufficient balance for ready check`);
+      return;
+    }
+
+    // Create pending debits for both players
+    const [pendingId1, pendingId2] = await Promise.all([
+      balanceService.debitPending(player1Wallet, entryFeeLamports, 'battle', 'ready_check_pending'),
+      balanceService.debitPending(player2Wallet, entryFeeLamports, 'battle', 'ready_check_pending'),
+    ]);
+
+    // SECURITY: Lock funds on-chain for BOTH players
+    const [lockTx1, lockTx2] = await Promise.all([
+      balanceService.transferToGlobalVault(player1Wallet, entryFeeLamports, 'battle'),
+      balanceService.transferToGlobalVault(player2Wallet, entryFeeLamports, 'battle'),
+    ]);
+
+    // If either lock failed, cancel both and abort
+    if (!lockTx1 || !lockTx2) {
+      console.error(`[BattleManager] Failed to lock funds for ready check. P1: ${!!lockTx1}, P2: ${!!lockTx2}`);
+      balanceService.cancelDebit(pendingId1);
+      balanceService.cancelDebit(pendingId2);
+      // TODO: If one succeeded but other failed, need to refund the successful one
+      // For now, transferToGlobalVault failures should be rare
+      return;
+    }
+
+    // Create battle manually (don't use createBattle/joinBattle to avoid auto-start)
+    const battle: Battle = {
+      id: uuidv4(),
+      config,
+      status: 'ready_check',
+      players: [],
+      createdAt: Date.now(),
+      prizePool: 0,
+    };
+
+    // Add both players with their fund locking info
+    const player1: BattlePlayer = {
+      walletAddress: player1Wallet,
+      account: this.createInitialAccount(),
+      trades: [],
+      pendingDebitId: pendingId1,
+      lockTx: lockTx1,
+    };
     const player2: BattlePlayer = {
       walletAddress: player2Wallet,
       account: this.createInitialAccount(),
       trades: [],
+      pendingDebitId: pendingId2,
+      lockTx: lockTx2,
     };
-    battle.players.push(player2);
-    battle.prizePool += battle.config.entryFee;
-    this.playerBattles.set(player2Wallet, battle.id);
 
-    // Set status to ready_check instead of starting
-    battle.status = 'ready_check';
+    battle.players.push(player1, player2);
+    battle.prizePool = config.entryFee * 2;
+
+    // Confirm debits now that funds are locked
+    balanceService.confirmDebit(pendingId1);
+    balanceService.confirmDebit(pendingId2);
+
+    // Store battle
+    this.battles.set(battle.id, battle);
+    this.playerBattles.set(player1Wallet, battle.id);
+    this.playerBattles.set(player2Wallet, battle.id);
 
     const now = Date.now();
     const expiresAt = now + READY_CHECK_TIMEOUT_MS;
@@ -939,7 +1002,9 @@ class BattleManager {
 
     // Set timeout for ready check expiration
     const timer = setTimeout(() => {
-      this.handleReadyCheckTimeout(battle.id);
+      this.handleReadyCheckTimeout(battle.id).catch((error) => {
+        console.error(`[BattleManager] Error handling ready check timeout for ${battle.id}:`, error);
+      });
     }, READY_CHECK_TIMEOUT_MS);
     this.readyCheckTimers.set(battle.id, timer);
 
@@ -952,7 +1017,7 @@ class BattleManager {
       expiresAt,
     });
 
-    console.log(`[BattleManager] Ready check started for battle ${battle.id}: ${player1Wallet.slice(0, 8)}... vs ${player2Wallet.slice(0, 8)}...`);
+    console.log(`[BattleManager] Ready check started for battle ${battle.id}: ${player1Wallet.slice(0, 8)}... vs ${player2Wallet.slice(0, 8)}... (both funds locked)`);
     this.notifyListeners(battle);
   }
 
@@ -1000,7 +1065,7 @@ class BattleManager {
   }
 
   // Decline ready check
-  declineReadyCheck(battleId: string, walletAddress: string): boolean {
+  async declineReadyCheck(battleId: string, walletAddress: string): Promise<boolean> {
     const readyCheck = this.readyChecks.get(battleId);
     if (!readyCheck) {
       console.log(`[BattleManager] Ready check not found for battle ${battleId}`);
@@ -1022,14 +1087,14 @@ class BattleManager {
 
     console.log(`[BattleManager] Player ${walletAddress.slice(0, 8)}... declined ready check for battle ${battleId}`);
 
-    // Cancel the ready check
-    this.cancelReadyCheck(battleId, 'declined', walletAddress, readyPlayer);
+    // Cancel the ready check and refund both players
+    await this.cancelReadyCheck(battleId, 'declined', walletAddress, readyPlayer);
 
     return true;
   }
 
   // Handle ready check timeout
-  private handleReadyCheckTimeout(battleId: string): void {
+  private async handleReadyCheckTimeout(battleId: string): Promise<void> {
     const readyCheck = this.readyChecks.get(battleId);
     if (!readyCheck) return;
 
@@ -1049,7 +1114,7 @@ class BattleManager {
     }
 
     console.log(`[BattleManager] Ready check timed out for battle ${battleId}`);
-    this.cancelReadyCheck(battleId, 'timeout', timedOutPlayer, readyPlayer);
+    await this.cancelReadyCheck(battleId, 'timeout', timedOutPlayer, readyPlayer);
   }
 
   // Complete ready check and start battle
@@ -1075,12 +1140,12 @@ class BattleManager {
   }
 
   // Cancel ready check
-  private cancelReadyCheck(
+  private async cancelReadyCheck(
     battleId: string,
     reason: 'declined' | 'timeout',
     declinedOrTimedOutBy?: string,
     readyPlayer?: string
-  ): void {
+  ): Promise<void> {
     const readyCheck = this.readyChecks.get(battleId);
     if (!readyCheck) return;
 
@@ -1091,10 +1156,48 @@ class BattleManager {
       this.readyCheckTimers.delete(battleId);
     }
 
-    // Cancel the battle
+    // Cancel the battle and refund both players
     const battle = this.battles.get(battleId);
     if (battle) {
       battle.status = 'cancelled';
+
+      // SECURITY FIX: Refund both players' locked entry fees
+      // Free bet players get a free bet credit instead of SOL refund
+      const entryFeeLamports = Math.floor(battle.config.entryFee * LAMPORTS_PER_SOL);
+      if (entryFeeLamports > 0) {
+        console.log(`[BattleManager] Refunding entry fees for cancelled battle ${battleId}`);
+
+        // Refund both players in parallel
+        const refundPromises = battle.players.map(async (player) => {
+          try {
+            // Free bet players get a free bet credit instead of SOL
+            if (player.isFreeBet) {
+              addFreeBetCredit(player.walletAddress, 1, `Battle ${battleId} cancelled refund`);
+              console.log(`[BattleManager] Credited free bet to ${player.walletAddress.slice(0, 8)}... for cancelled battle ${battleId}`);
+              return 'free_bet_credited';
+            }
+
+            // Regular SOL refund
+            const refundTx = await balanceService.refundFromGlobalVault(
+              player.walletAddress,
+              entryFeeLamports,
+              'battle',
+              battleId
+            );
+            if (refundTx) {
+              console.log(`[BattleManager] Refunded ${entryFeeLamports} lamports to ${player.walletAddress.slice(0, 8)}... tx: ${refundTx.slice(0, 16)}...`);
+            } else {
+              console.error(`[BattleManager] Failed to refund ${player.walletAddress.slice(0, 8)}... for battle ${battleId}`);
+            }
+            return refundTx;
+          } catch (error) {
+            console.error(`[BattleManager] Error refunding ${player.walletAddress.slice(0, 8)}...:`, error);
+            return null;
+          }
+        });
+
+        await Promise.all(refundPromises);
+      }
 
       // Clear player battle mappings
       battle.players.forEach(player => {

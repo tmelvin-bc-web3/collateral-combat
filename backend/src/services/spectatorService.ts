@@ -105,7 +105,9 @@ class SpectatorService {
     };
   }
 
-  // Calculate dynamic odds based on current P&L and betting
+  // Calculate IMPLIED PARIMUTUEL ODDS based on current pool sizes
+  // These odds represent what you'd get if you bet now and won
+  // Odds = 1 + (opposing_pool / (your_pool + your_bet)) after platform fee
   calculateOdds(battleId: string): BattleOdds | undefined {
     const battle = battleManager.getBattle(battleId);
     if (!battle || battle.players.length < 2) return undefined;
@@ -114,7 +116,7 @@ class SpectatorService {
     const player2 = battle.players[1];
     const bets = this.bets.get(battleId) || [];
 
-    // Calculate total backed for each player
+    // Calculate total backed for each player (in SOL)
     const p1Backed = bets
       .filter(b => b.backedPlayer === player1.walletAddress && b.status === 'pending')
       .reduce((sum, b) => sum + b.amount, 0);
@@ -122,65 +124,75 @@ class SpectatorService {
       .filter(b => b.backedPlayer === player2.walletAddress && b.status === 'pending')
       .reduce((sum, b) => sum + b.amount, 0);
 
-    // Calculate odds based on P&L differential and betting amounts
-    const p1Pnl = player1.account.totalPnlPercent;
-    const p2Pnl = player2.account.totalPnlPercent;
-    const pnlDiff = p1Pnl - p2Pnl;
+    const totalPool = p1Backed + p2Backed;
 
-    // Base odds calculation:
-    // If player has higher P&L, they have lower odds (more likely to win)
-    // Odds range from 1.1x (heavy favorite) to 5x (underdog)
-    let p1BaseOdds = 2.0;
-    let p2BaseOdds = 2.0;
+    // Calculate implied parimutuel odds
+    // If you bet on P1: your payout = bet + (p2Pool × (1-fee) × bet / p1Pool)
+    // Implied odds = payout / bet = 1 + (p2Pool × (1-fee) / p1Pool)
+    // We use a hypothetical small bet (0.01 SOL) to estimate odds
+    const hypotheticalBet = 0.01;
+    const feeMultiplier = 1 - PLATFORM_FEE_PERCENT / 100; // 0.95 for 5% fee
 
-    if (Math.abs(pnlDiff) > 1) {
-      // Adjust odds based on P&L difference
-      // Every 5% difference shifts odds by 0.3
-      const shift = Math.min(0.9, Math.abs(pnlDiff) * 0.06);
-      if (pnlDiff > 0) {
-        // Player 1 is winning
-        p1BaseOdds = Math.max(1.1, 2.0 - shift);
-        p2BaseOdds = Math.min(5.0, 2.0 + shift);
-      } else {
-        // Player 2 is winning
-        p1BaseOdds = Math.min(5.0, 2.0 + shift);
-        p2BaseOdds = Math.max(1.1, 2.0 - shift);
-      }
-    }
+    let p1Odds: number;
+    let p2Odds: number;
 
-    // Adjust for betting amounts (if one side heavily bet, odds shift)
-    const totalBacked = p1Backed + p2Backed;
-    if (totalBacked > 0) {
-      const p1Ratio = p1Backed / totalBacked;
-      const betShift = (p1Ratio - 0.5) * 0.4; // Max 0.2 shift from betting
-      p1BaseOdds = Math.max(1.1, Math.min(5.0, p1BaseOdds - betShift));
-      p2BaseOdds = Math.max(1.1, Math.min(5.0, p2BaseOdds + betShift));
+    if (totalPool === 0) {
+      // No bets yet - show even odds
+      p1Odds = 2.0;
+      p2Odds = 2.0;
+    } else if (p1Backed === 0) {
+      // No bets on P1 yet - betting on P1 gets the entire P2 pool
+      p1Odds = 1 + (p2Backed * feeMultiplier / hypotheticalBet);
+      p1Odds = Math.min(10.0, p1Odds); // Cap at 10x for display
+      p2Odds = 1.0; // Betting on P2 when no one is on P1 = no profit (only get your bet back)
+    } else if (p2Backed === 0) {
+      // No bets on P2 yet - betting on P2 gets the entire P1 pool
+      p1Odds = 1.0;
+      p2Odds = 1 + (p1Backed * feeMultiplier / hypotheticalBet);
+      p2Odds = Math.min(10.0, p2Odds);
+    } else {
+      // Normal case - both sides have bets
+      // P1 odds: if P1 wins, P1 bettors split P2's pool
+      p1Odds = 1 + (p2Backed * feeMultiplier / p1Backed);
+      // P2 odds: if P2 wins, P2 bettors split P1's pool
+      p2Odds = 1 + (p1Backed * feeMultiplier / p2Backed);
+
+      // Cap odds for display (very lopsided pools can create extreme odds)
+      p1Odds = Math.min(10.0, Math.max(1.01, p1Odds));
+      p2Odds = Math.min(10.0, Math.max(1.01, p2Odds));
     }
 
     return {
       battleId,
       player1: {
         wallet: player1.walletAddress,
-        odds: Math.round(p1BaseOdds * 100) / 100,
+        odds: Math.round(p1Odds * 100) / 100,
         totalBacked: p1Backed
       },
       player2: {
         wallet: player2.walletAddress,
-        odds: Math.round(p2BaseOdds * 100) / 100,
+        odds: Math.round(p2Odds * 100) / 100,
         totalBacked: p2Backed
       },
-      totalPool: totalBacked,
+      totalPool,
       lastUpdated: Date.now()
     };
   }
 
   // Place a bet using PDA balance
+  // NOTE: Free bets are NOT allowed for spectator wagering
   async placeBet(
     battleId: string,
     backedPlayer: string,
     amount: number,
-    bettor: string
+    bettor: string,
+    isFreeBet: boolean = false
   ): Promise<SpectatorBet> {
+    // Free bets are not allowed for spectator wagering
+    if (isFreeBet) {
+      throw new Error('Free bets cannot be used for spectator wagering');
+    }
+
     const battle = battleManager.getBattle(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -226,18 +238,23 @@ class SpectatorService {
     // 1. Place spectator bet (off-chain tracking)
     // 2. Withdraw from PDA (on-chain)
     // 3. Win the bet but have no funds to collect from losers
-    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports);
+    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'spectator');
     if (!lockTx) {
       // Failed to lock funds on-chain - cancel the bet
       balanceService.cancelDebit(pendingId);
       throw new Error('Failed to lock wager on-chain. Please try again.');
     }
 
-    // Get current odds
+    // Get current implied odds (for display only - actual payout is parimutuel)
     const odds = this.calculateOdds(battleId);
-    const playerOdds = odds?.player1.wallet === backedPlayer
+    const impliedOdds = odds?.player1.wallet === backedPlayer
       ? odds.player1.odds
       : odds?.player2.odds || 2.0;
+
+    // NOTE: potentialPayout is an ESTIMATE based on current pools.
+    // Actual payout is calculated at settlement using parimutuel formula:
+    // payout = original_bet + (losing_pool × (1-fee) × my_bet / winning_pool)
+    const estimatedPayout = amount * impliedOdds;
 
     const bet: SpectatorBet = {
       id: uuidv4(),
@@ -245,8 +262,8 @@ class SpectatorService {
       bettor,
       backedPlayer,
       amount,
-      odds: playerOdds,
-      potentialPayout: amount * playerOdds * (1 - PLATFORM_FEE_PERCENT / 100),
+      odds: impliedOdds, // Current implied odds (will change as more bets come in)
+      potentialPayout: estimatedPayout, // Estimated - actual calculated at settlement
       placedAt: Date.now(),
       status: 'pending',
       lockTx, // Track the lock transaction
@@ -272,8 +289,8 @@ class SpectatorService {
       bettorWallet: bettor,
       backedPlayer: backedPlayerSide,
       amountLamports,
-      oddsAtPlacement: playerOdds,
-      potentialPayoutLamports: Math.round(bet.potentialPayout * LAMPORTS_PER_SOL),
+      oddsAtPlacement: impliedOdds, // Snapshot of implied odds at bet time
+      potentialPayoutLamports: Math.round(estimatedPayout * LAMPORTS_PER_SOL), // Estimate
       txSignature: null,
       status: 'pending',
       claimTx: null,
@@ -284,7 +301,7 @@ class SpectatorService {
     // Confirm the debit
     balanceService.confirmDebit(pendingId);
 
-    console.log(`[SpectatorService] Bet placed: ${bettor} bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... @ ${playerOdds}x. Lock TX: ${lockTx}`);
+    console.log(`[SpectatorService] Bet placed: ${bettor.slice(0, 8)}... bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... (implied odds: ${impliedOdds}x, parimutuel payout at settlement). Lock TX: ${lockTx.slice(0, 16)}...`);
 
     // Notify about new bet and updated odds
     this.notifyListeners('bet_placed', bet);
@@ -300,13 +317,20 @@ class SpectatorService {
   /**
    * Request an odds lock before placing on-chain bet
    * This prevents odds slippage during transaction signing
+   * NOTE: Free bets are NOT allowed for spectator wagering
    */
   requestOddsLock(
     battleId: string,
     backedPlayer: string,
     amount: number,
-    bettor: string
+    bettor: string,
+    isFreeBet: boolean = false
   ): OddsLockResponse {
+    // Free bets are not allowed for spectator wagering
+    if (isFreeBet) {
+      throw new Error('Free bets cannot be used for spectator wagering');
+    }
+
     const battle = battleManager.getBattle(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -508,112 +532,155 @@ class SpectatorService {
     };
   }
 
-  // Settle all bets for a completed battle
+  // Settle all bets for a completed battle using PARIMUTUEL model
+  // Losers fund winners - mathematically guarantees solvency
   private async settleBets(battleId: string): Promise<void> {
     const battle = battleManager.getBattle(battleId);
     if (!battle || !battle.winnerId) return;
 
     const now = Date.now();
+    const winnerSide = this.getBackedPlayerSide(battle, battle.winnerId);
 
-    // Settle in-memory bets
-    const bets = this.bets.get(battleId) || [];
-    const pendingBets = bets.filter(b => b.status === 'pending');
+    // Gather ALL bets (in-memory + database-only)
+    const memoryBets = this.bets.get(battleId) || [];
+    const dbBets = spectatorBetDatabase.getPendingBets(battleId);
 
-    for (const bet of pendingBets) {
-      const isWinner = bet.backedPlayer === battle.winnerId;
-      const newStatus: BetStatus = isWinner ? 'won' : 'lost';
+    // Combine into unified list, avoiding duplicates
+    interface UnifiedBet {
+      id: string;
+      bettor: string;
+      amountLamports: number;
+      backedSide: 'creator' | 'opponent';
+      isMemoryBet: boolean;
+    }
 
-      bet.status = newStatus;
-      bet.settledAt = now;
+    const allBets: UnifiedBet[] = [];
 
-      // Update database
-      spectatorBetDatabase.updateBetStatus(bet.id, newStatus, now);
+    // Add memory bets
+    for (const bet of memoryBets.filter(b => b.status === 'pending')) {
+      const backedSide = this.getBackedPlayerSide(battle, bet.backedPlayer);
+      allBets.push({
+        id: bet.id,
+        bettor: bet.bettor,
+        amountLamports: Math.round(bet.amount * LAMPORTS_PER_SOL),
+        backedSide,
+        isMemoryBet: true,
+      });
+    }
 
-      if (isWinner) {
-        // Credit winnings to PDA balance
-        const payoutLamports = Math.round(bet.potentialPayout * LAMPORTS_PER_SOL);
-        const tx = await balanceService.creditWinnings(bet.bettor, payoutLamports, 'spectator', battleId);
-        if (tx) {
-          console.log(`[SpectatorService] Bet won: ${bet.bettor} credited ${bet.potentialPayout.toFixed(4)} SOL (tx: ${tx.slice(0, 8)}...)`);
-        } else {
-          console.error(`[SpectatorService] Failed to credit winnings for bet ${bet.id}`);
-        }
+    // Add database-only bets (not in memory)
+    for (const dbBet of dbBets) {
+      if (!this.allBets.has(dbBet.id)) {
+        allBets.push({
+          id: dbBet.id,
+          bettor: dbBet.bettorWallet,
+          amountLamports: dbBet.amountLamports,
+          backedSide: dbBet.backedPlayer,
+          isMemoryBet: false,
+        });
+      }
+    }
 
-        // Award XP for winning spectator bet: 30 XP + (bet × 0.1)
-        const xpAmount = 30 + Math.floor(bet.amount * 0.1);
-        progressionService.awardXp(
-          bet.bettor,
-          xpAmount,
-          'spectator',
-          battleId,
-          'Won spectator bet'
-        );
-      } else {
-        console.log(`[SpectatorService] Bet lost: ${bet.bettor} lost ${bet.amount} SOL`);
+    if (allBets.length === 0) {
+      console.log(`[SpectatorService] No bets to settle for battle ${battleId}`);
+      return;
+    }
 
-        // Award XP for losing spectator bet: 10 XP + (bet × 0.02)
-        const xpAmount = 10 + Math.floor(bet.amount * 0.02);
-        progressionService.awardXp(
-          bet.bettor,
-          xpAmount,
-          'spectator',
-          battleId,
-          'Spectator bet'
-        );
+    // Calculate pools
+    const winningBets = allBets.filter(b => b.backedSide === winnerSide);
+    const losingBets = allBets.filter(b => b.backedSide !== winnerSide);
+
+    const winningPool = winningBets.reduce((sum, b) => sum + b.amountLamports, 0);
+    const losingPool = losingBets.reduce((sum, b) => sum + b.amountLamports, 0);
+
+    // Platform takes fee from losing pool only
+    const platformFeeLamports = Math.floor(losingPool * PLATFORM_FEE_PERCENT / 100);
+    const distributablePool = losingPool - platformFeeLamports;
+
+    console.log(`[SpectatorService] Settling battle ${battleId}:`);
+    console.log(`  Winner: ${winnerSide}, Winning pool: ${winningPool / LAMPORTS_PER_SOL} SOL (${winningBets.length} bets)`);
+    console.log(`  Losing pool: ${losingPool / LAMPORTS_PER_SOL} SOL (${losingBets.length} bets)`);
+    console.log(`  Platform fee: ${platformFeeLamports / LAMPORTS_PER_SOL} SOL, Distributable: ${distributablePool / LAMPORTS_PER_SOL} SOL`);
+
+    // Process losing bets first (just update status, funds already locked)
+    for (const bet of losingBets) {
+      spectatorBetDatabase.updateBetStatus(bet.id, 'lost', now);
+
+      // Update in-memory if exists
+      const memBet = this.allBets.get(bet.id);
+      if (memBet) {
+        memBet.status = 'lost';
+        memBet.settledAt = now;
       }
 
-      // Record to user_wagers for win verification
-      const profitLoss = isWinner ? (bet.potentialPayout - bet.amount) : -bet.amount;
+      const amountSol = bet.amountLamports / LAMPORTS_PER_SOL;
+      console.log(`[SpectatorService] Bet lost: ${bet.bettor.slice(0, 8)}... lost ${amountSol.toFixed(4)} SOL`);
+
+      // Award XP for participation
+      const xpAmount = 10 + Math.floor(amountSol * 0.02);
+      progressionService.awardXp(bet.bettor, xpAmount, 'spectator', battleId, 'Spectator bet');
+
+      // Record wager
       try {
-        userStatsDb.recordWager(
-          bet.bettor,
-          'spectator',
-          bet.amount,
-          isWinner ? 'won' : 'lost',
-          profitLoss,
-          battleId
-        );
+        userStatsDb.recordWager(bet.bettor, 'spectator', amountSol, 'lost', -amountSol, battleId);
       } catch (error) {
         console.error(`[SpectatorService] Failed to record wager for ${bet.bettor}:`, error);
       }
 
-      this.notifyListeners('bet_settled', bet);
+      this.notifyListeners('bet_settled', { id: bet.id, status: 'lost', bettor: bet.bettor });
     }
 
-    // Also settle any database-only bets (from on-chain flow)
-    const dbBets = spectatorBetDatabase.getPendingBets(battleId);
-    const winnerSide = this.getBackedPlayerSide(battle, battle.winnerId);
+    // Process winning bets with parimutuel payout
+    for (const bet of winningBets) {
+      // PARIMUTUEL CALCULATION:
+      // payout = original_bet + (distributable_pool × my_bet / winning_pool)
+      const share = winningPool > 0 ? bet.amountLamports / winningPool : 0;
+      const winningsFromLosers = Math.floor(distributablePool * share);
+      const totalPayoutLamports = bet.amountLamports + winningsFromLosers;
 
-    for (const dbBet of dbBets) {
-      // Skip if already processed in memory
-      if (this.allBets.has(dbBet.id)) continue;
+      spectatorBetDatabase.updateBetStatus(bet.id, 'won', now);
 
-      const isWinner = dbBet.backedPlayer === winnerSide;
-      spectatorBetDatabase.updateBetStatus(dbBet.id, isWinner ? 'won' : 'lost', now);
-
-      // Credit winnings for database-only bets too
-      if (isWinner) {
-        const payoutLamports = dbBet.potentialPayoutLamports;
-        await balanceService.creditWinnings(dbBet.bettorWallet, payoutLamports, 'spectator', battleId);
+      // Update in-memory if exists
+      const memBet = this.allBets.get(bet.id);
+      if (memBet) {
+        memBet.status = 'won';
+        memBet.settledAt = now;
+        memBet.potentialPayout = totalPayoutLamports / LAMPORTS_PER_SOL; // Update with actual payout
       }
 
-      // Record to user_wagers for win verification
-      const amountSol = dbBet.amountLamports / LAMPORTS_PER_SOL;
-      const payoutSol = dbBet.potentialPayoutLamports / LAMPORTS_PER_SOL;
-      const profitLoss = isWinner ? (payoutSol - amountSol) : -amountSol;
+      // Credit winnings to PDA balance
+      const tx = await balanceService.creditWinnings(bet.bettor, totalPayoutLamports, 'spectator', battleId);
+
+      const amountSol = bet.amountLamports / LAMPORTS_PER_SOL;
+      const payoutSol = totalPayoutLamports / LAMPORTS_PER_SOL;
+      const profitSol = payoutSol - amountSol;
+
+      if (tx) {
+        console.log(`[SpectatorService] Bet won: ${bet.bettor.slice(0, 8)}... bet ${amountSol.toFixed(4)} SOL, payout ${payoutSol.toFixed(4)} SOL (+${profitSol.toFixed(4)} profit)`);
+      } else {
+        console.error(`[SpectatorService] Failed to credit winnings for bet ${bet.id}`);
+      }
+
+      // Award XP for winning
+      const xpAmount = 30 + Math.floor(amountSol * 0.1);
+      progressionService.awardXp(bet.bettor, xpAmount, 'spectator', battleId, 'Won spectator bet');
+
+      // Record wager
       try {
-        userStatsDb.recordWager(
-          dbBet.bettorWallet,
-          'spectator',
-          amountSol,
-          isWinner ? 'won' : 'lost',
-          profitLoss,
-          battleId
-        );
+        userStatsDb.recordWager(bet.bettor, 'spectator', amountSol, 'won', profitSol, battleId);
       } catch (error) {
-        console.error(`[SpectatorService] Failed to record db wager for ${dbBet.bettorWallet}:`, error);
+        console.error(`[SpectatorService] Failed to record wager for ${bet.bettor}:`, error);
       }
+
+      this.notifyListeners('bet_settled', { id: bet.id, status: 'won', bettor: bet.bettor, payout: payoutSol });
     }
+
+    // Handle edge case: all bets on one side (no losers)
+    if (losingBets.length === 0 && winningBets.length > 0) {
+      console.log(`[SpectatorService] All bets were on the winner - returning original amounts (no profit)`);
+    }
+
+    console.log(`[SpectatorService] Settlement complete for battle ${battleId}`);
   }
 
   // Get user's bets
