@@ -158,6 +158,13 @@ export const globalLimiter = createRateLimiter({
   message: 'Global rate limit exceeded. Please reduce request frequency.',
 });
 
+// Pyth verification limiter (10 requests per minute - users don't need real-time verification)
+export const pythLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 10,
+  message: 'Verification rate limit exceeded. Price verification is cached - no need to refresh frequently.',
+});
+
 // ===================
 // Utility Functions
 // ===================

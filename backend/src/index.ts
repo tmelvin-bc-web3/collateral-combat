@@ -30,7 +30,7 @@ import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
-import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter } from './middleware/rateLimiter';
+import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
 import { createToken } from './utils/jwt';
@@ -178,9 +178,10 @@ app.get('/api/prices/history/:symbol', burstLimiter, (req, res) => {
 });
 
 // ==================== PRICE VERIFICATION API ====================
+// Rate limited to 10 req/min to prevent abuse and protect Pyth API
 
-// Get current Pyth price for a symbol
-app.get('/api/prices/pyth/:symbol', standardLimiter, async (req, res) => {
+// Get current Pyth price for a symbol (makes external API call)
+app.get('/api/prices/pyth/:symbol', pythLimiter, async (req, res) => {
   const symbol = req.params.symbol.toUpperCase();
   if (!pythVerificationService.isSupported(symbol)) {
     return res.status(400).json({ error: `Symbol ${symbol} not supported by Pyth` });
@@ -202,7 +203,7 @@ app.get('/api/prices/pyth/symbols', (req, res) => {
   res.json({ symbols: pythVerificationService.getSupportedSymbols() });
 });
 
-// Get price verification audit records
+// Get price verification audit records (reads from memory, less strict)
 app.get('/api/verification/audit', standardLimiter, (req, res) => {
   const gameType = req.query.gameType as string | undefined;
   const gameId = req.query.gameId as string | undefined;
@@ -211,14 +212,14 @@ app.get('/api/verification/audit', standardLimiter, (req, res) => {
   res.json({ records, count: records.length });
 });
 
-// Get flagged discrepancies
+// Get flagged discrepancies (reads from memory)
 app.get('/api/verification/flagged', standardLimiter, (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const records = pythVerificationService.getFlaggedRecords(limit);
   res.json({ records, count: records.length });
 });
 
-// Get verification summary for a specific game
+// Get verification summary for a specific game (reads from memory)
 app.get('/api/verification/game/:gameType/:gameId', standardLimiter, (req, res) => {
   const summary = pythVerificationService.getGameVerificationSummary(
     req.params.gameType,

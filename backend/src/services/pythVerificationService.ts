@@ -83,9 +83,21 @@ interface HermesResponse {
   parsed: HermesPriceData[];
 }
 
+// Cache configuration
+const PRICE_CACHE_TTL_MS = 10_000; // 10 second cache for user-facing API
+const AUDIT_CACHE_TTL_MS = 5_000; // 5 second cache for internal audit logging
+
+interface CachedPrice {
+  price: number;
+  confidence: number;
+  publishTime: number;
+  cachedAt: number;
+}
+
 class PythVerificationService {
   private connection: Connection | null = null;
   private initialized = false;
+  private priceCache: Map<string, CachedPrice> = new Map();
 
   constructor() {
     // Initialize connection for on-chain reads if needed
@@ -97,16 +109,38 @@ class PythVerificationService {
     } catch (error) {
       console.error('[PythVerification] Failed to initialize:', error);
     }
+
+    // Clean expired cache entries every minute
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, cached] of this.priceCache.entries()) {
+        if (now - cached.cachedAt > PRICE_CACHE_TTL_MS) {
+          this.priceCache.delete(key);
+        }
+      }
+    }, 60_000);
   }
 
   /**
-   * Fetch current price from Pyth Hermes API
+   * Fetch current price from Pyth Hermes API (with caching)
    */
-  async getPythPrice(symbol: string): Promise<{ price: number; confidence: number; publishTime: number } | null> {
+  async getPythPrice(symbol: string, bypassCache: boolean = false): Promise<{ price: number; confidence: number; publishTime: number } | null> {
     const feedId = PYTH_FEED_IDS[symbol];
     if (!feedId) {
       console.warn(`[PythVerification] No feed ID for symbol: ${symbol}`);
       return null;
+    }
+
+    // Check cache first (unless bypassed for audit logging)
+    if (!bypassCache) {
+      const cached = this.priceCache.get(symbol);
+      if (cached && Date.now() - cached.cachedAt < PRICE_CACHE_TTL_MS) {
+        return {
+          price: cached.price,
+          confidence: cached.confidence,
+          publishTime: cached.publishTime,
+        };
+      }
     }
 
     try {
@@ -128,6 +162,14 @@ class PythVerificationService {
       const priceData = data[0].price;
       const price = parseFloat(priceData.price) * Math.pow(10, priceData.expo);
       const confidence = parseFloat(priceData.conf) * Math.pow(10, priceData.expo);
+
+      // Cache the result
+      this.priceCache.set(symbol, {
+        price,
+        confidence,
+        publishTime: priceData.publish_time,
+        cachedAt: Date.now(),
+      });
 
       return {
         price,
