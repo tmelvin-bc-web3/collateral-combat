@@ -29,6 +29,7 @@ import {
 import { balanceService } from './balanceService';
 import { priceService } from './priceService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
+import { pythVerificationService } from './pythVerificationService';
 
 // Lamports per SOL
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -315,6 +316,12 @@ class TokenWarsManager {
     // Start the battle
     dbStartBattle(battleId, tokenAPrice, tokenBPrice);
 
+    // Record Pyth-verified prices for audit trail
+    pythVerificationService.recordMultiplePriceAudits('token_wars', battleId, 'battle_start', [
+      { symbol: battle.tokenA, backendPrice: tokenAPrice },
+      { symbol: battle.tokenB, backendPrice: tokenBPrice },
+    ]).catch(err => console.error('[TokenWars] Pyth audit failed:', err));
+
     const updatedBattle = getBattle(battleId)!;
 
     this.emitEvent({
@@ -376,6 +383,12 @@ class TokenWarsManager {
       setTimeout(() => this.resolveBattle(battleId), 2000);
       return;
     }
+
+    // Record Pyth-verified end prices for audit trail
+    pythVerificationService.recordMultiplePriceAudits('token_wars', battleId, 'battle_end', [
+      { symbol: battle.tokenA, backendPrice: tokenAEndPrice },
+      { symbol: battle.tokenB, backendPrice: tokenBEndPrice },
+    ]).catch(err => console.error('[TokenWars] Pyth audit failed:', err));
 
     // Calculate percentage changes
     const tokenAChange = ((tokenAEndPrice - battle.tokenAStartPrice!) / battle.tokenAStartPrice!) * 100;

@@ -45,6 +45,7 @@ import {
 import { balanceService } from './balanceService';
 import { priceService } from './priceService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
+import { pythVerificationService } from './pythVerificationService';
 
 import crypto from 'crypto';
 
@@ -361,6 +362,10 @@ class LDSManager {
     const round = createRound(gameId, roundNumber, startPrice, aliveCount, predictionDeadline);
     updateGameRound(gameId, roundNumber);
 
+    // Record Pyth-verified price for audit trail
+    pythVerificationService.recordPriceAudit('lds', gameId, 'round_start', 'SOL', startPrice)
+      .catch(err => console.error('[LDS] Pyth audit failed:', err));
+
     this.emitEvent({
       type: 'round_started',
       gameId,
@@ -462,6 +467,10 @@ class LDSManager {
       setTimeout(() => this.resolveCurrentRound(gameId), 2000);
       return;
     }
+
+    // Record Pyth-verified price for audit trail
+    pythVerificationService.recordPriceAudit('lds', gameId, 'round_end', 'SOL', endPrice)
+      .catch(err => console.error('[LDS] Pyth audit failed:', err));
 
     // Determine round result
     let result: LDSRoundResult;

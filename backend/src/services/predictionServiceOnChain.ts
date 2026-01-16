@@ -23,6 +23,7 @@ import {
 } from '../types';
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
+import { pythVerificationService } from './pythVerificationService';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { balanceService } from './balanceService';
 
@@ -329,6 +330,10 @@ class PredictionServiceOnChain {
     }
     this.rounds.set(asset, assetRounds);
 
+    // Record Pyth-verified price for audit trail
+    pythVerificationService.recordPriceAudit('oracle', round.id, 'round_start', asset, startPrice)
+      .catch(err => console.error('[Oracle] Pyth audit failed:', err));
+
     console.log(
       `[PredictionServiceOnChain] Round ${round.id.slice(0, 8)}... started for ${asset} @ $${startPrice.toFixed(2)}`
     );
@@ -412,6 +417,10 @@ class PredictionServiceOnChain {
     const endPrice = priceService.getPrice(asset);
     round.endPrice = endPrice;
     round.status = 'settled';
+
+    // Record Pyth-verified price for audit trail
+    pythVerificationService.recordPriceAudit('oracle', round.id, 'round_end', asset, endPrice)
+      .catch(err => console.error('[Oracle] Pyth audit failed:', err));
 
     // Determine winner
     if (endPrice > round.startPrice) {

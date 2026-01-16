@@ -21,6 +21,7 @@ import { battleSettlementService } from './services/battleSettlementService';
 import { challengeNotificationService } from './services/challengeNotificationService';
 import { ldsManager, LDSEvent } from './services/ldsManager';
 import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
+import { pythVerificationService } from './services/pythVerificationService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -175,6 +176,58 @@ app.get('/api/prices/history/:symbol', burstLimiter, (req, res) => {
   const history = priceService.getPriceHistory(req.params.symbol.toUpperCase(), duration);
   res.json(history);
 });
+
+// ==================== PRICE VERIFICATION API ====================
+
+// Get current Pyth price for a symbol
+app.get('/api/prices/pyth/:symbol', standardLimiter, async (req, res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  if (!pythVerificationService.isSupported(symbol)) {
+    return res.status(400).json({ error: `Symbol ${symbol} not supported by Pyth` });
+  }
+  const pythPrice = await pythVerificationService.getPythPrice(symbol);
+  const backendPrice = priceService.getPrice(symbol);
+  res.json({
+    symbol,
+    backendPrice,
+    pythPrice: pythPrice?.price || null,
+    pythConfidence: pythPrice?.confidence || null,
+    pythPublishTime: pythPrice?.publishTime || null,
+    supported: true,
+  });
+});
+
+// Get supported Pyth symbols
+app.get('/api/prices/pyth/symbols', (req, res) => {
+  res.json({ symbols: pythVerificationService.getSupportedSymbols() });
+});
+
+// Get price verification audit records
+app.get('/api/verification/audit', standardLimiter, (req, res) => {
+  const gameType = req.query.gameType as string | undefined;
+  const gameId = req.query.gameId as string | undefined;
+  const limit = parseInt(req.query.limit as string) || 100;
+  const records = pythVerificationService.getAuditRecords(gameType, gameId, limit);
+  res.json({ records, count: records.length });
+});
+
+// Get flagged discrepancies
+app.get('/api/verification/flagged', standardLimiter, (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  const records = pythVerificationService.getFlaggedRecords(limit);
+  res.json({ records, count: records.length });
+});
+
+// Get verification summary for a specific game
+app.get('/api/verification/game/:gameType/:gameId', standardLimiter, (req, res) => {
+  const summary = pythVerificationService.getGameVerificationSummary(
+    req.params.gameType,
+    req.params.gameId
+  );
+  res.json(summary);
+});
+
+// ==================== END PRICE VERIFICATION API ====================
 
 // Get active battles
 app.get('/api/battles', (req, res) => {
