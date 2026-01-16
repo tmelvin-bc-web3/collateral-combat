@@ -211,6 +211,18 @@ class DraftTournamentManager {
       tournamentId
     );
 
+    // SECURITY: Lock funds on-chain IMMEDIATELY
+    // This prevents the withdraw-after-entry exploit where user could:
+    // 1. Enter tournament (off-chain tracking)
+    // 2. Withdraw from PDA (on-chain)
+    // 3. Win tournament but platform has no funds to pay losers' share
+    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports);
+    if (!lockTx) {
+      // Failed to lock funds on-chain - cancel the entry
+      balanceService.cancelDebit(pendingId);
+      throw new Error('Failed to lock entry fee on-chain. Please try again.');
+    }
+
     // Create entry in database
     const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports);
 
@@ -220,7 +232,7 @@ class DraftTournamentManager {
     // Update prize pool
     db.incrementPrizePool(tournamentId, entryFeeLamports);
 
-    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL`);
+    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL. Lock TX: ${lockTx}`);
 
     // Award XP for entering: 50 XP
     progressionService.awardXp(

@@ -130,12 +130,25 @@ class BattleManager {
       battleId
     );
 
+    // SECURITY: Lock funds on-chain IMMEDIATELY
+    // This prevents the withdraw-after-join exploit where user could:
+    // 1. Join battle (off-chain tracking)
+    // 2. Withdraw from PDA (on-chain)
+    // 3. Lose the battle but have no funds to pay
+    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports);
+    if (!lockTx) {
+      // Failed to lock funds on-chain - cancel the join
+      balanceService.cancelDebit(pendingId);
+      throw new Error('Failed to lock entry fee on-chain. Please try again.');
+    }
+
     // Create player with starting account
     const player: BattlePlayer = {
       walletAddress,
       account: this.createInitialAccount(),
       trades: [],
       pendingDebitId: pendingId, // Track pending debit for refunds if needed
+      lockTx, // Track the lock transaction
     };
 
     battle.players.push(player);
@@ -145,7 +158,7 @@ class BattleManager {
     // Confirm the debit now that player is in battle
     balanceService.confirmDebit(pendingId);
 
-    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL`);
+    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL. Lock TX: ${lockTx}`);
 
     // Start battle if full
     if (battle.players.length === battle.config.maxPlayers) {

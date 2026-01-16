@@ -132,6 +132,7 @@ export interface BattlePlayer {
   finalPnl?: number;
   rank?: number;
   pendingDebitId?: string; // For PDA balance tracking
+  lockTx?: string; // On-chain transaction that locked entry fee in global vault
 }
 
 export interface Battle {
