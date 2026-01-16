@@ -194,7 +194,13 @@ class PredictionServiceOnChain {
    */
   async start(asset: string = 'SOL'): Promise<void> {
     if (!this.initialized) {
-      this.initialize();
+      const success = this.initialize();
+      if (!success) {
+        console.warn(
+          '[PredictionServiceOnChain] Cannot start - service not initialized (missing authority key)'
+        );
+        return;
+      }
     }
 
     if (this.currentRounds.has(asset)) {
