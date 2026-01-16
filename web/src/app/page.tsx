@@ -268,11 +268,11 @@ export default function Home() {
           <div className="text-center">
             <div className="w-10 h-10 mx-auto mb-2 rounded bg-danger/20 border border-danger/30 flex items-center justify-center">
               <svg className="w-5 h-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <div className="text-sm font-black text-danger uppercase">Low Rake</div>
-            <div className="text-[10px] text-text-tertiary mt-1">Only 10% platform fee</div>
+            <div className="text-sm font-black text-danger uppercase">Pure PvP</div>
+            <div className="text-[10px] text-text-tertiary mt-1">No house edge</div>
           </div>
         </div>
       </div>
