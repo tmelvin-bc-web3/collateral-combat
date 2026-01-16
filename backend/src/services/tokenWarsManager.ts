@@ -70,7 +70,7 @@ const CONFIG = {
   // Battle duration in seconds
   BATTLE_DURATION_SECONDS: 300, // 5 minutes
   // Cooldown duration in seconds
-  COOLDOWN_DURATION_SECONDS: 30,
+  COOLDOWN_DURATION_SECONDS: 60, // 1 minute grace period
   // Minimum bet in SOL
   MIN_BET_SOL: 0.01,
   // Maximum bet in SOL
