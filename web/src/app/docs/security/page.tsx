@@ -101,7 +101,10 @@ export default function SecurityPage() {
 
       {/* On-Chain Programs */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">On-Chain Programs</h2>
+        <h2 className="text-xl font-semibold mb-4">On-Chain Program</h2>
+        <p className="text-text-secondary mb-4">
+          All game modes use a single unified program for balance management and settlements.
+        </p>
 
         <h3 className="font-medium mb-3">Session Betting Program</h3>
         <div className="card p-4 mb-4">
@@ -122,30 +125,15 @@ export default function SecurityPage() {
             </div>
             <div>
               <span className="text-text-tertiary">Functions:</span>
-              <span className="ml-2">Balance management, sessions, Oracle rounds, settlements</span>
+              <span className="ml-2">Deposits, withdrawals, sessions, Oracle rounds, fund locking, payouts</span>
             </div>
           </div>
         </div>
 
-        <h3 className="font-medium mb-3">Battle Program</h3>
-        <div className="card p-4 mb-4">
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="text-text-tertiary">Program ID:</span>
-              <code className="ml-2 text-accent font-mono text-xs break-all">
-                GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9
-              </code>
-            </div>
-            <div>
-              <span className="text-text-tertiary">Network:</span>
-              <span className="ml-2">Solana Mainnet</span>
-            </div>
-            <div>
-              <span className="text-text-tertiary">Functions:</span>
-              <span className="ml-2">Battle creation, trade logging, settlement</span>
-            </div>
-          </div>
-        </div>
+        <DocsCallout type="info" title="Unified Architecture">
+          Oracle, Battle, Draft, and Spectator modes all use the same Session Betting Program.
+          One deposit works everywhere. One balance across all games.
+        </DocsCallout>
       </section>
 
       {/* PDAs */}
