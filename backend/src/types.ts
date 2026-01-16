@@ -222,6 +222,7 @@ export interface PredictionRound {
   shortBets: PredictionBet[];
   winner?: PredictionSide | 'push';
   totalPool: number;
+  onChainRoundId?: number;
 }
 
 export interface PredictionBet {
@@ -233,6 +234,7 @@ export interface PredictionBet {
   placedAt: number;
   payout?: number;
   status: BetStatus;
+  lockTx?: string; // On-chain transaction that locked funds in global vault
 }
 
 export interface PredictionStats {

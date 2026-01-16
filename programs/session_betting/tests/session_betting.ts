@@ -22,6 +22,7 @@ describe("session_betting", () => {
 
   // PDAs
   let gameStatePda: PublicKey;
+  let globalVaultPda: PublicKey;
   let roundPda: PublicKey;
   let poolPda: PublicKey;
   let userBalancePda: PublicKey;
@@ -35,6 +36,14 @@ describe("session_betting", () => {
   const START_PRICE = new BN(50000_00000000); // $50,000 with 8 decimals
   const END_PRICE_UP = new BN(51000_00000000); // $51,000 - price went up
   const END_PRICE_DOWN = new BN(49000_00000000); // $49,000 - price went down
+
+  // Default Pyth price feed ID for BTC/USD (32 bytes)
+  const DEFAULT_PRICE_FEED_ID = [
+    0xe6, 0x2d, 0xf6, 0xc8, 0xb4, 0xa8, 0x5f, 0xe1,
+    0xa6, 0x7d, 0xb4, 0x4d, 0xc1, 0x2d, 0xe5, 0xdb,
+    0x33, 0x0f, 0x7a, 0xc6, 0x6b, 0x72, 0xdc, 0x65,
+    0x8a, 0xfe, 0xdf, 0x0f, 0x4a, 0x41, 0x5b, 0x43,
+  ];
 
   before(async () => {
     // Create user keypair
@@ -51,6 +60,11 @@ describe("session_betting", () => {
     // Derive PDAs
     [gameStatePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("game")],
+      program.programId
+    );
+
+    [globalVaultPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("global_vault")],
       program.programId
     );
 
@@ -73,9 +87,10 @@ describe("session_betting", () => {
   describe("Admin Functions", () => {
     it("Initializes the game", async () => {
       await program.methods
-        .initializeGame()
+        .initializeGame(DEFAULT_PRICE_FEED_ID)
         .accounts({
           gameState: gameStatePda,
+          globalVault: globalVaultPda,
           authority: authority,
           systemProgram: SystemProgram.programId,
         })
@@ -85,6 +100,7 @@ describe("session_betting", () => {
       expect(gameState.authority.toString()).to.equal(authority.toString());
       expect(gameState.currentRound.toNumber()).to.equal(0);
       expect(gameState.isPaused).to.be.false;
+      expect(gameState.priceFeedId).to.deep.equal(DEFAULT_PRICE_FEED_ID);
     });
 
     it("Starts a new round", async () => {

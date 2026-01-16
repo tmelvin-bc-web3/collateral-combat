@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
+use pyth_sdk_solana::load_price_feed_from_account_info;
 
 declare_id!("4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA");
 
@@ -25,8 +26,28 @@ pub const ROUND_DURATION_SECONDS: i64 = 30;
 /// Lock buffer: 5 seconds before round end
 pub const LOCK_BUFFER_SECONDS: i64 = 5;
 
+/// Fallback lock delay: 60 seconds after lock_time, anyone can lock the round
+pub const FALLBACK_LOCK_DELAY_SECONDS: i64 = 60;
+
 /// Maximum session validity: 7 days
 pub const MAX_SESSION_DURATION_SECONDS: i64 = 7 * 24 * 60 * 60;
+
+/// Maximum price staleness: 60 seconds
+pub const MAX_PRICE_AGE_SECONDS: u64 = 60;
+
+/// Grace period for claiming winnings before round can be closed: 1 hour
+/// After this period, authority can close the round and reclaim rent
+/// Unclaimed winnings are forfeited to the protocol
+pub const CLAIM_GRACE_PERIOD_SECONDS: i64 = 60 * 60;
+
+/// Price feed ID for BTC/USD (Pyth mainnet)
+/// Can be updated via set_price_feed instruction
+pub const DEFAULT_PRICE_FEED_ID: [u8; 32] = [
+    0xe6, 0x2d, 0xf6, 0xc8, 0xb4, 0xa8, 0x5f, 0xe1,
+    0xa6, 0x7d, 0xb4, 0x4d, 0xc1, 0x2d, 0xe5, 0xdb,
+    0x33, 0x0f, 0x7a, 0xc6, 0x6b, 0x72, 0xdc, 0x65,
+    0x8a, 0xfe, 0xdf, 0x0f, 0x4a, 0x41, 0x5b, 0x43,
+];
 
 // ===================
 // Program
@@ -42,16 +63,16 @@ pub mod session_betting {
 
     /// Initialize the global game state (called once on deployment)
     /// Only the deployer becomes the authority
-    pub fn initialize_game(ctx: Context<InitializeGame>) -> Result<()> {
+    pub fn initialize_game(ctx: Context<InitializeGame>, price_feed_id: [u8; 32]) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
         game_state.authority = ctx.accounts.authority.key();
+        game_state.pending_authority = None;
+        game_state.price_feed_id = price_feed_id;
         game_state.current_round = 0;
         game_state.total_volume = 0;
         game_state.total_fees_collected = 0;
         game_state.is_paused = false;
         game_state.bump = ctx.bumps.game_state;
-
-        msg!("Game initialized. Authority: {}", game_state.authority);
         Ok(())
     }
 
@@ -82,6 +103,8 @@ pub mod session_betting {
         round.start_time = clock.unix_timestamp;
         round.lock_time = clock.unix_timestamp + ROUND_DURATION_SECONDS - LOCK_BUFFER_SECONDS;
         round.end_time = clock.unix_timestamp + ROUND_DURATION_SECONDS;
+        // Fallback allows permissionless locking after authority timeout
+        round.lock_time_fallback = round.lock_time + FALLBACK_LOCK_DELAY_SECONDS;
         round.start_price = start_price;
         round.end_price = 0;
         round.status = RoundStatus::Open;
@@ -98,18 +121,17 @@ pub mod session_betting {
         // Increment round counter
         game_state.current_round = game_state.current_round.checked_add(1)
             .ok_or(SessionBettingError::MathOverflow)?;
-
-        msg!("Round {} started. Price: {}", round_id, start_price);
         Ok(())
     }
 
-    /// Lock the round with end price - AUTHORITY ONLY
-    /// Only the authority can submit the end price to prevent price manipulation
-    pub fn lock_round(ctx: Context<LockRound>, end_price: u64) -> Result<()> {
+    /// Lock the round with price from Pyth oracle - AUTHORITY ONLY
+    /// Uses Pyth oracle for tamper-proof price data
+    pub fn lock_round(ctx: Context<LockRound>) -> Result<()> {
         let game_state = &ctx.accounts.game_state;
         let round = &mut ctx.accounts.round;
+        let price_account = &ctx.accounts.price_feed;
 
-        // SECURITY: Authority only - prevents price manipulation attacks
+        // SECURITY: Authority only - prevents griefing attacks
         require!(
             ctx.accounts.authority.key() == game_state.authority,
             SessionBettingError::Unauthorized
@@ -117,9 +139,6 @@ pub mod session_betting {
 
         // SECURITY: Round must be open
         require!(round.status == RoundStatus::Open, SessionBettingError::RoundNotOpen);
-
-        // SECURITY: Valid price
-        require!(end_price > 0, SessionBettingError::InvalidPrice);
 
         let clock = Clock::get()?;
 
@@ -129,10 +148,76 @@ pub mod session_betting {
             SessionBettingError::TooEarlyToLock
         );
 
+        // SECURITY: Load and validate price from Pyth oracle
+        let price_feed = load_price_feed_from_account_info(price_account)
+            .map_err(|_| SessionBettingError::InvalidPriceFeed)?;
+
+        // SECURITY: Verify price feed ID matches configured feed
+        require!(
+            price_feed.id.to_bytes() == game_state.price_feed_id,
+            SessionBettingError::PriceFeedMismatch
+        );
+
+        // SECURITY: Get price with staleness check
+        let current_time = clock.unix_timestamp;
+        let price = price_feed.get_price_no_older_than(current_time, MAX_PRICE_AGE_SECONDS)
+            .ok_or(SessionBettingError::PriceTooStale)?;
+
+        // SECURITY: Price must be positive
+        require!(price.price > 0, SessionBettingError::InvalidPrice);
+
+        // Convert price to u64 (price is i64 in Pyth)
+        let end_price = price.price as u64;
+
         round.end_price = end_price;
         round.status = RoundStatus::Locked;
+        Ok(())
+    }
 
-        msg!("Round {} locked. End price: {}", round.round_id, end_price);
+    /// Lock the round with price from Pyth oracle - PERMISSIONLESS FALLBACK
+    /// Anyone can call after lock_time_fallback has passed
+    /// This prevents rounds from getting stuck if authority goes offline
+    /// SECURITY: Uses Pyth oracle for tamper-proof pricing (no arbitrary price input)
+    pub fn lock_round_fallback(ctx: Context<LockRoundFallback>) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
+        let round = &mut ctx.accounts.round;
+        let price_account = &ctx.accounts.price_feed;
+
+        // SECURITY: Round must be open
+        require!(round.status == RoundStatus::Open, SessionBettingError::RoundNotOpen);
+
+        let clock = Clock::get()?;
+
+        // SECURITY: Must be after lock_time_fallback (gives authority priority window)
+        require!(
+            clock.unix_timestamp >= round.lock_time_fallback,
+            SessionBettingError::TooEarlyForFallback
+        );
+
+        // SECURITY: Load and validate price from Pyth oracle
+        let price_feed = load_price_feed_from_account_info(price_account)
+            .map_err(|_| SessionBettingError::InvalidPriceFeed)?;
+
+        // SECURITY: Verify price feed ID matches configured feed
+        require!(
+            price_feed.id.to_bytes() == game_state.price_feed_id,
+            SessionBettingError::PriceFeedMismatch
+        );
+
+        // SECURITY: Get price with staleness check
+        // This prevents price manipulation even in permissionless fallback
+        let current_time = clock.unix_timestamp;
+        let price = price_feed.get_price_no_older_than(current_time, MAX_PRICE_AGE_SECONDS)
+            .ok_or(SessionBettingError::PriceTooStale)?;
+
+        // SECURITY: Price must be positive
+        require!(price.price > 0, SessionBettingError::InvalidPrice);
+
+        // Convert price to u64 (price is i64 in Pyth)
+        let end_price = price.price as u64;
+
+        round.end_price = end_price;
+        round.status = RoundStatus::Locked;
         Ok(())
     }
 
@@ -170,8 +255,42 @@ pub mod session_betting {
         game_state.total_volume = game_state.total_volume
             .checked_add(pool.total_pool)
             .ok_or(SessionBettingError::MathOverflow)?;
+        Ok(())
+    }
 
-        msg!("Round {} settled. Winner: {:?}", round.round_id, winner);
+    /// Close a settled round and reclaim rent
+    /// AUTHORITY ONLY - can only be called after grace period
+    /// Any unclaimed winnings are forfeited to the protocol
+    pub fn close_round(ctx: Context<CloseRound>) -> Result<()> {
+        let game_state = &ctx.accounts.game_state;
+        let round = &ctx.accounts.round;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: Round must be settled
+        require!(
+            round.status == RoundStatus::Settled,
+            SessionBettingError::RoundNotSettled
+        );
+
+        let clock = Clock::get()?;
+
+        // SECURITY: Must be after grace period
+        let close_time = round.end_time
+            .checked_add(CLAIM_GRACE_PERIOD_SECONDS)
+            .ok_or(SessionBettingError::MathOverflow)?;
+
+        require!(
+            clock.unix_timestamp >= close_time,
+            SessionBettingError::GracePeriodNotOver
+        );
+
+        // Accounts are closed via the close constraint in CloseRound
+        // Rent is returned to authority
         Ok(())
     }
 
@@ -186,7 +305,155 @@ pub mod session_betting {
         );
 
         game_state.is_paused = paused;
-        msg!("Game paused: {}", paused);
+        Ok(())
+    }
+
+    /// Update the Pyth price feed ID (authority only)
+    pub fn set_price_feed(ctx: Context<SetPriceFeed>, price_feed_id: [u8; 32]) -> Result<()> {
+        let game_state = &mut ctx.accounts.game_state;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        game_state.price_feed_id = price_feed_id;
+        Ok(())
+    }
+
+    // =====================
+    // Authority Transfer Instructions (Two-Step for Security)
+    // =====================
+
+    /// Step 1: Current authority proposes a new authority
+    /// SECURITY: Two-step transfer prevents accidental lockout
+    pub fn propose_authority_transfer(ctx: Context<ProposeAuthorityTransfer>, new_authority: Pubkey) -> Result<()> {
+        let game_state = &mut ctx.accounts.game_state;
+
+        // SECURITY: Current authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: New authority cannot be zero address
+        require!(
+            new_authority != Pubkey::default(),
+            SessionBettingError::InvalidAuthority
+        );
+
+        game_state.pending_authority = Some(new_authority);
+
+        emit!(AuthorityTransferProposed {
+            current_authority: game_state.authority,
+            pending_authority: new_authority,
+        });
+        Ok(())
+    }
+
+    /// Step 2: New authority accepts the transfer
+    /// SECURITY: Only the pending authority can accept
+    pub fn accept_authority_transfer(ctx: Context<AcceptAuthorityTransfer>) -> Result<()> {
+        let game_state = &mut ctx.accounts.game_state;
+
+        // SECURITY: Must have a pending authority
+        let pending = game_state.pending_authority
+            .ok_or(SessionBettingError::NoPendingAuthority)?;
+
+        // SECURITY: Signer must be the pending authority
+        require!(
+            ctx.accounts.new_authority.key() == pending,
+            SessionBettingError::Unauthorized
+        );
+
+        let old_authority = game_state.authority;
+        game_state.authority = pending;
+        game_state.pending_authority = None;
+
+        emit!(AuthorityTransferred {
+            old_authority,
+            new_authority: pending,
+        });
+        Ok(())
+    }
+
+    /// Cancel a pending authority transfer
+    /// SECURITY: Only current authority can cancel
+    pub fn cancel_authority_transfer(ctx: Context<CancelAuthorityTransfer>) -> Result<()> {
+        let game_state = &mut ctx.accounts.game_state;
+
+        // SECURITY: Current authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: Must have a pending authority to cancel
+        require!(
+            game_state.pending_authority.is_some(),
+            SessionBettingError::NoPendingAuthority
+        );
+
+        game_state.pending_authority = None;
+        Ok(())
+    }
+
+    // =====================
+    // Fee Withdrawal (Authority Only)
+    // =====================
+
+    /// Withdraw collected platform fees to authority wallet
+    /// SECURITY: Authority only, tracks withdrawal amount
+    pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
+        let game_state = &mut ctx.accounts.game_state;
+
+        // SECURITY: Authority only
+        require!(
+            ctx.accounts.authority.key() == game_state.authority,
+            SessionBettingError::Unauthorized
+        );
+
+        // SECURITY: Amount must be positive
+        require!(amount > 0, SessionBettingError::AmountTooSmall);
+
+        // SECURITY: Cannot withdraw more than collected fees
+        require!(
+            amount <= game_state.total_fees_collected,
+            SessionBettingError::InsufficientFees
+        );
+
+        // SECURITY: Global vault must have sufficient balance
+        require!(
+            ctx.accounts.global_vault.lamports() >= amount,
+            SessionBettingError::InsufficientVaultBalance
+        );
+
+        // Update fees collected BEFORE transfer (reentrancy protection)
+        game_state.total_fees_collected = game_state.total_fees_collected
+            .checked_sub(amount)
+            .ok_or(SessionBettingError::MathOverflow)?;
+
+        // Transfer from global vault to authority
+        let bump = ctx.bumps.global_vault;
+        let seeds: &[&[u8]] = &[b"global_vault", &[bump]];
+        let signer_seeds = &[seeds];
+
+        let cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.global_vault.to_account_info(),
+                to: ctx.accounts.authority.to_account_info(),
+            },
+            signer_seeds,
+        );
+        transfer(cpi_context, amount)?;
+
+        emit!(FeesWithdrawn {
+            authority: ctx.accounts.authority.key(),
+            amount,
+            remaining_fees: game_state.total_fees_collected,
+        });
         Ok(())
     }
 
@@ -236,8 +503,6 @@ pub mod session_betting {
             signer_seeds,
         );
         transfer(cpi_context, amount)?;
-
-        msg!("Transferred {} lamports from {} to global vault", amount, owner_key);
         Ok(())
     }
 
@@ -300,13 +565,6 @@ pub mod session_betting {
             game_type,
             game_id,
         });
-
-        msg!(
-            "Credited {} lamports to {} for {:?}",
-            amount,
-            ctx.accounts.owner.key(),
-            game_type
-        );
         Ok(())
     }
 
@@ -329,8 +587,6 @@ pub mod session_betting {
             },
         );
         transfer(cpi_context, amount)?;
-
-        msg!("Funded global vault with {} lamports", amount);
         Ok(())
     }
 
@@ -357,19 +613,12 @@ pub mod session_betting {
         session.session_signer = ctx.accounts.session_signer.key();
         session.valid_until = valid_until;
         session.bump = ctx.bumps.session_token;
-
-        msg!(
-            "Session created for {} until {}",
-            session.authority,
-            valid_until
-        );
         Ok(())
     }
 
     /// Revoke a session token (wallet signature required)
-    pub fn revoke_session(ctx: Context<RevokeSession>) -> Result<()> {
+    pub fn revoke_session(_ctx: Context<RevokeSession>) -> Result<()> {
         // The account will be closed and rent returned to authority
-        msg!("Session revoked for {}", ctx.accounts.authority.key());
         Ok(())
     }
 
@@ -403,8 +652,6 @@ pub mod session_betting {
             .checked_add(amount)
             .ok_or(SessionBettingError::MathOverflow)?;
         user_balance.bump = ctx.bumps.user_balance;
-
-        msg!("Deposited {} lamports for {}", amount, ctx.accounts.user.key());
         Ok(())
     }
 
@@ -453,7 +700,6 @@ pub mod session_betting {
         );
         transfer(cpi_context, amount)?;
 
-        msg!("Withdrew {} lamports for {}", amount, ctx.accounts.user.key());
         Ok(())
     }
 
@@ -532,12 +778,6 @@ pub mod session_betting {
             .checked_add(amount)
             .ok_or(SessionBettingError::MathOverflow)?;
 
-        msg!(
-            "Bet placed: {} lamports on {:?} for round {}",
-            amount,
-            side,
-            round.round_id
-        );
         Ok(())
     }
 
@@ -609,16 +849,11 @@ pub mod session_betting {
             game_state.total_fees_collected = game_state.total_fees_collected
                 .checked_add(fee)
                 .ok_or(SessionBettingError::MathOverflow)?;
-
-            msg!("Claimed {} lamports (fee: {})", payout, fee);
         } else if round.winner == WinnerSide::Draw {
             // Refund on draw
             user_balance.balance = user_balance.balance
                 .checked_add(position.amount)
                 .ok_or(SessionBettingError::MathOverflow)?;
-            msg!("Refunded {} lamports (draw)", position.amount);
-        } else {
-            msg!("No winnings to claim (lost)");
         }
 
         Ok(())
@@ -629,7 +864,7 @@ pub mod session_betting {
 // Helper Functions
 // ===================
 
-/// Verify that the signer is either the authority or has a valid session
+#[inline]
 fn verify_session_or_authority(
     session_token: &Option<Account<SessionToken>>,
     signer: &Signer,
@@ -671,7 +906,7 @@ fn verify_session_or_authority(
     }
 }
 
-/// Calculate winnings based on position and round outcome
+#[inline]
 fn calculate_winnings(
     bet_amount: u64,
     bet_side: BetSide,
@@ -799,8 +1034,35 @@ pub struct LockRound<'info> {
     )]
     pub round: Account<'info, BettingRound>,
 
-    /// Authority must sign to prevent price manipulation
+    /// CHECK: Pyth price feed account - validated in instruction
+    pub price_feed: AccountInfo<'info>,
+
+    /// Authority must sign to prevent griefing
     pub authority: Signer<'info>,
+}
+
+/// Permissionless fallback for locking rounds when authority is offline
+/// SECURITY: Uses Pyth oracle price - no arbitrary price input allowed
+#[derive(Accounts)]
+pub struct LockRoundFallback<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(
+        mut,
+        seeds = [b"round", round.round_id.to_le_bytes().as_ref()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, BettingRound>,
+
+    /// CHECK: Pyth price feed account - validated in instruction
+    pub price_feed: AccountInfo<'info>,
+
+    /// Anyone can call this after fallback time
+    pub caller: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -828,6 +1090,36 @@ pub struct SettleRound<'info> {
     pub caller: Signer<'info>,
 }
 
+/// Close a settled round and reclaim rent
+/// Authority only, after grace period
+#[derive(Accounts)]
+pub struct CloseRound<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(
+        mut,
+        seeds = [b"round", round.round_id.to_le_bytes().as_ref()],
+        bump = round.bump,
+        close = authority
+    )]
+    pub round: Account<'info, BettingRound>,
+
+    #[account(
+        mut,
+        seeds = [b"pool", round.round_id.to_le_bytes().as_ref()],
+        bump = pool.bump,
+        close = authority
+    )]
+    pub pool: Account<'info, BettingPool>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
 #[derive(Accounts)]
 pub struct SetPaused<'info> {
     #[account(
@@ -838,6 +1130,82 @@ pub struct SetPaused<'info> {
     pub game_state: Account<'info, GameState>,
 
     pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetPriceFeed<'info> {
+    #[account(
+        mut,
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    pub authority: Signer<'info>,
+}
+
+/// Propose a new authority (two-step transfer)
+#[derive(Accounts)]
+pub struct ProposeAuthorityTransfer<'info> {
+    #[account(
+        mut,
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    pub authority: Signer<'info>,
+}
+
+/// Accept authority transfer (must be signed by pending authority)
+#[derive(Accounts)]
+pub struct AcceptAuthorityTransfer<'info> {
+    #[account(
+        mut,
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    /// The new authority accepting the transfer
+    pub new_authority: Signer<'info>,
+}
+
+/// Cancel a pending authority transfer
+#[derive(Accounts)]
+pub struct CancelAuthorityTransfer<'info> {
+    #[account(
+        mut,
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    pub authority: Signer<'info>,
+}
+
+/// Withdraw collected platform fees
+#[derive(Accounts)]
+pub struct WithdrawFees<'info> {
+    #[account(
+        mut,
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// Global vault PDA for pooled funds
+    #[account(
+        mut,
+        seeds = [b"global_vault"],
+        bump
+    )]
+    pub global_vault: SystemAccount<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -1140,6 +1508,10 @@ pub struct FundGlobalVault<'info> {
 #[derive(InitSpace)]
 pub struct GameState {
     pub authority: Pubkey,
+    /// Pending authority for two-step transfer (security: prevents accidental lockout)
+    pub pending_authority: Option<Pubkey>,
+    /// Pyth price feed ID for oracle price validation
+    pub price_feed_id: [u8; 32],
     pub current_round: u64,
     pub total_volume: u64,
     pub total_fees_collected: u64,
@@ -1154,6 +1526,8 @@ pub struct BettingRound {
     pub start_time: i64,
     pub lock_time: i64,
     pub end_time: i64,
+    /// Fallback time after which anyone can lock the round (decentralization)
+    pub lock_time_fallback: i64,
     pub start_price: u64,
     pub end_price: u64,
     pub status: RoundStatus,
@@ -1210,20 +1584,20 @@ pub struct SessionToken {
 // Enums
 // ===================
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum BetSide {
     Up,
     Down,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum RoundStatus {
     Open,
     Locked,
     Settled,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum WinnerSide {
     None,
     Up,
@@ -1231,13 +1605,12 @@ pub enum WinnerSide {
     Draw,
 }
 
-/// Game type for tracking winnings source
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum GameType {
-    Oracle,     // 0 - Price prediction rounds
-    Battle,     // 1 - PvP trading battles
-    Draft,      // 2 - Draft tournaments
-    Spectator,  // 3 - Spectator wagering
+    Oracle,
+    Battle,
+    Draft,
+    Spectator,
 }
 
 // ===================
@@ -1253,78 +1626,94 @@ pub struct WinningsCredited {
     pub game_id: [u8; 32],
 }
 
+/// Emitted when authority transfer is proposed
+#[event]
+pub struct AuthorityTransferProposed {
+    pub current_authority: Pubkey,
+    pub pending_authority: Pubkey,
+}
+
+/// Emitted when authority transfer is completed
+#[event]
+pub struct AuthorityTransferred {
+    pub old_authority: Pubkey,
+    pub new_authority: Pubkey,
+}
+
+/// Emitted when fees are withdrawn
+#[event]
+pub struct FeesWithdrawn {
+    pub authority: Pubkey,
+    pub amount: u64,
+    pub remaining_fees: u64,
+}
+
 // ===================
 // Errors
 // ===================
 
 #[error_code]
 pub enum SessionBettingError {
-    #[msg("Unauthorized access")]
+    #[msg("Unauthorized")]
     Unauthorized,
-
-    #[msg("Game is currently paused")]
+    #[msg("Paused")]
     GamePaused,
-
-    #[msg("Invalid price - must be greater than 0")]
+    #[msg("Invalid price")]
     InvalidPrice,
-
-    #[msg("Round is not open for betting")]
+    #[msg("Bad feed")]
+    InvalidPriceFeed,
+    #[msg("Feed mismatch")]
+    PriceFeedMismatch,
+    #[msg("Price stale")]
+    PriceTooStale,
+    #[msg("Not open")]
     RoundNotOpen,
-
-    #[msg("Round is already locked")]
+    #[msg("Locked")]
     RoundLocked,
-
-    #[msg("Too early to lock the round")]
+    #[msg("Too early")]
     TooEarlyToLock,
-
-    #[msg("Round is not locked yet")]
+    #[msg("Fallback too early")]
+    TooEarlyForFallback,
+    #[msg("Not locked")]
     RoundNotLocked,
-
-    #[msg("Too early to settle the round")]
+    #[msg("Too early")]
     TooEarlyToSettle,
-
-    #[msg("Round is not settled yet")]
+    #[msg("Not settled")]
     RoundNotSettled,
-
-    #[msg("Bet amount is below minimum (0.01 SOL)")]
+    #[msg("Grace period")]
+    GracePeriodNotOver,
+    #[msg("Below min")]
     AmountTooSmall,
-
-    #[msg("Bet amount exceeds maximum (100 SOL)")]
+    #[msg("Above max")]
     AmountTooLarge,
-
-    #[msg("Insufficient balance")]
+    #[msg("Low balance")]
     InsufficientBalance,
-
-    #[msg("Insufficient global vault balance for payout")]
+    #[msg("Low vault")]
     InsufficientVaultBalance,
-
-    #[msg("Not the owner of this balance account")]
+    #[msg("Low fees")]
+    InsufficientFees,
+    #[msg("Not owner")]
     NotBalanceOwner,
-
-    #[msg("Not the owner of this position")]
+    #[msg("Not owner")]
     NotPositionOwner,
-
-    #[msg("Position already claimed")]
+    #[msg("Claimed")]
     AlreadyClaimed,
-
-    #[msg("Math overflow occurred")]
+    #[msg("Overflow")]
     MathOverflow,
-
-    #[msg("Invalid session duration")]
+    #[msg("Bad duration")]
     InvalidSessionDuration,
-
-    #[msg("Session duration exceeds maximum (7 days)")]
+    #[msg("Too long")]
     SessionTooLong,
-
-    #[msg("Session has expired")]
+    #[msg("Expired")]
     SessionExpired,
-
-    #[msg("Session authority does not match")]
+    #[msg("Mismatch")]
     SessionAuthorityMismatch,
-
-    #[msg("Invalid session signer")]
+    #[msg("Bad signer")]
     InvalidSessionSigner,
-
-    #[msg("Not the owner of this session")]
+    #[msg("Not owner")]
     NotSessionOwner,
+    #[msg("Bad authority")]
+    InvalidAuthority,
+    #[msg("No pending")]
+    NoPendingAuthority,
 }

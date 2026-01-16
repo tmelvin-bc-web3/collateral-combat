@@ -12,6 +12,8 @@ export const PLATFORM_FEE_BPS = 500; // 5%
 export const ROUND_DURATION_SECONDS = 30;
 export const LOCK_BUFFER_SECONDS = 5;
 export const MAX_SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days
+export const FALLBACK_LOCK_DELAY_SECONDS = 60; // 60 seconds after lock_time
+export const CLAIM_GRACE_PERIOD_SECONDS = 60 * 60; // 1 hour before round can be closed
 
 // Enums
 export enum BetSide {
@@ -53,6 +55,10 @@ export function gameTypeToProgram(gameType: GameType): object {
 // Account Types
 export interface GameState {
   authority: PublicKey;
+  /** Pending authority for two-step transfer (null if none) */
+  pendingAuthority: PublicKey | null;
+  /** Pyth price feed ID for oracle validation */
+  priceFeedId: number[];
   currentRound: BN;
   totalVolume: BN;
   totalFeesCollected: BN;
@@ -65,6 +71,8 @@ export interface BettingRound {
   startTime: BN;
   lockTime: BN;
   endTime: BN;
+  /** Fallback time after which anyone can lock the round (decentralization) */
+  lockTimeFallback: BN;
   startPrice: BN;
   endPrice: BN;
   status: RoundStatus;

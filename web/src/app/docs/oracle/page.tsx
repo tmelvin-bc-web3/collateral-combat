@@ -18,7 +18,7 @@ export default function OraclePage() {
               <div>
                 <h3 className="font-medium mb-1">Round Starts</h3>
                 <p className="text-text-secondary text-sm">
-                  A new 30-second round begins. The starting price is locked in.
+                  A new 30-second round begins on-chain. The starting price is locked from the Pyth oracle.
                   You have 25 seconds to place your wager before the round locks.
                 </p>
               </div>
@@ -32,7 +32,8 @@ export default function OraclePage() {
                 <p className="text-text-secondary text-sm">
                   Choose <span className="text-success">Long</span> if you think the price will go up,
                   or <span className="text-danger">Short</span> if you think it will go down.
-                  Select your wager amount (0.01 - 10 SOL).
+                  Select your wager amount (0.01, 0.05, 0.1, 0.25, or 0.5 SOL).
+                  Funds are locked on-chain immediately.
                 </p>
               </div>
             </div>
@@ -43,8 +44,8 @@ export default function OraclePage() {
               <div>
                 <h3 className="font-medium mb-1">Round Locks</h3>
                 <p className="text-text-secondary text-sm">
-                  5 seconds before the round ends, wagering closes. The lock price is recorded.
-                  Watch the final seconds play out!
+                  5 seconds before the round ends, wagering closes. The lock price is recorded from
+                  the Pyth oracle on-chain. Watch the final seconds play out!
                 </p>
               </div>
             </div>
@@ -55,13 +56,49 @@ export default function OraclePage() {
               <div>
                 <h3 className="font-medium mb-1">Settlement</h3>
                 <p className="text-text-secondary text-sm">
-                  The round ends. If the end price is higher than start price, Long wins.
-                  If lower, Short wins. If equal, it&apos;s a push (refund).
+                  The round settles on-chain. If the end price is higher than start price, Long wins.
+                  If lower, Short wins. If equal, it&apos;s a push (refund). Winnings are automatically
+                  credited to your balance.
                 </p>
               </div>
             </div>
           </div>
         </div>
+      </section>
+
+      {/* On-Chain Architecture */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">On-Chain Architecture</h2>
+        <p className="text-text-secondary mb-4">
+          Oracle rounds are managed on-chain for transparency and verifiability. Prices come from
+          the Pyth Network oracle, ensuring tamper-proof price data.
+        </p>
+
+        <div className="card p-4 mb-4">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
+              <span className="font-medium">Round Start</span>
+              <span className="text-text-secondary">On-chain with Pyth start price</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
+              <span className="font-medium">Round Lock</span>
+              <span className="text-text-secondary">On-chain with Pyth lock price</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
+              <span className="font-medium">Settlement</span>
+              <span className="text-text-secondary">On-chain winner determination</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="font-medium">Wager Tracking</span>
+              <span className="text-text-secondary">Efficient off-chain with on-chain fund locking</span>
+            </div>
+          </div>
+        </div>
+
+        <DocsCallout type="info" title="Pyth Network Oracle">
+          We use Pyth Network for price data, the same oracle used by major DeFi protocols on Solana.
+          Prices are updated every 400ms with multiple data sources for accuracy.
+        </DocsCallout>
       </section>
 
       {/* Trading Asset */}
@@ -91,7 +128,7 @@ export default function OraclePage() {
         <h2 className="text-xl font-semibold mb-4">Payouts & Odds</h2>
         <p className="text-text-secondary mb-4">
           Winners split the losing pool proportionally to their wager size. The odds depend on
-          how much is wager on each side.
+          how much is wagered on each side.
         </p>
 
         <div className="card p-4 mb-4">
@@ -110,6 +147,30 @@ export default function OraclePage() {
         <DocsCallout type="info" title="Platform Fee">
           DegenDome takes a 5% fee from the losing pool before distribution to winners.
           Level up to unlock reduced fee perks!
+        </DocsCallout>
+      </section>
+
+      {/* Balance Requirement */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Balance Requirement</h2>
+        <p className="text-text-secondary mb-4">
+          Oracle predictions use your session betting balance. You must deposit SOL before
+          you can place wagers.
+        </p>
+
+        <div className="card p-4 mb-4">
+          <h3 className="font-medium mb-3">Quick Start</h3>
+          <ol className="list-decimal list-inside space-y-2 text-text-secondary text-sm">
+            <li>Click your balance in the header</li>
+            <li>Deposit SOL to your wagering balance</li>
+            <li>Create a session for instant wagering (optional but recommended)</li>
+            <li>Place wagers without wallet popups!</li>
+          </ol>
+        </div>
+
+        <DocsCallout type="tip" title="Instant Wagering">
+          Create a session key to place wagers instantly without wallet popups.
+          See <a href="/docs/session-betting" className="text-accent hover:underline">Session Wagering</a> for details.
         </DocsCallout>
       </section>
 
@@ -154,23 +215,57 @@ export default function OraclePage() {
           <div className="card p-4 border-success/30">
             <h3 className="font-medium text-success mb-2">Win</h3>
             <p className="text-text-secondary text-sm">
-              You picked the winning side. You receive your original wager plus your share of the
-              losing pool (minus 5% fee).
+              You picked the winning side. Your payout is automatically credited to your
+              balance. No claiming required.
             </p>
           </div>
           <div className="card p-4 border-danger/30">
             <h3 className="font-medium text-danger mb-2">Lose</h3>
             <p className="text-text-secondary text-sm">
-              You picked the losing side. Your wager goes to the winning pool.
-              No additional fees are charged.
+              You picked the losing side. Your locked wager goes to the winning pool.
+              Funds were locked when you placed the wager.
             </p>
           </div>
           <div className="card p-4 border-yellow-500/30">
             <h3 className="font-medium text-yellow-400 mb-2">Push</h3>
             <p className="text-text-secondary text-sm">
-              The price didn&apos;t change. Everyone gets their wagers refunded.
+              The price didn&apos;t change. Everyone gets their wagers refunded automatically.
               This is rare but can happen.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Technical Details */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Technical Details</h2>
+
+        <div className="card p-4 mb-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Round Duration</span>
+              <span>30 seconds</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Betting Window</span>
+              <span>25 seconds (5 second lock buffer)</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Wager Amounts</span>
+              <span>0.01, 0.05, 0.1, 0.25, 0.5 SOL</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Platform Fee</span>
+              <span>5% of losing pool</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Price Oracle</span>
+              <span>Pyth Network</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-text-tertiary">Settlement</span>
+              <span>Automatic on-chain</span>
+            </div>
           </div>
         </div>
       </section>
@@ -180,25 +275,31 @@ export default function OraclePage() {
         <h2 className="text-xl font-semibold mb-4">Strategy Tips</h2>
         <ul className="space-y-3">
           <li className="flex gap-3">
-            <span className="text-accent">•</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary">
               <strong>Watch the pool balance</strong> — Better odds come from being on the minority side.
             </span>
           </li>
           <li className="flex gap-3">
-            <span className="text-accent">•</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary">
               <strong>Consider volatility</strong> — SOL can move significantly in 30 seconds during high activity periods.
             </span>
           </li>
           <li className="flex gap-3">
-            <span className="text-accent">•</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary">
               <strong>Wager early</strong> — The early bird bonus can significantly boost your returns.
             </span>
           </li>
           <li className="flex gap-3">
-            <span className="text-accent">•</span>
+            <span className="text-accent">&#x2022;</span>
+            <span className="text-text-secondary">
+              <strong>Create a session</strong> — Instant wagering without popups lets you react faster.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary">
               <strong>Check recent history</strong> — Past round results can show momentum patterns.
             </span>

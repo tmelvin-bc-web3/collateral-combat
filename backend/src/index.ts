@@ -11,7 +11,7 @@ import { priceService } from './services/priceService';
 import { battleManager } from './services/battleManager';
 import { spectatorService } from './services/spectatorService';
 import { battleSimulator } from './services/battleSimulator';
-import { predictionService } from './services/predictionService';
+import { predictionServiceOnChain as predictionService } from './services/predictionServiceOnChain';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';

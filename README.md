@@ -21,20 +21,21 @@ sol-battles/
 │   └── session_betting/     # Solana Anchor program
 │       └── programs/
 │           └── session_betting/
-│               └── src/lib.rs    # PDA balance + session keys
+│               └── src/lib.rs    # PDA balance + session keys + Oracle rounds
 │
 ├── backend/                  # Node.js + Socket.io server
 │   └── src/
 │       ├── services/
-│       │   ├── battleManager.ts       # Battle logic
-│       │   ├── predictionService.ts   # Oracle rounds
-│       │   ├── spectatorService.ts    # Spectator wagering
+│       │   ├── battleManager.ts           # Battle logic
+│       │   ├── predictionServiceOnChain.ts # Oracle rounds (on-chain)
+│       │   ├── onChainRoundManager.ts     # Round lifecycle management
+│       │   ├── spectatorService.ts        # Spectator wagering
 │       │   ├── draftTournamentManager.ts  # Draft tournaments
-│       │   ├── balanceService.ts      # PDA balance verification
-│       │   └── priceService.ts        # Jupiter price feeds
+│       │   ├── balanceService.ts          # PDA balance verification
+│       │   └── priceService.ts            # Jupiter price feeds
 │       └── db/
-│           ├── balanceDatabase.ts     # Pending transactions
-│           └── draftDatabase.ts       # Draft tournament data
+│           ├── balanceDatabase.ts         # Pending transactions
+│           └── draftDatabase.ts           # Draft tournament data
 │
 └── web/                      # Next.js 16 frontend
     └── src/
@@ -57,10 +58,16 @@ The core Solana program (`4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`) provide
 - **Deposit once, play everywhere** - Users deposit SOL to their PDA vault
 - **Unified balance** - Same balance used across all game modes
 - **Instant withdrawals** - Withdraw anytime with wallet signature
+- **Immediate fund locking** - Wagers locked on-chain when placed
+
+### On-Chain Oracle Rounds
+- **Pyth Network integration** - Tamper-proof price data
+- **On-chain round management** - Start, lock, settle all verifiable
+- **Automatic rent reclaim** - Rounds closed after 1-hour grace period
 
 ### Session Keys
 - **No wallet popups** - Create a session key for frictionless betting
-- **Time-limited** - Sessions expire after max 7 days
+- **Time-limited** - Sessions expire after max 24 hours
 - **Safe by design** - Session keys can bet but CANNOT withdraw
 
 ### Key Instructions
@@ -69,19 +76,34 @@ The core Solana program (`4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`) provide
 | `deposit` | User (wallet) | Add SOL to PDA balance |
 | `withdraw` | User (wallet) | Remove SOL from PDA balance |
 | `create_session` | User (wallet) | Create session key for betting |
-| `place_bet` | User or Session | Place UP/DOWN bet in Oracle |
-| `credit_winnings` | Authority only | Pay out game winners |
-| `transfer_to_global_vault` | Authority only | Collect from losers |
+| `start_round` | Authority | Begin new Oracle round with Pyth price |
+| `lock_round` | Authority | Lock round at 25s mark |
+| `settle_round` | Authority | Determine winner at 30s |
+| `close_round` | Authority | Reclaim rent after grace period |
+| `credit_winnings` | Authority | Pay out game winners |
+| `transfer_to_global_vault` | Authority | Lock wager funds |
+| `propose_authority` | Authority | Begin authority transfer |
+| `accept_authority` | New Authority | Complete authority transfer |
 
 ## Security Features
 
 ### Smart Contract Security
-- **Authority-only price submission** - Prevents price manipulation in Oracle
+- **Pyth oracle integration** - Tamper-proof price data for Oracle rounds
+- **Two-step authority transfer** - Prevents accidental loss of control
+- **Immediate fund locking** - Wagers locked on-chain to prevent exploit
 - **Global vault balance check** - Ensures sufficient funds before payouts
 - **SystemAccount validation** - All vaults use `SystemAccount` for type safety
 - **Reentrancy protection** - State updated before all transfers
 - **Math overflow protection** - All arithmetic uses `checked_*` operations
 - **Session key isolation** - Sessions cannot withdraw, only bet
+
+### Fund Locking Security
+When a user places a wager:
+1. Backend verifies on-chain PDA balance
+2. Funds transferred to global vault **immediately** on-chain
+3. User cannot withdraw wagered funds
+4. If user wins: credited from global vault
+5. If user loses: funds already in vault
 
 ### Backend Security
 - **PDA balance verification** - Checks on-chain balance before every action
@@ -89,13 +111,11 @@ The core Solana program (`4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`) provide
 - **Wallet signature authentication** - All sensitive operations require signatures
 - **Rate limiting** - Global, standard, and strict limits per endpoint
 
-See [SECURITY.md](./SECURITY.md) for full security documentation.
-
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
-- Rust + Anchor CLI (for program development)
+- Rust + Anchor CLI 0.31.1 (for program development)
 - Solana CLI (configured for devnet)
 
 ### 1. Start the Backend
@@ -119,6 +139,7 @@ Frontend runs on `http://localhost:3000`
 ```bash
 cd programs/session_betting
 anchor build
+anchor test
 anchor deploy --provider.cluster devnet
 ```
 
@@ -134,12 +155,49 @@ SESSION_BETTING_AUTHORITY_PRIVATE_KEY=<base58 private key>
 PORT=3001
 FRONTEND_URL=http://localhost:3000
 REQUIRE_WALLET_SIGNATURES=true
+CMC_API_KEY=<coinmarketcap api key>
+HELIUS_API_KEY=<helius api key>
 ```
 
 ### Frontend
 ```bash
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
 NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
+```
+
+## Oracle Round Lifecycle
+
+```
+Start Round (0s)
+    │
+    ├── Backend calls start_round with Pyth price
+    ├── BettingRound + BettingPool PDAs created
+    │
+    ▼
+Betting Phase (0-25s)
+    │
+    ├── Users place wagers via WebSocket
+    ├── Each wager: transferToGlobalVault (on-chain)
+    ├── Funds locked immediately
+    │
+    ▼
+Lock Round (25s)
+    │
+    ├── Backend calls lock_round with Pyth price
+    ├── No more wagers accepted
+    │
+    ▼
+Settle Round (30s)
+    │
+    ├── Backend calls settle_round
+    ├── Winner determined: UP, DOWN, or DRAW
+    ├── Winners credited via creditWinnings
+    │
+    ▼
+Close Round (+1 hour)
+    │
+    ├── Backend calls close_round
+    └── Rent reclaimed (~0.003 SOL per round)
 ```
 
 ## WebSocket Events
@@ -169,9 +227,9 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 
 - **Frontend:** Next.js 16, React, TailwindCSS, Socket.io-client
 - **Backend:** Node.js, Express, Socket.io, TypeScript, SQLite
-- **Blockchain:** Solana, Anchor Framework
+- **Blockchain:** Solana, Anchor Framework 0.31.1
 - **Wallet:** Solana Wallet Adapter (Phantom, Solflare, etc.)
-- **Prices:** Jupiter Price API, Pyth (Oracle)
+- **Prices:** Jupiter Price API, Pyth Network (Oracle)
 - **Deployment:** Vercel (frontend), Render (backend)
 
 ## Program IDs
@@ -179,6 +237,7 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 | Program | Address | Network |
 |---------|---------|---------|
 | Session Betting | `4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA` | Devnet |
+| Battle Program | `GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9` | Mainnet |
 
 ## Roadmap
 
@@ -188,6 +247,10 @@ NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 - [x] Draft Tournaments
 - [x] Unified PDA Balance System
 - [x] Session Keys (no wallet popups)
+- [x] Pyth Oracle Integration
+- [x] On-Chain Round Management
+- [x] Immediate Fund Locking
+- [x] Automatic Rent Reclaim
 - [ ] Multi-sig authority (before mainnet)
 - [ ] Mainnet deployment
 - [ ] Mobile app
@@ -208,4 +271,4 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
-*Built with Solana + Anchor*
+*Built with Solana + Anchor + Pyth*

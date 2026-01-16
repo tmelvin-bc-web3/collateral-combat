@@ -5,12 +5,41 @@ export default function SessionBettingPage() {
     <div className="animate-fadeIn">
       <h1 className="text-3xl font-bold mb-4">Session Wagering</h1>
       <p className="text-text-secondary text-lg mb-8">
-        Wager instantly without signing every transaction. Deposit once, wager freely.
+        Deposit once, play everywhere. A unified balance system with instant wagering across all game modes.
       </p>
+
+      {/* Unified Balance System */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Unified Balance System</h2>
+        <p className="text-text-secondary mb-4">
+          DegenDome uses a single on-chain balance for all game modes. Deposit SOL once and use it for:
+        </p>
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div className="card p-4">
+            <h3 className="font-medium text-accent mb-2">Oracle Predictions</h3>
+            <p className="text-text-secondary text-sm">30-second price prediction rounds</p>
+          </div>
+          <div className="card p-4">
+            <h3 className="font-medium text-accent mb-2">Battle Mode</h3>
+            <p className="text-text-secondary text-sm">1v1 trading competitions</p>
+          </div>
+          <div className="card p-4">
+            <h3 className="font-medium text-accent mb-2">Draft Tournaments</h3>
+            <p className="text-text-secondary text-sm">Weekly memecoin competitions</p>
+          </div>
+          <div className="card p-4">
+            <h3 className="font-medium text-accent mb-2">Spectator Wagering</h3>
+            <p className="text-text-secondary text-sm">Wager on live battles</p>
+          </div>
+        </div>
+        <DocsCallout type="info" title="One Balance, All Games">
+          Your winnings from any game mode are automatically credited to your balance. No need to claim or transfer between modes.
+        </DocsCallout>
+      </section>
 
       {/* The Problem */}
       <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">The Problem</h2>
+        <h2 className="text-xl font-semibold mb-4">The Problem Session Keys Solve</h2>
         <p className="text-text-secondary mb-4">
           Normally, every Solana transaction requires a wallet signature. For fast-paced wagering,
           this means constant popups interrupting your flow:
@@ -54,10 +83,11 @@ export default function SessionBettingPage() {
                 <h3 className="font-medium mb-2">Deposit SOL</h3>
                 <p className="text-text-secondary text-sm mb-2">
                   Transfer SOL from your wallet to your on-chain wagering balance. This requires
-                  one wallet signature.
+                  one wallet signature. Your funds are stored in a PDA (Program Derived Address)
+                  that only you can withdraw from.
                 </p>
                 <div className="bg-bg-tertiary rounded p-3 font-mono text-xs text-text-secondary">
-                  Wallet &rarr; User Balance PDA (program-controlled)
+                  Wallet &rarr; User Vault PDA (your personal on-chain balance)
                 </div>
               </div>
             </div>
@@ -91,8 +121,8 @@ export default function SessionBettingPage() {
               <div>
                 <h3 className="font-medium mb-2">Wager Instantly</h3>
                 <p className="text-text-secondary text-sm mb-2">
-                  The session key signs transactions automatically &mdash; no wallet popups!
-                  Place wagers as fast as you can click.
+                  Place wagers across any game mode without wallet popups. Your balance is verified
+                  on-chain and funds are locked immediately when you wager.
                 </p>
                 <div className="bg-success/10 border border-success/30 rounded p-3 text-sm text-success">
                   No popups. No waiting. Instant wagers.
@@ -108,6 +138,22 @@ export default function SessionBettingPage() {
                 4
               </div>
               <div>
+                <h3 className="font-medium mb-2">Automatic Payouts</h3>
+                <p className="text-text-secondary text-sm mb-2">
+                  When you win, your payout is automatically credited to your balance. No claiming
+                  required &mdash; funds appear in your balance immediately after settlement.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 5 */}
+          <div className="card p-4">
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center font-bold flex-shrink-0">
+                5
+              </div>
+              <div>
                 <h3 className="font-medium mb-2">Withdraw Anytime</h3>
                 <p className="text-text-secondary text-sm mb-2">
                   When you&apos;re done, withdraw your balance back to your wallet. Withdrawals
@@ -117,6 +163,42 @@ export default function SessionBettingPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Fund Locking Security */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">On-Chain Fund Locking</h2>
+        <p className="text-text-secondary mb-4">
+          When you place a wager, your funds are immediately locked on-chain. This prevents
+          any possibility of wagering with funds you don&apos;t have.
+        </p>
+
+        <div className="card p-4 mb-4">
+          <h3 className="font-medium mb-3">Wager Flow</h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-4">
+              <div className="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-xs font-bold">1</div>
+              <p className="text-text-secondary">Backend verifies your on-chain balance</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-xs font-bold">2</div>
+              <p className="text-text-secondary">Funds transferred from your vault to global vault (on-chain)</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-xs font-bold">3</div>
+              <p className="text-text-secondary">Wager confirmed &mdash; funds are locked</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-6 h-6 rounded bg-bg-tertiary flex items-center justify-center text-xs font-bold">4</div>
+              <p className="text-text-secondary">If you win: payout credited from global vault to your vault</p>
+            </div>
+          </div>
+        </div>
+
+        <DocsCallout type="info" title="Tamper-Proof Wagering">
+          Because funds are locked on-chain immediately, you cannot withdraw after placing a wager.
+          This ensures fair play for all participants.
+        </DocsCallout>
       </section>
 
       {/* Security */}
@@ -153,9 +235,9 @@ export default function SessionBettingPage() {
                 <td className="py-3 px-4">Core feature</td>
               </tr>
               <tr className="border-b border-border-primary">
-                <td className="py-3 px-4">Claim Winnings</td>
-                <td className="py-3 px-4 text-success">Wallet OR Session</td>
-                <td className="py-3 px-4">Low risk (goes to your balance)</td>
+                <td className="py-3 px-4">Receive Winnings</td>
+                <td className="py-3 px-4 text-success">Automatic</td>
+                <td className="py-3 px-4">Credited to balance on settlement</td>
               </tr>
               <tr className="border-b border-border-primary">
                 <td className="py-3 px-4 font-medium">Withdraw</td>
@@ -184,10 +266,20 @@ export default function SessionBettingPage() {
           <div className="card p-4">
             <h3 className="font-medium mb-2 flex items-center gap-2">
               <span className="text-success">&#x2713;</span>
+              Immediate Fund Locking
+            </h3>
+            <p className="text-text-secondary text-sm">
+              Funds are locked on-chain the moment you place a wager. No possibility of
+              withdrawing wagered funds before settlement.
+            </p>
+          </div>
+          <div className="card p-4">
+            <h3 className="font-medium mb-2 flex items-center gap-2">
+              <span className="text-success">&#x2713;</span>
               No Withdrawal Access
             </h3>
             <p className="text-text-secondary text-sm">
-              Session keys can only wager and claim &mdash; never withdraw. Your funds are protected
+              Session keys can only wager &mdash; never withdraw. Your funds are protected
               even if the session key is compromised.
             </p>
           </div>
@@ -204,21 +296,11 @@ export default function SessionBettingPage() {
           <div className="card p-4">
             <h3 className="font-medium mb-2 flex items-center gap-2">
               <span className="text-success">&#x2713;</span>
-              Instant Revocation
-            </h3>
-            <p className="text-text-secondary text-sm">
-              Revoke your session anytime with one click. The session key immediately becomes
-              invalid for all future wagers.
-            </p>
-          </div>
-          <div className="card p-4">
-            <h3 className="font-medium mb-2 flex items-center gap-2">
-              <span className="text-success">&#x2713;</span>
               On-Chain Validation
             </h3>
             <p className="text-text-secondary text-sm">
-              The Solana program verifies session validity on every wager. Expired or revoked
-              sessions are rejected at the blockchain level.
+              All balances are verified directly from the Solana blockchain. Cannot be faked
+              or manipulated.
             </p>
           </div>
         </div>
@@ -247,6 +329,10 @@ export default function SessionBettingPage() {
               <span className="text-text-tertiary">Framework:</span>
               <span className="ml-2">Anchor 0.31.1</span>
             </div>
+            <div>
+              <span className="text-text-tertiary">Price Oracle:</span>
+              <span className="ml-2">Pyth Network</span>
+            </div>
           </div>
         </div>
 
@@ -259,19 +345,27 @@ export default function SessionBettingPage() {
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border-primary">
               <span className="font-medium">User Balance</span>
-              <span className="text-text-secondary">Per-user deposited funds</span>
+              <span className="text-text-secondary">Per-user balance tracking</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
+              <span className="font-medium">User Vault</span>
+              <span className="text-text-secondary">Per-user SOL storage</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
+              <span className="font-medium">Global Vault</span>
+              <span className="text-text-secondary">Locked wager funds and payout pool</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border-primary">
               <span className="font-medium">Session Token</span>
               <span className="text-text-secondary">Authorized session key + expiry</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Wagering Round</span>
-              <span className="text-text-secondary">Round state and prize pools</span>
+              <span className="font-medium">Betting Round</span>
+              <span className="text-text-secondary">On-chain round state with Pyth prices</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="font-medium">Player Position</span>
-              <span className="text-text-secondary">Individual wager records</span>
+              <span className="font-medium">Betting Pool</span>
+              <span className="text-text-secondary">Long/Short pool totals per round</span>
             </div>
           </div>
         </div>
@@ -319,10 +413,18 @@ export default function SessionBettingPage() {
           </div>
 
           <div className="card p-4">
-            <h3 className="font-medium mb-2">Can I use session wagering on mobile?</h3>
+            <h3 className="font-medium mb-2">Can I use my balance across all game modes?</h3>
             <p className="text-text-secondary text-sm">
-              Yes! Session wagering works on any device with a Solana wallet. It&apos;s especially
-              useful on mobile where wallet popups are more disruptive.
+              Yes! Your deposited balance works for Oracle predictions, Battle entry fees,
+              Draft tournaments, and Spectator wagering. One deposit, all games.
+            </p>
+          </div>
+
+          <div className="card p-4">
+            <h3 className="font-medium mb-2">Are my funds safe if the backend goes down?</h3>
+            <p className="text-text-secondary text-sm">
+              Yes. Your funds are stored in your personal on-chain vault PDA. Only you can
+              withdraw them using your wallet. The backend cannot access your funds.
             </p>
           </div>
 
@@ -331,14 +433,6 @@ export default function SessionBettingPage() {
             <p className="text-text-secondary text-sm">
               Just the standard Solana transaction fee (~0.000005 SOL). There&apos;s no platform
               fee for session creation.
-            </p>
-          </div>
-
-          <div className="card p-4">
-            <h3 className="font-medium mb-2">Can I have multiple active sessions?</h3>
-            <p className="text-text-secondary text-sm">
-              No, only one session per wallet at a time. Creating a new session will replace
-              the old one.
             </p>
           </div>
         </div>

@@ -20,16 +20,62 @@ export default function GettingStartedPage() {
             Click the &quot;Connect Wallet&quot; button in the top right corner to get started.
           </p>
           <DocsCallout type="tip">
-            Make sure you have some SOL in your wallet for transaction fees and wagerting.
-            You&apos;ll need at least 0.01 SOL to place your first wager.
+            Make sure you have some SOL in your wallet for deposits and transaction fees.
           </DocsCallout>
         </div>
       </div>
 
-      {/* Step 2 */}
+      {/* Step 2 - Deposit */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">2</div>
+          <h2 className="text-xl font-semibold">Deposit SOL</h2>
+        </div>
+        <div className="ml-11">
+          <p className="text-text-secondary mb-4">
+            DegenDome uses a unified on-chain balance system. Deposit SOL once and use it across all game modes.
+          </p>
+          <ol className="list-decimal list-inside space-y-2 text-text-secondary mb-4">
+            <li>Click your balance in the header (or &quot;Deposit&quot; button)</li>
+            <li>Enter the amount of SOL you want to deposit</li>
+            <li>Confirm the transaction in your wallet</li>
+            <li>Your balance is now ready for wagering!</li>
+          </ol>
+          <DocsCallout type="info" title="Your Funds Are Secure">
+            Your deposited SOL is stored in a personal on-chain vault (PDA) that only you can withdraw from.
+            The platform cannot access your funds.
+          </DocsCallout>
+        </div>
+      </div>
+
+      {/* Step 3 - Session Key (Optional) */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">3</div>
+          <h2 className="text-xl font-semibold">Create a Session (Recommended)</h2>
+        </div>
+        <div className="ml-11">
+          <p className="text-text-secondary mb-4">
+            For instant wagering without wallet popups, create a session key. This is optional but highly recommended
+            for fast-paced games like Oracle predictions.
+          </p>
+          <ol className="list-decimal list-inside space-y-2 text-text-secondary mb-4">
+            <li>Click your balance in the header</li>
+            <li>Go to the <strong>Session</strong> tab</li>
+            <li>Click &quot;Create Session (24h)&quot;</li>
+            <li>Sign once &mdash; that&apos;s your last wallet popup!</li>
+          </ol>
+          <DocsCallout type="tip" title="Why Sessions?">
+            With a session, you can place wagers instantly without any wallet popups.
+            See <a href="/docs/session-betting" className="text-accent hover:underline">Session Wagering</a> for more details.
+          </DocsCallout>
+        </div>
+      </div>
+
+      {/* Step 4 */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">4</div>
           <h2 className="text-xl font-semibold">Choose Your Game Mode</h2>
         </div>
         <div className="ml-11">
@@ -38,25 +84,26 @@ export default function GettingStartedPage() {
           </p>
           <div className="space-y-3">
             <div className="card p-4">
-              <h3 className="font-medium text-accent mb-1">🔮 Oracle (Predictions)</h3>
+              <h3 className="font-medium text-accent mb-1">Oracle (Predictions)</h3>
               <p className="text-text-secondary text-sm">
                 Quick 30-second rounds. Perfect for beginners. Predict if price goes up or down.
+                Uses Pyth oracle for tamper-proof prices.
               </p>
             </div>
             <div className="card p-4">
-              <h3 className="font-medium text-accent mb-1">⚔️ Battle Mode</h3>
+              <h3 className="font-medium text-accent mb-1">Battle Mode</h3>
               <p className="text-text-secondary text-sm">
                 1v1 trading competitions. More strategic, uses leverage. Best P&L wins.
               </p>
             </div>
             <div className="card p-4">
-              <h3 className="font-medium text-accent mb-1">🎯 Draft</h3>
+              <h3 className="font-medium text-accent mb-1">Draft</h3>
               <p className="text-text-secondary text-sm">
                 Weekly memecoin tournaments. Draft 6 coins and compete for the week.
               </p>
             </div>
             <div className="card p-4">
-              <h3 className="font-medium text-accent mb-1">👁️ Spectate</h3>
+              <h3 className="font-medium text-accent mb-1">Spectate</h3>
               <p className="text-text-secondary text-sm">
                 Watch live battles and wager on the outcome. Great for learning.
               </p>
@@ -65,10 +112,10 @@ export default function GettingStartedPage() {
         </div>
       </div>
 
-      {/* Step 3 */}
+      {/* Step 5 */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">3</div>
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">5</div>
           <h2 className="text-xl font-semibold">Place Your First Wager</h2>
         </div>
         <div className="ml-11">
@@ -78,23 +125,22 @@ export default function GettingStartedPage() {
           <ol className="list-decimal list-inside space-y-2 text-text-secondary">
             <li>Navigate to the Predict page</li>
             <li>Wait for the current round to end and a new one to begin</li>
-            <li>Choose an asset (SOL, BTC, ETH, etc.)</li>
-            <li>Select your wager amount (0.01 - 10 SOL)</li>
+            <li>Select your wager amount (0.01, 0.05, 0.1, 0.25, or 0.5 SOL)</li>
             <li>Click <span className="text-success">Long</span> if you think price will go up, or <span className="text-danger">Short</span> if down</li>
-            <li>Confirm the transaction in your wallet</li>
+            <li>Your funds are locked instantly on-chain</li>
             <li>Watch the 30-second round play out!</li>
           </ol>
           <DocsCallout type="info" title="How Payouts Work">
-            If you win, you receive a share of the losing pool proportional to your wager size.
-            The platform takes a 5% fee from the losing pool before distribution. If it&apos;s a tie (push), you get your wager back.
+            If you win, your payout is automatically credited to your balance.
+            The platform takes a 5% fee from the losing pool. If it&apos;s a tie (push), you get your wager back.
           </DocsCallout>
         </div>
       </div>
 
-      {/* Step 4 */}
+      {/* Step 6 */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">4</div>
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">6</div>
           <h2 className="text-xl font-semibold">Level Up & Earn Perks</h2>
         </div>
         <div className="ml-11">
@@ -118,27 +164,33 @@ export default function GettingStartedPage() {
         <h2 className="font-semibold mb-4">Pro Tips</h2>
         <ul className="space-y-3">
           <li className="flex gap-3">
-            <span>💡</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary text-sm">
               Start with small wagers (0.01-0.05 SOL) until you understand the mechanics.
             </span>
           </li>
           <li className="flex gap-3">
-            <span>💡</span>
+            <span className="text-accent">&#x2022;</span>
+            <span className="text-text-secondary text-sm">
+              Create a session key for instant wagering &mdash; no more wallet popups!
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary text-sm">
               Play daily to build your streak and earn bonus XP.
             </span>
           </li>
           <li className="flex gap-3">
-            <span>💡</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary text-sm">
-              Watch live battles before spectator wagerting to understand the dynamics.
+              Watch live battles before spectator wagering to understand the dynamics.
             </span>
           </li>
           <li className="flex gap-3">
-            <span>💡</span>
+            <span className="text-accent">&#x2022;</span>
             <span className="text-text-secondary text-sm">
-              Early wagers in Oracle get an &quot;Early Bird&quot; bonus — wager early in the round!
+              Early wagers in Oracle get an &quot;Early Bird&quot; bonus &mdash; wager early in the round!
             </span>
           </li>
         </ul>

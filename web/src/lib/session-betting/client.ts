@@ -453,6 +453,126 @@ export class SessionBettingClient {
   }
 
   // ============================================
+  // Permissionless Instructions (Decentralization)
+  // ============================================
+
+  /**
+   * Lock a round via permissionless fallback with Pyth oracle price
+   * Anyone can call this after lockTimeFallback has passed
+   * This prevents rounds from getting stuck if authority goes offline
+   * SECURITY: Uses Pyth oracle for tamper-proof pricing
+   * @param roundId The round to lock
+   * @param priceFeedAccount The Pyth price feed account for the configured asset
+   */
+  async lockRoundFallback(roundId: BN | number, priceFeedAccount: PublicKey): Promise<string> {
+    if (!this.wallet.publicKey) throw new Error('Wallet not connected');
+
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [roundPDA] = this.getRoundPDA(roundId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .lockRoundFallback()
+      .accounts({
+        gameState: gameStatePDA,
+        round: roundPDA,
+        priceFeed: priceFeedAccount,
+        caller: this.wallet.publicKey,
+      })
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Lock a round with Pyth oracle price (authority only)
+   * @param roundId The round to lock
+   * @param priceFeedAccount The Pyth price feed account
+   * @param authorityKeypair The authority keypair
+   */
+  async lockRound(
+    roundId: BN | number,
+    priceFeedAccount: PublicKey,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [roundPDA] = this.getRoundPDA(roundId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .lockRound()
+      .accounts({
+        gameState: gameStatePDA,
+        round: roundPDA,
+        priceFeed: priceFeedAccount,
+        authority: authorityKeypair.publicKey,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Settle a round (already permissionless)
+   * Anyone can call after round is locked and end_time has passed
+   */
+  async settleRound(roundId: BN | number): Promise<string> {
+    if (!this.wallet.publicKey) throw new Error('Wallet not connected');
+
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [roundPDA] = this.getRoundPDA(roundId);
+    const [poolPDA] = this.getPoolPDA(roundId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .settleRound()
+      .accounts({
+        gameState: gameStatePDA,
+        round: roundPDA,
+        pool: poolPDA,
+        caller: this.wallet.publicKey,
+      })
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Close a settled round and reclaim rent
+   * AUTHORITY ONLY - can only be called after 1 hour grace period
+   * Unclaimed winnings are forfeited to the protocol
+   * @param roundId The round to close
+   * @param authorityKeypair The authority keypair
+   */
+  async closeRound(
+    roundId: BN | number,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [roundPDA] = this.getRoundPDA(roundId);
+    const [poolPDA] = this.getPoolPDA(roundId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .closeRound()
+      .accounts({
+        gameState: gameStatePDA,
+        round: roundPDA,
+        pool: poolPDA,
+        authority: authorityKeypair.publicKey,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  // ============================================
   // Authority-Only Game Settlement Instructions
   // These are called by the backend to settle games
   // ============================================
@@ -581,6 +701,146 @@ export class SessionBettingClient {
   }
 
   // ============================================
+  // Authority Management (Two-Step Transfer)
+  // ============================================
+
+  /**
+   * Propose a new authority (step 1 of 2-step transfer)
+   * AUTHORITY ONLY - current authority proposes a new one
+   * @param newAuthority The proposed new authority pubkey
+   * @param authorityKeypair The current authority keypair
+   */
+  async proposeAuthorityTransfer(
+    newAuthority: PublicKey,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .proposeAuthorityTransfer(newAuthority)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Accept authority transfer (step 2 of 2-step transfer)
+   * PENDING AUTHORITY ONLY - new authority accepts the transfer
+   * @param newAuthorityKeypair The pending authority's keypair
+   */
+  async acceptAuthorityTransfer(newAuthorityKeypair: Keypair): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .acceptAuthorityTransfer()
+      .accounts({
+        gameState: gameStatePDA,
+        newAuthority: newAuthorityKeypair.publicKey,
+      })
+      .signers([newAuthorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Cancel a pending authority transfer
+   * AUTHORITY ONLY - current authority cancels the pending transfer
+   * @param authorityKeypair The current authority keypair
+   */
+  async cancelAuthorityTransfer(authorityKeypair: Keypair): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .cancelAuthorityTransfer()
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  // ============================================
+  // Fee Management
+  // ============================================
+
+  /**
+   * Withdraw collected platform fees
+   * AUTHORITY ONLY - withdraws fees to authority wallet
+   * @param amountLamports Amount to withdraw in lamports
+   * @param authorityKeypair The authority keypair
+   */
+  async withdrawFees(
+    amountLamports: BN | number,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const amount = typeof amountLamports === 'number' ? new BN(amountLamports) : amountLamports;
+    const [gameStatePDA] = this.getGameStatePDA();
+    const [globalVaultPDA] = this.getGlobalVaultPDA();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .withdrawFees(amount)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+        globalVault: globalVaultPDA,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  /**
+   * Set/update the Pyth price feed ID
+   * AUTHORITY ONLY - changes the oracle price feed
+   * @param priceFeedId New 32-byte price feed ID
+   * @param authorityKeypair The authority keypair
+   */
+  async setPriceFeed(
+    priceFeedId: number[] | Uint8Array,
+    authorityKeypair: Keypair
+  ): Promise<string> {
+    const [gameStatePDA] = this.getGameStatePDA();
+
+    // Ensure priceFeedId is exactly 32 bytes
+    const feedIdArray = Array.from(priceFeedId).slice(0, 32);
+    while (feedIdArray.length < 32) {
+      feedIdArray.push(0);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const methods = this.program.methods as any;
+    const tx = await methods
+      .setPriceFeed(feedIdArray)
+      .accounts({
+        gameState: gameStatePDA,
+        authority: authorityKeypair.publicKey,
+      })
+      .signers([authorityKeypair])
+      .rpc();
+
+    return tx;
+  }
+
+  // ============================================
   // Parsing Helpers
   // ============================================
 
@@ -588,6 +848,8 @@ export class SessionBettingClient {
   private parseGameState(account: any): GameState {
     return {
       authority: account.authority,
+      pendingAuthority: account.pendingAuthority || null,
+      priceFeedId: account.priceFeedId || [],
       currentRound: account.currentRound,
       totalVolume: account.totalVolume,
       totalFeesCollected: account.totalFeesCollected,
@@ -603,6 +865,7 @@ export class SessionBettingClient {
       startTime: account.startTime,
       lockTime: account.lockTime,
       endTime: account.endTime,
+      lockTimeFallback: account.lockTimeFallback,
       startPrice: account.startPrice,
       endPrice: account.endPrice,
       status: parseRoundStatus(account.status),

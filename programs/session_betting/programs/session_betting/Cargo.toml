@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "session_betting"
 
 [features]
-default = []
+default = ["no-log-ix-name"]  # Skip instruction name logging to save space
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
@@ -19,6 +19,5 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
-blake3 = "=1.5.5"
-constant_time_eq = "=0.3.1"
+pyth-sdk-solana = "0.10"
 

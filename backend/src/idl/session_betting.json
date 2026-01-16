@@ -8,6 +8,91 @@
   },
   "instructions": [
     {
+      "name": "accept_authority_transfer",
+      "docs": [
+        "Step 2: New authority accepts the transfer",
+        "SECURITY: Only the pending authority can accept"
+      ],
+      "discriminator": [
+        239,
+        248,
+        177,
+        2,
+        206,
+        97,
+        46,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_authority",
+          "docs": [
+            "The new authority accepting the transfer"
+          ],
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_authority_transfer",
+      "docs": [
+        "Cancel a pending authority transfer",
+        "SECURITY: Only current authority can cancel"
+      ],
+      "discriminator": [
+        94,
+        131,
+        125,
+        184,
+        183,
+        24,
+        125,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claim_winnings",
       "docs": [
         "Claim winnings after round is settled",
@@ -182,6 +267,93 @@
       "args": []
     },
     {
+      "name": "close_round",
+      "docs": [
+        "Close a settled round and reclaim rent",
+        "AUTHORITY ONLY - can only be called after grace period",
+        "Any unclaimed winnings are forfeited to the protocol"
+      ],
+      "discriminator": [
+        149,
+        14,
+        81,
+        88,
+        230,
+        226,
+        234,
+        37
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round.round_id",
+                "account": "BettingRound"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round.round_id",
+                "account": "BettingRound"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "create_session",
       "docs": [
         "Create a session token that authorizes a temporary key to act on behalf of the user",
@@ -313,6 +485,9 @@
         },
         {
           "name": "user_vault",
+          "docs": [
+            "User's vault PDA - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -335,6 +510,9 @@
         },
         {
           "name": "global_vault",
+          "docs": [
+            "Global vault PDA for pooled funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -430,6 +608,9 @@
         },
         {
           "name": "vault",
+          "docs": [
+            "Vault PDA to hold user's funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -507,6 +688,9 @@
         },
         {
           "name": "global_vault",
+          "docs": [
+            "Global vault PDA for pooled funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -578,6 +762,9 @@
         },
         {
           "name": "global_vault",
+          "docs": [
+            "Global vault PDA for pooled game funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -611,13 +798,23 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "price_feed_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "lock_round",
       "docs": [
-        "Lock the round with end price - permissionless after lock_time",
-        "Anyone can call after the lock time has passed"
+        "Lock the round with price from Pyth oracle - AUTHORITY ONLY",
+        "Uses Pyth oracle for tamper-proof price data"
       ],
       "discriminator": [
         68,
@@ -630,6 +827,22 @@
         227
       ],
       "accounts": [
+        {
+          "name": "game_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "round",
           "writable": true,
@@ -654,16 +867,88 @@
           }
         },
         {
-          "name": "caller",
+          "name": "price_feed"
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority must sign to prevent griefing"
+          ],
           "signer": true
         }
       ],
-      "args": [
+      "args": []
+    },
+    {
+      "name": "lock_round_fallback",
+      "docs": [
+        "Lock the round with price from Pyth oracle - PERMISSIONLESS FALLBACK",
+        "Anyone can call after lock_time_fallback has passed",
+        "This prevents rounds from getting stuck if authority goes offline",
+        "SECURITY: Uses Pyth oracle for tamper-proof pricing (no arbitrary price input)"
+      ],
+      "discriminator": [
+        38,
+        19,
+        120,
+        95,
+        160,
+        92,
+        100,
+        118
+      ],
+      "accounts": [
         {
-          "name": "end_price",
-          "type": "u64"
+          "name": "game_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "round",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  117,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "round.round_id",
+                "account": "BettingRound"
+              }
+            ]
+          }
+        },
+        {
+          "name": "price_feed"
+        },
+        {
+          "name": "caller",
+          "docs": [
+            "Anyone can call this after fallback time"
+          ],
+          "signer": true
         }
-      ]
+      ],
+      "args": []
     },
     {
       "name": "place_bet",
@@ -857,6 +1142,52 @@
       ]
     },
     {
+      "name": "propose_authority_transfer",
+      "docs": [
+        "Step 1: Current authority proposes a new authority",
+        "SECURITY: Two-step transfer prevents accidental lockout"
+      ],
+      "discriminator": [
+        57,
+        206,
+        225,
+        129,
+        35,
+        111,
+        174,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "revoke_session",
       "docs": [
         "Revoke a session token (wallet signature required)"
@@ -951,6 +1282,56 @@
         {
           "name": "paused",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_price_feed",
+      "docs": [
+        "Update the Pyth price feed ID (authority only)"
+      ],
+      "discriminator": [
+        13,
+        15,
+        231,
+        129,
+        61,
+        7,
+        28,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "price_feed_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -1203,6 +1584,9 @@
         },
         {
           "name": "user_vault",
+          "docs": [
+            "User's vault PDA - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -1225,6 +1609,9 @@
         },
         {
           "name": "global_vault",
+          "docs": [
+            "Global vault PDA for pooled funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -1304,6 +1691,9 @@
         },
         {
           "name": "vault",
+          "docs": [
+            "Vault PDA that holds user's funds - uses SystemAccount for type safety"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -1328,6 +1718,85 @@
           "name": "user",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_fees",
+      "docs": [
+        "Withdraw collected platform fees to authority wallet",
+        "SECURITY: Authority only, tracks withdrawal amount"
+      ],
+      "discriminator": [
+        198,
+        212,
+        171,
+        109,
+        144,
+        215,
+        174,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "game_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "global_vault",
+          "docs": [
+            "Global vault PDA for pooled funds"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -1424,6 +1893,45 @@
   ],
   "events": [
     {
+      "name": "AuthorityTransferProposed",
+      "discriminator": [
+        103,
+        244,
+        27,
+        116,
+        177,
+        4,
+        100,
+        119
+      ]
+    },
+    {
+      "name": "AuthorityTransferred",
+      "discriminator": [
+        245,
+        109,
+        179,
+        54,
+        135,
+        92,
+        22,
+        64
+      ]
+    },
+    {
+      "name": "FeesWithdrawn",
+      "discriminator": [
+        234,
+        15,
+        0,
+        119,
+        148,
+        241,
+        40,
+        21
+      ]
+    },
+    {
       "name": "WinningsCredited",
       "discriminator": [
         134,
@@ -1441,115 +1949,198 @@
     {
       "code": 6000,
       "name": "Unauthorized",
-      "msg": "Unauthorized access"
+      "msg": "Unauthorized"
     },
     {
       "code": 6001,
       "name": "GamePaused",
-      "msg": "Game is currently paused"
+      "msg": "Paused"
     },
     {
       "code": 6002,
       "name": "InvalidPrice",
-      "msg": "Invalid price - must be greater than 0"
+      "msg": "Invalid price"
     },
     {
       "code": 6003,
-      "name": "RoundNotOpen",
-      "msg": "Round is not open for betting"
+      "name": "InvalidPriceFeed",
+      "msg": "Bad feed"
     },
     {
       "code": 6004,
-      "name": "RoundLocked",
-      "msg": "Round is already locked"
+      "name": "PriceFeedMismatch",
+      "msg": "Feed mismatch"
     },
     {
       "code": 6005,
-      "name": "TooEarlyToLock",
-      "msg": "Too early to lock the round"
+      "name": "PriceTooStale",
+      "msg": "Price stale"
     },
     {
       "code": 6006,
-      "name": "RoundNotLocked",
-      "msg": "Round is not locked yet"
+      "name": "RoundNotOpen",
+      "msg": "Not open"
     },
     {
       "code": 6007,
-      "name": "TooEarlyToSettle",
-      "msg": "Too early to settle the round"
+      "name": "RoundLocked",
+      "msg": "Locked"
     },
     {
       "code": 6008,
-      "name": "RoundNotSettled",
-      "msg": "Round is not settled yet"
+      "name": "TooEarlyToLock",
+      "msg": "Too early"
     },
     {
       "code": 6009,
-      "name": "AmountTooSmall",
-      "msg": "Bet amount is below minimum (0.01 SOL)"
+      "name": "TooEarlyForFallback",
+      "msg": "Fallback too early"
     },
     {
       "code": 6010,
-      "name": "AmountTooLarge",
-      "msg": "Bet amount exceeds maximum (100 SOL)"
+      "name": "RoundNotLocked",
+      "msg": "Not locked"
     },
     {
       "code": 6011,
-      "name": "InsufficientBalance",
-      "msg": "Insufficient balance"
+      "name": "TooEarlyToSettle",
+      "msg": "Too early"
     },
     {
       "code": 6012,
-      "name": "NotBalanceOwner",
-      "msg": "Not the owner of this balance account"
+      "name": "RoundNotSettled",
+      "msg": "Not settled"
     },
     {
       "code": 6013,
-      "name": "NotPositionOwner",
-      "msg": "Not the owner of this position"
+      "name": "GracePeriodNotOver",
+      "msg": "Grace period"
     },
     {
       "code": 6014,
-      "name": "AlreadyClaimed",
-      "msg": "Position already claimed"
+      "name": "AmountTooSmall",
+      "msg": "Below min"
     },
     {
       "code": 6015,
-      "name": "MathOverflow",
-      "msg": "Math overflow occurred"
+      "name": "AmountTooLarge",
+      "msg": "Above max"
     },
     {
       "code": 6016,
-      "name": "InvalidSessionDuration",
-      "msg": "Invalid session duration"
+      "name": "InsufficientBalance",
+      "msg": "Low balance"
     },
     {
       "code": 6017,
-      "name": "SessionTooLong",
-      "msg": "Session duration exceeds maximum (7 days)"
+      "name": "InsufficientVaultBalance",
+      "msg": "Low vault"
     },
     {
       "code": 6018,
-      "name": "SessionExpired",
-      "msg": "Session has expired"
+      "name": "InsufficientFees",
+      "msg": "Low fees"
     },
     {
       "code": 6019,
-      "name": "SessionAuthorityMismatch",
-      "msg": "Session authority does not match"
+      "name": "NotBalanceOwner",
+      "msg": "Not owner"
     },
     {
       "code": 6020,
-      "name": "InvalidSessionSigner",
-      "msg": "Invalid session signer"
+      "name": "NotPositionOwner",
+      "msg": "Not owner"
     },
     {
       "code": 6021,
+      "name": "AlreadyClaimed",
+      "msg": "Claimed"
+    },
+    {
+      "code": 6022,
+      "name": "MathOverflow",
+      "msg": "Overflow"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidSessionDuration",
+      "msg": "Bad duration"
+    },
+    {
+      "code": 6024,
+      "name": "SessionTooLong",
+      "msg": "Too long"
+    },
+    {
+      "code": 6025,
+      "name": "SessionExpired",
+      "msg": "Expired"
+    },
+    {
+      "code": 6026,
+      "name": "SessionAuthorityMismatch",
+      "msg": "Mismatch"
+    },
+    {
+      "code": 6027,
+      "name": "InvalidSessionSigner",
+      "msg": "Bad signer"
+    },
+    {
+      "code": 6028,
       "name": "NotSessionOwner",
-      "msg": "Not the owner of this session"
+      "msg": "Not owner"
+    },
+    {
+      "code": 6029,
+      "name": "InvalidAuthority",
+      "msg": "Bad authority"
+    },
+    {
+      "code": 6030,
+      "name": "NoPendingAuthority",
+      "msg": "No pending"
     }
   ],
   "types": [
+    {
+      "name": "AuthorityTransferProposed",
+      "docs": [
+        "Emitted when authority transfer is proposed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "current_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorityTransferred",
+      "docs": [
+        "Emitted when authority transfer is completed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
     {
       "name": "BetSide",
       "type": {
@@ -1614,6 +2205,13 @@
             "type": "i64"
           },
           {
+            "name": "lock_time_fallback",
+            "docs": [
+              "Fallback time after which anyone can lock the round (decentralization)"
+            ],
+            "type": "i64"
+          },
+          {
             "name": "start_price",
             "type": "u64"
           },
@@ -1645,6 +2243,29 @@
       }
     },
     {
+      "name": "FeesWithdrawn",
+      "docs": [
+        "Emitted when fees are withdrawn"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining_fees",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "GameState",
       "type": {
         "kind": "struct",
@@ -1652,6 +2273,27 @@
           {
             "name": "authority",
             "type": "pubkey"
+          },
+          {
+            "name": "pending_authority",
+            "docs": [
+              "Pending authority for two-step transfer (security: prevents accidental lockout)"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "price_feed_id",
+            "docs": [
+              "Pyth price feed ID for oracle price validation"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "current_round",
@@ -1678,9 +2320,6 @@
     },
     {
       "name": "GameType",
-      "docs": [
-        "Game type for tracking winnings source"
-      ],
       "type": {
         "kind": "enum",
         "variants": [
