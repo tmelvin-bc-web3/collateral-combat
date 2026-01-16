@@ -24,21 +24,20 @@ const WalletMultiButton = dynamic(
   }
 );
 
-// Primary nav - main game modes
-const PRIMARY_NAV = [
-  { href: '/predict', label: 'Oracle', icon: 'predict' },
-  { href: '/battle', label: 'Arena', icon: 'battle' },
-  { href: '/draft', label: 'Draft', icon: 'draft' },
+// All game modes - shown in Games dropdown
+const GAME_MODES_NAV = [
+  { href: '/predict', label: 'Oracle', icon: 'predict', description: '30s price predictions' },
+  { href: '/lds', label: 'Last Degen Standing', icon: 'lds', description: 'Elimination battle royale' },
+  { href: '/token-wars', label: 'Token Wars', icon: 'token-wars', description: 'Head-to-head token battles' },
+  { href: '/battle', label: 'Arena', icon: 'battle', description: '1v1 leveraged trading' },
+  { href: '/draft', label: 'Draft', icon: 'draft', description: 'Weekly memecoin tournaments' },
+  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & wager on battles' },
 ];
 
-// Secondary nav - in dropdown
-const SECONDARY_NAV = [
-  { href: '/lds', label: 'Last Degen Standing', icon: 'lds', description: 'Elimination prediction game' },
-  { href: '/token-wars', label: 'Token Wars', icon: 'token-wars', description: 'Bet on token performance' },
-  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & wager on battles' },
-  { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', description: 'Top warriors' },
-  { href: '/progression', label: 'Ranks & Perks', icon: 'progression', description: 'Level up rewards' },
-  { href: '/docs', label: 'Docs', icon: 'docs', description: 'Learn how it works' },
+// Utility nav - direct links
+const UTILITY_NAV = [
+  { href: '/leaderboard', label: 'Ranks', icon: 'leaderboard' },
+  { href: '/docs', label: 'Docs', icon: 'docs' },
 ];
 
 const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
@@ -165,8 +164,8 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Check if any secondary nav item is active
-  const isSecondaryActive = SECONDARY_NAV.some(link => pathname === link.href);
+  // Check if any game mode is active
+  const isGameActive = GAME_MODES_NAV.some(link => pathname === link.href);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-sm border-b border-rust/30">
@@ -199,52 +198,33 @@ export function Header() {
 
         {/* Nav - Center */}
         <nav className="hidden md:flex items-center gap-0.5 p-1 rounded bg-bg-secondary/80 border border-rust/20 justify-self-center">
-          {/* Primary nav items */}
-          {PRIMARY_NAV.map((link) => {
-            const isActive = pathname === link.href;
-            const tourId = link.icon === 'battle' ? 'battle' :
-                          link.icon === 'predict' ? 'predict' :
-                          link.icon === 'draft' ? 'draft' : undefined;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                data-tour={tourId}
-                className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
-                  isActive
-                    ? 'text-fire bg-rust/20 border border-rust/40'
-                    : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
-                }`}
-              >
-                <NavIcon type={link.icon} active={isActive} />
-                {link.label}
-              </Link>
-            );
-          })}
-
-          {/* More dropdown */}
+          {/* Games dropdown */}
           <div className="relative" ref={moreMenuRef}>
             <button
               onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
               className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
-                isSecondaryActive || isMoreMenuOpen
+                isGameActive || isMoreMenuOpen
                   ? 'text-fire bg-rust/20 border border-rust/40'
                   : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
               }`}
             >
-              <svg className={`w-4 h-4 ${isSecondaryActive || isMoreMenuOpen ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+              <svg className={`w-4 h-4 ${isGameActive || isMoreMenuOpen ? 'text-accent' : 'text-text-tertiary group-hover:text-text-secondary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              More
+              Games
               <svg className={`w-3 h-3 transition-transform ${isMoreMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
-            {/* Dropdown menu */}
+            {/* Games dropdown menu */}
             {isMoreMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-bg-secondary border border-rust/30 rounded-lg shadow-xl overflow-hidden z-50">
-                {SECONDARY_NAV.map((link) => {
+              <div className="absolute top-full left-0 mt-2 w-64 bg-bg-secondary border border-rust/30 rounded-lg shadow-xl overflow-hidden z-50">
+                <div className="p-2 border-b border-rust/20">
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider px-2">Game Modes</div>
+                </div>
+                {GAME_MODES_NAV.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
@@ -270,6 +250,25 @@ export function Header() {
               </div>
             )}
           </div>
+
+          {/* Utility nav items */}
+          {UTILITY_NAV.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`group flex items-center gap-2 px-3 py-2 rounded text-xs font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
+                  isActive
+                    ? 'text-fire bg-rust/20 border border-rust/40'
+                    : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
+                }`}
+              >
+                <NavIcon type={link.icon} active={isActive} />
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Mobile hamburger button */}
@@ -295,30 +294,11 @@ export function Header() {
           {isMobileMenuOpen && (
             <div className="absolute top-full left-0 right-0 bg-bg-secondary border-b border-rust/30 shadow-xl z-50">
               <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
-                {/* Primary nav items - with 44px+ touch targets */}
-                {PRIMARY_NAV.map((link) => {
-                  const isActive = pathname === link.href;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`flex items-center gap-3 px-4 py-3.5 min-h-[48px] rounded-lg text-sm font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
-                        isActive
-                          ? 'text-fire bg-rust/20 border border-rust/40'
-                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
-                      }`}
-                    >
-                      <NavIcon type={link.icon} active={isActive} />
-                      {link.label}
-                    </Link>
-                  );
-                })}
-
-                {/* Divider */}
-                <div className="h-px bg-rust/20 my-2" />
-
-                {/* Secondary nav items - with 44px+ touch targets */}
-                {SECONDARY_NAV.map((link) => {
+                {/* Game modes section */}
+                <div className="px-4 py-2">
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider">Game Modes</div>
+                </div>
+                {GAME_MODES_NAV.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
@@ -337,6 +317,28 @@ export function Header() {
                         <div className="font-semibold text-sm">{link.label}</div>
                         <div className="text-xs text-text-tertiary">{link.description}</div>
                       </div>
+                    </Link>
+                  );
+                })}
+
+                {/* Divider */}
+                <div className="h-px bg-rust/20 my-2" />
+
+                {/* Utility nav items */}
+                {UTILITY_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-center gap-3 px-4 py-3.5 min-h-[48px] rounded-lg text-sm font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
+                        isActive
+                          ? 'text-fire bg-rust/20 border border-rust/40'
+                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
+                      }`}
+                    >
+                      <NavIcon type={link.icon} active={isActive} />
+                      {link.label}
                     </Link>
                   );
                 })}
