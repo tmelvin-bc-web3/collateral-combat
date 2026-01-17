@@ -293,7 +293,7 @@ class ProgressionService {
     description: string
   ): Promise<XpGainEvent> {
     // Record activity for streak tracking
-    const streak = recordActivity(walletAddress);
+    const streak = await recordActivity(walletAddress);
     const streakBonus = getStreakBonusMultiplier(streak.currentStreak);
 
     // Apply streak bonus to XP
@@ -301,7 +301,7 @@ class ProgressionService {
     const totalXpGained = amount + bonusXp;
 
     // Get or create progression
-    const progression = getOrCreateProgression(walletAddress);
+    const progression = await getOrCreateProgression(walletAddress);
     const previousLevel = progression.currentLevel;
     const previousXp = progression.totalXp;
 
@@ -315,8 +315,8 @@ class ProgressionService {
       : description;
 
     // Update database
-    updateUserProgression(walletAddress, newTotalXp, newLevel);
-    addXpHistoryEntry(walletAddress, totalXpGained, source, sourceId, finalDescription);
+    await updateUserProgression(walletAddress, newTotalXp, newLevel);
+    await addXpHistoryEntry(walletAddress, totalXpGained, source, sourceId, finalDescription);
 
     // Check for level up and process rewards
     let levelUpResult: LevelUpResult | undefined;
@@ -364,7 +364,7 @@ class ProgressionService {
         // Grant perks
         if (rewards.perks) {
           for (const perk of rewards.perks) {
-            const createdPerk = createPerk(walletAddress, perk.type, level);
+            const createdPerk = await createPerk(walletAddress, perk.type, level);
             unlockedPerks.push(createdPerk);
           }
         }
@@ -372,7 +372,7 @@ class ProgressionService {
         // Grant cosmetics
         if (rewards.cosmetics) {
           for (const cosmetic of rewards.cosmetics) {
-            const createdCosmetic = createCosmetic(
+            const createdCosmetic = await createCosmetic(
               walletAddress,
               cosmetic.type,
               cosmetic.id,
@@ -386,7 +386,7 @@ class ProgressionService {
 
         // Grant free bets
         if (rewards.freeBets) {
-          addFreeBetCredit(
+          await addFreeBetCredit(
             walletAddress,
             rewards.freeBets,
             `Level ${level} milestone reward`
@@ -417,8 +417,8 @@ class ProgressionService {
   // Progression Data
   // ===================
 
-  getProgression(walletAddress: string): UserProgression {
-    const data = getOrCreateProgression(walletAddress);
+  async getProgression(walletAddress: string): Promise<UserProgression> {
+    const data = await getOrCreateProgression(walletAddress);
     const xpToNextLevel = this.getXpToNextLevel(data.totalXp, data.currentLevel);
     const xpProgress = this.getXpProgress(data.totalXp, data.currentLevel);
     const title = this.getTitleForLevel(data.currentLevel);
@@ -435,15 +435,17 @@ class ProgressionService {
     };
   }
 
-  getXpHistory(walletAddress: string, limit: number = 50): XpHistoryEntry[] {
-    return getXpHistoryDb(walletAddress, limit).map(entry => ({
+  async getXpHistory(walletAddress: string, limit: number = 50): Promise<XpHistoryEntry[]> {
+    const entries = await getXpHistoryDb(walletAddress, limit);
+    return entries.map(entry => ({
       ...entry,
       source: entry.source as XpSource,
     }));
   }
 
-  getXpHistoryPage(walletAddress: string, limit: number, offset: number): XpHistoryEntry[] {
-    return getXpHistoryPaginated(walletAddress, limit, offset).map(entry => ({
+  async getXpHistoryPage(walletAddress: string, limit: number, offset: number): Promise<XpHistoryEntry[]> {
+    const entries = await getXpHistoryPaginated(walletAddress, limit, offset);
+    return entries.map(entry => ({
       ...entry,
       source: entry.source as XpSource,
     }));
@@ -453,15 +455,16 @@ class ProgressionService {
   // Perks
   // ===================
 
-  getAvailablePerks(walletAddress: string): UserPerk[] {
-    return getAvailablePerksDb(walletAddress).map(perk => ({
+  async getAvailablePerks(walletAddress: string): Promise<UserPerk[]> {
+    const perks = await getAvailablePerksDb(walletAddress);
+    return perks.map(perk => ({
       ...perk,
       perkType: perk.perkType as ProgressionPerkType,
     }));
   }
 
-  activatePerk(walletAddress: string, perkId: number): UserPerk | null {
-    const perk = getPerk(perkId);
+  async activatePerk(walletAddress: string, perkId: number): Promise<UserPerk | null> {
+    const perk = await getPerk(perkId);
     if (!perk || perk.walletAddress !== walletAddress || perk.isUsed) {
       return null;
     }
@@ -470,7 +473,7 @@ class ProgressionService {
     const isPermanent = perk.unlockLevel === 100;
     const duration = isPermanent ? null : PERK_DURATION_MS;
 
-    const activatedPerk = activatePerkDb(perkId, duration);
+    const activatedPerk = await activatePerkDb(perkId, duration);
     if (activatedPerk) {
       this.notifyListeners('perk_activated', {
         ...activatedPerk,
@@ -485,8 +488,8 @@ class ProgressionService {
   }
 
   // Get active rake reduction for Draft (10% baseline)
-  getActiveRakeReduction(walletAddress: string): number {
-    const activePerk = getActivePerk(walletAddress);
+  async getActiveRakeReduction(walletAddress: string): Promise<number> {
+    const activePerk = await getActivePerk(walletAddress);
     if (!activePerk) {
       return 10; // Default 10% rake for Draft
     }
@@ -498,8 +501,8 @@ class ProgressionService {
   }
 
   // Get active rake reduction for Oracle (5% baseline)
-  getActiveOracleRakeReduction(walletAddress: string): number {
-    const activePerk = getActivePerk(walletAddress);
+  async getActiveOracleRakeReduction(walletAddress: string): Promise<number> {
+    const activePerk = await getActivePerk(walletAddress);
     if (!activePerk) {
       return 5; // Default 5% rake for Oracle
     }
@@ -514,8 +517,9 @@ class ProgressionService {
   // Cosmetics
   // ===================
 
-  getUnlockedCosmetics(walletAddress: string): UserCosmetic[] {
-    return getCosmeticsForWallet(walletAddress).map(cosmetic => ({
+  async getUnlockedCosmetics(walletAddress: string): Promise<UserCosmetic[]> {
+    const cosmetics = await getCosmeticsForWallet(walletAddress);
+    return cosmetics.map(cosmetic => ({
       ...cosmetic,
       cosmeticType: cosmetic.cosmeticType as CosmeticType,
     }));
@@ -525,12 +529,12 @@ class ProgressionService {
   // Free Bets
   // ===================
 
-  getFreeBetBalance(walletAddress: string): FreeBetBalance {
+  async getFreeBetBalance(walletAddress: string): Promise<FreeBetBalance> {
     return getOrCreateFreeBetBalance(walletAddress);
   }
 
-  addFreeBetCredit(walletAddress: string, count: number, description?: string): FreeBetBalance {
-    const balance = addFreeBetCredit(walletAddress, count, description);
+  async addFreeBetCredit(walletAddress: string, count: number, description?: string): Promise<FreeBetBalance> {
+    const balance = await addFreeBetCredit(walletAddress, count, description);
     this.notifyListeners('free_bet_earned', {
       walletAddress,
       count,
@@ -540,12 +544,12 @@ class ProgressionService {
     return balance;
   }
 
-  useFreeBetCredit(
+  async useFreeBetCredit(
     walletAddress: string,
     gameMode: GameMode,
     description?: string
-  ): { success: boolean; balance: FreeBetBalance } {
-    const result = useFreeBetCredit(walletAddress, gameMode, description);
+  ): Promise<{ success: boolean; balance: FreeBetBalance }> {
+    const result = await useFreeBetCredit(walletAddress, gameMode, description);
     if (result.success) {
       this.notifyListeners('free_bet_used', {
         walletAddress,
@@ -557,7 +561,7 @@ class ProgressionService {
     return result;
   }
 
-  getFreeBetTransactionHistory(walletAddress: string, limit: number = 50): FreeBetTransaction[] {
+  async getFreeBetTransactionHistory(walletAddress: string, limit: number = 50): Promise<FreeBetTransaction[]> {
     return getFreeBetHistory(walletAddress, limit);
   }
 
@@ -565,7 +569,7 @@ class ProgressionService {
   // Streaks
   // ===================
 
-  getStreak(walletAddress: string): UserStreak {
+  async getStreak(walletAddress: string): Promise<UserStreak> {
     return getOrCreateStreak(walletAddress);
   }
 
@@ -573,7 +577,7 @@ class ProgressionService {
     return getStreakBonusMultiplier(streak);
   }
 
-  isStreakAtRisk(walletAddress: string): boolean {
+  async isStreakAtRisk(walletAddress: string): Promise<boolean> {
     return isStreakAtRisk(walletAddress);
   }
 

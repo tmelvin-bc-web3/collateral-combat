@@ -164,7 +164,7 @@ class RakeRebateService {
       const { walletAddress, roundId, payoutLamports } = claimInfo;
 
       // Check if we already processed this claim
-      const existingRebate = getRakeRebateForWalletAndRound(walletAddress, roundId);
+      const existingRebate = await getRakeRebateForWalletAndRound(walletAddress, roundId);
       if (existingRebate) {
         return; // Already processed
       }
@@ -246,7 +246,7 @@ class RakeRebateService {
   ): Promise<{ success: boolean; rebate?: RakeRebate; error?: string }> {
     try {
       // Get user's effective rake rate from progression service
-      const effectiveRatePercent = progressionService.getActiveOracleRakeReduction(walletAddress);
+      const effectiveRatePercent = await progressionService.getActiveOracleRakeReduction(walletAddress);
       const effectiveFeeBps = Math.round(effectiveRatePercent * 100);
 
       // If user has no perk (5% rate), no rebate due
@@ -270,7 +270,7 @@ class RakeRebateService {
       const perkType = this.getPerkTypeFromBps(effectiveFeeBps);
 
       // Create rebate record
-      const rebate = createRakeRebate(
+      const rebate = await createRakeRebate(
         walletAddress,
         roundId,
         grossWinningsLamports,
@@ -326,13 +326,13 @@ class RakeRebateService {
 
     try {
       // Mark as processing
-      updateRakeRebateStatusOnly(rebate.id, 'processing');
+      await updateRakeRebateStatusOnly(rebate.id, 'processing');
 
       // Check rebate wallet balance
       const balance = await this.connection.getBalance(this.rebateKeypair.publicKey);
       if (balance < rebate.rebateLamports + 5000) { // 5000 lamports for tx fee
         console.error('[RakeRebate] Insufficient balance for rebate:', rebate.id);
-        updateRakeRebateStatusOnly(rebate.id, 'pending'); // Reset to pending
+        await updateRakeRebateStatusOnly(rebate.id, 'pending'); // Reset to pending
         return { success: false, error: 'Insufficient rebate wallet balance' };
       }
 
@@ -355,7 +355,7 @@ class RakeRebateService {
       );
 
       // Update rebate as sent
-      updateRakeRebateToSent(rebate.id, txSignature);
+      await updateRakeRebateToSent(rebate.id, txSignature);
 
       console.log('[RakeRebate] Sent rebate:', rebate.id, 'tx:', txSignature);
 
@@ -369,7 +369,7 @@ class RakeRebateService {
       return { success: true, txSignature };
     } catch (err) {
       console.error('[RakeRebate] Error sending rebate:', err);
-      updateRakeRebateStatusOnly(rebate.id, 'failed');
+      await updateRakeRebateStatusOnly(rebate.id, 'failed');
       return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
     }
   }
@@ -381,7 +381,7 @@ class RakeRebateService {
     if (!this.isInitialized) return;
 
     try {
-      const pendingRebates = getRakeRebatesByStatusType('pending');
+      const pendingRebates = await getRakeRebatesByStatusType('pending');
 
       for (const rebate of pendingRebates) {
         const result = await this.sendRebate(rebate);
@@ -438,21 +438,21 @@ class RakeRebateService {
   /**
    * Get rebate summary for a wallet
    */
-  getRebateSummary(walletAddress: string): RakeRebateSummary {
+  async getRebateSummary(walletAddress: string): Promise<RakeRebateSummary> {
     return getRakeRebateSummary(walletAddress);
   }
 
   /**
    * Get rebate history for a wallet
    */
-  getRebateHistory(walletAddress: string, limit: number = 50): RakeRebate[] {
+  async getRebateHistory(walletAddress: string, limit: number = 50): Promise<RakeRebate[]> {
     return getRakeRebatesForWallet(walletAddress, limit);
   }
 
   /**
    * Get user's effective rake rate
    */
-  getEffectiveRatePercent(walletAddress: string): number {
+  async getEffectiveRatePercent(walletAddress: string): Promise<number> {
     return progressionService.getActiveOracleRakeReduction(walletAddress);
   }
 

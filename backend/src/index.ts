@@ -1033,13 +1033,13 @@ app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: R
     }
 
     // Check if user has available free bet credits
-    const balance = progressionService.getFreeBetBalance(walletAddress);
+    const balance = await progressionService.getFreeBetBalance(walletAddress);
     if (balance.balance < 1) {
       return res.status(400).json({ error: 'No free bets available', balance });
     }
 
     // Check if user already has a pending/placed bet for this round
-    const existingPosition = progressionDb.getFreeBetPositionForWalletAndRound(walletAddress, roundId);
+    const existingPosition = await progressionDb.getFreeBetPositionForWalletAndRound(walletAddress, roundId);
     if (existingPosition && ['pending', 'placed', 'active'].includes(existingPosition.status)) {
       return res.status(400).json({ error: 'Already have a free bet for this round', position: existingPosition });
     }
@@ -1051,7 +1051,7 @@ app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: R
     }
 
     // Deduct free bet credit only after successful on-chain bet
-    const useResult = progressionService.useFreeBetCredit(walletAddress, 'oracle', `Free bet on round ${roundId}`);
+    const useResult = await progressionService.useFreeBetCredit(walletAddress, 'oracle', `Free bet on round ${roundId}`);
     if (!useResult.success) {
       console.warn('[FreeBet] Failed to deduct credit after successful bet:', walletAddress);
     }
@@ -1069,12 +1069,12 @@ app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: R
 });
 
 // Get user's free bet positions
-app.get('/api/prediction/:wallet/free-bet-positions', (req, res) => {
+app.get('/api/prediction/:wallet/free-bet-positions', async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
   const offset = parseInt(req.query.offset as string) || 0;
 
   // For pagination we need to implement it - for now just get with limit
-  const positions = progressionDb.getFreeBetPositionsForWallet(req.params.wallet, limit);
+  const positions = await progressionDb.getFreeBetPositionsForWallet(req.params.wallet, limit);
 
   res.json({
     positions,
@@ -1255,32 +1255,32 @@ app.get('/api/draft/memecoins/prices', (req, res) => {
 // ===================
 
 // Get user progression (level, XP, title)
-app.get('/api/progression/:wallet', (req, res) => {
-  const progression = progressionService.getProgression(req.params.wallet);
+app.get('/api/progression/:wallet', async (req, res) => {
+  const progression = await progressionService.getProgression(req.params.wallet);
   res.json(progression);
 });
 
 // Get XP history
-app.get('/api/progression/:wallet/history', (req, res) => {
+app.get('/api/progression/:wallet/history', async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 20;
-  const history = progressionService.getXpHistory(req.params.wallet, limit);
+  const history = await progressionService.getXpHistory(req.params.wallet, limit);
   res.json(history);
 });
 
 // Get available & active perks
-app.get('/api/progression/:wallet/perks', (req, res) => {
-  const perks = progressionService.getAvailablePerks(req.params.wallet);
+app.get('/api/progression/:wallet/perks', async (req, res) => {
+  const perks = await progressionService.getAvailablePerks(req.params.wallet);
   res.json(perks);
 });
 
 // Activate a perk (requires wallet ownership)
-app.post('/api/progression/:wallet/perks/:id/activate', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
+app.post('/api/progression/:wallet/perks/:id/activate', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
   try {
     const perkId = parseInt(req.params.id);
     if (isNaN(perkId)) {
       return res.status(400).json({ error: 'Invalid perk ID' });
     }
-    const perk = progressionService.activatePerk(req.params.wallet, perkId);
+    const perk = await progressionService.activatePerk(req.params.wallet, perkId);
     if (!perk) {
       return res.status(404).json({ error: 'Perk not found or already used' });
     }
@@ -1292,15 +1292,15 @@ app.post('/api/progression/:wallet/perks/:id/activate', requireOwnWallet, strict
 });
 
 // Get unlocked cosmetics
-app.get('/api/progression/:wallet/cosmetics', (req, res) => {
-  const cosmetics = progressionService.getUnlockedCosmetics(req.params.wallet);
+app.get('/api/progression/:wallet/cosmetics', async (req, res) => {
+  const cosmetics = await progressionService.getUnlockedCosmetics(req.params.wallet);
   res.json(cosmetics);
 });
 
 // Get current rake % for user (returns both Draft and Oracle rates)
-app.get('/api/progression/:wallet/rake', (req, res) => {
-  const draftRake = progressionService.getActiveRakeReduction(req.params.wallet);
-  const oracleRake = progressionService.getActiveOracleRakeReduction(req.params.wallet);
+app.get('/api/progression/:wallet/rake', async (req, res) => {
+  const draftRake = await progressionService.getActiveRakeReduction(req.params.wallet);
+  const oracleRake = await progressionService.getActiveOracleRakeReduction(req.params.wallet);
   res.json({
     rakePercent: draftRake,  // Legacy: Draft rake
     draftRakePercent: draftRake,
@@ -1311,27 +1311,27 @@ app.get('/api/progression/:wallet/rake', (req, res) => {
 // ============= Free Bet Endpoints =============
 
 // Get free bet balance (public read-only - just shows count)
-app.get('/api/progression/:wallet/free-bets', standardLimiter, (req: Request, res: Response) => {
-  const balance = progressionService.getFreeBetBalance(req.params.wallet);
+app.get('/api/progression/:wallet/free-bets', standardLimiter, async (req: Request, res: Response) => {
+  const balance = await progressionService.getFreeBetBalance(req.params.wallet);
   res.json(balance);
 });
 
 // Get free bet transaction history (requires wallet ownership - sensitive data)
-app.get('/api/progression/:wallet/free-bets/history', requireOwnWallet, (req: Request, res: Response) => {
+app.get('/api/progression/:wallet/free-bets/history', requireOwnWallet, async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 50;
-  const history = progressionService.getFreeBetTransactionHistory(req.params.wallet, limit);
+  const history = await progressionService.getFreeBetTransactionHistory(req.params.wallet, limit);
   res.json(history);
 });
 
 // Use free bet credit (requires wallet ownership)
-app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
+app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
   const { gameMode, description } = req.body;
 
   if (!gameMode || !['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
     return res.status(400).json({ error: 'Invalid game mode' });
   }
 
-  const result = progressionService.useFreeBetCredit(
+  const result = await progressionService.useFreeBetCredit(
     req.params.wallet,
     gameMode,
     description
@@ -1349,11 +1349,11 @@ app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimit
 // ===================
 
 // Get rebate history (requires wallet ownership - sensitive data)
-app.get('/api/progression/:wallet/rebates', requireOwnWallet, (req: Request, res: Response) => {
+app.get('/api/progression/:wallet/rebates', requireOwnWallet, async (req: Request, res: Response) => {
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
   const offset = parseInt(req.query.offset as string) || 0;
 
-  const rebates = progressionDb.getRakeRebatesForWallet(req.params.wallet, limit);
+  const rebates = await progressionDb.getRakeRebatesForWallet(req.params.wallet, limit);
 
   res.json({
     rebates,
@@ -1364,8 +1364,8 @@ app.get('/api/progression/:wallet/rebates', requireOwnWallet, (req: Request, res
 });
 
 // Get rebate summary (total earned, pending, etc.)
-app.get('/api/progression/:wallet/rebates/summary', requireOwnWallet, (req: Request, res: Response) => {
-  const summary = progressionDb.getRakeRebateSummary(req.params.wallet);
+app.get('/api/progression/:wallet/rebates/summary', requireOwnWallet, async (req: Request, res: Response) => {
+  const summary = await progressionDb.getRakeRebateSummary(req.params.wallet);
 
   // Convert lamports to SOL for display
   const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -1387,10 +1387,10 @@ app.get('/api/progression/:wallet/rebates/summary', requireOwnWallet, (req: Requ
 // ===================
 
 // Get user streak info
-app.get('/api/progression/:wallet/streak', (req, res) => {
-  const streak = progressionService.getStreak(req.params.wallet);
+app.get('/api/progression/:wallet/streak', async (req, res) => {
+  const streak = await progressionService.getStreak(req.params.wallet);
   const bonusPercent = Math.round(progressionService.getStreakBonus(streak.currentStreak) * 100);
-  const atRisk = progressionService.isStreakAtRisk(req.params.wallet);
+  const atRisk = await progressionService.isStreakAtRisk(req.params.wallet);
 
   res.json({
     ...streak,
@@ -2019,11 +2019,11 @@ io.on('connection', (socket) => {
   // Progression Events
   // ===================
 
-  socket.on('subscribe_progression', (wallet: string) => {
+  socket.on('subscribe_progression', async (wallet: string) => {
     walletAddress = wallet;
     socket.join(`progression_${wallet}`);
     // Send current progression state
-    const progression = progressionService.getProgression(wallet);
+    const progression = await progressionService.getProgression(wallet);
     socket.emit('progression_update' as any, progression);
   });
 
@@ -2050,10 +2050,10 @@ io.on('connection', (socket) => {
   // Rebate Events
   // ===================
 
-  socket.on('subscribe_rebates', (wallet: string) => {
+  socket.on('subscribe_rebates', async (wallet: string) => {
     socket.join(`rebates_${wallet}`);
     // Send current rebate summary
-    const summary = progressionDb.getRakeRebateSummary(wallet);
+    const summary = await progressionDb.getRakeRebateSummary(wallet);
     const LAMPORTS_PER_SOL = 1_000_000_000;
     socket.emit('rebate_summary' as any, {
       totalRebates: summary.totalRebates,
@@ -2251,7 +2251,7 @@ io.on('connection', (socket) => {
 
       // If user wants to use a free bet, check and deduct from their balance
       if (data.useFreeBet) {
-        const useResult = progressionService.useFreeBetCredit(data.wallet, 'token_wars', `Token Wars free bet`);
+        const useResult = await progressionService.useFreeBetCredit(data.wallet, 'token_wars', `Token Wars free bet`);
         if (!useResult.success) {
           socket.emit('token_wars_bet_error' as any, { error: 'No free bets available' });
           return;
@@ -2266,7 +2266,7 @@ io.on('connection', (socket) => {
       } else {
         // Refund free bet credit if bet placement failed
         if (isFreeBet) {
-          progressionService.addFreeBetCredit(data.wallet, 1, 'Token Wars bet failed refund');
+          await progressionService.addFreeBetCredit(data.wallet, 1, 'Token Wars bet failed refund');
         }
         socket.emit('token_wars_bet_error' as any, { error: result.error });
       }

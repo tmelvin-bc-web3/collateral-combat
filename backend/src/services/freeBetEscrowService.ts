@@ -313,13 +313,13 @@ class FreeBetEscrowService {
 
     try {
       // Deduct free bet credit from user's balance
-      const deductResult = progressionService.useFreeBetCredit(userWallet, 'oracle', `Free bet on round ${roundId}`);
+      const deductResult = await progressionService.useFreeBetCredit(userWallet, 'oracle', `Free bet on round ${roundId}`);
       if (!deductResult.success) {
         return { success: false, error: 'No free bets available' };
       }
 
       // Create position record in database
-      const position = createFreeBetPosition(userWallet, roundId, side, FREE_BET_AMOUNT_LAMPORTS);
+      const position = await createFreeBetPosition(userWallet, roundId, side, FREE_BET_AMOUNT_LAMPORTS);
 
       // Place the bet on-chain using escrow wallet
       const [roundPDA] = this.getRoundPDA(roundId);
@@ -345,7 +345,7 @@ class FreeBetEscrowService {
         .rpc();
 
       // Update position with transaction signature (status: 'placed')
-      updateFreeBetPositionToPlaced(position.id, txSignature);
+      await updateFreeBetPositionToPlaced(position.id, txSignature);
 
       console.log(`[FreeBetEscrow] Placed free bet for ${userWallet} on round ${roundId} (${side}). TX: ${txSignature}`);
 
@@ -365,7 +365,7 @@ class FreeBetEscrowService {
       console.error(`[FreeBetEscrow] Failed to place free bet:`, error);
 
       // Refund the free bet credit if on-chain bet failed
-      progressionService.addFreeBetCredit(userWallet, 1, 'Refund: on-chain bet failed');
+      await progressionService.addFreeBetCredit(userWallet, 1, 'Refund: on-chain bet failed');
 
       return {
         success: false,
@@ -402,7 +402,7 @@ class FreeBetEscrowService {
 
       // Update position status - mark as won/lost based on outcome (will be finalized in settleToUser)
       // For now just mark as 'won' since we're claiming (only winners can claim)
-      updateFreeBetPositionToClaimed(position.id, 'won', 0, txSignature);
+      await updateFreeBetPositionToClaimed(position.id, 'won', 0, txSignature);
 
       console.log(`[FreeBetEscrow] Claimed winnings for position ${position.id}. TX: ${txSignature}`);
 
@@ -437,14 +437,14 @@ class FreeBetEscrowService {
 
       if (winner === 'Draw') {
         // Draw - no payout, mark as settled
-        updateFreeBetPositionStatusOnly(position.id, 'settled');
+        await updateFreeBetPositionStatusOnly(position.id, 'settled');
         console.log(`[FreeBetEscrow] Round ${position.roundId} was a draw. No payout for position ${position.id}`);
         return { success: true };
       }
 
       if (!checkWinner(winner, position.side)) {
         // Lost - no payout, mark as lost
-        updateFreeBetPositionStatusOnly(position.id, 'lost');
+        await updateFreeBetPositionStatusOnly(position.id, 'lost');
         console.log(`[FreeBetEscrow] Position ${position.id} lost. No payout.`);
         return { success: true };
       }
@@ -467,7 +467,7 @@ class FreeBetEscrowService {
       // Only transfer winnings (profit), not the stake
       // Free bets are "winnings only"
       if (netWinnings <= 0) {
-        updateFreeBetPositionStatusOnly(position.id, 'settled');
+        await updateFreeBetPositionStatusOnly(position.id, 'settled');
         console.log(`[FreeBetEscrow] No winnings to transfer for position ${position.id}`);
         return { success: true };
       }
@@ -486,8 +486,8 @@ class FreeBetEscrowService {
       const txSignature = await sendAndConfirmTransaction(this.connection!, transferTx, [this.escrowKeypair!]);
 
       // Update position with payout info - mark as settled with settlement tx
-      updateFreeBetPositionToClaimed(position.id, 'won', netWinnings, position.txSignatureClaim || '');
-      updateFreeBetPositionToSettled(position.id, txSignature);
+      await updateFreeBetPositionToClaimed(position.id, 'won', netWinnings, position.txSignatureClaim || '');
+      await updateFreeBetPositionToSettled(position.id, txSignature);
 
       console.log(
         `[FreeBetEscrow] Settled position ${position.id}. ` +
@@ -521,7 +521,7 @@ class FreeBetEscrowService {
 
     try {
       // Get all placed positions (bets placed, waiting for settlement)
-      const placedPositions = getFreeBetPositionsByStatusType('placed');
+      const placedPositions = await getFreeBetPositionsByStatusType('placed');
 
       for (const position of placedPositions) {
         try {
@@ -542,14 +542,14 @@ class FreeBetEscrowService {
 
           if (!isWinner && winner !== 'Draw') {
             // Lost - mark as lost and skip
-            updateFreeBetPositionStatusOnly(position.id, 'lost');
+            await updateFreeBetPositionStatusOnly(position.id, 'lost');
             console.log(`[FreeBetEscrow] Position ${position.id} lost. No payout.`);
             continue;
           }
 
           if (winner === 'Draw') {
             // Draw - mark as settled (no payout for free bet draws)
-            updateFreeBetPositionStatusOnly(position.id, 'settled');
+            await updateFreeBetPositionStatusOnly(position.id, 'settled');
             console.log(`[FreeBetEscrow] Position ${position.id} was a draw. No payout.`);
             continue;
           }
@@ -570,7 +570,7 @@ class FreeBetEscrowService {
       }
 
       // Also process won positions that haven't been settled yet (claimed but not transferred)
-      const wonPositions = getFreeBetPositionsByStatusType('won');
+      const wonPositions = await getFreeBetPositionsByStatusType('won');
 
       for (const position of wonPositions) {
         try {
@@ -613,7 +613,7 @@ class FreeBetEscrowService {
   /**
    * Get user's free bet positions
    */
-  getUserPositions(walletAddress: string, limit: number = 50): FreeBetPosition[] {
+  async getUserPositions(walletAddress: string, limit: number = 50): Promise<FreeBetPosition[]> {
     return getFreeBetPositionsForWallet(walletAddress, limit);
   }
 
