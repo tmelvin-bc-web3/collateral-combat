@@ -755,28 +755,36 @@ export default function TokenWarsPage() {
             {/* Bet Amount Selector */}
             {phase === 'betting' && !myBet && (
               <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                {/* Free Bet Toggle */}
-                {freeBetBalance > 0 && (
-                  <button
-                    onClick={() => setUseFreeBet(!useFreeBet)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                      useFreeBet
+                {/* Free Bet Toggle - always visible, disabled if no free bets */}
+                <button
+                  onClick={() => {
+                    if (freeBetBalance > 0) {
+                      setUseFreeBet(!useFreeBet);
+                    }
+                  }}
+                  disabled={freeBetBalance === 0}
+                  title={freeBetBalance === 0 ? 'Earn free bets by leveling up!' : `You have ${freeBetBalance} free bet${freeBetBalance !== 1 ? 's' : ''}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    freeBetBalance === 0
+                      ? 'bg-white/5 text-text-tertiary border border-white/10 cursor-not-allowed opacity-50'
+                      : useFreeBet
                         ? 'bg-success/20 text-success border border-success/50'
                         : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      useFreeBet ? 'border-success bg-success' : 'border-white/40'
-                    }`}>
-                      {useFreeBet && (
-                        <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </span>
-                    Use Free Bet ({freeBetBalance} available)
-                  </button>
-                )}
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    freeBetBalance === 0
+                      ? 'border-white/20'
+                      : useFreeBet ? 'border-success bg-success' : 'border-white/40'
+                  }`}>
+                    {useFreeBet && freeBetBalance > 0 && (
+                      <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </span>
+                  {freeBetBalance > 0 ? `Use Free Bet (${freeBetBalance} available)` : 'Free Bet (0 available)'}
+                </button>
 
                 {/* Amount selector - hidden when using free bet */}
                 {!useFreeBet && (

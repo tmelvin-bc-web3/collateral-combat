@@ -989,17 +989,28 @@ export default function PredictPage() {
                 <span className="text-[10px] text-warning/60">(fixed)</span>
               </div>
             )}
-            {/* FREE button - toggle */}
-            {publicKey && freeBetBalance && freeBetBalance.balance > 0 && (
+            {/* FREE button - always visible when connected, disabled if no free bets */}
+            {publicKey && (
               <button
-                onClick={() => setUseFreeWager(!useFreeBet)}
-                className={`min-h-[44px] min-w-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold transition-all touch-manipulation flex-shrink-0 active:scale-95 ${
-                  useFreeBet
-                    ? 'bg-warning/30 text-warning border border-warning/50'
-                    : 'bg-warning/10 text-warning/60 border border-transparent hover:bg-warning/20 active:bg-warning/25'
+                onClick={() => {
+                  if (freeBetBalance && freeBetBalance.balance > 0) {
+                    setUseFreeWager(!useFreeBet);
+                  }
+                }}
+                disabled={!freeBetBalance || freeBetBalance.balance === 0}
+                title={!freeBetBalance || freeBetBalance.balance === 0 ? 'Earn free bets by leveling up!' : `You have ${freeBetBalance.balance} free bet${freeBetBalance.balance !== 1 ? 's' : ''}`}
+                className={`min-h-[44px] min-w-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold transition-all touch-manipulation flex-shrink-0 ${
+                  !freeBetBalance || freeBetBalance.balance === 0
+                    ? 'bg-white/5 text-text-tertiary border border-white/10 cursor-not-allowed opacity-50'
+                    : useFreeBet
+                      ? 'bg-warning/30 text-warning border border-warning/50 active:scale-95'
+                      : 'bg-warning/10 text-warning/60 border border-transparent hover:bg-warning/20 active:bg-warning/25 active:scale-95'
                 }`}
               >
-                {useFreeBet ? `FREE (${freeBetBalance.balance})` : 'FREE'}
+                {freeBetBalance && freeBetBalance.balance > 0
+                  ? (useFreeBet ? `FREE (${freeBetBalance.balance})` : 'FREE')
+                  : 'FREE (0)'
+                }
               </button>
             )}
           </div>
