@@ -82,29 +82,25 @@ export interface TokenInfo {
   pythFeed?: string;
 }
 
-// Available tokens for Token Wars (matching priceService tokens)
+// Available memecoins for Token Wars (volatile, uncorrelated - more exciting battles!)
 const AVAILABLE_TOKENS: TokenInfo[] = [
-  { symbol: 'SOL', name: 'Solana', pythFeed: 'H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG' },
-  { symbol: 'BTC', name: 'Bitcoin', pythFeed: 'GVXRSBjFk6e6J3NbVPXohDJetcTjaeeuykUpbQF8UoMU' },
-  { symbol: 'ETH', name: 'Ethereum', pythFeed: 'JBu1AL4obBcCMqKBBxhpWCNUt136ijcuMZLFvTP7iWdB' },
+  // Solana OG memecoins
   { symbol: 'WIF', name: 'dogwifhat', pythFeed: '6B23K3tkb51vLZA14jcEQVCA1pfHptzEHFA93V5dYwbT' },
   { symbol: 'BONK', name: 'Bonk', pythFeed: '8ihFLu5FimgTQ1Unh4dVyEHUGodJ5gJQCrQf4KUVB9bN' },
-  { symbol: 'JUP', name: 'Jupiter', pythFeed: 'g6eRCbboSwK4tSWngn773RCMexr1APQr4uA9bGZBYfo' },
-  { symbol: 'RAY', name: 'Raydium', pythFeed: 'AnLf8tVYCM816gmBjiy8n53eXKKEDydT5piYjjQDPgTB' },
-  { symbol: 'JTO', name: 'Jito', pythFeed: '7yyaeuJ1GGtVBLT2z2xub5ZWYKaNhF28mj1RdV4VDFVk' },
+  // Popular Solana memecoins
+  { symbol: 'PONKE', name: 'Ponke' },
+  { symbol: 'PENGU', name: 'Pudgy Penguins' },
+  { symbol: 'TURBO', name: 'Turbo' },
+  { symbol: 'POPCAT', name: 'Popcat' },
+  { symbol: 'FARTCOIN', name: 'Fartcoin' },
+  { symbol: 'MEW', name: 'cat in a dogs world' },
+  { symbol: 'PNUT', name: 'Peanut the Squirrel' },
+  { symbol: 'GOAT', name: 'Goatseus Maximus' },
 ];
 
-// Pre-defined matchups for variety
-const TOKEN_MATCHUPS: [string, string][] = [
-  ['BTC', 'ETH'],   // Classic crypto battle
-  ['SOL', 'ETH'],   // L1 vs L1
-  ['WIF', 'BONK'],  // Meme coin battle
-  ['JUP', 'RAY'],   // Solana DEX battle
-  ['SOL', 'BTC'],   // SOL vs king
-  ['JTO', 'JUP'],   // Solana ecosystem
-  ['ETH', 'BTC'],   // Top 2 battle
-  ['WIF', 'JUP'],   // Solana ecosystem mix
-];
+// Track recently used matchups to avoid repetition
+const recentMatchups: Set<string> = new Set();
+const MAX_RECENT_MATCHUPS = 5; // Remember last 5 matchups to avoid immediate repeats
 
 // Event types for WebSocket notifications
 export type TWEventType =
@@ -144,7 +140,6 @@ class TokenWarsManager {
   private battleTimer: NodeJS.Timeout | null = null;
   private priceUpdateTimer: NodeJS.Timeout | null = null;
   private initialized = false;
-  private currentMatchupIndex = 0;
 
   constructor() {
     // Don't auto-initialize - let the main app call initialize()
@@ -255,12 +250,50 @@ class TokenWarsManager {
   }
 
   /**
-   * Get the next token matchup (rotate through predefined matchups)
+   * Get a random matchup from all possible memecoin pairs
+   * Avoids recently used matchups for variety
    */
   private getNextMatchup(): [string, string] {
-    const matchup = TOKEN_MATCHUPS[this.currentMatchupIndex];
-    this.currentMatchupIndex = (this.currentMatchupIndex + 1) % TOKEN_MATCHUPS.length;
-    return matchup;
+    const tokens = AVAILABLE_TOKENS.map(t => t.symbol);
+
+    // Generate all possible pairs
+    const allPairs: [string, string][] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      for (let j = i + 1; j < tokens.length; j++) {
+        allPairs.push([tokens[i], tokens[j]]);
+      }
+    }
+
+    // Filter out recently used matchups
+    const availablePairs = allPairs.filter(([a, b]) => {
+      const key = [a, b].sort().join('-');
+      return !recentMatchups.has(key);
+    });
+
+    // If all pairs recently used, clear history and use all pairs
+    const pairsToChooseFrom = availablePairs.length > 0 ? availablePairs : allPairs;
+
+    // Pick a random pair
+    const randomIndex = Math.floor(Math.random() * pairsToChooseFrom.length);
+    const [tokenA, tokenB] = pairsToChooseFrom[randomIndex];
+
+    // Track this matchup
+    const matchupKey = [tokenA, tokenB].sort().join('-');
+    recentMatchups.add(matchupKey);
+
+    // Keep recent matchups limited
+    if (recentMatchups.size > MAX_RECENT_MATCHUPS) {
+      const oldest = recentMatchups.values().next().value as string;
+      if (oldest) {
+        recentMatchups.delete(oldest);
+      }
+    }
+
+    // Randomly swap order so tokenA/tokenB positions vary
+    if (Math.random() > 0.5) {
+      return [tokenB, tokenA];
+    }
+    return [tokenA, tokenB];
   }
 
   /**

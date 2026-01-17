@@ -2,7 +2,14 @@
 const CMC_API = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest';
 
 // Tokens to fetch prices for
-const TRACKED_SYMBOLS = ['SOL', 'BTC', 'ETH', 'WIF', 'BONK', 'JUP', 'RAY', 'JTO'];
+const TRACKED_SYMBOLS = [
+  // Major tokens
+  'SOL', 'BTC', 'ETH',
+  // Solana ecosystem
+  'JUP', 'RAY', 'JTO',
+  // Memecoins
+  'WIF', 'BONK', 'PONKE', 'PENGU', 'TURBO', 'POPCAT', 'FARTCOIN', 'MEW', 'PNUT', 'GOAT',
+];
 
 interface CMCQuote {
   price: number;
