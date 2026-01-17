@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -35,21 +36,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasAttemptedAutoSignIn = useRef(false);
 
-  // Load token from localStorage on mount
+  // Load token from sessionStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    const savedWallet = localStorage.getItem(WALLET_KEY);
+    const savedToken = sessionStorage.getItem(TOKEN_KEY);
+    const savedWallet = sessionStorage.getItem(WALLET_KEY);
 
     // Only use saved token if it's for the current wallet
     if (savedToken && savedWallet === walletAddress) {
       setToken(savedToken);
     } else if (walletAddress !== savedWallet) {
       // Different wallet connected, clear old token
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(WALLET_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(WALLET_KEY);
       setToken(null);
     }
   }, [walletAddress]);
@@ -59,12 +61,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (disconnecting || !connected) {
       setToken(null);
       setError(null);
+      hasAttemptedAutoSignIn.current = false; // Reset for next connection
       if (typeof window !== 'undefined') {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(WALLET_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(WALLET_KEY);
       }
     }
   }, [disconnecting, connected]);
+
+  // Auto sign-in when wallet connects (sign once, play all session)
+  useEffect(() => {
+    // Skip if already signed in, not connected, or already attempted
+    if (token || !connected || !walletAddress || !signMessage || hasAttemptedAutoSignIn.current) {
+      return;
+    }
+
+    // Check if we have a valid token in sessionStorage first
+    const savedToken = sessionStorage.getItem(TOKEN_KEY);
+    const savedWallet = sessionStorage.getItem(WALLET_KEY);
+    if (savedToken && savedWallet === walletAddress) {
+      setToken(savedToken);
+      return;
+    }
+
+    // Mark that we've attempted auto sign-in to prevent repeated prompts
+    hasAttemptedAutoSignIn.current = true;
+
+    // Small delay to ensure wallet is fully ready
+    const timeoutId = setTimeout(async () => {
+      try {
+        const timestamp = Date.now().toString();
+        const message = `DegenDome:login:${timestamp}`;
+        const messageBytes = new TextEncoder().encode(message);
+
+        const signatureBytes = await signMessage(messageBytes);
+        const signature = bs58.encode(signatureBytes);
+
+        const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'x-wallet-address': walletAddress,
+            'x-signature': signature,
+            'x-timestamp': timestamp,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setToken(data.token);
+          sessionStorage.setItem(TOKEN_KEY, data.token);
+          sessionStorage.setItem(WALLET_KEY, walletAddress);
+        }
+      } catch {
+        // User rejected or error - they can manually sign in later if needed
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [connected, walletAddress, signMessage, token]);
 
   // Sign in with wallet signature
   const signIn = useCallback(async (): Promise<boolean> => {
@@ -102,11 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await res.json();
 
-      // Save token
+      // Save token to sessionStorage (cleared when browser closes - more secure than localStorage)
       setToken(data.token);
       if (typeof window !== 'undefined') {
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(WALLET_KEY, walletAddress);
+        sessionStorage.setItem(TOKEN_KEY, data.token);
+        sessionStorage.setItem(WALLET_KEY, walletAddress);
       }
 
       return true;
@@ -127,8 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setError(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(WALLET_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(WALLET_KEY);
     }
   }, []);
 

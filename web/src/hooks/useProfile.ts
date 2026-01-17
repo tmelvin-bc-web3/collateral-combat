@@ -8,8 +8,10 @@ import {
   clearOwnProfile,
 } from '@/lib/profileStorage';
 import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useProfile(walletAddress: string | null) {
+  const { authenticatedFetch, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +67,13 @@ export function useProfile(walletAddress: string | null) {
       setError(null);
 
       try {
-        // No authentication needed - just wallet address header
-        const res = await fetch(
+        // Use authenticated fetch - requires JWT from signing in
+        const res = await authenticatedFetch(
           `${BACKEND_URL}/api/profile/${walletAddress}`,
           {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
-              'x-wallet-address': walletAddress,
             },
             body: JSON.stringify(updates),
           }
@@ -80,6 +81,10 @@ export function useProfile(walletAddress: string | null) {
 
         if (!res.ok) {
           const data = await res.json();
+          // Provide helpful error for auth issues
+          if (res.status === 401) {
+            throw new Error('Please sign in to update your profile. Your session may have expired.');
+          }
           throw new Error(data.error || 'Failed to update profile');
         }
 
@@ -94,19 +99,16 @@ export function useProfile(walletAddress: string | null) {
         setIsLoading(false);
       }
     },
-    [walletAddress]
+    [walletAddress, authenticatedFetch]
   );
 
   const resetProfile = useCallback(async () => {
     if (!walletAddress) return;
 
-    // Delete from backend (no authentication needed)
+    // Delete from backend (requires authentication)
     try {
-      await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
+      await authenticatedFetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
         method: 'DELETE',
-        headers: {
-          'x-wallet-address': walletAddress,
-        },
       });
     } catch {
       // Delete failed - continue with local cleanup
@@ -115,7 +117,7 @@ export function useProfile(walletAddress: string | null) {
     // Clear localStorage
     clearOwnProfile();
     setProfile(null);
-  }, [walletAddress]);
+  }, [walletAddress, authenticatedFetch]);
 
   const clearLocalProfile = useCallback(() => {
     clearOwnProfile();

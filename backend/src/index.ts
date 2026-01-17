@@ -301,7 +301,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', requireWalletHeader(), standardLimiter, (req: Request, res: Response) => {
+app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request, res: Response) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
@@ -392,7 +392,7 @@ app.get('/api/profiles', (req, res) => {
   res.json(profiles);
 });
 
-app.delete('/api/profile/:wallet', requireWalletHeader(), (req: Request, res: Response) => {
+app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
   const deleted = deleteProfile(req.params.wallet);
   res.json({ deleted });
 });
@@ -1009,8 +1009,8 @@ app.get('/api/predictions/round/:roundId', (req, res) => {
 // Free Bet Position Endpoints (Escrow-based)
 // ===================
 
-// Place a free bet using escrow service (wallet header required, rate limited)
-app.post('/api/prediction/free-bet', strictLimiter, async (req: Request, res: Response) => {
+// Place a free bet using escrow service (requires auth, rate limited)
+app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress, roundId, side } = req.body;
     const authenticatedWallet = req.headers['x-wallet-address'] as string;
