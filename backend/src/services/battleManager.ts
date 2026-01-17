@@ -156,8 +156,8 @@ class BattleManager {
       walletAddress,
       account: this.createInitialAccount(),
       trades: [],
-      pendingDebitId: pendingId, // Track pending debit for refunds if needed
-      lockTx, // Track the lock transaction
+      pendingDebitId: pendingId || undefined, // Track pending debit for refunds if needed
+      lockTx: lockTx || undefined, // Track the lock transaction
       isFreeBet, // Track if this was a free bet entry
     };
 

@@ -72,13 +72,13 @@ export function upsertProfile(profile: Omit<UserProfile, 'createdAt' | 'updatedA
   }
 
   const updatedProfile: UserProfile = {
-    // Defaults
-    walletAddress: profile.walletAddress,
-    pfpType: 'default',
-    // Preserve existing data
+    // Preserve existing data first
     ...(existing || {}),
-    // Apply new values (only defined ones)
+    // Apply new values (only defined ones) - this includes walletAddress
     ...cleanProfile,
+    // Ensure required fields have defaults if not present
+    walletAddress: cleanProfile.walletAddress || existing?.walletAddress || profile.walletAddress,
+    pfpType: (cleanProfile.pfpType || existing?.pfpType || 'default') as ProfilePictureType,
     // Timestamps
     createdAt: existing?.createdAt || now,
     updatedAt: now,
