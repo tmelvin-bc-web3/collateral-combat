@@ -1,21 +1,27 @@
-// Use CoinGecko's free API
-const COINGECKO_API = 'https://api.coingecko.com/api/v3/simple/price';
+// Use CoinMarketCap API (replacing CoinGecko due to rate limits)
+const CMC_API = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest';
 
-// Map asset symbols to CoinGecko IDs
-const COINGECKO_IDS: Record<string, string> = {
-  'SOL': 'solana',
-  'BTC': 'bitcoin',
-  'ETH': 'ethereum',
-  'WIF': 'dogwifcoin',
-  'BONK': 'bonk',
-  'JUP': 'jupiter-exchange-solana',
-  'RAY': 'raydium',
-  'JTO': 'jito-governance-token',
-};
+// Tokens to fetch prices for
+const TRACKED_SYMBOLS = ['SOL', 'BTC', 'ETH', 'WIF', 'BONK', 'JUP', 'RAY', 'JTO'];
 
-interface CoinGeckoResponse {
-  [key: string]: {
-    usd: number;
+interface CMCQuote {
+  price: number;
+  percent_change_24h: number;
+}
+
+interface CMCCoinData {
+  id: number;
+  symbol: string;
+  quote: {
+    USD: CMCQuote;
+  };
+}
+
+interface CMCResponse {
+  data: Record<string, CMCCoinData>;
+  status: {
+    error_code: number;
+    error_message: string | null;
   };
 }
 
@@ -32,10 +38,16 @@ class PriceService {
   private updateInterval: NodeJS.Timeout | null = null;
   private tickInterval: NodeJS.Timeout | null = null;
   private listeners: Set<(prices: Record<string, number>) => void> = new Set();
+  private apiKey: string;
 
   private readonly HISTORY_DURATION = 2 * 60 * 1000; // Keep 2 minutes of history
 
   constructor() {
+    this.apiKey = process.env.CMC_API_KEY || '';
+    if (!this.apiKey) {
+      console.warn('[PriceService] CMC_API_KEY not set - using fallback prices only');
+    }
+
     // Initialize with default prices (will be overwritten on fetch)
     // Updated Jan 2026 - realistic fallback prices
     this.prices.set('SOL', 141);
@@ -57,7 +69,9 @@ class PriceService {
     // Fetch immediately
     await this.fetchPrices();
 
-    // Then set up interval (30s to respect CoinGecko free tier rate limits)
+    // Update interval - CMC has better rate limits, can fetch more frequently
+    // With pro tier: 10,000 calls/day = ~7 calls/minute
+    // We'll fetch every 30s to be safe (2880 calls/day)
     this.updateInterval = setInterval(() => {
       this.fetchPrices();
     }, intervalMs);
@@ -67,7 +81,7 @@ class PriceService {
       this.simulateTick();
     }, 1000);
 
-    console.log(`Price service started, updating every ${intervalMs}ms with 1s ticks`);
+    console.log(`Price service started (CMC), updating every ${intervalMs}ms with 1s ticks`);
   }
 
   stop() {
@@ -119,23 +133,38 @@ class PriceService {
   }
 
   async fetchPrices(): Promise<void> {
+    if (!this.apiKey) {
+      // No API key - use fallback prices
+      return;
+    }
+
     try {
-      const ids = Object.values(COINGECKO_IDS).join(',');
-      const response = await fetch(`${COINGECKO_API}?ids=${ids}&vs_currencies=usd`);
+      const symbols = TRACKED_SYMBOLS.join(',');
+      const response = await fetch(`${CMC_API}?symbol=${symbols}`, {
+        headers: {
+          'X-CMC_PRO_API_KEY': this.apiKey,
+          'Accept': 'application/json',
+        },
+      });
 
       if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
+        throw new Error(`CMC API error: ${response.status}`);
       }
 
-      const data = await response.json() as CoinGeckoResponse;
+      const data = await response.json() as CMCResponse;
+
+      if (data.status.error_code !== 0) {
+        throw new Error(`CMC API error: ${data.status.error_message}`);
+      }
 
       // Update prices
-      Object.entries(COINGECKO_IDS).forEach(([symbol, geckoId]) => {
-        if (data[geckoId]?.usd) {
-          this.prices.set(symbol, data[geckoId].usd);
-          this.basePrices.set(symbol, data[geckoId].usd);
+      for (const symbol of TRACKED_SYMBOLS) {
+        const coinData = data.data[symbol];
+        if (coinData?.quote?.USD?.price) {
+          this.prices.set(symbol, coinData.quote.USD.price);
+          this.basePrices.set(symbol, coinData.quote.USD.price);
         }
-      });
+      }
 
       this.lastUpdate = Date.now();
 
