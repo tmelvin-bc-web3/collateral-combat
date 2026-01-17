@@ -37,22 +37,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasAttemptedAutoSignIn = useRef(false);
+  const initialLoadDone = useRef(false);
 
-  // Load token from sessionStorage on mount
+  // Load token from localStorage on mount (persists across refreshes and browser restarts)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const savedToken = sessionStorage.getItem(TOKEN_KEY);
-    const savedWallet = sessionStorage.getItem(WALLET_KEY);
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedWallet = localStorage.getItem(WALLET_KEY);
 
-    // Only use saved token if it's for the current wallet
-    if (savedToken && savedWallet === walletAddress) {
-      setToken(savedToken);
-    } else if (walletAddress !== savedWallet) {
-      // Different wallet connected, clear old token
-      sessionStorage.removeItem(TOKEN_KEY);
-      sessionStorage.removeItem(WALLET_KEY);
-      setToken(null);
+    // On initial load, just restore the token if it exists
+    // We'll validate it matches the wallet once the wallet connects
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      if (savedToken && savedWallet) {
+        // Temporarily set token - will be cleared if wallet doesn't match
+        setToken(savedToken);
+      }
+      return;
+    }
+
+    // After initial load, validate wallet matches
+    if (walletAddress) {
+      if (savedToken && savedWallet === walletAddress) {
+        setToken(savedToken);
+      } else if (savedWallet && savedWallet !== walletAddress) {
+        // Different wallet connected, clear old token
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(WALLET_KEY);
+        setToken(null);
+      }
     }
   }, [walletAddress]);
 
@@ -63,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       hasAttemptedAutoSignIn.current = false; // Reset for next connection
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(TOKEN_KEY);
-        sessionStorage.removeItem(WALLET_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(WALLET_KEY);
       }
     }
   }, [disconnecting, connected]);
@@ -77,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Check if we have a valid token in sessionStorage first
-    const savedToken = sessionStorage.getItem(TOKEN_KEY);
-    const savedWallet = sessionStorage.getItem(WALLET_KEY);
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedWallet = localStorage.getItem(WALLET_KEY);
     if (savedToken && savedWallet === walletAddress) {
       setToken(savedToken);
       return;
@@ -109,8 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setToken(data.token);
-          sessionStorage.setItem(TOKEN_KEY, data.token);
-          sessionStorage.setItem(WALLET_KEY, walletAddress);
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(WALLET_KEY, walletAddress);
         }
       } catch {
         // User rejected or error - they can manually sign in later if needed
@@ -156,11 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await res.json();
 
-      // Save token to sessionStorage (cleared when browser closes - more secure than localStorage)
+      // Save token to localStorage (persists across refreshes and browser restarts)
       setToken(data.token);
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem(TOKEN_KEY, data.token);
-        sessionStorage.setItem(WALLET_KEY, walletAddress);
+        localStorage.setItem(TOKEN_KEY, data.token);
+        localStorage.setItem(WALLET_KEY, walletAddress);
       }
 
       return true;
