@@ -273,7 +273,7 @@ app.get('/api/health', (req, res) => {
 // Profile endpoints
 
 // Check if username is available
-app.get('/api/username/check/:username', (req, res) => {
+app.get('/api/username/check/:username', async (req, res) => {
   const username = req.params.username;
   const excludeWallet = req.query.wallet as string | undefined;
 
@@ -285,12 +285,12 @@ app.get('/api/username/check/:username', (req, res) => {
     return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
   }
 
-  const taken = isUsernameTaken(username, excludeWallet);
+  const taken = await isUsernameTaken(username, excludeWallet);
   res.json({ available: !taken, username });
 });
 
-app.get('/api/profile/:wallet', (req, res) => {
-  const profile = getProfile(req.params.wallet);
+app.get('/api/profile/:wallet', async (req, res) => {
+  const profile = await getProfile(req.params.wallet);
   if (!profile) {
     return res.json({
       walletAddress: req.params.wallet,
@@ -301,7 +301,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request, res: Response) => {
+app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, async (req: Request, res: Response) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
@@ -354,7 +354,7 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request
           return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
         }
         // Check if username is already taken by another user
-        if (isUsernameTaken(username, req.params.wallet)) {
+        if (await isUsernameTaken(username, req.params.wallet)) {
           return res.status(409).json({ error: 'Username is already taken' });
         }
         usernameValue = username;
@@ -362,7 +362,7 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request
     }
     // If usernameValue stays undefined, upsertProfile will preserve existing username
 
-    const profile = upsertProfile({
+    const profile = await upsertProfile({
       walletAddress: req.params.wallet,
       username: usernameValue,
       pfpType: pfpType as ProfilePictureType,
@@ -377,7 +377,7 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request
   }
 });
 
-app.get('/api/profiles', (req, res) => {
+app.get('/api/profiles', async (req, res) => {
   const walletsParam = req.query.wallets as string;
   if (!walletsParam) {
     return res.status(400).json({ error: 'wallets query parameter required' });
@@ -388,12 +388,12 @@ app.get('/api/profiles', (req, res) => {
     return res.json([]);
   }
 
-  const profiles = getProfiles(wallets);
+  const profiles = await getProfiles(wallets);
   res.json(profiles);
 });
 
-app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, (req: Request, res: Response) => {
-  const deleted = deleteProfile(req.params.wallet);
+app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
+  const deleted = await deleteProfile(req.params.wallet);
   res.json({ deleted });
 });
 
@@ -2593,7 +2593,7 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
     }
 
     // Get username from profile if available
-    const profile = getProfile(walletAddress);
+    const profile = await getProfile(walletAddress);
     const username = profile?.username;
 
     // Create the challenge
