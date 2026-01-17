@@ -56,11 +56,38 @@ export function upsertProfile(profile: Omit<UserProfile, 'createdAt' | 'updatedA
   const now = Date.now();
   const existing = data.profiles[profile.walletAddress];
 
+  // Filter out undefined values from incoming profile to preserve existing data
+  // This ensures fields not explicitly set in the update don't overwrite existing values
+  // Special case: empty string for username means "clear the username"
+  const cleanProfile: Partial<UserProfile> = {};
+  for (const [key, value] of Object.entries(profile)) {
+    if (value !== undefined) {
+      // Empty string for username means clear it
+      if (key === 'username' && value === '') {
+        // Don't add to cleanProfile - we'll delete it below
+        continue;
+      }
+      (cleanProfile as Record<string, unknown>)[key] = value;
+    }
+  }
+
   const updatedProfile: UserProfile = {
-    ...profile,
+    // Defaults
+    walletAddress: profile.walletAddress,
+    pfpType: 'default',
+    // Preserve existing data
+    ...(existing || {}),
+    // Apply new values (only defined ones)
+    ...cleanProfile,
+    // Timestamps
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
+
+  // Handle explicit username clear (empty string was passed)
+  if (profile.username === '') {
+    delete updatedProfile.username;
+  }
 
   data.profiles[profile.walletAddress] = updatedProfile;
   saveProfiles(data);

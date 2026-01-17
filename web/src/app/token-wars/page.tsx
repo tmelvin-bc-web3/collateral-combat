@@ -6,6 +6,8 @@ import { getSocket } from '@/lib/socket';
 import { BACKEND_URL } from '@/config/api';
 import { PageLoading } from '@/components/ui/skeleton';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
+import { getTokenLogo, getTokenColor, getTokenConfig } from '@/config/tokenLogos';
+import Image from 'next/image';
 
 // Token Wars Types
 type TWBetSide = 'token_a' | 'token_b';
@@ -70,6 +72,47 @@ interface TokenInfo {
   name: string;
 }
 
+// Additional types for new panels
+interface RecentBattle {
+  id: string;
+  tokenA: string;
+  tokenB: string;
+  winner: TWBetSide | 'tie' | null;
+  tokenAPercentChange: number;
+  tokenBPercentChange: number;
+  totalPool: number;
+  completedAt: number;
+}
+
+interface BetHistory {
+  battleId: string;
+  tokenA: string;
+  tokenB: string;
+  side: TWBetSide;
+  amountLamports: number;
+  payoutLamports: number;
+  status: string;
+  winner: TWBetSide | 'tie' | null;
+  createdAt: number;
+}
+
+interface LeaderboardEntry {
+  walletAddress: string;
+  totalWinnings: number;
+  totalBets: number;
+  winRate: number;
+}
+
+interface PlayerStats {
+  totalBets: number;
+  totalWon: number;
+  totalLost: number;
+  winRate: number;
+  netProfit: number;
+}
+
+type InfoTab = 'recent' | 'history' | 'leaderboard' | 'stats';
+
 // Lamports per SOL
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
@@ -104,6 +147,99 @@ export default function TokenWarsPage() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState('0.5');
 
+  // Info panel state
+  const [activeTab, setActiveTab] = useState<InfoTab>('recent');
+  const [recentBattles, setRecentBattles] = useState<RecentBattle[]>([]);
+  const [betHistory, setBetHistory] = useState<BetHistory[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
+
+  // Free bet state
+  const [freeBetBalance, setFreeBetBalance] = useState(0);
+  const [useFreeBet, setUseFreeBet] = useState(false);
+
+  // Fetch free bet balance
+  const fetchFreeBetBalance = useCallback(async () => {
+    if (!publicKey) {
+      setFreeBetBalance(0);
+      return;
+    }
+    try {
+      const walletAddress = publicKey.toBase58();
+      const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
+        headers: {
+          'x-wallet-address': walletAddress,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFreeBetBalance(data.balance || 0);
+      }
+    } catch (e) {
+      console.error('Failed to fetch free bet balance:', e);
+    }
+  }, [publicKey]);
+
+  // Fetch recent battles
+  const fetchRecentBattles = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/token-wars/battles/recent`);
+      if (res.ok) {
+        const data = await res.json();
+        setRecentBattles(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch recent battles:', e);
+    }
+  }, []);
+
+  // Fetch bet history
+  const fetchBetHistory = useCallback(async () => {
+    if (!publicKey) {
+      setBetHistory([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/token-wars/player/${publicKey.toBase58()}/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setBetHistory(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch bet history:', e);
+    }
+  }, [publicKey]);
+
+  // Fetch leaderboard
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/token-wars/leaderboard`);
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboard(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch leaderboard:', e);
+    }
+  }, []);
+
+  // Fetch player stats
+  const fetchPlayerStats = useCallback(async () => {
+    if (!publicKey) {
+      setPlayerStats(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/token-wars/player/${publicKey.toBase58()}/stats`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlayerStats(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch player stats:', e);
+    }
+  }, [publicKey]);
+
   // Fetch config and tokens
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/token-wars/config`)
@@ -116,6 +252,26 @@ export default function TokenWarsPage() {
       .then(setTokens)
       .catch(console.error);
   }, []);
+
+  // Fetch panel data on mount and periodically
+  useEffect(() => {
+    fetchRecentBattles();
+    fetchLeaderboard();
+
+    // Refresh recent battles every 30 seconds
+    const interval = setInterval(() => {
+      fetchRecentBattles();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchRecentBattles, fetchLeaderboard]);
+
+  // Fetch user-specific data when wallet changes
+  useEffect(() => {
+    fetchBetHistory();
+    fetchPlayerStats();
+    fetchFreeBetBalance();
+  }, [fetchBetHistory, fetchPlayerStats, fetchFreeBetBalance]);
 
   // Fetch user's bet for current battle
   const fetchMyBet = useCallback(async () => {
@@ -286,12 +442,23 @@ export default function TokenWarsPage() {
       return;
     }
 
-    const amountLamports = Math.floor(selectedAmount * LAMPORTS_PER_SOL);
+    // Free bets are fixed at 0.01 SOL
+    const FREE_BET_AMOUNT_LAMPORTS = 10_000_000; // 0.01 SOL
+    const amountLamports = useFreeBet ? FREE_BET_AMOUNT_LAMPORTS : Math.floor(selectedAmount * LAMPORTS_PER_SOL);
 
-    if (balanceInSol < selectedAmount) {
-      setError(`Insufficient balance. Need ${selectedAmount} SOL`);
-      setShowDepositModal(true);
-      return;
+    // Check balance (skip if using free bet)
+    if (!useFreeBet) {
+      if (balanceInSol < selectedAmount) {
+        setError(`Insufficient balance. Need ${selectedAmount} SOL`);
+        setShowDepositModal(true);
+        return;
+      }
+    } else {
+      // Using free bet - check if user has free bets available
+      if (freeBetBalance < 1) {
+        setError('No free bets available');
+        return;
+      }
     }
 
     setIsPlacingBet(true);
@@ -302,7 +469,13 @@ export default function TokenWarsPage() {
       wallet: publicKey.toBase58(),
       side,
       amountLamports,
+      useFreeBet,
     });
+
+    // Refresh free bet balance after placing bet
+    if (useFreeBet) {
+      setTimeout(() => fetchFreeBetBalance(), 1000);
+    }
   };
 
   const handleDeposit = async () => {
@@ -329,8 +502,53 @@ export default function TokenWarsPage() {
 
   // Get token name
   const getTokenName = (symbol: string) => {
+    const config = getTokenConfig(symbol);
+    if (config) return config.name;
     const token = tokens.find(t => t.symbol === symbol);
     return token?.name || symbol;
+  };
+
+  // Format wallet address
+  const formatWallet = (address: string) => {
+    if (address.length <= 8) return address;
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
+  };
+
+  // Format time ago
+  const formatTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  };
+
+  // Token Logo Component
+  const TokenLogo = ({ symbol, size = 48 }: { symbol: string; size?: number }) => {
+    const logoUrl = getTokenLogo(symbol);
+    const color = getTokenColor(symbol);
+
+    return (
+      <div
+        className="relative rounded-full overflow-hidden"
+        style={{
+          width: size,
+          height: size,
+          boxShadow: `0 0 20px ${color}40`
+        }}
+      >
+        <Image
+          src={logoUrl}
+          alt={symbol}
+          width={size}
+          height={size}
+          className="rounded-full"
+          unoptimized // External URL
+        />
+      </div>
+    );
   };
 
   if (!mounted) {
@@ -364,6 +582,9 @@ export default function TokenWarsPage() {
       {showResultAnimation && lastWinner && lastWinner !== 'tie' && battle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4">
           <div className="text-center winner-announcement">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <TokenLogo symbol={lastWinner === 'token_a' ? battle.tokenA : battle.tokenB} size={80} />
+            </div>
             <div className={`text-4xl sm:text-6xl md:text-8xl font-black tracking-tight mb-4 ${lastWinner === 'token_a' ? 'text-success' : 'text-danger'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
               {lastWinner === 'token_a' ? battle.tokenA : battle.tokenB} WINS!
             </div>
@@ -412,8 +633,8 @@ export default function TokenWarsPage() {
         </div>
       </div>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0">
+      {/* Main Layout - Two Column on Desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         {/* Token Battle Display */}
         {battle && (
           <div className="flex-1 flex flex-col gap-4 min-h-0">
@@ -431,10 +652,14 @@ export default function TokenWarsPage() {
                       : 'bg-white/5 border-2 border-white/10'
                 } ${!canBet && myBet?.side !== 'token_a' ? 'opacity-50' : ''}`}
               >
-                <div className="text-4xl sm:text-6xl font-black text-success mb-2" style={{ fontFamily: 'Impact, sans-serif' }}>
+                {/* Token Logo */}
+                <div className="mb-3">
+                  <TokenLogo symbol={battle.tokenA} size={64} />
+                </div>
+                <div className="text-3xl sm:text-5xl font-black text-success mb-1" style={{ fontFamily: 'Impact, sans-serif' }}>
                   {battle.tokenA}
                 </div>
-                <div className="text-sm text-white/60 mb-4">{getTokenName(battle.tokenA)}</div>
+                <div className="text-sm text-white/60 mb-3">{getTokenName(battle.tokenA)}</div>
 
                 {/* Price/Change during battle */}
                 {phase === 'in_progress' && battleState?.tokenAPriceNow && (
@@ -486,10 +711,14 @@ export default function TokenWarsPage() {
                       : 'bg-white/5 border-2 border-white/10'
                 } ${!canBet && myBet?.side !== 'token_b' ? 'opacity-50' : ''}`}
               >
-                <div className="text-4xl sm:text-6xl font-black text-danger mb-2" style={{ fontFamily: 'Impact, sans-serif' }}>
+                {/* Token Logo */}
+                <div className="mb-3">
+                  <TokenLogo symbol={battle.tokenB} size={64} />
+                </div>
+                <div className="text-3xl sm:text-5xl font-black text-danger mb-1" style={{ fontFamily: 'Impact, sans-serif' }}>
                   {battle.tokenB}
                 </div>
-                <div className="text-sm text-white/60 mb-4">{getTokenName(battle.tokenB)}</div>
+                <div className="text-sm text-white/60 mb-3">{getTokenName(battle.tokenB)}</div>
 
                 {/* Price/Change during battle */}
                 {phase === 'in_progress' && battleState?.tokenBPriceNow && (
@@ -525,21 +754,56 @@ export default function TokenWarsPage() {
 
             {/* Bet Amount Selector */}
             {phase === 'betting' && !myBet && (
-              <div className="flex items-center justify-center gap-2 flex-shrink-0">
-                <span className="text-white/30 text-xs uppercase tracking-wider">Bet:</span>
-                {BET_AMOUNTS.map((amount) => (
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                {/* Free Bet Toggle */}
+                {freeBetBalance > 0 && (
                   <button
-                    key={amount}
-                    onClick={() => setSelectedAmount(amount)}
-                    className={`min-h-[44px] min-w-[44px] py-2 px-3 rounded-lg text-sm font-bold transition-all touch-manipulation ${
-                      selectedAmount === amount
-                        ? 'bg-warning/20 text-warning border border-warning/50'
-                        : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'
+                    onClick={() => setUseFreeBet(!useFreeBet)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      useFreeBet
+                        ? 'bg-success/20 text-success border border-success/50'
+                        : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
                     }`}
                   >
-                    {amount}
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      useFreeBet ? 'border-success bg-success' : 'border-white/40'
+                    }`}>
+                      {useFreeBet && (
+                        <svg className="w-2.5 h-2.5 text-black" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </span>
+                    Use Free Bet ({freeBetBalance} available)
                   </button>
-                ))}
+                )}
+
+                {/* Amount selector - hidden when using free bet */}
+                {!useFreeBet && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/30 text-xs uppercase tracking-wider">Bet:</span>
+                    {BET_AMOUNTS.map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => setSelectedAmount(amount)}
+                        className={`min-h-[44px] min-w-[44px] py-2 px-3 rounded-lg text-sm font-bold transition-all touch-manipulation ${
+                          selectedAmount === amount
+                            ? 'bg-warning/20 text-warning border border-warning/50'
+                            : 'bg-white/5 text-white/40 border border-transparent hover:bg-white/10'
+                        }`}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show free bet info when selected */}
+                {useFreeBet && (
+                  <div className="text-sm text-success/80">
+                    Free bet: 0.01 SOL value - Keep only winnings!
+                  </div>
+                )}
               </div>
             )}
 
@@ -627,6 +891,187 @@ export default function TokenWarsPage() {
             </div>
           </div>
         )}
+
+        {/* Info Panels Sidebar */}
+        <div className="lg:w-80 flex-shrink-0 flex flex-col gap-3 min-h-0">
+          {/* Stats Summary - Always visible for connected users */}
+          {publicKey && playerStats && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+              <div className="text-xs text-white/40 uppercase mb-2">Your Stats</div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-lg font-bold text-white">{playerStats.totalBets}</div>
+                  <div className="text-[10px] text-white/40">Bets</div>
+                </div>
+                <div>
+                  <div className={`text-lg font-bold ${playerStats.winRate >= 50 ? 'text-success' : 'text-danger'}`}>
+                    {playerStats.winRate.toFixed(0)}%
+                  </div>
+                  <div className="text-[10px] text-white/40">Win Rate</div>
+                </div>
+                <div>
+                  <div className={`text-lg font-bold ${playerStats.netProfit >= 0 ? 'text-success' : 'text-danger'}`}>
+                    {playerStats.netProfit >= 0 ? '+' : ''}{(playerStats.netProfit / LAMPORTS_PER_SOL).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-white/40">P&L (SOL)</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Navigation */}
+          <div className="flex bg-white/5 rounded-lg p-1">
+            {[
+              { key: 'recent' as InfoTab, label: 'Recent' },
+              { key: 'history' as InfoTab, label: 'History' },
+              { key: 'leaderboard' as InfoTab, label: 'Leaders' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-md transition-all ${
+                  activeTab === tab.key
+                    ? 'bg-warning/20 text-warning'
+                    : 'text-white/40 hover:text-white/60'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 bg-white/5 border border-white/10 rounded-xl overflow-hidden min-h-0">
+            <div className="h-full overflow-y-auto">
+              {/* Recent Battles Tab */}
+              {activeTab === 'recent' && (
+                <div className="p-3 space-y-2">
+                  <div className="text-xs text-white/40 uppercase mb-2">Recent Battles</div>
+                  {recentBattles.length === 0 ? (
+                    <div className="text-center text-white/30 text-sm py-4">No recent battles</div>
+                  ) : (
+                    recentBattles.map((b) => (
+                      <div
+                        key={b.id}
+                        className="bg-white/5 rounded-lg p-2 flex items-center gap-2"
+                      >
+                        <div className="flex items-center gap-1">
+                          <TokenLogo symbol={b.tokenA} size={24} />
+                          <span className={`text-xs font-bold ${b.winner === 'token_a' ? 'text-success' : 'text-white/40'}`}>
+                            {b.tokenA}
+                          </span>
+                        </div>
+                        <span className="text-white/20 text-xs">vs</span>
+                        <div className="flex items-center gap-1">
+                          <TokenLogo symbol={b.tokenB} size={24} />
+                          <span className={`text-xs font-bold ${b.winner === 'token_b' ? 'text-danger' : 'text-white/40'}`}>
+                            {b.tokenB}
+                          </span>
+                        </div>
+                        <div className="ml-auto text-right">
+                          <div className="text-xs font-bold text-white">
+                            {(b.totalPool / LAMPORTS_PER_SOL).toFixed(2)} SOL
+                          </div>
+                          <div className="text-[10px] text-white/30">
+                            {b.completedAt ? formatTimeAgo(b.completedAt) : ''}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* History Tab */}
+              {activeTab === 'history' && (
+                <div className="p-3 space-y-2">
+                  <div className="text-xs text-white/40 uppercase mb-2">Your Betting History</div>
+                  {!publicKey ? (
+                    <div className="text-center text-white/30 text-sm py-4">Connect wallet to view history</div>
+                  ) : betHistory.length === 0 ? (
+                    <div className="text-center text-white/30 text-sm py-4">No betting history yet</div>
+                  ) : (
+                    betHistory.map((bet) => (
+                      <div
+                        key={bet.battleId}
+                        className="bg-white/5 rounded-lg p-2"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <TokenLogo symbol={bet.side === 'token_a' ? bet.tokenA : bet.tokenB} size={20} />
+                            <span className={`text-xs font-bold ${bet.side === 'token_a' ? 'text-success' : 'text-danger'}`}>
+                              {bet.side === 'token_a' ? bet.tokenA : bet.tokenB}
+                            </span>
+                          </div>
+                          <div className={`text-xs font-bold ${
+                            bet.status === 'won' ? 'text-success' :
+                            bet.status === 'lost' ? 'text-danger' :
+                            'text-warning'
+                          }`}>
+                            {bet.status === 'won' ? 'WON' : bet.status === 'lost' ? 'LOST' : 'PENDING'}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-white/40">
+                            Bet: {(bet.amountLamports / LAMPORTS_PER_SOL).toFixed(2)} SOL
+                          </span>
+                          {bet.status === 'won' && (
+                            <span className="text-success">
+                              +{((bet.payoutLamports - bet.amountLamports) / LAMPORTS_PER_SOL).toFixed(2)} SOL
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Leaderboard Tab */}
+              {activeTab === 'leaderboard' && (
+                <div className="p-3">
+                  <div className="text-xs text-white/40 uppercase mb-2">Top Winners</div>
+                  {leaderboard.length === 0 ? (
+                    <div className="text-center text-white/30 text-sm py-4">No leaderboard data</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {leaderboard.map((entry, index) => (
+                        <div
+                          key={entry.walletAddress}
+                          className={`flex items-center gap-2 p-2 rounded-lg ${
+                            index < 3 ? 'bg-warning/10' : 'bg-white/5'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold ${
+                            index === 0 ? 'bg-yellow-500 text-black' :
+                            index === 1 ? 'bg-gray-300 text-black' :
+                            index === 2 ? 'bg-amber-700 text-white' :
+                            'bg-white/10 text-white/40'
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-mono text-white truncate">
+                              {formatWallet(entry.walletAddress)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-success">
+                              +{(entry.totalWinnings / LAMPORTS_PER_SOL).toFixed(2)} SOL
+                            </div>
+                            <div className="text-[10px] text-white/30">
+                              {entry.winRate.toFixed(0)}% WR
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Deposit Modal */}

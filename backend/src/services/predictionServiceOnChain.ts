@@ -233,8 +233,14 @@ class PredictionServiceOnChain {
       console.log(
         '[PredictionServiceOnChain] Game state not found, initializing...'
       );
-      await this.initializeGameState(asset);
-      this.currentOnChainRoundId.set(asset, 0);
+      try {
+        await this.initializeGameState(asset);
+        this.currentOnChainRoundId.set(asset, 0);
+      } catch (initError) {
+        console.error('[PredictionServiceOnChain] Failed to initialize game state on-chain:', initError);
+        console.warn('[PredictionServiceOnChain] Continuing without on-chain prediction - authority wallet may need SOL');
+        return; // Don't crash, just skip on-chain prediction
+      }
     }
 
     console.log(

@@ -116,31 +116,39 @@ class BattleManager {
     // Convert entry fee from SOL to lamports (entry fee is stored as SOL value)
     const entryFeeLamports = Math.floor(battle.config.entryFee * LAMPORTS_PER_SOL);
 
-    // Check if user has sufficient balance in PDA
-    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(walletAddress);
-      throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
-    }
+    let pendingId: string | null = null;
+    let lockTx: string | null = null;
 
-    // Create pending debit for entry fee
-    const pendingId = await balanceService.debitPending(
-      walletAddress,
-      entryFeeLamports,
-      'battle',
-      battleId
-    );
+    // For free bets, skip balance check and on-chain transfer (platform covers it)
+    if (!isFreeBet) {
+      // Check if user has sufficient balance in PDA
+      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+      if (!hasSufficient) {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+      }
 
-    // SECURITY: Lock funds on-chain IMMEDIATELY
-    // This prevents the withdraw-after-join exploit where user could:
-    // 1. Join battle (off-chain tracking)
-    // 2. Withdraw from PDA (on-chain)
-    // 3. Lose the battle but have no funds to pay
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'battle');
-    if (!lockTx) {
-      // Failed to lock funds on-chain - cancel the join
-      balanceService.cancelDebit(pendingId);
-      throw new Error('Failed to lock entry fee on-chain. Please try again.');
+      // Create pending debit for entry fee
+      pendingId = await balanceService.debitPending(
+        walletAddress,
+        entryFeeLamports,
+        'battle',
+        battleId
+      );
+
+      // SECURITY: Lock funds on-chain IMMEDIATELY
+      // This prevents the withdraw-after-join exploit where user could:
+      // 1. Join battle (off-chain tracking)
+      // 2. Withdraw from PDA (on-chain)
+      // 3. Lose the battle but have no funds to pay
+      lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'battle');
+      if (!lockTx) {
+        // Failed to lock funds on-chain - cancel the join
+        balanceService.cancelDebit(pendingId);
+        throw new Error('Failed to lock entry fee on-chain. Please try again.');
+      }
+    } else {
+      console.log(`[Battle] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
     }
 
     // Create player with starting account
@@ -158,7 +166,9 @@ class BattleManager {
     this.playerBattles.set(walletAddress, battleId);
 
     // Confirm the debit now that player is in battle
-    balanceService.confirmDebit(pendingId);
+    if (pendingId) {
+      balanceService.confirmDebit(pendingId);
+    }
 
     console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL${isFreeBet ? ' (free bet)' : ''}. Lock TX: ${lockTx}`);
 

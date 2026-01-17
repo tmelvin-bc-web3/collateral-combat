@@ -30,6 +30,11 @@ import { balanceService } from './balanceService';
 import { priceService } from './priceService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import { pythVerificationService } from './pythVerificationService';
+import {
+  addFailedPayout,
+  getPendingFailedPayouts,
+  FailedPayoutRecord,
+} from '../db/failedPayoutsDatabase';
 
 // Lamports per SOL
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -41,19 +46,8 @@ const PAYOUT_RETRY_CONFIG = {
   maxDelayMs: 10000,
 };
 
-// Failed payout tracking for manual recovery
-interface FailedPayout {
-  battleId: string;
-  walletAddress: string;
-  amountLamports: number;
-  reason: string;
-  timestamp: number;
-  retryCount: number;
-  isFreeBet?: boolean;
-}
-
-// In-memory queue for failed payouts
-const failedPayouts: FailedPayout[] = [];
+// Note: Failed payouts are now persisted to database via failedPayoutsDatabase.ts
+// This ensures no user loses funds due to server restarts or crashes
 
 /**
  * Validate Solana wallet address format
@@ -471,15 +465,17 @@ class TokenWarsManager {
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      failedPayouts.push({
+      addFailedPayout(
+        'token_wars',
         battleId,
         walletAddress,
         amountLamports,
-        reason: errorMsg,
-        timestamp: Date.now(),
+        'payout',
+        errorMsg,
         retryCount,
-      });
-      console.error(`[TokenWars] CRITICAL: Payout failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Added to recovery queue.`);
+        false
+      );
+      console.error(`[TokenWars] CRITICAL: Payout failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
     }
   }
@@ -503,16 +499,17 @@ class TokenWarsManager {
         return 'free_bet_credited';
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        failedPayouts.push({
+        addFailedPayout(
+          'token_wars',
           battleId,
           walletAddress,
           amountLamports,
-          reason: `Free bet credit failed: ${errorMsg}`,
-          timestamp: Date.now(),
+          'refund',
+          `Free bet credit failed: ${errorMsg}`,
           retryCount,
-          isFreeBet: true,
-        });
-        console.error(`[TokenWars] Failed to credit free bet to ${walletAddress.slice(0, 8)}... for battle ${battleId}. Added to recovery queue.`);
+          true
+        );
+        console.error(`[TokenWars] Failed to credit free bet to ${walletAddress.slice(0, 8)}... for battle ${battleId}. Persisted to recovery database.`);
         return null;
       }
     }
@@ -538,25 +535,26 @@ class TokenWarsManager {
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      failedPayouts.push({
+      addFailedPayout(
+        'token_wars',
         battleId,
         walletAddress,
         amountLamports,
-        reason: `Refund failed: ${errorMsg}`,
-        timestamp: Date.now(),
+        'refund',
+        `Refund failed: ${errorMsg}`,
         retryCount,
-        isFreeBet: false,
-      });
-      console.error(`[TokenWars] CRITICAL: Refund failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Added to recovery queue.`);
+        false
+      );
+      console.error(`[TokenWars] CRITICAL: Refund failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
     }
   }
 
   /**
-   * Get failed payouts for manual recovery
+   * Get failed payouts for manual recovery (now reads from persistent database)
    */
-  getFailedPayouts(): FailedPayout[] {
-    return [...failedPayouts];
+  getFailedPayouts(): FailedPayoutRecord[] {
+    return getPendingFailedPayouts(100);
   }
 
   /**
@@ -741,34 +739,77 @@ class TokenWarsManager {
       return { success: false, error: 'Cannot bet on opposite side of existing bet' };
     }
 
-    // Check if user has sufficient balance
-    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, amountLamports);
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(walletAddress);
-      return {
-        success: false,
-        error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
-      };
-    }
+    let pendingId: string | null = null;
 
-    // Create pending debit
-    const pendingId = await balanceService.debitPending(
-      walletAddress,
-      amountLamports,
-      'token_wars',
-      battle.id
-    );
+    // For free bets, skip balance check and on-chain transfer (platform covers it)
+    if (!isFreeBet) {
+      // Check if user has sufficient balance
+      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, amountLamports);
+      if (!hasSufficient) {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        return {
+          success: false,
+          error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+        };
+      }
 
-    // Lock funds on-chain
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, amountLamports, 'token_wars');
-    if (!lockTx) {
-      balanceService.cancelDebit(pendingId);
-      return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
+      // Create pending debit
+      pendingId = await balanceService.debitPending(
+        walletAddress,
+        amountLamports,
+        'token_wars',
+        battle.id
+      );
+
+      // Lock funds on-chain
+      const lockTx = await balanceService.transferToGlobalVault(walletAddress, amountLamports, 'token_wars');
+      if (!lockTx) {
+        balanceService.cancelDebit(pendingId);
+        return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
+      }
+    } else {
+      console.log(`[TokenWars] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
     }
 
     // Place the bet with free bet flag
-    const bet = dbPlaceBet(battle.id, walletAddress, side, amountLamports, isFreeBet);
-    balanceService.confirmDebit(pendingId);
+    // SECURITY: Wrap in try/catch to refund if dbPlaceBet fails after funds are locked
+    let bet: TWBetRecord;
+    try {
+      bet = dbPlaceBet(battle.id, walletAddress, side, amountLamports, isFreeBet);
+      if (pendingId) {
+        balanceService.confirmDebit(pendingId);
+      }
+    } catch (error) {
+      // Critical error: bet couldn't be placed
+      console.error(`[TokenWars] dbPlaceBet failed for ${walletAddress.slice(0, 8)}...`);
+
+      // Only attempt refund if this wasn't a free bet (which has no locked funds)
+      if (!isFreeBet && pendingId) {
+        console.error(`[TokenWars] Attempting refund for locked funds...`);
+        try {
+          await balanceService.refundFromGlobalVault(walletAddress, amountLamports, 'token_wars', battle.id);
+          balanceService.cancelDebit(pendingId);
+          console.log(`[TokenWars] Successfully refunded ${walletAddress.slice(0, 8)}... after placeBet failure`);
+        } catch (refundError) {
+          // If refund also fails, log to failed payouts for manual recovery
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          addFailedPayout(
+            'token_wars',
+            battle.id,
+            walletAddress,
+            amountLamports,
+            'refund',
+            `Bet failed after lock, refund failed: ${errorMsg}`,
+            0,
+            isFreeBet
+          );
+          console.error(`[TokenWars] CRITICAL: Refund also failed for ${walletAddress.slice(0, 8)}... Added to recovery queue.`);
+        }
+      }
+
+      const errorMsg = error instanceof Error ? error.message : 'Failed to place bet';
+      return { success: false, error: errorMsg };
+    }
 
     // Get updated battle for odds
     const updatedBattle = getBattle(battle.id)!;

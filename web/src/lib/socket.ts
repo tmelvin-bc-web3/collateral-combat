@@ -127,7 +127,7 @@ interface ClientToServerEvents {
   // Token Wars events
   subscribe_token_wars: () => void;
   unsubscribe_token_wars: () => void;
-  token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => void;
+  token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => void;
 }
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

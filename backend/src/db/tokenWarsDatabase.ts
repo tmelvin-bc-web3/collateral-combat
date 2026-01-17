@@ -189,6 +189,17 @@ const stmts = {
     INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, is_free_bet, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
   `),
+  // Atomic upsert: Insert new bet or add to existing bet amount
+  // This prevents race conditions where concurrent requests could both try to update
+  upsertBet: db.prepare(`
+    INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, is_free_bet, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+    ON CONFLICT(battle_id, wallet_address) DO UPDATE SET
+      amount_lamports = amount_lamports + excluded.amount_lamports
+    RETURNING *
+  `),
+  // Check existing bet side (for validation before upsert)
+  getBetSide: db.prepare(`SELECT side FROM tw_bets WHERE battle_id = ? AND wallet_address = ?`),
   getBet: db.prepare(`SELECT * FROM tw_bets WHERE battle_id = ? AND wallet_address = ?`),
   getBetById: db.prepare(`SELECT * FROM tw_bets WHERE id = ?`),
   getBetsForBattle: db.prepare(`SELECT * FROM tw_bets WHERE battle_id = ?`),
@@ -395,38 +406,24 @@ export function placeBet(
   const id = `twbet_${uuidv4()}`;
   const now = Date.now();
 
-  // Use transaction to ensure atomicity
+  // Use transaction with atomic upsert to prevent race conditions
+  // The UPSERT is atomic in SQLite, preventing double-spend or inconsistent state
   const placeBetTx = db.transaction(() => {
-    // Check for existing bet
-    const existing = stmts.getBet.get(battleId, walletAddress) as any;
+    // First, check if there's an existing bet on the OPPOSITE side
+    // This check is still needed because we can't allow betting both sides
+    const existingSide = stmts.getBetSide.get(battleId, walletAddress) as { side: string } | undefined;
 
-    if (existing) {
-      // Update existing bet (add to amount)
-      if (existing.side !== side) {
-        throw new Error('Cannot bet on opposite side of existing bet');
-      }
-      // Note: Cannot change free bet status on additional bets
-      stmts.updateBetAmount.run(amountLamports, battleId, walletAddress);
-      return {
-        ...rowToBet(existing),
-        amountLamports: existing.amount_lamports + amountLamports,
-      };
-    } else {
-      // Create new bet
-      stmts.insertBet.run(id, battleId, walletAddress, side, amountLamports, isFreeBet ? 1 : 0, now);
-      return {
-        id,
-        battleId,
-        walletAddress,
-        side,
-        amountLamports,
-        payoutLamports: 0,
-        status: 'pending' as const,
-        isFreeBet,
-        createdAt: now,
-        settledAt: null,
-      };
+    if (existingSide && existingSide.side !== side) {
+      throw new Error('Cannot bet on opposite side of existing bet');
     }
+
+    // Atomic upsert: either insert new bet or add to existing amount
+    // ON CONFLICT will atomically add the new amount to existing amount
+    const row = stmts.upsertBet.get(
+      id, battleId, walletAddress, side, amountLamports, isFreeBet ? 1 : 0, now
+    ) as any;
+
+    return rowToBet(row);
   });
 
   const bet = placeBetTx();

@@ -46,6 +46,14 @@ import { balanceService } from './balanceService';
 import { priceService } from './priceService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import { pythVerificationService } from './pythVerificationService';
+import {
+  addFailedPayout,
+  getPendingFailedPayouts,
+  markRetrying,
+  markRecovered,
+  markPermanentFailure,
+  FailedPayoutRecord,
+} from '../db/failedPayoutsDatabase';
 
 import crypto from 'crypto';
 
@@ -59,19 +67,8 @@ const PAYOUT_RETRY_CONFIG = {
   maxDelayMs: 10000,
 };
 
-// Failed payout tracking for manual recovery
-interface FailedPayout {
-  gameId: string;
-  walletAddress: string;
-  amountLamports: number;
-  reason: string;
-  timestamp: number;
-  retryCount: number;
-  isFreeBet?: boolean;
-}
-
-// In-memory queue for failed payouts (would be persisted in production)
-const failedPayouts: FailedPayout[] = [];
+// Note: Failed payouts are now persisted to database via failedPayoutsDatabase.ts
+// This ensures no user loses funds due to server restarts or crashes
 
 /**
  * Validate Solana wallet address format
@@ -863,17 +860,19 @@ class LDSManager {
         return this.retryPayout(walletAddress, amountLamports, gameType, gameId, retryCount + 1);
       }
 
-      // Max retries exceeded - add to failed payouts queue
+      // Max retries exceeded - persist to database for recovery
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      failedPayouts.push({
+      addFailedPayout(
+        'lds',
         gameId,
         walletAddress,
         amountLamports,
-        reason: errorMsg,
-        timestamp: Date.now(),
+        'payout',
+        errorMsg,
         retryCount,
-      });
-      console.error(`[LDS] CRITICAL: Payout failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Added to recovery queue.`);
+        false
+      );
+      console.error(`[LDS] CRITICAL: Payout failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
     }
   }
@@ -897,16 +896,17 @@ class LDSManager {
         return 'free_bet_credited';
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        failedPayouts.push({
+        addFailedPayout(
+          'lds',
           gameId,
           walletAddress,
           amountLamports,
-          reason: `Free bet credit failed: ${errorMsg}`,
-          timestamp: Date.now(),
+          'refund',
+          `Free bet credit failed: ${errorMsg}`,
           retryCount,
-          isFreeBet: true,
-        });
-        console.error(`[LDS] Failed to credit free bet to ${walletAddress.slice(0, 8)}... for game ${gameId}. Added to recovery queue.`);
+          true
+        );
+        console.error(`[LDS] Failed to credit free bet to ${walletAddress.slice(0, 8)}... for game ${gameId}. Persisted to recovery database.`);
         return null;
       }
     }
@@ -932,25 +932,26 @@ class LDSManager {
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      failedPayouts.push({
+      addFailedPayout(
+        'lds',
         gameId,
         walletAddress,
         amountLamports,
-        reason: `Refund failed: ${errorMsg}`,
-        timestamp: Date.now(),
+        'refund',
+        `Refund failed: ${errorMsg}`,
         retryCount,
-        isFreeBet: false,
-      });
-      console.error(`[LDS] CRITICAL: Refund failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Added to recovery queue.`);
+        false
+      );
+      console.error(`[LDS] CRITICAL: Refund failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
     }
   }
 
   /**
-   * Get failed payouts for manual recovery
+   * Get failed payouts for manual recovery (now reads from persistent database)
    */
-  getFailedPayouts(): FailedPayout[] {
-    return [...failedPayouts];
+  getFailedPayouts(): FailedPayoutRecord[] {
+    return getPendingFailedPayouts(100);
   }
 
   /**
@@ -1006,34 +1007,76 @@ class LDSManager {
       return { success: false, error: 'Game is full' };
     }
 
-    // Check if player has sufficient balance
-    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS);
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(walletAddress);
-      return {
-        success: false,
-        error: `Insufficient balance. Need ${CONFIG.ENTRY_FEE_SOL} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
-      };
-    }
+    let pendingId: string | null = null;
 
-    // Create pending debit
-    const pendingId = await balanceService.debitPending(
-      walletAddress,
-      CONFIG.ENTRY_FEE_LAMPORTS,
-      'lds',
-      game.id
-    );
+    // For free bets, skip balance check and on-chain transfer (platform covers it)
+    if (!isFreeBet) {
+      // Check if player has sufficient balance
+      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS);
+      if (!hasSufficient) {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        return {
+          success: false,
+          error: `Insufficient balance. Need ${CONFIG.ENTRY_FEE_SOL} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+        };
+      }
 
-    // Lock funds on-chain
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds');
-    if (!lockTx) {
-      balanceService.cancelDebit(pendingId);
-      return { success: false, error: 'Failed to lock entry fee on-chain. Please try again.' };
+      // Create pending debit
+      pendingId = await balanceService.debitPending(
+        walletAddress,
+        CONFIG.ENTRY_FEE_LAMPORTS,
+        'lds',
+        game.id
+      );
+
+      // Lock funds on-chain
+      const lockTx = await balanceService.transferToGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds');
+      if (!lockTx) {
+        balanceService.cancelDebit(pendingId);
+        return { success: false, error: 'Failed to lock entry fee on-chain. Please try again.' };
+      }
+    } else {
+      console.log(`[LDS] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
     }
 
     // Add player to game with free bet flag
-    addPlayer(game.id, walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, isFreeBet);
-    balanceService.confirmDebit(pendingId);
+    // SECURITY: Wrap in try/catch to refund if addPlayer fails after funds are locked
+    try {
+      addPlayer(game.id, walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, isFreeBet);
+      if (pendingId) {
+        balanceService.confirmDebit(pendingId);
+      }
+    } catch (error) {
+      // Critical error: player couldn't be added
+      console.error(`[LDS] addPlayer failed for ${walletAddress.slice(0, 8)}...`);
+
+      // Only attempt refund if this wasn't a free bet (which has no locked funds)
+      if (!isFreeBet && pendingId) {
+        console.error(`[LDS] Attempting refund for locked funds...`);
+        try {
+          await balanceService.refundFromGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds', game.id);
+          balanceService.cancelDebit(pendingId);
+          console.log(`[LDS] Successfully refunded ${walletAddress.slice(0, 8)}... after addPlayer failure`);
+        } catch (refundError) {
+          // If refund also fails, log to failed payouts for manual recovery
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          addFailedPayout(
+            'lds',
+            game.id,
+            walletAddress,
+            CONFIG.ENTRY_FEE_LAMPORTS,
+            'refund',
+            `Join failed after lock, refund failed: ${errorMsg}`,
+            0,
+            isFreeBet
+          );
+          console.error(`[LDS] CRITICAL: Refund also failed for ${walletAddress.slice(0, 8)}... Added to recovery queue.`);
+        }
+      }
+
+      const errorMsg = error instanceof Error ? error.message : 'Failed to add player to game';
+      return { success: false, error: errorMsg };
+    }
 
     // Get updated game
     const updatedGame = getGame(game.id)!;

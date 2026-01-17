@@ -23,7 +23,7 @@ type Tab = 'presets' | 'nfts' | 'stats';
 export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
-  const { ownProfile, updateProfile } = useProfileContext();
+  const { ownProfile, updateProfile, error: profileError } = useProfileContext();
   const {
     progression,
     perks,
@@ -43,6 +43,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle client-side mounting for portal
@@ -57,6 +58,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
       setSelectedNFT(null);
       setUsername(ownProfile?.username || '');
       setUsernameError(null);
+      setSaveError(null);
 
       // Set active tab based on current profile
       if (ownProfile?.pfpType === 'nft') {
@@ -142,16 +144,18 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     if (usernameError) return;
 
     setIsSaving(true);
+    setSaveError(null);
 
     try {
+      let result;
       if (selectedPreset) {
-        await updateProfile({
+        result = await updateProfile({
           pfpType: 'preset',
           presetId: selectedPreset.id,
           username: username || undefined,
         });
       } else if (selectedNFT) {
-        await updateProfile({
+        result = await updateProfile({
           pfpType: 'nft',
           nftMint: selectedNFT.mint,
           nftImageUrl: selectedNFT.image,
@@ -159,7 +163,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
         });
       } else {
         // Just updating username
-        await updateProfile({
+        result = await updateProfile({
           pfpType: ownProfile?.pfpType || 'default',
           presetId: ownProfile?.presetId,
           nftMint: ownProfile?.nftMint,
@@ -167,9 +171,15 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           username: username || undefined,
         });
       }
-      onClose();
-    } catch {
-      // Save failed
+
+      if (result) {
+        onClose();
+      } else {
+        // updateProfile returned null - show error from context or generic message
+        setSaveError(profileError || 'Failed to save profile. Please sign in and try again.');
+      }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -326,21 +336,31 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
 
         {/* Footer - hide on stats tab */}
         {activeTab !== 'stats' && (
-          <div className="flex items-center justify-between p-4 border-t border-border-primary bg-bg-tertiary/50">
-            <button
-              onClick={handleReset}
-              disabled={isSaving || ownProfile?.pfpType === 'default'}
-              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Reset to Default
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!canSave || isSaving}
-              className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
-            </button>
+          <div className="border-t border-border-primary bg-bg-tertiary/50">
+            {/* Error message */}
+            {saveError && (
+              <div className="px-4 pt-3 pb-0">
+                <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
+                  {saveError}
+                </p>
+              </div>
+            )}
+            <div className="flex items-center justify-between p-4">
+              <button
+                onClick={handleReset}
+                disabled={isSaving || ownProfile?.pfpType === 'default'}
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Reset to Default
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!canSave || isSaving}
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
+              </button>
+            </div>
           </div>
         )}
       </div>

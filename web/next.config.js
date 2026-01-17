@@ -25,6 +25,10 @@ const nextConfig = {
       { protocol: 'https', hostname: '*.amazonaws.com' },
       // Helius CDN
       { protocol: 'https', hostname: 'cdn.helius-rpc.com' },
+      // CoinGecko CDN for token logos
+      { protocol: 'https', hostname: 'assets.coingecko.com' },
+      // UI Avatars for fallback token icons
+      { protocol: 'https', hostname: 'ui-avatars.com' },
     ],
   },
   turbopack: {

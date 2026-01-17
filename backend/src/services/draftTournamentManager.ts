@@ -196,38 +196,48 @@ class DraftTournamentManager {
     // CRITICAL FIX: Actually collect entry fee from PDA balance!
     const entryFeeLamports = tournament.entryFeeLamports;
 
-    // Check if user has sufficient balance
-    const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(walletAddress);
-      throw new Error(`Insufficient balance. Need ${entryFeeLamports / 1_000_000_000} SOL, have ${available / 1_000_000_000} SOL`);
-    }
+    let pendingId: string | null = null;
+    let lockTx: string | null = null;
 
-    // Create pending debit for the entry fee
-    const pendingId = await balanceService.debitPending(
-      walletAddress,
-      entryFeeLamports,
-      'draft',
-      tournamentId
-    );
+    // For free bets, skip balance check and on-chain transfer (platform covers it)
+    if (!isFreeBet) {
+      // Check if user has sufficient balance
+      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+      if (!hasSufficient) {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        throw new Error(`Insufficient balance. Need ${entryFeeLamports / 1_000_000_000} SOL, have ${available / 1_000_000_000} SOL`);
+      }
 
-    // SECURITY: Lock funds on-chain IMMEDIATELY
-    // This prevents the withdraw-after-entry exploit where user could:
-    // 1. Enter tournament (off-chain tracking)
-    // 2. Withdraw from PDA (on-chain)
-    // 3. Win tournament but platform has no funds to pay losers' share
-    const lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'draft');
-    if (!lockTx) {
-      // Failed to lock funds on-chain - cancel the entry
-      balanceService.cancelDebit(pendingId);
-      throw new Error('Failed to lock entry fee on-chain. Please try again.');
+      // Create pending debit for the entry fee
+      pendingId = await balanceService.debitPending(
+        walletAddress,
+        entryFeeLamports,
+        'draft',
+        tournamentId
+      );
+
+      // SECURITY: Lock funds on-chain IMMEDIATELY
+      // This prevents the withdraw-after-entry exploit where user could:
+      // 1. Enter tournament (off-chain tracking)
+      // 2. Withdraw from PDA (on-chain)
+      // 3. Win tournament but platform has no funds to pay losers' share
+      lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'draft');
+      if (!lockTx) {
+        // Failed to lock funds on-chain - cancel the entry
+        balanceService.cancelDebit(pendingId);
+        throw new Error('Failed to lock entry fee on-chain. Please try again.');
+      }
+    } else {
+      console.log(`[Draft] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
     }
 
     // Create entry in database with free bet flag
     const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports, isFreeBet);
 
     // Confirm the debit
-    balanceService.confirmDebit(pendingId);
+    if (pendingId) {
+      balanceService.confirmDebit(pendingId);
+    }
 
     // Update prize pool
     db.incrementPrizePool(tournamentId, entryFeeLamports);

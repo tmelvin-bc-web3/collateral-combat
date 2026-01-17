@@ -13,13 +13,14 @@ interface ProfileSetupProps {
 }
 
 export function ProfileSetup({ onComplete }: ProfileSetupProps) {
-  const { updateProfile } = useProfileContext();
+  const { updateProfile, error: profileError } = useProfileContext();
 
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const validateUsername = (value: string): string | null => {
@@ -80,6 +81,7 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     if (usernameError) return;
 
     setIsSaving(true);
+    setSaveError(null);
 
     try {
       const result = await updateProfile({
@@ -90,10 +92,10 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       if (result) {
         onComplete();
       } else {
-        console.error('Failed to save profile');
+        setSaveError(profileError || 'Failed to save profile. Please sign in and try again.');
       }
-    } catch (err) {
-      console.error('Profile save error:', err);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -202,21 +204,31 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-border-primary bg-bg-tertiary/50">
-          <button
-            onClick={handleSkip}
-            disabled={isSaving}
-            className="px-6 py-2.5 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
-          >
-            Skip for now
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !!usernameError || isCheckingUsername}
-            className="btn btn-primary px-8 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Continue'}
-          </button>
+        <div className="border-t border-border-primary bg-bg-tertiary/50">
+          {/* Error message */}
+          {saveError && (
+            <div className="px-6 pt-4 pb-0">
+              <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
+                {saveError}
+              </p>
+            </div>
+          )}
+          <div className="flex items-center justify-between p-6">
+            <button
+              onClick={handleSkip}
+              disabled={isSaving}
+              className="px-6 py-2.5 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || !!usernameError || isCheckingUsername}
+              className="btn btn-primary px-8 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Continue'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

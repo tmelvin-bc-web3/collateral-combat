@@ -334,23 +334,37 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request
       }
     }
 
-    // Validate username if provided
-    if (username !== undefined && username !== null && username !== '') {
-      if (typeof username !== 'string' || username.length > 20) {
-        return res.status(400).json({ error: 'Username must be 20 characters or less' });
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
-      }
-      // Check if username is already taken by another user
-      if (isUsernameTaken(username, req.params.wallet)) {
-        return res.status(409).json({ error: 'Username is already taken' });
+    // Determine username value:
+    // - undefined in request body = preserve existing (don't include in update)
+    // - null or '' = explicitly clear username
+    // - valid string = set new username
+    let usernameValue: string | undefined = undefined;
+    const usernameInRequest = 'username' in req.body;
+
+    if (usernameInRequest) {
+      if (username === null || username === '') {
+        // Explicitly clearing username - pass empty string to trigger clear
+        usernameValue = '';
+      } else if (typeof username === 'string') {
+        // Validate the new username
+        if (username.length > 20) {
+          return res.status(400).json({ error: 'Username must be 20 characters or less' });
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+          return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+        }
+        // Check if username is already taken by another user
+        if (isUsernameTaken(username, req.params.wallet)) {
+          return res.status(409).json({ error: 'Username is already taken' });
+        }
+        usernameValue = username;
       }
     }
+    // If usernameValue stays undefined, upsertProfile will preserve existing username
 
     const profile = upsertProfile({
       walletAddress: req.params.wallet,
-      username: username || undefined,
+      username: usernameValue,
       pfpType: pfpType as ProfilePictureType,
       presetId: pfpType === 'preset' ? presetId : undefined,
       nftMint: pfpType === 'nft' ? nftMint : undefined,
@@ -1296,8 +1310,8 @@ app.get('/api/progression/:wallet/rake', (req, res) => {
 
 // ============= Free Bet Endpoints =============
 
-// Get free bet balance (requires wallet ownership - sensitive data)
-app.get('/api/progression/:wallet/free-bets', requireOwnWallet, (req: Request, res: Response) => {
+// Get free bet balance (public read-only - just shows count)
+app.get('/api/progression/:wallet/free-bets', standardLimiter, (req: Request, res: Response) => {
   const balance = progressionService.getFreeBetBalance(req.params.wallet);
   res.json(balance);
 });
@@ -2224,7 +2238,7 @@ io.on('connection', (socket) => {
     console.log(`[TokenWars] Client ${socket.id} unsubscribed`);
   });
 
-  socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => {
+  socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => {
     // Rate limit bet placement
     const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'token_wars_place_bet', BET_ACTION_LIMIT);
     if (!rateCheck.allowed) {
@@ -2233,10 +2247,27 @@ io.on('connection', (socket) => {
     }
 
     try {
-      const result = await tokenWarsManager.placeBet(data.wallet, data.side, data.amountLamports);
+      let isFreeBet = false;
+
+      // If user wants to use a free bet, check and deduct from their balance
+      if (data.useFreeBet) {
+        const useResult = progressionService.useFreeBetCredit(data.wallet, 'token_wars', `Token Wars free bet`);
+        if (!useResult.success) {
+          socket.emit('token_wars_bet_error' as any, { error: 'No free bets available' });
+          return;
+        }
+        isFreeBet = true;
+        console.log(`[TokenWars] Using free bet for ${data.wallet.slice(0, 8)}...`);
+      }
+
+      const result = await tokenWarsManager.placeBet(data.wallet, data.side, data.amountLamports, isFreeBet);
       if (result.success) {
         socket.emit('token_wars_bet_success' as any, { bet: result.bet });
       } else {
+        // Refund free bet credit if bet placement failed
+        if (isFreeBet) {
+          progressionService.addFreeBetCredit(data.wallet, 1, 'Token Wars bet failed refund');
+        }
         socket.emit('token_wars_bet_error' as any, { error: result.error });
       }
     } catch (error: any) {
