@@ -1009,8 +1009,8 @@ app.get('/api/predictions/round/:roundId', (req, res) => {
 // Free Bet Position Endpoints (Escrow-based)
 // ===================
 
-// Place a free bet using escrow service (requires auth, rate limited)
-app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: Request, res: Response) => {
+// Place a free bet using escrow service (wallet header required, rate limited)
+app.post('/api/prediction/free-bet', strictLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress, roundId, side } = req.body;
     const authenticatedWallet = req.headers['x-wallet-address'] as string;
