@@ -11,7 +11,7 @@ import { BACKEND_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useProfile(walletAddress: string | null) {
-  const { authenticatedFetch, isAuthenticated } = useAuth();
+  const { authenticatedFetch, isAuthenticated, signIn } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,9 +63,15 @@ export function useProfile(walletAddress: string | null) {
         return null;
       }
 
+      // Auto-sign-in if not authenticated
       if (!isAuthenticated) {
-        setError('Please sign in first');
-        return null;
+        const signedIn = await signIn();
+        if (!signedIn) {
+          setError('Sign in cancelled');
+          return null;
+        }
+        // Small delay to let React state propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       setIsLoading(true);
@@ -99,7 +105,7 @@ export function useProfile(walletAddress: string | null) {
         setIsLoading(false);
       }
     },
-    [walletAddress, isAuthenticated, authenticatedFetch]
+    [walletAddress, isAuthenticated, authenticatedFetch, signIn]
   );
 
   const resetProfile = useCallback(async () => {
