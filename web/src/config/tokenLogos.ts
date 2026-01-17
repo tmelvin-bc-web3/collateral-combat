@@ -69,6 +69,63 @@ export const TOKEN_CONFIGS: Record<string, TokenConfig> = {
     color: '#6B5DE3',
     coingeckoId: 'jito-governance-token',
   },
+  // Memecoins
+  PONKE: {
+    symbol: 'PONKE',
+    name: 'Ponke',
+    logo: `${COINGECKO_CDN}/34084/large/ponke.png`,
+    color: '#FFD700',
+    coingeckoId: 'ponke',
+  },
+  PENGU: {
+    symbol: 'PENGU',
+    name: 'Pudgy Penguins',
+    logo: `${COINGECKO_CDN}/52138/large/pudgy.jpg`,
+    color: '#87CEEB',
+    coingeckoId: 'pudgy-penguins',
+  },
+  TURBO: {
+    symbol: 'TURBO',
+    name: 'Turbo',
+    logo: `${COINGECKO_CDN}/30382/large/turbo.png`,
+    color: '#00D4FF',
+    coingeckoId: 'turbo',
+  },
+  POPCAT: {
+    symbol: 'POPCAT',
+    name: 'Popcat',
+    logo: `${COINGECKO_CDN}/36426/large/popcat.png`,
+    color: '#FF69B4',
+    coingeckoId: 'popcat',
+  },
+  FARTCOIN: {
+    symbol: 'FARTCOIN',
+    name: 'Fartcoin',
+    logo: `${COINGECKO_CDN}/52517/large/fartcoin.jpg`,
+    color: '#90EE90',
+    coingeckoId: 'fartcoin',
+  },
+  MEW: {
+    symbol: 'MEW',
+    name: 'cat in a dogs world',
+    logo: `${COINGECKO_CDN}/35823/large/mew.png`,
+    color: '#FFA500',
+    coingeckoId: 'cat-in-a-dogs-world',
+  },
+  PNUT: {
+    symbol: 'PNUT',
+    name: 'Peanut the Squirrel',
+    logo: `${COINGECKO_CDN}/52573/large/pnut.jpg`,
+    color: '#DEB887',
+    coingeckoId: 'peanut-the-squirrel',
+  },
+  GOAT: {
+    symbol: 'GOAT',
+    name: 'Goatseus Maximus',
+    logo: `${COINGECKO_CDN}/51090/large/goat.jpg`,
+    color: '#8B4513',
+    coingeckoId: 'goatseus-maximus',
+  },
 };
 
 // Get token config by symbol (case-insensitive)
