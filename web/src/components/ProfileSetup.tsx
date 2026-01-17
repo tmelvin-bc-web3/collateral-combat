@@ -6,6 +6,7 @@ import { useProfileContext } from '@/contexts/ProfileContext';
 import { PRESET_PFPS } from '@/data/presetPFPs';
 import { PresetPFP } from '@/types';
 import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 interface ProfileSetupProps {
@@ -14,6 +15,7 @@ interface ProfileSetupProps {
 
 export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const { updateProfile, error: profileError } = useProfileContext();
+  const { isAuthenticated, signIn } = useAuth();
 
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [username, setUsername] = useState('');
@@ -82,6 +84,16 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
 
     setIsSaving(true);
     setSaveError(null);
+
+    // Auto-sign-in if not authenticated
+    if (!isAuthenticated) {
+      const signedIn = await signIn();
+      if (!signedIn) {
+        setSaveError('Sign in cancelled. Please sign in to save your profile.');
+        setIsSaving(false);
+        return;
+      }
+    }
 
     try {
       const result = await updateProfile({

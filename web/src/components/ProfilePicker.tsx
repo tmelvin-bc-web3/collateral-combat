@@ -11,6 +11,7 @@ import { UserAvatar } from './UserAvatar';
 import { PresetPFP, NFTAsset } from '@/types';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 interface ProfilePickerProps {
@@ -24,6 +25,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
   const { ownProfile, updateProfile, error: profileError } = useProfileContext();
+  const { isAuthenticated, signIn, isLoading: authLoading } = useAuth();
   const {
     progression,
     perks,
@@ -145,6 +147,16 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
 
     setIsSaving(true);
     setSaveError(null);
+
+    // Auto-sign-in if not authenticated
+    if (!isAuthenticated) {
+      const signedIn = await signIn();
+      if (!signedIn) {
+        setSaveError('Sign in cancelled. Please sign in to save your profile.');
+        setIsSaving(false);
+        return;
+      }
+    }
 
     try {
       let result;
