@@ -8,10 +8,8 @@ import {
   clearOwnProfile,
 } from '@/lib/profileStorage';
 import { BACKEND_URL } from '@/config/api';
-import { useAuth } from '@/contexts/AuthContext';
 
 export function useProfile(walletAddress: string | null) {
-  const { authenticatedFetch, isAuthenticated, signIn } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,27 +61,18 @@ export function useProfile(walletAddress: string | null) {
         return null;
       }
 
-      // Auto-sign-in if not authenticated
-      if (!isAuthenticated) {
-        const signedIn = await signIn();
-        if (!signedIn) {
-          setError('Sign in cancelled');
-          return null;
-        }
-        // Small delay to let React state propagate
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
       setIsLoading(true);
       setError(null);
 
       try {
-        const res = await authenticatedFetch(
+        // No authentication needed - just wallet address header
+        const res = await fetch(
           `${BACKEND_URL}/api/profile/${walletAddress}`,
           {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
+              'x-wallet-address': walletAddress,
             },
             body: JSON.stringify(updates),
           }
@@ -105,27 +94,28 @@ export function useProfile(walletAddress: string | null) {
         setIsLoading(false);
       }
     },
-    [walletAddress, isAuthenticated, authenticatedFetch, signIn]
+    [walletAddress]
   );
 
   const resetProfile = useCallback(async () => {
     if (!walletAddress) return;
 
-    // Delete from backend (requires authentication)
-    if (isAuthenticated) {
-      try {
-        await authenticatedFetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
-          method: 'DELETE',
-        });
-      } catch {
-        // Delete failed - continue with local cleanup
-      }
+    // Delete from backend (no authentication needed)
+    try {
+      await fetch(`${BACKEND_URL}/api/profile/${walletAddress}`, {
+        method: 'DELETE',
+        headers: {
+          'x-wallet-address': walletAddress,
+        },
+      });
+    } catch {
+      // Delete failed - continue with local cleanup
     }
 
     // Clear localStorage
     clearOwnProfile();
     setProfile(null);
-  }, [walletAddress, isAuthenticated, authenticatedFetch]);
+  }, [walletAddress]);
 
   const clearLocalProfile = useCallback(() => {
     clearOwnProfile();

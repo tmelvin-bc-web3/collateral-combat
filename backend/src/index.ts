@@ -32,7 +32,7 @@ import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT } from './middleware/socketRateLimiter';
-import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership } from './middleware/auth';
+import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
 import { createToken } from './utils/jwt';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
@@ -301,7 +301,7 @@ app.get('/api/profile/:wallet', (req, res) => {
   res.json(profile);
 });
 
-app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, (req: Request, res: Response) => {
+app.put('/api/profile/:wallet', requireWalletHeader(), standardLimiter, (req: Request, res: Response) => {
   try {
     const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
 
@@ -392,7 +392,7 @@ app.get('/api/profiles', (req, res) => {
   res.json(profiles);
 });
 
-app.delete('/api/profile/:wallet', requireOwnWallet, (req: Request, res: Response) => {
+app.delete('/api/profile/:wallet', requireWalletHeader(), (req: Request, res: Response) => {
   const deleted = deleteProfile(req.params.wallet);
   res.json({ deleted });
 });
