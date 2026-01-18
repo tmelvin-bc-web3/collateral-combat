@@ -50,7 +50,8 @@ const ESCROW_SEED = Buffer.from('escrow');
 // Constants
 const FALLBACK_POLL_INTERVAL_MS = 60_000; // Fallback poll every 60 seconds (reduced from 15s)
 const PENDING_REBATES_INTERVAL_MS = 30_000; // Process pending rebates every 30 seconds
-const RECONNECT_DELAY_MS = 5_000; // Reconnect after 5 seconds on disconnect
+const RECONNECT_BASE_DELAY_MS = 5_000; // Base reconnect delay
+const RECONNECT_MAX_DELAY_MS = 60_000; // Max reconnect delay (1 minute)
 const BASELINE_FEE_BPS = 500; // 5% baseline fee in basis points
 const MIN_REBATE_LAMPORTS = 100_000; // 0.0001 SOL minimum rebate
 
@@ -73,6 +74,7 @@ class RakeRebateService {
   private isInitialized: boolean = false;
   private isSubscribed: boolean = false;
   private processedSignatures: Set<string> = new Set(); // Dedup processed txs
+  private reconnectAttempts: number = 0; // For exponential backoff
 
   constructor() {
     const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
@@ -202,12 +204,37 @@ class RakeRebateService {
 
   /**
    * Extract claim information from a parsed transaction
+   * SECURITY: Validates that the transaction is from the prediction program
    */
   private extractClaimInfo(
     tx: ParsedTransactionWithMeta,
     signature: string
   ): { walletAddress: string; roundId: number; payoutLamports: number } | null {
     try {
+      const logs = tx.meta?.logMessages || [];
+
+      // SECURITY: Verify this transaction invoked the prediction program
+      const programInvoked = logs.some(log =>
+        log.includes(`Program ${PREDICTION_PROGRAM_ID.toBase58()} invoke`) ||
+        log.includes(`Program ${PREDICTION_PROGRAM_ID.toBase58()} success`)
+      );
+
+      if (!programInvoked) {
+        // Not a prediction program transaction - ignore
+        return null;
+      }
+
+      // SECURITY: Verify this is a claim instruction (look for claim-specific logs)
+      const isClaimInstruction = logs.some(log =>
+        log.toLowerCase().includes('claim') ||
+        log.includes('Instruction: ClaimWinnings')
+      );
+
+      if (!isClaimInstruction) {
+        // Not a claim transaction - ignore
+        return null;
+      }
+
       // Find the player (claimer) from the transaction
       // The player should be a signer that receives SOL from the escrow
       const accountKeys = tx.transaction.message.accountKeys;
@@ -224,8 +251,8 @@ class RakeRebateService {
         if (balanceChange > LAMPORTS_PER_SOL * 0.005) { // More than 0.005 SOL received
           const walletAddress = account.pubkey.toBase58();
 
-          // Try to extract round ID from logs or instruction data
-          const roundId = this.extractRoundIdFromLogs(tx.meta?.logMessages || []);
+          // Try to extract round ID from logs (only from prediction program logs)
+          const roundId = this.extractRoundIdFromLogs(logs);
           if (roundId === null) {
             console.log('[RakeRebate] Could not extract round ID from tx:', signature);
             return null;
@@ -488,13 +515,20 @@ class RakeRebateService {
       );
 
       this.isSubscribed = true;
+      this.reconnectAttempts = 0; // Reset on successful connection
       console.log('[RakeRebate] Subscribed to escrow logs (subscription ID:', this.logsSubscriptionId, ')');
     } catch (err) {
       console.error('[RakeRebate] Failed to subscribe to logs:', err);
       this.isSubscribed = false;
 
-      // Retry subscription after delay
-      setTimeout(() => this.subscribeToLogs(), RECONNECT_DELAY_MS);
+      // Exponential backoff with cap
+      this.reconnectAttempts++;
+      const delay = Math.min(
+        RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts - 1),
+        RECONNECT_MAX_DELAY_MS
+      );
+      console.log(`[RakeRebate] Retrying subscription in ${delay / 1000}s (attempt ${this.reconnectAttempts})`);
+      setTimeout(() => this.subscribeToLogs(), delay);
     }
   }
 
