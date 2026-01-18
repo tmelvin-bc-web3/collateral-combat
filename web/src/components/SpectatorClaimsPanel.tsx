@@ -57,12 +57,13 @@ export function SpectatorClaimsPanel({ walletAddress, onClaimWinnings }: Spectat
       socket.emit('verify_claim', {
         betId: bet.id,
         txSignature,
+        walletAddress,
       });
     } catch (err: any) {
       setError(err.message || 'Failed to claim winnings');
       setClaimingId(null);
     }
-  }, [onClaimWinnings]);
+  }, [onClaimWinnings, walletAddress]);
 
   const formatWallet = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`;
   const formatTime = (timestamp: number) => {

@@ -10,12 +10,16 @@ import { PageLoading } from '@/components/ui/skeleton';
 function BattleContent() {
   const { battle } = useBattleContext();
 
+  console.log('[BattlePage] Rendering, battle:', battle?.id, 'status:', battle?.status);
+
   // If in an active or completed battle, show the arena
   if (battle && (battle.status === 'active' || battle.status === 'completed')) {
+    console.log('[BattlePage] Showing BattleArena');
     return <BattleArena battle={battle} />;
   }
 
   // Otherwise show the lobby
+  console.log('[BattlePage] Showing BattleLobby');
   return <BattleLobby />;
 }
 

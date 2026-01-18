@@ -12,6 +12,7 @@ import {
 import { useWallet } from '@solana/wallet-adapter-react';
 import bs58 from 'bs58';
 import { BACKEND_URL } from '@/config/api';
+import { updateSocketAuth } from '@/lib/socket';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const hasAttemptedAutoSignIn = useRef(false);
   const initialLoadDone = useRef(false);
+  const wasConnected = useRef(false);
 
   // Load token from localStorage on mount (persists across refreshes and browser restarts)
   useEffect(() => {
@@ -70,9 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [walletAddress]);
 
-  // Clear token when wallet disconnects
+  // Clear token when wallet explicitly disconnects (not on page load)
   useEffect(() => {
-    if (disconnecting || !connected) {
+    // Only clear token if user explicitly disconnects (was connected, now disconnecting)
+    // or if wallet was connected and is now disconnected
+    if (disconnecting || (wasConnected.current && !connected)) {
       setToken(null);
       setError(null);
       hasAttemptedAutoSignIn.current = false; // Reset for next connection
@@ -81,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(WALLET_KEY);
       }
     }
+    // Track connected state for next render
+    wasConnected.current = connected;
   }, [disconnecting, connected]);
 
   // Auto sign-in when wallet connects (sign once, play all session)
@@ -195,8 +201,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setError(null);
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(TOKEN_KEY);
-      sessionStorage.removeItem(WALLET_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(WALLET_KEY);
     }
   }, []);
 
@@ -232,6 +238,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const isAuthenticated = !!token && !!walletAddress;
+
+  // SECURITY: Update socket authentication when token changes
+  // This ensures WebSocket connections use the authenticated wallet
+  useEffect(() => {
+    updateSocketAuth(token);
+  }, [token]);
 
   return (
     <AuthContext.Provider

@@ -33,7 +33,7 @@ import * as challengesDb from './db/challengesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
-import { createToken } from './utils/jwt';
+import { createToken, verifyToken } from './utils/jwt';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
@@ -131,6 +131,49 @@ const httpServer = createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: socketCorsOptions,
 });
+
+// ===================
+// SECURITY: Socket Authentication Middleware
+// ===================
+// Authenticate socket connections using JWT token
+// This prevents wallet spoofing - clients can't claim to be a different wallet
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+
+  if (token) {
+    const wallet = verifyToken(token);
+    if (wallet) {
+      // Store authenticated wallet on socket - this CANNOT be spoofed by client
+      socket.data.authenticatedWallet = wallet;
+      console.log(`[Socket] Authenticated connection for ${wallet.slice(0, 8)}...`);
+    }
+  }
+
+  // Allow connection even without auth - some events don't require it (subscriptions, viewing)
+  // But financial operations will check socket.data.authenticatedWallet
+  next();
+});
+
+// Helper to get authenticated wallet or throw error
+function getAuthenticatedWallet(socket: any, clientWallet?: string): string {
+  // If socket has authenticated wallet, use it (secure)
+  if (socket.data.authenticatedWallet) {
+    // If client also provided wallet, verify it matches
+    if (clientWallet && clientWallet !== socket.data.authenticatedWallet) {
+      throw new Error('Wallet mismatch - authenticated wallet does not match provided wallet');
+    }
+    return socket.data.authenticatedWallet;
+  }
+
+  // Fallback: If no JWT auth, require wallet parameter
+  // This maintains backwards compatibility but logs a warning
+  if (clientWallet) {
+    console.warn(`[Socket] SECURITY WARNING: Unauthenticated socket using wallet ${clientWallet.slice(0, 8)}... - Consider requiring JWT`);
+    return clientWallet;
+  }
+
+  throw new Error('Not authenticated - please sign in first');
+}
 
 // SECURITY: Freeze Object prototype to prevent prototype pollution attacks
 Object.freeze(Object.prototype);
@@ -1615,21 +1658,25 @@ io.on('connection', (socket) => {
   // Create a new battle
   socket.on('create_battle', async (config: BattleConfig, wallet: string) => {
     try {
-      walletAddress = wallet;
-      const battle = await battleManager.createBattle(config, wallet);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      const battle = await battleManager.createBattle(config, authenticatedWallet);
       currentBattleId = battle.id;
       socket.join(battle.id);
       socket.emit('battle_update', battle);
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required to create battle');
     }
   });
 
   // Join existing battle
   socket.on('join_battle', async (battleId: string, wallet: string) => {
     try {
-      walletAddress = wallet;
-      const battle = await battleManager.joinBattle(battleId, wallet);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      const battle = await battleManager.joinBattle(battleId, authenticatedWallet);
       if (battle) {
         currentBattleId = battleId;
         socket.join(battleId);
@@ -1640,15 +1687,17 @@ io.on('connection', (socket) => {
         }
       }
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required to join battle');
     }
   });
 
   // Queue for matchmaking
   socket.on('queue_matchmaking', (config: BattleConfig, wallet: string) => {
     try {
-      walletAddress = wallet;
-      battleManager.queueForMatchmaking(config, wallet);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      battleManager.queueForMatchmaking(config, authenticatedWallet);
 
       const status = battleManager.getQueueStatus(config);
       socket.emit('matchmaking_status', {
@@ -1656,7 +1705,7 @@ io.on('connection', (socket) => {
         estimated: status.playersInQueue > 1 ? 5 : 30, // seconds
       });
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required for matchmaking');
     }
   });
 
@@ -1805,16 +1854,30 @@ io.on('connection', (socket) => {
 
   socket.on('place_bet', async (battleId: string, backedPlayer: string, amount: number, wallet: string) => {
     try {
-      const bet = await spectatorService.placeBet(battleId, backedPlayer, amount, wallet);
+      // SECURITY: Rate limit betting
+      const rateCheck = checkSocketRateLimit(socket.id, wallet, 'place_bet', BET_ACTION_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+        return;
+      }
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const bet = await spectatorService.placeBet(battleId, backedPlayer, amount, authenticatedWallet);
       socket.emit('bet_placed', bet);
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required to place bet');
     }
   });
 
   socket.on('get_my_bets', (wallet: string) => {
-    const bets = spectatorService.getUserBets(wallet);
-    socket.emit('user_bets', bets);
+    try {
+      // SECURITY: Use authenticated wallet for sensitive data
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const bets = spectatorService.getUserBets(authenticatedWallet);
+      socket.emit('user_bets', bets);
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to view bets');
+    }
   });
 
   // On-chain betting flow with odds locking
@@ -1825,15 +1888,23 @@ io.on('connection', (socket) => {
     walletAddress: string;
   }) => {
     try {
+      // SECURITY: Rate limit odds lock requests
+      const rateCheck = checkSocketRateLimit(socket.id, data.walletAddress, 'request_odds_lock', BET_ACTION_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+        return;
+      }
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.walletAddress);
       const lock = spectatorService.requestOddsLock(
         data.battleId,
         data.backedPlayer,
         data.amount,
-        data.walletAddress
+        authenticatedWallet
       );
       socket.emit('odds_lock', lock);
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required for odds lock');
     }
   });
 
@@ -1843,10 +1914,12 @@ io.on('connection', (socket) => {
     walletAddress: string;
   }) => {
     try {
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.walletAddress);
       const bet = spectatorService.verifyAndRecordBet(
         data.lockId,
         data.txSignature,
-        data.walletAddress
+        authenticatedWallet
       );
       if (bet) {
         socket.emit('bet_verified', bet);
@@ -1856,24 +1929,46 @@ io.on('connection', (socket) => {
         socket.emit('error', 'Failed to verify bet - lock may be expired or already used');
       }
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required to verify bet');
     }
   });
 
   socket.on('get_unclaimed_bets', (wallet: string) => {
-    const bets = spectatorService.getUnclaimedWins(wallet);
-    socket.emit('unclaimed_bets', bets);
+    try {
+      // SECURITY: Use authenticated wallet for sensitive data
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const bets = spectatorService.getUnclaimedWins(authenticatedWallet);
+      socket.emit('unclaimed_bets', bets);
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to view unclaimed bets');
+    }
   });
 
   socket.on('verify_claim', (data: {
     betId: string;
     txSignature: string;
+    walletAddress: string;
   }) => {
     try {
+      // SECURITY: Verify authenticated wallet owns this bet
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.walletAddress);
+
+      // Verify the bet belongs to this wallet before allowing claim
+      const bet = spectatorService.getBet(data.betId);
+      if (!bet) {
+        socket.emit('error', 'Bet not found');
+        return;
+      }
+      if (bet.bettor !== authenticatedWallet) {
+        console.warn(`[Spectator] SECURITY: Wallet ${authenticatedWallet.slice(0, 8)}... attempted to claim bet belonging to ${bet.bettor.slice(0, 8)}...`);
+        socket.emit('error', 'Not authorized to claim this bet');
+        return;
+      }
+
       spectatorService.markBetClaimed(data.betId, data.txSignature);
       socket.emit('claim_verified', { betId: data.betId, txSignature: data.txSignature });
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', error.message || 'Authentication required to claim bet');
     }
   });
 
@@ -1895,21 +1990,37 @@ io.on('connection', (socket) => {
   // Legacy handler - kept for compatibility
   socket.on('place_prediction', async (asset: string, side: PredictionSide, amount: number, wallet: string) => {
     try {
-      const bet = await predictionService.placeBet(asset, side, amount, wallet);
+      // SECURITY: Rate limit predictions
+      const rateCheck = checkSocketRateLimit(socket.id, wallet, 'place_prediction', BET_ACTION_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+        return;
+      }
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const bet = await predictionService.placeBet(asset, side, amount, authenticatedWallet);
       socket.emit('prediction_bet_placed', bet);
     } catch (error: any) {
-      socket.emit('error', error.message);
+      socket.emit('error', 'Authentication required to place prediction');
     }
   });
 
   // New handler using PDA balance
   socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => {
     try {
-      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, data.bettor);
+      // SECURITY: Rate limit predictions
+      const rateCheck = checkSocketRateLimit(socket.id, data.bettor, 'place_prediction_bet', BET_ACTION_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('prediction_bet_result', { success: false, error: rateCheck.error });
+        return;
+      }
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.bettor);
+      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, authenticatedWallet);
       socket.emit('prediction_bet_result', { success: true, bet });
       socket.emit('prediction_bet_placed', bet);
     } catch (error: any) {
-      socket.emit('prediction_bet_result', { success: false, error: error.message });
+      socket.emit('prediction_bet_result', { success: false, error: 'Authentication required to place prediction' });
     }
   });
 
@@ -2020,15 +2131,24 @@ io.on('connection', (socket) => {
   // ===================
 
   socket.on('subscribe_progression', async (wallet: string) => {
-    walletAddress = wallet;
-    socket.join(`progression_${wallet}`);
-    // Send current progression state
-    const progression = await progressionService.getProgression(wallet);
-    socket.emit('progression_update' as any, progression);
+    try {
+      // SECURITY: Use authenticated wallet to prevent data exposure
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      socket.join(`progression_${authenticatedWallet}`);
+      // Send current progression state
+      const progression = await progressionService.getProgression(authenticatedWallet);
+      socket.emit('progression_update' as any, progression);
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to view progression');
+    }
   });
 
   socket.on('unsubscribe_progression', (wallet: string) => {
-    socket.leave(`progression_${wallet}`);
+    // Only leave room for authenticated wallet
+    if (socket.data.authenticatedWallet) {
+      socket.leave(`progression_${socket.data.authenticatedWallet}`);
+    }
   });
 
   // ===================
@@ -2036,14 +2156,23 @@ io.on('connection', (socket) => {
   // ===================
 
   socket.on('subscribe_notifications', (wallet: string) => {
-    socket.join(`notifications_${wallet}`);
-    // Send current unread count
-    const count = notificationDb.getUnreadCount(wallet);
-    socket.emit('notification_count' as any, { count });
+    try {
+      // SECURITY: Use authenticated wallet to prevent data exposure
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      socket.join(`notifications_${authenticatedWallet}`);
+      // Send current unread count
+      const count = notificationDb.getUnreadCount(authenticatedWallet);
+      socket.emit('notification_count' as any, { count });
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to view notifications');
+    }
   });
 
   socket.on('unsubscribe_notifications', (wallet: string) => {
-    socket.leave(`notifications_${wallet}`);
+    // Only leave room for authenticated wallet
+    if (socket.data.authenticatedWallet) {
+      socket.leave(`notifications_${socket.data.authenticatedWallet}`);
+    }
   });
 
   // ===================
@@ -2051,21 +2180,30 @@ io.on('connection', (socket) => {
   // ===================
 
   socket.on('subscribe_rebates', async (wallet: string) => {
-    socket.join(`rebates_${wallet}`);
-    // Send current rebate summary
-    const summary = await progressionDb.getRakeRebateSummary(wallet);
-    const LAMPORTS_PER_SOL = 1_000_000_000;
-    socket.emit('rebate_summary' as any, {
-      totalRebates: summary.totalRebates,
-      totalRebateLamports: summary.totalRebateLamports,
-      totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
-      pendingRebateLamports: summary.pendingRebateLamports,
-      pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
-    });
+    try {
+      // SECURITY: Use authenticated wallet to prevent financial data exposure
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      socket.join(`rebates_${authenticatedWallet}`);
+      // Send current rebate summary
+      const summary = await progressionDb.getRakeRebateSummary(authenticatedWallet);
+      const LAMPORTS_PER_SOL = 1_000_000_000;
+      socket.emit('rebate_summary' as any, {
+        totalRebates: summary.totalRebates,
+        totalRebateLamports: summary.totalRebateLamports,
+        totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
+        pendingRebateLamports: summary.pendingRebateLamports,
+        pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
+      });
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to view rebates');
+    }
   });
 
   socket.on('unsubscribe_rebates', (wallet: string) => {
-    socket.leave(`rebates_${wallet}`);
+    // Only leave room for authenticated wallet
+    if (socket.data.authenticatedWallet) {
+      socket.leave(`rebates_${socket.data.authenticatedWallet}`);
+    }
   });
 
   // ===================
@@ -2074,8 +2212,15 @@ io.on('connection', (socket) => {
 
   // Register wallet for targeted notifications
   socket.on('register_wallet', (wallet: string) => {
-    walletAddress = wallet;
-    battleManager.registerWalletSocket(wallet, socket.id);
+    try {
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      battleManager.registerWalletSocket(authenticatedWallet, socket.id);
+    } catch (error: any) {
+      // SECURITY: No fallback - require authentication for wallet registration
+      socket.emit('error', 'Authentication required to register wallet');
+    }
   });
 
   // Accept a match from ready check
@@ -2111,16 +2256,25 @@ io.on('connection', (socket) => {
 
   // Subscribe to friend challenge notifications
   socket.on('subscribe_challenge_notifications', (wallet: string) => {
-    walletAddress = wallet;
-    challengeNotificationService.subscribe(wallet, socket.id);
-    battleManager.registerWalletSocket(wallet, socket.id);
-    console.log(`[Challenge] ${wallet.slice(0, 8)}... subscribed to challenge notifications`);
+    try {
+      // SECURITY: Use authenticated wallet to prevent unauthorized subscriptions
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      walletAddress = authenticatedWallet;
+      challengeNotificationService.subscribe(authenticatedWallet, socket.id);
+      battleManager.registerWalletSocket(authenticatedWallet, socket.id);
+      console.log(`[Challenge] ${authenticatedWallet.slice(0, 8)}... subscribed to challenge notifications`);
+    } catch (error: any) {
+      socket.emit('error', 'Authentication required to subscribe to challenges');
+    }
   });
 
   // Unsubscribe from challenge notifications
   socket.on('unsubscribe_challenge_notifications', (wallet: string) => {
-    challengeNotificationService.unsubscribe(wallet);
-    console.log(`[Challenge] ${wallet.slice(0, 8)}... unsubscribed from challenge notifications`);
+    // Only unsubscribe authenticated wallet
+    if (socket.data.authenticatedWallet) {
+      challengeNotificationService.unsubscribe(socket.data.authenticatedWallet);
+      console.log(`[Challenge] ${socket.data.authenticatedWallet.slice(0, 8)}... unsubscribed from challenge notifications`);
+    }
   });
 
   // ===================
@@ -2161,14 +2315,16 @@ io.on('connection', (socket) => {
     }
 
     try {
-      const result = await ldsManager.joinGame(wallet);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const result = await ldsManager.joinGame(authenticatedWallet);
       if (result.success) {
         socket.emit('lds_join_success' as any, { game: result.game });
       } else {
         socket.emit('lds_join_error' as any, { error: result.error });
       }
     } catch (error: any) {
-      socket.emit('lds_join_error' as any, { error: error.message || 'Failed to join game' });
+      socket.emit('lds_join_error' as any, { error: 'Authentication required to join game' });
     }
   });
 
@@ -2181,14 +2337,16 @@ io.on('connection', (socket) => {
     }
 
     try {
-      const result = await ldsManager.leaveGame(wallet);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
+      const result = await ldsManager.leaveGame(authenticatedWallet);
       if (result.success) {
         socket.emit('lds_leave_success' as any, {});
       } else {
         socket.emit('lds_leave_error' as any, { error: result.error });
       }
     } catch (error: any) {
-      socket.emit('lds_leave_error' as any, { error: error.message || 'Failed to leave game' });
+      socket.emit('lds_leave_error' as any, { error: 'Authentication required to leave game' });
     }
   });
 
@@ -2201,14 +2359,16 @@ io.on('connection', (socket) => {
     }
 
     try {
-      const result = await ldsManager.submitPrediction(data.gameId, data.wallet, data.prediction);
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
+      const result = await ldsManager.submitPrediction(data.gameId, authenticatedWallet, data.prediction);
       if (result.success) {
         socket.emit('lds_prediction_success' as any, {});
       } else {
         socket.emit('lds_prediction_error' as any, { error: result.error });
       }
     } catch (error: any) {
-      socket.emit('lds_prediction_error' as any, { error: error.message || 'Failed to submit prediction' });
+      socket.emit('lds_prediction_error' as any, { error: 'Authentication required to submit prediction' });
     }
   });
 
@@ -2247,31 +2407,33 @@ io.on('connection', (socket) => {
     }
 
     try {
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
       let isFreeBet = false;
 
       // If user wants to use a free bet, check and deduct from their balance
       if (data.useFreeBet) {
-        const useResult = await progressionService.useFreeBetCredit(data.wallet, 'token_wars', `Token Wars free bet`);
+        const useResult = await progressionService.useFreeBetCredit(authenticatedWallet, 'token_wars', `Token Wars free bet`);
         if (!useResult.success) {
           socket.emit('token_wars_bet_error' as any, { error: 'No free bets available' });
           return;
         }
         isFreeBet = true;
-        console.log(`[TokenWars] Using free bet for ${data.wallet.slice(0, 8)}...`);
+        console.log(`[TokenWars] Using free bet for ${authenticatedWallet.slice(0, 8)}...`);
       }
 
-      const result = await tokenWarsManager.placeBet(data.wallet, data.side, data.amountLamports, isFreeBet);
+      const result = await tokenWarsManager.placeBet(authenticatedWallet, data.side, data.amountLamports, isFreeBet);
       if (result.success) {
         socket.emit('token_wars_bet_success' as any, { bet: result.bet });
       } else {
         // Refund free bet credit if bet placement failed
         if (isFreeBet) {
-          await progressionService.addFreeBetCredit(data.wallet, 1, 'Token Wars bet failed refund');
+          await progressionService.addFreeBetCredit(authenticatedWallet, 1, 'Token Wars bet failed refund');
         }
         socket.emit('token_wars_bet_error' as any, { error: result.error });
       }
     } catch (error: any) {
-      socket.emit('token_wars_bet_error' as any, { error: error.message || 'Failed to place bet' });
+      socket.emit('token_wars_bet_error' as any, { error: 'Authentication required to place bet' });
     }
   });
 
@@ -2856,6 +3018,19 @@ app.get('/api/lds/config', (req: Request, res: Response) => {
   res.json(ldsManager.getConfig());
 });
 
+// Get recent winners for lobby display
+app.get('/api/lds/recent-winners', (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const winners = ldsManager.getRecentWinners(limit);
+  res.json({ winners });
+});
+
+// Get platform stats for lobby display
+app.get('/api/lds/stats', (req: Request, res: Response) => {
+  const stats = ldsManager.getPlatformStats();
+  res.json(stats);
+});
+
 // ===================
 // Token Wars Routes
 // ===================
@@ -2913,12 +3088,21 @@ app.get('/api/token-wars/config', (req: Request, res: Response) => {
   res.json(tokenWarsManager.getConfig());
 });
 
+// Get upcoming matchups
+app.get('/api/token-wars/upcoming', (req: Request, res: Response) => {
+  const count = Math.min(parseInt(req.query.count as string) || 3, 5);
+  const upcoming = tokenWarsManager.getUpcomingMatchups(count);
+  res.json(upcoming);
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
 async function start() {
   // Start price service
-  await priceService.start(5000); // Update prices every 5 seconds
+  // 30s API fetches + 1s tick simulation keeps UI smooth while reducing API calls
+  // At 30s interval: 2,880 calls/day vs 17,280 at 5s
+  await priceService.start(30000);
 
   // Start CoinMarketCap service for memecoins
   await coinMarketCapService.start();

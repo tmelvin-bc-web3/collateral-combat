@@ -169,6 +169,11 @@ export function useBattleOnChain() {
 
       const result = await client.createBattle(entryFeeSol);
 
+      // If config not initialized, return null (will fall back to off-chain)
+      if (!result) {
+        return null;
+      }
+
       // Get the battle PDA for on-chain tracking
       const [battlePDA] = client.getBattlePDA(result.battleId);
       console.log('[OnChain] Battle created:', {

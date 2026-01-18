@@ -11,6 +11,7 @@ import { useWinShare } from '@/hooks/useWinShare';
 import { WinShareModal } from '@/components/WinShareModal';
 import { WinToast } from '@/components/WinToast';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
+import { ArrowUp, ArrowDown, Target, BarChart3 } from 'lucide-react';
 
 // Mobile panel tab type
 type MobilePanel = 'none' | 'wagers' | 'history';
@@ -595,7 +596,7 @@ export default function PredictPage() {
                 </svg>
               )}
               <span className={`text-2xl sm:text-5xl md:text-7xl font-black tracking-tight ${lastWinner === 'long' ? 'text-success' : 'text-danger'} ${prefersReducedMotion ? '' : (lastWinner === 'long' ? 'oracle-winner-flash-long' : 'oracle-winner-flash-short')}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                {lastWinner === 'long' ? 'LONGS SURVIVE' : 'SHORTS SURVIVE'}
+                {lastWinner === 'long' ? 'UP WINS' : 'DOWN WINS'}
               </span>
             </div>
             <div className={`text-xl sm:text-2xl md:text-4xl font-mono font-bold ${priceChange >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -655,7 +656,7 @@ export default function PredictPage() {
           {/* Streak - visible on all screens */}
           {streakInfo.streak >= 2 && (
             <div className={`flex items-center gap-1 text-xs sm:text-sm font-bold ${streakInfo.side === 'long' ? 'text-success' : 'text-danger'}`}>
-              <span className="hidden sm:inline">{streakInfo.streak}× {streakInfo.side === 'long' ? 'LONG' : 'SHORT'} streak</span>
+              <span className="hidden sm:inline">{streakInfo.streak}× {streakInfo.side === 'long' ? 'UP' : 'DOWN'} streak</span>
               <span className="sm:hidden">{streakInfo.streak}×</span>
             </div>
           )}
@@ -687,13 +688,17 @@ export default function PredictPage() {
                         <span className="text-white/60 font-mono text-xs">
                           {bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}
                         </span>
-                        <span className={`font-bold text-xs ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
-                          {bet.side === 'long' ? '+' : '-'}{(bet.amount / (currentPrice || 1)).toFixed(2)}
+                        <span className={`font-bold text-xs flex items-center gap-1 ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
+                          {bet.side === 'long' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />} {(bet.amount / (currentPrice || 1)).toFixed(2)}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-white/20 text-xs text-center py-4">No wagers yet this round</div>
+                    <div className="text-center py-4">
+                      <Target className="w-5 h-5 mx-auto mb-1 text-white/30" />
+                      <div className="text-white/40 text-xs">Waiting for first bet...</div>
+                      <div className="text-white/20 text-[10px]">Be the first to predict!</div>
+                    </div>
                   )}
                 </div>
                 {/* Pool Summary - Mobile */}
@@ -702,13 +707,13 @@ export default function PredictPage() {
                     <div className="text-success font-bold text-sm">
                       {currentRound ? (currentRound.longPool / (currentPrice || 1)).toFixed(2) : '0.00'}
                     </div>
-                    <div className="text-[9px] text-white/30 uppercase">Long</div>
+                    <div className="text-[9px] text-white/30 uppercase flex items-center justify-center gap-1"><ArrowUp className="w-2.5 h-2.5" /> Up</div>
                   </div>
                   <div>
                     <div className="text-danger font-bold text-sm">
                       {currentRound ? (currentRound.shortPool / (currentPrice || 1)).toFixed(2) : '0.00'}
                     </div>
-                    <div className="text-[9px] text-white/30 uppercase">Short</div>
+                    <div className="text-[9px] text-white/30 uppercase flex items-center justify-center gap-1"><ArrowDown className="w-2.5 h-2.5" /> Down</div>
                   </div>
                 </div>
               </>
@@ -737,12 +742,16 @@ export default function PredictPage() {
                           isLong ? 'bg-success/20 text-success' : isShort ? 'bg-danger/20 text-danger' : 'bg-white/10 text-white/30'
                         }`}
                       >
-                        {isLong ? 'L' : isShort ? 'S' : 'P'}
+                        {isLong ? <ArrowUp className="w-3 h-3" /> : isShort ? <ArrowDown className="w-3 h-3" /> : '—'}
                       </div>
                     );
                   })}
                   {recentRounds.length === 0 && (
-                    <div className="text-white/20 text-xs py-2">No rounds yet</div>
+                    <div className="text-center py-4">
+                      <BarChart3 className="w-5 h-5 mx-auto mb-1 text-white/30" />
+                      <div className="text-white/40 text-xs">No rounds yet</div>
+                      <div className="text-white/20 text-[10px]">History will appear here</div>
+                    </div>
                   )}
                 </div>
               </>
@@ -764,8 +773,7 @@ export default function PredictPage() {
               {/* Real-time wagers from socket stream */}
               {liveBets.length > 0 ? (
                 liveBets.map((bet) => (
-                  <div key={bet.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors animate-fadeIn">
-                    <div className="w-1 h-8 rounded-full bg-white/20" />
+                  <div key={bet.id} className={`flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors animate-fadeIn border-l-2 ${bet.side === 'long' ? 'border-l-success' : 'border-l-danger'}`}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-white/60 font-mono text-sm">
@@ -773,8 +781,8 @@ export default function PredictPage() {
                         </span>
                       </div>
                     </div>
-                    <span className={`font-bold text-sm ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
-                      {bet.side === 'long' ? '+' : '-'}{(bet.amount / (currentPrice || 1)).toFixed(2)}
+                    <span className={`font-bold text-sm flex items-center gap-1 ${bet.side === 'long' ? 'text-success' : 'text-danger'}`}>
+                      {bet.side === 'long' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />} {(bet.amount / (currentPrice || 1)).toFixed(2)}
                     </span>
                   </div>
                 ))
@@ -782,25 +790,27 @@ export default function PredictPage() {
                 // Show wagers from current round if no live wagers yet
                 <>
                   {currentRound?.longBets?.map((bet, idx) => (
-                    <div key={bet.id || `long-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                      <div className="w-1 h-8 rounded-full bg-white/20" />
+                    <div key={bet.id || `long-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors border-l-2 border-l-success">
                       <div className="flex-1 min-w-0">
                         <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
                       </div>
-                      <span className="font-bold text-success text-sm">+{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                      <span className="font-bold text-success text-sm flex items-center gap-1"><ArrowUp className="w-4 h-4" /> {(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
                     </div>
                   ))}
                   {currentRound?.shortBets?.map((bet, idx) => (
-                    <div key={bet.id || `short-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                      <div className="w-1 h-8 rounded-full bg-white/20" />
+                    <div key={bet.id || `short-${idx}`} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors border-l-2 border-l-danger">
                       <div className="flex-1 min-w-0">
                         <span className="text-white/60 font-mono text-sm">{bet.bettor?.slice(0, 4)}...{bet.bettor?.slice(-4)}</span>
                       </div>
-                      <span className="font-bold text-danger text-sm">-{(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
+                      <span className="font-bold text-danger text-sm flex items-center gap-1"><ArrowDown className="w-4 h-4" /> {(bet.amount / (currentPrice || 1)).toFixed(2)}</span>
                     </div>
                   ))}
                   {(!currentRound?.longBets?.length && !currentRound?.shortBets?.length) && (
-                    <div className="text-white/20 text-xs text-center py-8">No wagers yet this round</div>
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Target className="w-6 h-6 mb-2 text-white/30" />
+                      <div className="text-white/40 text-sm">Waiting for first bet...</div>
+                      <div className="text-white/20 text-xs mt-1">Be the first to predict!</div>
+                    </div>
                   )}
                 </>
               )}
@@ -813,13 +823,13 @@ export default function PredictPage() {
                   <div className="text-success font-bold text-lg">
                     {currentRound ? (currentRound.longPool / (currentPrice || 1)).toFixed(2) : '0.00'}
                   </div>
-                  <div className="text-[9px] text-white/30 uppercase">Long Pool</div>
+                  <div className="text-[9px] text-white/30 uppercase flex items-center justify-center gap-1"><ArrowUp className="w-2.5 h-2.5" /> Up Pool</div>
                 </div>
                 <div>
                   <div className="text-danger font-bold text-lg">
                     {currentRound ? (currentRound.shortPool / (currentPrice || 1)).toFixed(2) : '0.00'}
                   </div>
-                  <div className="text-[9px] text-white/30 uppercase">Short Pool</div>
+                  <div className="text-[9px] text-white/30 uppercase flex items-center justify-center gap-1"><ArrowDown className="w-2.5 h-2.5" /> Down Pool</div>
                 </div>
               </div>
               </div>
@@ -894,7 +904,7 @@ export default function PredictPage() {
           <div className="flex-1 flex flex-col min-h-0 gap-2" style={{ flexBasis: '50%' }}>
             {/* Wagerting Buttons */}
             <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 min-h-0">
-            {/* Long Button - min height 120px for mobile tap target */}
+            {/* UP Button - min height 120px for mobile tap target */}
             <button
               onClick={() => handlePlaceWager('long')}
               disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
@@ -906,8 +916,9 @@ export default function PredictPage() {
             >
               <div className="absolute inset-0 bg-success/0 group-active:bg-success/20 transition-colors" />
               <div className={`relative flex flex-col items-center gap-1 sm:gap-2 ${isLocked ? 'opacity-20' : ''}`}>
+                <ArrowUp className={`w-8 h-8 sm:w-10 sm:h-10 mb-1 ${isBettingOpen ? 'text-success' : 'text-white/30'}`} strokeWidth={3} />
                 <div className={`text-3xl sm:text-4xl md:text-6xl font-black ${isBettingOpen ? 'text-success' : 'text-white/30'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                  LONG
+                  UP
                 </div>
                 <div className={`text-xl sm:text-2xl md:text-3xl font-bold ${isBettingOpen ? 'text-success' : 'text-white/30'}`}>
                   {getOdds('long')}×
@@ -929,7 +940,7 @@ export default function PredictPage() {
               )}
             </button>
 
-            {/* Short Button - min height 120px for mobile tap target */}
+            {/* DOWN Button - min height 120px for mobile tap target */}
             <button
               onClick={() => handlePlaceWager('short')}
               disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
@@ -941,8 +952,9 @@ export default function PredictPage() {
             >
               <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/20 transition-colors" />
               <div className={`relative flex flex-col items-center gap-1 sm:gap-2 ${isLocked ? 'opacity-20' : ''}`}>
+                <ArrowDown className={`w-8 h-8 sm:w-10 sm:h-10 mb-1 ${isBettingOpen ? 'text-danger' : 'text-white/30'}`} strokeWidth={3} />
                 <div className={`text-3xl sm:text-4xl md:text-6xl font-black ${isBettingOpen ? 'text-danger' : 'text-white/30'}`} style={{ fontFamily: 'Impact, sans-serif' }}>
-                  SHORT
+                  DOWN
                 </div>
                 <div className={`text-xl sm:text-2xl md:text-3xl font-bold ${isBettingOpen ? 'text-danger' : 'text-white/30'}`}>
                   {getOdds('short')}×
@@ -1031,22 +1043,6 @@ export default function PredictPage() {
             </div>
           )}
 
-          {/* Balance Display */}
-          {publicKey && (
-            <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs uppercase">Balance:</span>
-                <span className="text-white font-bold">{balanceInSol.toFixed(4)} SOL</span>
-              </div>
-              <button
-                onClick={() => setShowDepositModal(true)}
-                className="px-3 py-1 rounded-lg bg-warning/20 text-warning text-xs font-bold hover:bg-warning/30 transition-colors touch-manipulation"
-              >
-                Deposit
-              </button>
-            </div>
-          )}
-
           {/* Pending Free Wager Positions */}
           {freeBetPositions.length > 0 && (
             <div className="flex-shrink-0 space-y-1">
@@ -1065,10 +1061,10 @@ export default function PredictPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-warning bg-warning/20 px-1.5 py-0.5 rounded uppercase font-bold">Free</span>
-                      <span className={`text-sm font-bold ${
+                      <span className={`text-sm font-bold flex items-center gap-1 ${
                         position.side === 'long' ? 'text-success' : 'text-danger'
                       }`}>
-                        {position.side === 'long' ? 'LONG' : 'SHORT'}
+                        {position.side === 'long' ? <><ArrowUp className="w-4 h-4" /> UP</> : <><ArrowDown className="w-4 h-4" /> DOWN</>}
                       </span>
                       <span className="text-xs text-white/40">
                         {(position.amountLamports / 1e9).toFixed(3)} SOL
@@ -1116,11 +1112,11 @@ export default function PredictPage() {
                     <div
                       key={round.id}
                       className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                        isLongWinner ? 'bg-success/10' : isShortWinner ? 'bg-danger/10' : 'bg-white/5'
+                        isLongWinner ? 'bg-success/10 border-l-2 border-success' : isShortWinner ? 'bg-danger/10 border-l-2 border-danger' : 'bg-white/5'
                       }`}
                     >
-                      <span className={`font-bold text-sm ${isLongWinner ? 'text-success' : isShortWinner ? 'text-danger' : 'text-white/30'}`}>
-                        {isLongWinner ? 'LONG' : isShortWinner ? 'SHORT' : 'PUSH'}
+                      <span className={`font-bold text-sm flex items-center gap-1 ${isLongWinner ? 'text-success' : isShortWinner ? 'text-danger' : 'text-white/30'}`}>
+                        {isLongWinner ? <><ArrowUp className="w-4 h-4" /> UP</> : isShortWinner ? <><ArrowDown className="w-4 h-4" /> DOWN</> : 'PUSH'}
                       </span>
                       <span className={`font-mono text-sm ${change >= 0 ? 'text-success' : 'text-danger'}`}>
                         {change >= 0 ? '+' : ''}{change.toFixed(2)}%
@@ -1130,7 +1126,11 @@ export default function PredictPage() {
                 })}
 
                 {recentRounds.length === 0 && (
-                  <div className="text-white/20 text-xs text-center py-8">No rounds yet</div>
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <BarChart3 className="w-6 h-6 mb-2 text-white/30" />
+                    <div className="text-white/40 text-sm">No rounds yet</div>
+                    <div className="text-white/20 text-xs mt-1">History will appear here</div>
+                  </div>
                 )}
               </div>
             </div>

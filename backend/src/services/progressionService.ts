@@ -144,7 +144,7 @@ const LEVEL_THRESHOLDS: number[] = [
   1749000, // Level 73
   1848000, // Level 74
   1950000, // Level 75 - 7%/3.5% perks + platinum (~78,000 bets, ~390 SOL rake)
-  2055000, // Level 76 - Mythic
+  2055000, // Level 76 - Immortan
   2163000, // Level 77
   2274000, // Level 78
   2388000, // Level 79
@@ -168,7 +168,7 @@ const LEVEL_THRESHOLDS: number[] = [
   4953000, // Level 97
   5124000, // Level 98
   5298000, // Level 99
-  5475000, // Level 100 - PERMANENT 7%/3.5% perks + mythic (~219,000 bets, ~1,095 SOL rake)
+  5475000, // Level 100 - PERMANENT 7%/3.5% perks + immortan (~219,000 bets, ~1,095 SOL rake)
 ];
 
 // Title configuration
@@ -179,7 +179,7 @@ const TITLES: { minLevel: number; maxLevel: number; title: string }[] = [
   { minLevel: 21, maxLevel: 35, title: 'Veteran' },
   { minLevel: 36, maxLevel: 50, title: 'Champion' },
   { minLevel: 51, maxLevel: 75, title: 'Legend' },
-  { minLevel: 76, maxLevel: 100, title: 'Mythic' },
+  { minLevel: 76, maxLevel: 100, title: 'Immortan' },
 ];
 
 // Level rewards configuration
@@ -208,8 +208,8 @@ const LEVEL_REWARDS: Record<number, LevelReward> = {
   50: { perks: [{ type: 'rake_8' }, { type: 'oracle_4' }], cosmetics: [{ type: 'border', id: 'gold' }], freeBets: 5 },
   // Level 75: Draft 7% rake + Oracle 3.5% rake + Platinum border + free bets
   75: { perks: [{ type: 'rake_7' }, { type: 'oracle_3_5' }], cosmetics: [{ type: 'border', id: 'platinum' }], freeBets: 5 },
-  // Level 100: Permanent perks + Mythic border + free bets
-  100: { perks: [{ type: 'rake_7', permanent: true }, { type: 'oracle_3_5', permanent: true }], cosmetics: [{ type: 'border', id: 'mythic' }], freeBets: 10 },
+  // Level 100: Permanent perks + Immortan border + free bets
+  100: { perks: [{ type: 'rake_7', permanent: true }, { type: 'oracle_3_5', permanent: true }], cosmetics: [{ type: 'border', id: 'immortan' }], freeBets: 10 },
 };
 
 // Perk duration: 1 week in milliseconds

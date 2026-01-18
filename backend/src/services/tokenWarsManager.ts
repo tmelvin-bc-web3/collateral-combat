@@ -985,6 +985,77 @@ class TokenWarsManager {
     };
   }
 
+  /**
+   * Get upcoming matchups (pre-generated for display purposes)
+   * Simulates matchup selection without affecting the real recentMatchups set
+   * @param count - Number of upcoming matchups to generate (default: 3)
+   */
+  getUpcomingMatchups(count: number = 3): Array<{ tokenA: TokenInfo; tokenB: TokenInfo }> {
+    const tokens = AVAILABLE_TOKENS.map(t => t.symbol);
+
+    // Generate all possible pairs
+    const allPairs: [string, string][] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      for (let j = i + 1; j < tokens.length; j++) {
+        allPairs.push([tokens[i], tokens[j]]);
+      }
+    }
+
+    // Create a copy of recent matchups to simulate selection
+    const simulatedRecent = new Set(recentMatchups);
+
+    // Get current battle to exclude it from upcoming
+    const currentBattle = getActiveBattle();
+    if (currentBattle) {
+      const currentKey = [currentBattle.tokenA, currentBattle.tokenB].sort().join('-');
+      simulatedRecent.add(currentKey);
+    }
+
+    const upcoming: Array<{ tokenA: TokenInfo; tokenB: TokenInfo }> = [];
+
+    // Use a seeded approach for consistency within a time window
+    // This ensures the "upcoming" display is stable for a period
+    const timeWindow = Math.floor(Date.now() / 60000); // Changes every minute
+    let seed = timeWindow;
+
+    const seededRandom = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+
+    for (let n = 0; n < count; n++) {
+      // Filter out recently used matchups
+      const availablePairs = allPairs.filter(([a, b]) => {
+        const key = [a, b].sort().join('-');
+        return !simulatedRecent.has(key);
+      });
+
+      // If all pairs recently used, use all pairs
+      const pairsToChooseFrom = availablePairs.length > 0 ? availablePairs : allPairs;
+
+      // Pick using seeded random for stability
+      const randomIndex = Math.floor(seededRandom() * pairsToChooseFrom.length);
+      const [tokenA, tokenB] = pairsToChooseFrom[randomIndex];
+
+      // Track this matchup in simulated set
+      const matchupKey = [tokenA, tokenB].sort().join('-');
+      simulatedRecent.add(matchupKey);
+
+      // Get token info
+      const tokenAInfo = AVAILABLE_TOKENS.find(t => t.symbol === tokenA)!;
+      const tokenBInfo = AVAILABLE_TOKENS.find(t => t.symbol === tokenB)!;
+
+      // Randomly swap order for variety (using seeded random)
+      if (seededRandom() > 0.5) {
+        upcoming.push({ tokenA: tokenBInfo, tokenB: tokenAInfo });
+      } else {
+        upcoming.push({ tokenA: tokenAInfo, tokenB: tokenBInfo });
+      }
+    }
+
+    return upcoming;
+  }
+
   // ============================================
   // Event System
   // ============================================

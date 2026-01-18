@@ -710,26 +710,46 @@ export async function useFreeBetCredit(
   gameMode: GameMode,
   description?: string
 ): Promise<{ success: boolean; balance: FreeBetBalance }> {
-  const balance = await getOrCreateFreeBetBalance(walletAddress);
-  if (balance.balance < 1) {
-    return { success: false, balance };
-  }
   if (!pool) {
+    const balance = await getOrCreateFreeBetBalance(walletAddress);
     return { success: false, balance };
   }
   const now = Date.now();
   try {
-    await pool.query(
-      'UPDATE free_bet_credits SET balance = balance - 1, lifetime_used = lifetime_used + 1, updated_at = $1 WHERE wallet_address = $2',
+    // SECURITY: Atomic update with balance check to prevent race condition (double-spend)
+    // Only deducts if balance >= 1, returns the updated row if successful
+    const result = await pool.query(
+      'UPDATE free_bet_credits SET balance = balance - 1, lifetime_used = lifetime_used + 1, updated_at = $1 WHERE wallet_address = $2 AND balance >= 1 RETURNING *',
       [now, walletAddress]
     );
+
+    // If no rows updated, either wallet doesn't exist or balance was already 0
+    if (result.rowCount === 0) {
+      const balance = await getOrCreateFreeBetBalance(walletAddress);
+      return { success: false, balance };
+    }
+
+    // Log the transaction only after successful atomic update
     await pool.query(
       'INSERT INTO free_bet_history (wallet_address, amount, transaction_type, game_mode, description, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
       [walletAddress, 1, 'used', gameMode, description || null, now]
     );
-    return { success: true, balance: await getOrCreateFreeBetBalance(walletAddress) };
+
+    // Return the updated balance from the atomic operation
+    const updatedRow = result.rows[0];
+    return {
+      success: true,
+      balance: {
+        walletAddress: updatedRow.wallet_address,
+        balance: updatedRow.balance,
+        lifetimeEarned: updatedRow.lifetime_earned,
+        lifetimeUsed: updatedRow.lifetime_used,
+        updatedAt: updatedRow.updated_at,
+      },
+    };
   } catch (error) {
     console.error('[ProgressionDB] useFreeBetCredit error:', error);
+    const balance = await getOrCreateFreeBetBalance(walletAddress);
     return { success: false, balance };
   }
 }

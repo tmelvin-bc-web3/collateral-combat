@@ -1,309 +1,255 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PageLoading } from '@/components/ui/skeleton';
-import dynamic from 'next/dynamic';
+import {
+  HeroSection,
+  FeaturedGame,
+  GameGrid,
+  LiveActivityFeed,
+  SocialProof,
+  HowItWorks,
+  HomepageData,
+  ActivityItem,
+} from '@/components/home';
 
-const WalletMultiButton = dynamic(
-  () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
-  { ssr: false }
-);
+// Mock data for demonstration - replace with real API/WebSocket data
+const MOCK_DATA: HomepageData = {
+  liveStats: {
+    playersOnline: 147,
+    liveGames: 23,
+    wonToday: 1234,
+    biggestWinToday: 12.5,
+  },
+  oracle: {
+    currentRound: {
+      timeRemaining: 18,
+      upPool: 12.4,
+      downPool: 8.7,
+      currentPrice: 144.23,
+    },
+    playersInGame: 47,
+  },
+  arena: {
+    openBattles: 5,
+    totalInPools: 34.5,
+    playersActive: 23,
+  },
+  lds: {
+    currentLobby: {
+      playerCount: 18,
+      maxPlayers: 50,
+      prizePool: 1.71,
+      timeToStart: 272,
+    },
+  },
+  tokenWars: {
+    currentBattle: {
+      tokenA: { symbol: 'BONK', icon: '🐕', change: 2.3 },
+      tokenB: { symbol: 'WIF', icon: '🐶', change: -0.8 },
+      timeRemaining: 154,
+      totalPool: 8.5,
+    },
+  },
+  warParty: {
+    activeParties: 89,
+    currentLeader: {
+      username: 'CryptoApe',
+      return: 47.3,
+    },
+  },
+  stands: {
+    liveBattles: 3,
+    watchersCount: 12,
+    featuredBattle: {
+      player1: 'DegenKing',
+      player2: 'SolWhale',
+      pool: 4.2,
+    },
+  },
+  recentActivity: [],
+  platformStats: {
+    totalGames: 12453,
+    totalVolume: 89234,
+    uniquePlayers: 3421,
+    biggestWin: {
+      amount: 47.3,
+      winner: 'CryptoApe',
+      game: 'LDS',
+    },
+    todayStats: {
+      games: 234,
+      volume: 1234,
+      players: 89,
+    },
+  },
+};
 
-const GAME_MODES = [
-  {
-    id: 'predict',
-    href: '/predict',
-    title: 'The Oracle',
-    subtitle: 'Predict or Perish',
-    description: 'SOL goes up or down in 30 seconds. Call it right or get rekt. No second chances.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Round', value: '30s' },
-      { label: 'Min Wager', value: '0.01 SOL' },
-    ],
-    color: 'accent',
-    live: true,
-  },
-  {
-    id: 'battle',
-    href: '/battle',
-    title: 'The Arena',
-    subtitle: '1v1 Deathmatch',
-    description: 'Two degens enter, one leaves with the loot. Trade with 20x leverage. Best P&L survives.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Duration', value: '30 min' },
-      { label: 'Entry', value: '0.1 SOL+' },
-    ],
-    color: 'success',
-    live: true,
-  },
-  {
-    id: 'draft',
-    href: '/draft',
-    title: 'War Party',
-    subtitle: 'Assemble Your Squad',
-    description: 'Draft 6 memecoins for your war party. Best gains over the week claims the throne.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Entry', value: '0.1-1 SOL' },
-      { label: 'Duration', value: '24 hours' },
-    ],
-    color: 'warning',
-    live: true,
-  },
-  {
-    id: 'spectate',
-    href: '/spectate',
-    title: 'The Stands',
-    subtitle: 'Watch & Wager',
-    description: 'Witness the carnage from the stands. Back your champion. Collect the spoils.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Live Battles', value: '0' },
-      { label: 'Min Wager', value: '0.1 SOL' },
-    ],
-    color: 'danger',
-    live: false,
-  },
-  {
-    id: 'lds',
-    href: '/lds',
-    title: 'Last Degen Standing',
-    subtitle: 'Elimination Rounds',
-    description: 'Predict the winning token each round. Wrong pick? You\'re eliminated. Last survivor takes the pot.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Round', value: '60s' },
-      { label: 'Entry', value: '0.05 SOL' },
-    ],
-    color: 'fire',
-    live: true,
-  },
-  {
-    id: 'token-wars',
-    href: '/token-wars',
-    title: 'Token Wars',
-    subtitle: 'Head-to-Head',
-    description: 'Two tokens enter the ring. Pick the one with better gains. Simple. Brutal. Winner takes all.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-      </svg>
-    ),
-    stats: [
-      { label: 'Round', value: '5 min' },
-      { label: 'Min Bet', value: '0.01 SOL' },
-    ],
-    color: 'sand',
-    live: true,
-  },
-];
+// Generate mock activity feed
+function generateMockActivity(): ActivityItem[] {
+  const names = ['SolWhale.sol', 'DegenKing', 'CryptoApe', 'MoonBoi', 'DiamondHands', 'Rekt420', 'WAGMI_Chad', 'PumpItUp'];
+  const games = ['Oracle', 'Arena', 'LDS', 'Token Wars', 'War Party'];
+  const types: ActivityItem['type'][] = ['win', 'big_win', 'join', 'elimination', 'streak', 'victory'];
+
+  const activities: ActivityItem[] = [];
+  const now = Date.now();
+
+  for (let i = 0; i < 20; i++) {
+    const type = types[Math.floor(Math.random() * types.length)];
+    const game = games[Math.floor(Math.random() * games.length)];
+    const user = names[Math.floor(Math.random() * names.length)];
+
+    activities.push({
+      id: `activity-${i}`,
+      type,
+      user: { username: user },
+      amount: type === 'join' || type === 'elimination' ? undefined :
+              type === 'big_win' ? parseFloat((Math.random() * 10 + 2).toFixed(2)) :
+              parseFloat((Math.random() * 3 + 0.1).toFixed(2)),
+      game,
+      context: type === 'streak' ? `${Math.floor(Math.random() * 7 + 3)} WIN STREAK` :
+               type === 'elimination' ? `${Math.floor(Math.random() * 40 + 5)}th place` : undefined,
+      timestamp: now - (i * 15000) - Math.random() * 30000,
+    });
+  }
+
+  return activities.sort((a, b) => b.timestamp - a.timestamp);
+}
 
 export default function Home() {
+  const router = useRouter();
   const { publicKey } = useWallet();
   const [mounted, setMounted] = useState(false);
+  const [homepageData, setHomepageData] = useState<HomepageData>(MOCK_DATA);
+  const mockInitializedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
+
+    // Initialize mock activity data once
+    if (!mockInitializedRef.current) {
+      mockInitializedRef.current = true;
+      setHomepageData(prev => ({
+        ...prev,
+        recentActivity: generateMockActivity(),
+      }));
+    }
   }, []);
 
+  // Simulate live updates
+  useEffect(() => {
+    if (!mounted) return;
+
+    const interval = setInterval(() => {
+      setHomepageData(prev => ({
+        ...prev,
+        // Update Oracle timer
+        oracle: {
+          ...prev.oracle,
+          currentRound: {
+            ...prev.oracle.currentRound,
+            timeRemaining: prev.oracle.currentRound.timeRemaining > 0
+              ? prev.oracle.currentRound.timeRemaining - 1
+              : 30,
+            // Slight price fluctuation
+            currentPrice: prev.oracle.currentRound.currentPrice + (Math.random() - 0.5) * 0.5,
+          },
+        },
+        // Update LDS timer
+        lds: {
+          currentLobby: {
+            ...prev.lds.currentLobby,
+            timeToStart: prev.lds.currentLobby.timeToStart > 0
+              ? prev.lds.currentLobby.timeToStart - 1
+              : 300,
+          },
+        },
+        // Update Token Wars timer
+        tokenWars: {
+          currentBattle: {
+            ...prev.tokenWars.currentBattle,
+            timeRemaining: prev.tokenWars.currentBattle.timeRemaining > 0
+              ? prev.tokenWars.currentBattle.timeRemaining - 1
+              : 300,
+          },
+        },
+        // Random player count updates
+        liveStats: {
+          ...prev.liveStats,
+          playersOnline: prev.liveStats.playersOnline + Math.floor((Math.random() - 0.4) * 3),
+        },
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [mounted]);
+
+  // Add new activity periodically
+  useEffect(() => {
+    if (!mounted) return;
+
+    const interval = setInterval(() => {
+      const newActivity = generateMockActivity().slice(0, 1)[0];
+      newActivity.id = `activity-${Date.now()}`;
+      newActivity.timestamp = Date.now();
+
+      setHomepageData(prev => ({
+        ...prev,
+        recentActivity: [newActivity, ...prev.recentActivity.slice(0, 19)],
+      }));
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [mounted]);
+
   if (!mounted) {
-    return <PageLoading message="Welcome to Sol Battles..." />;
+    return <PageLoading message="Welcome to DegenDome..." />;
   }
 
+  // Get recent wins for the hero ticker (filter to only wins)
+  const recentWins = homepageData.recentActivity
+    .filter(a => a.type === 'win' || a.type === 'big_win' || a.type === 'victory')
+    .slice(0, 10);
+
+  const handleStartPlaying = () => {
+    router.push('/predict');
+  };
+
   return (
-    <div className="max-w-5xl mx-auto animate-fadeIn">
-      {/* Hero */}
-      <div className="text-center py-12 md:py-20 relative">
-        {/* Decorative rust lines */}
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-rust/30 to-transparent" />
+    <div className="max-w-6xl mx-auto animate-fadeIn">
+      {/* Hero Section */}
+      <HeroSection
+        liveStats={homepageData.liveStats}
+        recentWins={recentWins}
+        walletConnected={!!publicKey}
+        onStartPlaying={handleStartPlaying}
+      />
 
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded bg-rust/20 border border-rust/40 text-fire text-xs font-bold uppercase tracking-[3px] mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fire opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-fire"></span>
-            </span>
-            The Dome is Open
-          </div>
+      {/* Featured Game - Oracle */}
+      <FeaturedGame oracle={homepageData.oracle} />
 
-          <h1 className="text-4xl md:text-7xl font-black tracking-wider mb-4" style={{ fontFamily: 'Impact, sans-serif', letterSpacing: '4px' }}>
-            TWO DEGENS ENTER.
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-fire via-danger to-blood">
-              ONE PROFITS.
-            </span>
-          </h1>
+      {/* Game Grid */}
+      <GameGrid
+        arena={homepageData.arena}
+        lds={homepageData.lds}
+        tokenWars={homepageData.tokenWars}
+        warParty={homepageData.warParty}
+        stands={homepageData.stands}
+      />
 
-          <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-8">
-            Welcome to the wasteland&apos;s premier trading arena. Predict. Battle. Draft. Survive.
-            Only the strongest degens claim the loot.
-          </p>
+      {/* Live Activity Feed */}
+      <LiveActivityFeed
+        activities={homepageData.recentActivity}
+        eventsLastHour={234}
+      />
 
-          {!publicKey && (
-            <div className="flex justify-center">
-              <WalletMultiButton />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Game Modes */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
-        {GAME_MODES.map((mode) => (
-          <Link
-            key={mode.id}
-            href={mode.href}
-            className="group relative card border border-rust/20 hover:border-rust/50 transition-all duration-300 hover:shadow-rust"
-          >
-            {/* Top rust accent */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rust to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-
-            {/* Live Badge */}
-            {mode.live && (
-              <div className="absolute top-4 right-4">
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-fire/20 border border-fire/30">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fire opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-fire"></span>
-                  </span>
-                  <span className="text-[10px] font-bold text-fire uppercase tracking-wider">Live</span>
-                </div>
-              </div>
-            )}
-
-            {/* Icon */}
-            <div className="w-12 h-12 rounded bg-rust/20 border border-rust/30 flex items-center justify-center text-fire mb-4 group-hover:bg-rust/30 transition-colors">
-              {mode.icon}
-            </div>
-
-            {/* Content */}
-            <h2 className="text-lg font-black mb-1 uppercase tracking-wide">{mode.title}</h2>
-            <p className="text-xs text-rust-light mb-3 uppercase tracking-wider">{mode.subtitle}</p>
-            <p className="text-sm text-text-secondary mb-4">{mode.description}</p>
-
-            {/* Stats */}
-            <div className="flex gap-4 pt-4 border-t border-rust/20">
-              {mode.stats.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider">{stat.label}</div>
-                  <div className="font-bold text-sand">{stat.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Arrow */}
-            <div className="absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg className="w-5 h-5 text-fire" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Why DegenDome */}
-      <div className="card border border-rust/30 mb-16 relative overflow-hidden">
-        {/* Industrial corner accents */}
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-rust/50" />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-rust/50" />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-rust/50" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-rust/50" />
-
-        <div className="text-center mb-6">
-          <h2 className="text-sm font-black uppercase tracking-[4px] text-rust-light">Why the Dome</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="w-10 h-10 mx-auto mb-2 rounded bg-fire/20 border border-fire/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-fire" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <div className="text-sm font-black text-fire uppercase">On-Chain</div>
-            <div className="text-[10px] text-text-tertiary mt-1">Fully transparent</div>
-          </div>
-          <div className="text-center">
-            <div className="w-10 h-10 mx-auto mb-2 rounded bg-success/20 border border-success/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div className="text-sm font-black text-success uppercase">Instant</div>
-            <div className="text-[10px] text-text-tertiary mt-1">Payouts in seconds</div>
-          </div>
-          <div className="text-center">
-            <div className="w-10 h-10 mx-auto mb-2 rounded bg-sand/20 border border-sand/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-sand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <div className="text-sm font-black text-sand uppercase">No KYC</div>
-            <div className="text-[10px] text-text-tertiary mt-1">Just connect & play</div>
-          </div>
-          <div className="text-center">
-            <div className="w-10 h-10 mx-auto mb-2 rounded bg-danger/20 border border-danger/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div className="text-sm font-black text-danger uppercase">Pure PvP</div>
-            <div className="text-[10px] text-text-tertiary mt-1">No house edge</div>
-          </div>
-        </div>
-      </div>
+      {/* Social Proof / Stats */}
+      <SocialProof stats={homepageData.platformStats} />
 
       {/* How It Works */}
-      <div className="mb-16">
-        <h2 className="text-xl font-black text-center mb-8 uppercase tracking-[4px] text-text-primary">Rules of the Dome</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="card border border-rust/20 text-center relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">1</div>
-            <div className="pt-4">
-              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Enter the Dome</h3>
-              <p className="text-sm text-text-secondary">Connect your Solana wallet to join the wasteland. Your identity. Your destiny.</p>
-            </div>
-          </div>
-          <div className="card border border-rust/20 text-center relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">2</div>
-            <div className="pt-4">
-              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Choose Your Fate</h3>
-              <p className="text-sm text-text-secondary">Oracle predictions. Arena battles. War party drafts. Pick your path to glory.</p>
-            </div>
-          </div>
-          <div className="card border border-rust/20 text-center relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded bg-rust border border-rust-light flex items-center justify-center text-sand font-black">3</div>
-            <div className="pt-4">
-              <h3 className="font-black mb-2 uppercase tracking-wider text-fire">Claim the Spoils</h3>
-              <p className="text-sm text-text-secondary">Winners take all. Loot drops instantly to your wallet. No mercy. No delays.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <HowItWorks onStartPlaying={handleStartPlaying} />
     </div>
   );
 }

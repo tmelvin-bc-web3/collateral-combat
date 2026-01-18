@@ -49,3 +49,4 @@ test-ledger/
 handoff/
 handoff.zip
 .wallets/
+.env*.local

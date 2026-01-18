@@ -7,6 +7,7 @@ import { DraftProvider, useDraftContext } from '@/contexts/DraftContext';
 import { DraftPick, Memecoin } from '@/types';
 import { PageLoading } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import { Flame } from 'lucide-react';
 
 
 // Animated card reveal for draft options
@@ -373,7 +374,9 @@ function PickedCoinCard({
 
       {/* Boosted fire effect */}
       {pick.boostMultiplier > 1 && (
-        <div className="absolute top-0 right-0 text-2xl animate-bounce">🔥</div>
+        <div className="absolute top-0 right-0 animate-bounce">
+          <Flame className="w-6 h-6 text-fire" />
+        </div>
       )}
 
       <div className="relative z-10">

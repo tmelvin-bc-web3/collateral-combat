@@ -111,17 +111,29 @@ export function BattleProvider({
 
   useEffect(() => {
     const socket = getSocket();
+    console.log('[BattleContext] Setting up socket listeners, socket connected:', socket.connected, 'id:', socket.id);
 
     const handleBattleUpdate = (updatedBattle: Battle) => {
+      console.log('[BattleContext] Received battle_update:', updatedBattle.id, 'status:', updatedBattle.status);
       setBattle(updatedBattle);
       setIsLoading(false);
     };
 
     const handleBattleStarted = (startedBattle: Battle) => {
+      console.log('[BattleContext] Received battle_started:', startedBattle.id, 'status:', startedBattle.status);
       setBattle(startedBattle);
       setMatchmakingStatus({ inQueue: false, position: 0, estimated: 0 });
       setIsLoading(false);
     };
+
+    // Log connection state changes
+    socket.on('connect', () => {
+      console.log('[BattleContext] Socket connected:', socket.id);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[BattleContext] Socket disconnected:', reason);
+    });
 
     const handleBattleEnded = (endedBattle: Battle) => {
       setBattle(endedBattle);
@@ -280,12 +292,24 @@ export function BattleProvider({
       setError(null);
       setSettlementTx(null);
       const socket = getSocket();
-      socket.emit('start_solo_practice', {
-        config,
-        wallet: walletAddress,
-        onChainBattleId,
-      });
-      console.log('[Battle] Starting solo practice', onChainBattleId ? `(on-chain: ${onChainBattleId})` : '(off-chain)');
+
+      const emitSoloPractice = () => {
+        console.log('[Battle] Emitting start_solo_practice, socket connected:', socket.connected, 'id:', socket.id);
+        socket.emit('start_solo_practice', {
+          config,
+          wallet: walletAddress,
+          onChainBattleId,
+        });
+        console.log('[Battle] Starting solo practice', onChainBattleId ? `(on-chain: ${onChainBattleId})` : '(off-chain)');
+      };
+
+      // If socket is connected, emit immediately. Otherwise wait for connection.
+      if (socket.connected) {
+        emitSoloPractice();
+      } else {
+        console.log('[Battle] Socket not connected, waiting for connection...');
+        socket.once('connect', emitSoloPractice);
+      }
     },
     [walletAddress]
   );
@@ -299,7 +323,14 @@ export function BattleProvider({
 
       const socket = getSocket();
 
-      // If signing is available, sign the trade for trustless settlement
+      // Solo practice mode - no signing needed, just emit unsigned
+      const isSoloPractice = battle.config.maxPlayers === 1;
+      if (isSoloPractice) {
+        socket.emit('open_position', battle.id, asset, side, leverage, size);
+        return;
+      }
+
+      // PvP mode: If signing is available, sign the trade for trustless settlement
       if (signMessage) {
         const message: SignedTradeMessage = {
           version: 1,
@@ -341,11 +372,18 @@ export function BattleProvider({
 
       const socket = getSocket();
 
+      // Solo practice mode - no signing needed, just emit unsigned
+      const isSoloPractice = battle.config.maxPlayers === 1;
+      if (isSoloPractice) {
+        socket.emit('close_position', battle.id, positionId);
+        return;
+      }
+
       // Find the position to get its details for signing
       const player = battle.players.find(p => p.walletAddress === walletAddress);
       const position = player?.account.positions.find(p => p.id === positionId);
 
-      // If signing is available and we have position details, sign the close
+      // PvP mode: If signing is available and we have position details, sign the close
       if (signMessage && position) {
         const message: SignedTradeMessage = {
           version: 1,

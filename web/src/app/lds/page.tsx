@@ -7,6 +7,7 @@ import { BACKEND_URL } from '@/config/api';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { PageLoading } from '@/components/ui/skeleton';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
+import { LDSLobby, LDSPlayer as LobbyPlayer, RecentWinner, LDSConfig as LobbyConfig, PlatformStats } from '@/components/lds';
 
 // LDS Types
 type LDSPrediction = 'up' | 'down';
@@ -19,6 +20,8 @@ interface LDSPlayer {
   eliminatedAtRound: number | null;
   payoutLamports: number;
   placement: number | null;
+  username?: string;
+  avatar?: string;
 }
 
 interface LDSRound {
@@ -65,7 +68,53 @@ interface LDSConfig {
 
 // Animation constants
 const PRICE_INTERPOLATION_MS = 150;
-const WINNER_FLASH_MS = 350;
+
+// ============================================
+// MOCK DATA FOR TESTING - Set to true to see UI
+// ============================================
+const USE_MOCK_DATA = true;
+
+// Avatar images from CoinMarketCap CDN
+const CMC_IMG = (id: number) => `https://s2.coinmarketcap.com/static/img/coins/200x200/${id}.png`;
+
+const MOCK_PLAYERS: LDSPlayer[] = [
+  { walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'DegenKing', avatar: CMC_IMG(23095) }, // Bonk
+  { walletAddress: '9WzDXwBbmPELe4mndF7rHvdJwMgvwGbhAUdPDwQj8pmS', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'SolWhale', avatar: CMC_IMG(28752) }, // WIF
+  { walletAddress: '3Kf8wZwKGNJhwRPAqS7fmbJNCvhCnQQ7C2X7uYsNNRPJ', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'MoonBoi', avatar: CMC_IMG(24478) }, // Pepe
+  { walletAddress: '5pBqwvPvReyqAGe5a6rpgqJFJ4cBXQdPqTMYEz3sKyAH', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'CryptoNinja', avatar: CMC_IMG(28782) }, // Popcat
+  { walletAddress: '2mNT8mJLhXfHXnRWxHPfzF2kVGfMwRSfCrVvyJKhNQVe', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'DiamondHands', avatar: CMC_IMG(30063) }, // Giga
+  { walletAddress: 'AqH1cEjCzwXNkTGv8sDP3hYKfA9mR6S3zPcJnXvFGkVZ', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'ApeSzn', avatar: CMC_IMG(5994) }, // Shib
+  { walletAddress: 'BzT9nKxYpW5dFgH2mCvNqR8sLjE7aXwU4yPbGhVcKfSe', status: 'alive', eliminatedAtRound: null, payoutLamports: 0, placement: null, username: 'FlokiMaxi', avatar: CMC_IMG(10804) }, // Floki
+];
+
+const MOCK_RECENT_WINNERS: RecentWinner[] = [
+  { walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', username: 'DegenKing', payout: 450000000, totalPlayers: 12, completedAt: Date.now() - 1800000 },
+  { walletAddress: '9WzDXwBbmPELe4mndF7rHvdJwMgvwGbhAUdPDwQj8pmS', username: 'SolWhale', payout: 380000000, totalPlayers: 8, completedAt: Date.now() - 3600000 },
+  { walletAddress: '3Kf8wZwKGNJhwRPAqS7fmbJNCvhCnQQ7C2X7uYsNNRPJ', username: 'MoonBoi', payout: 520000000, totalPlayers: 15, completedAt: Date.now() - 7200000 },
+];
+
+const MOCK_PLATFORM_STATS: PlatformStats = {
+  totalGamesPlayed: 247,
+  totalSolWon: 1850000000000, // 1850 SOL in lamports
+  recentJoins: 23,
+};
+
+const MOCK_CONFIG: LDSConfig = {
+  entryFeeSol: 0.1,
+  maxPlayers: 50,
+  minPlayers: 3,
+  gameIntervalMinutes: 10,
+  roundDurationSeconds: 30,
+  predictionWindowSeconds: 25,
+  maxRounds: 15,
+  rakePercent: 5,
+  payoutTiers: [
+    { minPlayers: 3, maxPlayers: 9, payouts: [100] },
+    { minPlayers: 10, maxPlayers: 19, payouts: [60, 25, 15] },
+    { minPlayers: 20, maxPlayers: 34, payouts: [45, 25, 15, 10, 5] },
+    { minPlayers: 35, maxPlayers: 50, payouts: [35, 20, 15, 10, 8, 7, 5] },
+  ],
+};
 
 // Hook for smooth price interpolation
 function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolean): number {
@@ -131,29 +180,64 @@ export default function LDSPage() {
   const [showResultAnimation, setShowResultAnimation] = useState(false);
   const [myPrediction, setMyPrediction] = useState<LDSPrediction | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [recentWinners, setRecentWinners] = useState<RecentWinner[]>([]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats>({
+    totalGamesPlayed: 0,
+    totalSolWon: 0,
+    recentJoins: 0,
+  });
+
+  // Track player join times for animations
+  const playerJoinTimesRef = useRef<Map<string, number>>(new Map());
+
+  // Ref to store mock start time (so it doesn't change on re-render)
+  const mockStartTimeRef = useRef<number | null>(null);
+  const mockInitializedRef = useRef(false);
 
   // Session betting for balance
   const {
     balanceInSol,
-    deposit,
     fetchBalance,
-    isLoading: isSessionLoading,
-    error: sessionError,
   } = useSessionBetting();
 
-  // Deposit modal
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('0.5');
 
   // Animated price
   const animatedPrice = useAnimatedPrice(currentPrice, PRICE_INTERPOLATION_MS, true);
 
   // Fetch config
   useEffect(() => {
+    if (USE_MOCK_DATA) {
+      setConfig(MOCK_CONFIG);
+      return;
+    }
     fetch(`${BACKEND_URL}/api/lds/config`)
       .then(res => res.json())
       .then(setConfig)
       .catch(console.error);
+  }, []);
+
+  // Fetch recent winners and stats
+  useEffect(() => {
+    if (USE_MOCK_DATA) {
+      setRecentWinners(MOCK_RECENT_WINNERS);
+      setPlatformStats(MOCK_PLATFORM_STATS);
+      return;
+    }
+    // Fetch recent winners
+    fetch(`${BACKEND_URL}/api/lds/recent-winners`)
+      .then(res => res.ok ? res.json() : { winners: [] })
+      .then((data: { winners?: RecentWinner[] }) => setRecentWinners(data.winners || []))
+      .catch(() => setRecentWinners([]));
+
+    // Fetch platform stats
+    fetch(`${BACKEND_URL}/api/lds/stats`)
+      .then(res => res.ok ? res.json() : {})
+      .then((data: { totalGamesPlayed?: number; totalSolWon?: number; recentJoins?: number }) => setPlatformStats({
+        totalGamesPlayed: data.totalGamesPlayed || 0,
+        totalSolWon: data.totalSolWon || 0,
+        recentJoins: data.recentJoins || 0,
+      }))
+      .catch(() => {});
   }, []);
 
   // Fetch initial game state
@@ -163,17 +247,52 @@ export default function LDSPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.game) {
+          // Track new player join times
+          const currentPlayers = new Set(gameState?.players.map(p => p.walletAddress) || []);
+          data.game.players?.forEach((p: LDSPlayer) => {
+            if (!currentPlayers.has(p.walletAddress) && !playerJoinTimesRef.current.has(p.walletAddress)) {
+              playerJoinTimesRef.current.set(p.walletAddress, Date.now());
+            }
+          });
           setGameState(data.game);
         }
       }
     } catch (e) {
       console.error('Failed to fetch LDS game state:', e);
     }
-  }, []);
+  }, [gameState]);
 
-  // Socket connection
+  // Initialize mock data once (separate from socket effect to prevent re-runs)
   useEffect(() => {
     setMounted(true);
+
+    if (USE_MOCK_DATA && !mockInitializedRef.current) {
+      mockInitializedRef.current = true;
+      // Store the start time in a ref so it doesn't change
+      mockStartTimeRef.current = Date.now() + 180 * 1000;
+      const mockGameState: LDSGameState = {
+        game: {
+          id: 'mock_game_123',
+          status: 'registering',
+          scheduledStartTime: mockStartTimeRef.current,
+          playerCount: MOCK_PLAYERS.length,
+          prizePoolLamports: MOCK_PLAYERS.length * 100000000, // 0.1 SOL per player
+          currentRound: 0,
+        },
+        players: MOCK_PLAYERS,
+        currentRound: null,
+        alivePlayers: MOCK_PLAYERS.length,
+        timeRemaining: 180,
+        phase: 'registering',
+      };
+      setGameState(mockGameState);
+    }
+  }, []); // Empty deps - only run once on mount
+
+  // Socket connection (only for non-mock mode)
+  useEffect(() => {
+    if (USE_MOCK_DATA) return; // Skip socket setup in mock mode
+
     fetchGameState();
 
     const socket = getSocket();
@@ -182,6 +301,13 @@ export default function LDSPage() {
 
     // Initial game state
     socket.on('lds_game_state', (state: LDSGameState) => {
+      // Track new player join times
+      const currentPlayers = new Set(gameState?.players.map(p => p.walletAddress) || []);
+      state.players?.forEach((p: LDSPlayer) => {
+        if (!currentPlayers.has(p.walletAddress) && !playerJoinTimesRef.current.has(p.walletAddress)) {
+          playerJoinTimesRef.current.set(p.walletAddress, Date.now());
+        }
+      });
       setGameState(state);
     });
 
@@ -191,7 +317,19 @@ export default function LDSPage() {
 
       switch (event.type) {
         case 'game_created':
+          // Clear old join times on new game
+          playerJoinTimesRef.current.clear();
+          fetchGameState();
+          break;
+
         case 'player_joined':
+          // Track join time
+          if (event.data?.walletAddress) {
+            playerJoinTimesRef.current.set(event.data.walletAddress, Date.now());
+          }
+          fetchGameState();
+          break;
+
         case 'player_left':
         case 'game_starting':
         case 'game_started':
@@ -280,7 +418,7 @@ export default function LDSPage() {
       socket.off('lds_prediction_success');
       socket.off('lds_prediction_error');
     };
-  }, [fetchGameState, fetchBalance]);
+  }, [fetchGameState, fetchBalance, gameState]);
 
   // Timer update
   useEffect(() => {
@@ -319,8 +457,7 @@ export default function LDSPage() {
     }
 
     if (config && balanceInSol < config.entryFeeSol) {
-      setError(`Insufficient balance. Need ${config.entryFeeSol} SOL`);
-      setShowDepositModal(true);
+      setError(`Insufficient balance. Need ${config.entryFeeSol} SOL. Use the deposit button below.`);
       return;
     }
 
@@ -353,21 +490,6 @@ export default function LDSPage() {
     });
   };
 
-  const handleDeposit = async () => {
-    try {
-      const amount = parseFloat(depositAmount);
-      if (isNaN(amount) || amount <= 0) {
-        setError('Invalid deposit amount');
-        return;
-      }
-      await deposit(amount);
-      setShowDepositModal(false);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to deposit');
-    }
-  };
-
   if (!mounted) {
     return <PageLoading message="Loading Last Degen Standing..." />;
   }
@@ -384,6 +506,73 @@ export default function LDSPage() {
     return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
   };
 
+  // Convert players to lobby format with join times
+  const lobbyPlayers: LobbyPlayer[] = (gameState?.players || []).map(p => ({
+    ...p,
+    joinedAt: playerJoinTimesRef.current.get(p.walletAddress),
+  }));
+
+  // Create lobby config
+  const lobbyConfig: LobbyConfig = config || {
+    entryFeeSol: 0.1,
+    maxPlayers: 50,
+    minPlayers: 10,
+    gameIntervalMinutes: 10,
+    roundDurationSeconds: 60,
+    predictionWindowSeconds: 30,
+    maxRounds: 20,
+    rakePercent: 5,
+    payoutTiers: [
+      { minPlayers: 3, maxPlayers: 9, payouts: [100] },
+      { minPlayers: 10, maxPlayers: 19, payouts: [60, 25, 15] },
+      { minPlayers: 20, maxPlayers: 34, payouts: [45, 25, 15, 10, 5] },
+      { minPlayers: 35, maxPlayers: 50, payouts: [35, 20, 15, 10, 8, 7, 5] },
+    ],
+  };
+
+  // Calculate net prize pool after rake
+  const grossPrizePool = (gameState?.game.prizePoolLamports || 0) / 1e9;
+  const rakePercent = lobbyConfig.rakePercent || 5;
+  const prizePool = grossPrizePool * (1 - rakePercent / 100);
+
+  // Show lobby UI during registration phase
+  if (phase === 'registering') {
+    return (
+      <div className="min-h-screen flex flex-col">
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 p-4 rounded-xl bg-danger/20 border border-danger/30 text-danger text-center text-sm font-medium animate-shake">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 p-4 rounded-xl bg-success/20 border border-success/30 text-success text-center text-sm font-medium">
+            {success}
+          </div>
+        )}
+
+        {/* Main Lobby UI */}
+        <LDSLobby
+          players={lobbyPlayers}
+          config={lobbyConfig}
+          timeRemaining={timeRemaining}
+          prizePool={prizePool}
+          recentWinners={recentWinners}
+          platformStats={platformStats}
+          currentWallet={publicKey?.toBase58()}
+          isJoining={isJoining}
+          isLeaving={isLeaving}
+          isInGame={isInGame}
+          onJoin={handleJoin}
+          onLeave={handleLeave}
+          walletConnected={!!publicKey}
+        />
+
+      </div>
+    );
+  }
+
+  // Gameplay UI (predicting, resolving, completed phases)
   return (
     <div className="h-screen flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden safe-area-inset">
       {/* Result Animation Overlay */}
@@ -517,48 +706,6 @@ export default function LDSPage() {
 
           {/* Game Controls */}
           <div className="flex-1 flex flex-col min-h-0 gap-2" style={{ flexBasis: '50%' }}>
-            {/* Phase-specific UI */}
-            {phase === 'registering' && (
-              <div className="flex-1 flex flex-col items-center justify-center gap-4 p-4 rounded-xl bg-black/40 border border-white/10">
-                <div className="text-center">
-                  <div className="text-sm text-white/40 uppercase tracking-wider mb-1">Game Starting In</div>
-                  <div className="text-4xl sm:text-6xl font-black text-warning" style={{ fontFamily: 'Impact, sans-serif' }}>
-                    {formatTime(timeRemaining)}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-white">{gameState?.players.length || 0}</div>
-                    <div className="text-xs text-white/40">Players</div>
-                  </div>
-                  <div className="w-px h-8 bg-white/10" />
-                  <div>
-                    <div className="text-2xl font-bold text-warning">{config?.entryFeeSol || 0.1} SOL</div>
-                    <div className="text-xs text-white/40">Entry Fee</div>
-                  </div>
-                </div>
-
-                {isInGame ? (
-                  <button
-                    onClick={handleLeave}
-                    disabled={isLeaving}
-                    className="px-8 py-4 rounded-xl bg-danger/20 border-2 border-danger text-danger font-bold text-lg hover:bg-danger/30 transition-all disabled:opacity-50"
-                  >
-                    {isLeaving ? 'Leaving...' : 'Leave Game'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleJoin}
-                    disabled={isJoining || !publicKey}
-                    className="px-8 py-4 rounded-xl bg-success/20 border-2 border-success text-success font-bold text-lg hover:bg-success/30 transition-all disabled:opacity-50"
-                  >
-                    {isJoining ? 'Joining...' : publicKey ? 'Join Game' : 'Connect Wallet'}
-                  </button>
-                )}
-              </div>
-            )}
-
             {(phase === 'predicting' || phase === 'resolving') && (
               <>
                 {/* Status Bar */}
@@ -674,22 +821,6 @@ export default function LDSPage() {
               </div>
             )}
 
-            {/* Balance Display */}
-            {publicKey && (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-white/40 text-xs uppercase">Balance:</span>
-                  <span className="text-white font-bold">{balanceInSol.toFixed(4)} SOL</span>
-                </div>
-                <button
-                  onClick={() => setShowDepositModal(true)}
-                  className="px-3 py-1 rounded-lg bg-warning/20 text-warning text-xs font-bold hover:bg-warning/30 transition-colors"
-                >
-                  Deposit
-                </button>
-              </div>
-            )}
-
             {/* Error/Success Messages */}
             {error && (
               <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-center text-sm font-medium animate-shake flex-shrink-0">
@@ -704,7 +835,7 @@ export default function LDSPage() {
           </div>
         </div>
 
-        {/* Right Sidebar - Mobile: Players (hidden on desktop) */}
+        {/* Right Sidebar - Payout Tiers */}
         <aside className="hidden lg:flex w-64 flex-col flex-shrink-0 overflow-hidden">
           <div className="bg-black/40 backdrop-blur border border-white/5 rounded-xl p-4 flex-1 flex flex-col overflow-hidden">
             <div className="text-[10px] text-white/40 uppercase tracking-widest mb-3 font-medium">Payout Tiers</div>
@@ -731,64 +862,6 @@ export default function LDSPage() {
         </aside>
       </div>
 
-      {/* Deposit Modal */}
-      {showDepositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-white">Deposit SOL</h3>
-              <button
-                onClick={() => setShowDepositModal(false)}
-                className="text-white/40 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-white/40 text-xs uppercase mb-1 block">Amount (SOL)</label>
-              <input
-                type="number"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                min="0.01"
-                step="0.1"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white font-mono focus:border-warning/50 focus:outline-none"
-              />
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              {['0.1', '0.5', '1', '2'].map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => setDepositAmount(amount)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
-                    depositAmount === amount
-                      ? 'bg-warning/20 text-warning border border-warning/50'
-                      : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
-                  }`}
-                >
-                  {amount}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={handleDeposit}
-              disabled={isSessionLoading}
-              className="w-full py-3 rounded-xl bg-warning text-black font-bold hover:bg-warning/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSessionLoading ? 'Depositing...' : 'Deposit'}
-            </button>
-
-            {sessionError && (
-              <p className="text-danger text-sm mt-2 text-center">{sessionError}</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

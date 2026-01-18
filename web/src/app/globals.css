@@ -1838,6 +1838,149 @@ input[type="number"] {
   transform: rotate(180deg);
 }
 
+/* ==================== */
+/* LDS Lobby Animations */
+/* ==================== */
+
+/* Button pulse animation for CTA */
+@keyframes buttonPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 85, 0, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(255, 85, 0, 0.7);
+    transform: scale(1.02);
+  }
+}
+
+.animate-button-pulse {
+  animation: buttonPulse 2s ease-in-out infinite;
+}
+
+/* Slide in from left for new players */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+/* Fade in animation */
+@keyframes fadeInSmooth {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInSmooth 0.3s ease-out;
+}
+
+/* Progress bar fill animation */
+@keyframes progressFill {
+  from {
+    width: 0%;
+  }
+}
+
+.animate-progress-fill {
+  animation: progressFill 0.5s ease-out;
+}
+
+/* Subtle bounce for new player notification */
+@keyframes subtleBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-subtle-bounce {
+  animation: subtleBounce 0.5s ease-in-out;
+}
+
+/* Prize pool counter animation */
+@keyframes prizeGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(127, 186, 0, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(127, 186, 0, 0.6);
+  }
+}
+
+.animate-prize-glow {
+  animation: prizeGlow 2s ease-in-out infinite;
+}
+
+/* Timer urgency animation (when < 30 seconds) */
+@keyframes timerUrgent {
+  0%, 100% {
+    color: #ef4444;
+  }
+  50% {
+    color: #fca5a5;
+  }
+}
+
+.animate-timer-urgent {
+  animation: timerUrgent 0.5s ease-in-out infinite;
+}
+
+/* VIP badge shine */
+@keyframes vipShine {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-vip-shine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: vipShine 2s ease-in-out infinite;
+}
+
+/* Player join pop */
+@keyframes playerJoinPop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-player-join {
+  animation: playerJoinPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 @layer base {
   * {
     @apply border-border;

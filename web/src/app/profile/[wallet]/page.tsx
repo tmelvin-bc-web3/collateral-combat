@@ -400,10 +400,10 @@ export default function ProfilePage() {
                 )}
                 {isOwnProfile && (
                   <Link
-                    href="/progression"
+                    href="/leaderboard?tab=progression"
                     className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
                   >
-                    <span>View Progression</span>
+                    <span>View Ranks</span>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>

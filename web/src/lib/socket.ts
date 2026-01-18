@@ -100,7 +100,7 @@ interface ClientToServerEvents {
   request_odds_lock: (data: { battleId: string; backedPlayer: string; amount: number; walletAddress: string }) => void;
   verify_bet: (data: { lockId: string; txSignature: string; walletAddress: string }) => void;
   get_unclaimed_bets: (walletAddress: string) => void;
-  verify_claim: (data: { betId: string; txSignature: string }) => void;
+  verify_claim: (data: { betId: string; txSignature: string; walletAddress: string }) => void;
   // Prediction events
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
@@ -133,18 +133,39 @@ interface ClientToServerEvents {
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 let socket: TypedSocket | null = null;
+let currentToken: string | null = null;
 
-export function getSocket(): TypedSocket {
+/**
+ * Get the socket instance, optionally with JWT authentication
+ * SECURITY: When authenticated, the server will verify the token and associate
+ * the socket with the authenticated wallet. This prevents wallet spoofing.
+ */
+export function getSocket(token?: string | null): TypedSocket {
+  // Normalize undefined to null for consistent comparison
+  const normalizedToken = token ?? null;
+
+  // Only reconnect if token actually changed (both normalized)
+  if (socket && normalizedToken !== currentToken) {
+    console.log('[Socket] Token changed, reconnecting with new auth');
+    socket.disconnect();
+    socket = null;
+  }
+
   if (!socket) {
+    currentToken = normalizedToken;
+
     socket = io(BACKEND_URL, {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      // SECURITY: Pass JWT token for socket authentication
+      // Server will verify and associate socket with authenticated wallet
+      auth: token ? { token } : undefined,
     }) as TypedSocket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected to backend:', socket?.id);
+      console.log('[Socket] Connected to backend:', socket?.id, token ? '(authenticated)' : '(unauthenticated)');
     });
 
     socket.on('disconnect', (reason) => {
@@ -163,9 +184,26 @@ export function getSocket(): TypedSocket {
   return socket;
 }
 
+/**
+ * Update socket authentication with a new token
+ * Call this when user signs in or out
+ */
+export function updateSocketAuth(token: string | null): void {
+  if (token !== currentToken) {
+    currentToken = token;
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+      // Reconnect with new auth
+      getSocket(token);
+    }
+  }
+}
+
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();
     socket = null;
+    currentToken = null;
   }
 }

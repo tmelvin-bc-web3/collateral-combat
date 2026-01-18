@@ -120,6 +120,12 @@ const markLockUsedStmt = db.prepare(`
   UPDATE odds_locks SET used = 1 WHERE id = @id
 `);
 
+// SECURITY: Atomic mark-lock-used - only updates if not already used
+// Returns true if successfully marked, false if already used
+const markLockUsedAtomicStmt = db.prepare(`
+  UPDATE odds_locks SET used = 1 WHERE id = @id AND used = 0
+`);
+
 // Database operations
 export const spectatorBetDatabase = {
   /**
@@ -258,6 +264,16 @@ export const spectatorBetDatabase = {
    */
   markLockUsed(id: string): void {
     markLockUsedStmt.run({ id });
+  },
+
+  /**
+   * SECURITY: Atomically mark an odds lock as used
+   * Only marks the lock if it hasn't been used yet
+   * Returns true if successfully marked, false if already used (race condition prevented)
+   */
+  markLockUsedAtomic(id: string): boolean {
+    const result = markLockUsedAtomicStmt.run({ id });
+    return result.changes > 0;
   },
 
   /**

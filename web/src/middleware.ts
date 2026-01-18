@@ -34,7 +34,7 @@ export function middleware(request: NextRequest) {
   const allowedPaths = [
     '/coming-soon',
     '/api/waitlist',
-    '/progression',
+    '/leaderboard',
   ];
 
   // Allow static files and Next.js internals

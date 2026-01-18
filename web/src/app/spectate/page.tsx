@@ -1,31 +1,187 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
-import { LiveBattle, SpectatorBet } from '@/types';
-import { LiveBattleCard } from '@/components/LiveBattleCard';
+import { LiveBattle } from '@/types';
 import { SpectatorView } from '@/components/SpectatorView';
-import { SpectatorClaimsPanel } from '@/components/SpectatorClaimsPanel';
-import { SkeletonBattleCard, PageLoading } from '@/components/ui/skeleton';
+import { PageLoading } from '@/components/ui/skeleton';
 import { BACKEND_URL } from '@/config/api';
+import {
+  StandsHero,
+  StandsTabs,
+  FiltersBar,
+  BattleCard,
+  EmptyState,
+  UpcomingBattles,
+  ResultsSection,
+  MyBetsSection,
+  TopBettorsLeaderboard,
+  HowItWorks,
+  StandsTab,
+  StandsStats,
+  TierFilter,
+  SortOption,
+  LiveBattleData,
+  UpcomingBattle,
+  BattleResult,
+  UserBet,
+  BettingStats,
+  BettorLeaderboardEntry,
+  RecentResult,
+  GameType,
+} from '@/components/stands';
 
-type Tab = 'live' | 'my-wagers' | 'claims';
+// Mock data for features not yet backed by API
+const MOCK_STATS: StandsStats = {
+  liveBattles: 0,
+  spectatorsOnline: 12,
+  totalWageredToday: 5.4,
+  biggestWinToday: 1.2,
+};
+
+const MOCK_UPCOMING: UpcomingBattle[] = [];
+
+const MOCK_RESULTS: BattleResult[] = [
+  {
+    id: '1',
+    gameType: 'arena',
+    tier: 'Raider',
+    prizePool: 1.0,
+    timeAgo: '2h ago',
+    endedAt: Date.now() - 2 * 60 * 60 * 1000,
+    winner: 'fighter1',
+    fighter1: { name: 'DegenKing', pnl: 12.5 },
+    fighter2: { name: 'SolWarrior', pnl: -8.2 },
+    spectatorPool: 2.4,
+    spectatorWinners: 8,
+  },
+  {
+    id: '2',
+    gameType: 'token-wars',
+    tier: 'Warlord',
+    prizePool: 2.0,
+    timeAgo: '5h ago',
+    endedAt: Date.now() - 5 * 60 * 60 * 1000,
+    winner: 'fighter2',
+    fighter1: { name: 'MemeHunter', pnl: 3.1 },
+    fighter2: { name: 'CryptoChad', pnl: 18.7 },
+    spectatorPool: 4.8,
+    spectatorWinners: 12,
+  },
+];
+
+const MOCK_USER_STATS: BettingStats = {
+  totalBets: 0,
+  winRate: 0,
+  pnl: 0,
+  biggestWin: 0,
+};
+
+const MOCK_TOP_BETTORS: BettorLeaderboardEntry[] = [
+  { id: '1', wallet: 'abc123', name: 'WhaleWatcher', totalBets: 45, winRate: 62, profit: 12.5, isUser: false },
+  { id: '2', wallet: 'def456', name: 'BetMaster', totalBets: 38, winRate: 58, profit: 8.2, isUser: false },
+  { id: '3', wallet: 'ghi789', name: 'LuckyDegen', totalBets: 52, winRate: 55, profit: 6.8, isUser: false },
+  { id: '4', wallet: 'jkl012', name: 'SharpShooter', totalBets: 29, winRate: 52, profit: 4.1, isUser: false },
+  { id: '5', wallet: 'mno345', name: 'RiskTaker', totalBets: 67, winRate: 48, profit: 2.3, isUser: false },
+];
+
+// Map entry fee to tier name
+function getTierFromEntryFee(entryFee?: number): string {
+  if (!entryFee) return 'Raider';
+  if (entryFee <= 0.1) return 'Scavenger';
+  if (entryFee <= 0.5) return 'Raider';
+  if (entryFee <= 1) return 'Warlord';
+  return 'Immortan';
+}
+
+// Transform LiveBattle from API to our component format
+function transformBattle(battle: LiveBattle): LiveBattleData {
+  const player1 = battle.players?.[0];
+  const player2 = battle.players?.[1];
+
+  const player1Pnl = player1?.account?.totalPnlPercent || 0;
+  const player2Pnl = player2?.account?.totalPnlPercent || 0;
+
+  const total = battle.totalBetPool || 0;
+  const player1Odds = battle.odds?.player1?.odds || 2;
+  const player2Odds = battle.odds?.player2?.odds || 2;
+
+  // Calculate pool percentages from odds (odds = total / pool for that side)
+  // So pool = total / odds, percent = pool / total * 100 = 100 / odds
+  const pool1Pct = player1Odds > 0 ? Math.min(100, 100 / player1Odds * (player1Odds / (player1Odds + player2Odds)) * 2) : 50;
+  const pool2Pct = 100 - pool1Pct;
+
+  const p1Winning = player1Pnl > player2Pnl;
+
+  // Calculate end time
+  const endTime = battle.startedAt ? battle.startedAt + (battle.config?.duration || 300) * 1000 : Date.now();
+  const timeRemainingMs = Math.max(0, endTime - Date.now());
+
+  return {
+    id: battle.id,
+    gameType: 'arena' as GameType,
+    tier: getTierFromEntryFee(battle.config?.entryFee),
+    prizePool: battle.prizePool || 0,
+    timeRemaining: formatTimeRemaining(timeRemainingMs),
+    timeRemainingMs,
+    fighter1: {
+      wallet: player1?.walletAddress || '',
+      name: truncateAddress(player1?.walletAddress || ''),
+      pnl: player1Pnl,
+      isWinning: p1Winning,
+      spectatorPercent: pool1Pct,
+      spectatorOdds: player1Odds,
+    },
+    fighter2: {
+      wallet: player2?.walletAddress || '',
+      name: truncateAddress(player2?.walletAddress || ''),
+      pnl: player2Pnl,
+      isWinning: !p1Winning && player2Pnl !== player1Pnl,
+      spectatorPercent: pool2Pct,
+      spectatorOdds: player2Odds,
+    },
+    spectatorPool: total,
+    spectators: battle.spectatorCount || 0,
+    featured: battle.featured,
+  };
+}
+
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return '0:00';
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function truncateAddress(addr: string): string {
+  if (!addr) return 'Unknown';
+  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
 
 export default function SpectatePage() {
   const { publicKey } = useWallet();
+  const walletAddress = publicKey?.toBase58();
+
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('live');
+  const [activeTab, setActiveTab] = useState<StandsTab>('live');
   const [liveBattles, setLiveBattles] = useState<LiveBattle[]>([]);
   const [selectedBattle, setSelectedBattle] = useState<LiveBattle | null>(null);
-  const [myBets, setMyBets] = useState<SpectatorBet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Filters
+  const [gameFilter, setGameFilter] = useState<string>('all');
+  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('wagered');
+
+  // User bets (mock for now)
+  const [activeBets] = useState<UserBet[]>([]);
+  const [betHistory] = useState<UserBet[]>([]);
 
   useEffect(() => {
     setMounted(true);
     const socket = getSocket();
 
-    // Fetch initial data via REST API as fallback
     const fetchLiveBattles = async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/battles/live`);
@@ -40,8 +196,6 @@ export default function SpectatePage() {
     };
 
     fetchLiveBattles();
-
-    // Also subscribe via WebSocket for real-time updates
     socket.emit('subscribe_live_battles');
 
     socket.on('live_battles', (battles) => {
@@ -50,15 +204,14 @@ export default function SpectatePage() {
     });
 
     socket.on('spectator_battle_update', (battle) => {
-      setLiveBattles(prev =>
-        prev.map(b => b.id === battle.id ? battle : b)
+      setLiveBattles((prev) =>
+        prev.map((b) => (b.id === battle.id ? battle : b))
       );
       if (selectedBattle?.id === battle.id) {
         setSelectedBattle(battle);
       }
     });
 
-    // Refresh every 5 seconds as backup
     const interval = setInterval(fetchLiveBattles, 5000);
 
     return () => {
@@ -69,19 +222,96 @@ export default function SpectatePage() {
     };
   }, [selectedBattle?.id]);
 
-  const handleSelectBattle = (battle: LiveBattle) => {
+  // Transform battles for display
+  const transformedBattles = useMemo(() => {
+    return liveBattles.map(transformBattle);
+  }, [liveBattles]);
+
+  // Filter and sort battles
+  const filteredBattles = useMemo(() => {
+    let result = [...transformedBattles];
+
+    // Apply game filter
+    if (gameFilter !== 'all') {
+      result = result.filter((b) => b.gameType === gameFilter);
+    }
+
+    // Apply tier filter
+    if (tierFilter !== 'all') {
+      result = result.filter((b) =>
+        b.tier.toLowerCase().includes(tierFilter.toLowerCase())
+      );
+    }
+
+    // Apply sort
+    switch (sortBy) {
+      case 'wagered':
+        result.sort((a, b) => b.spectatorPool - a.spectatorPool);
+        break;
+      case 'spectators':
+        result.sort((a, b) => b.spectators - a.spectators);
+        break;
+      case 'ending':
+        result.sort((a, b) => a.timeRemainingMs - b.timeRemainingMs);
+        break;
+      case 'recent':
+        result.sort((a, b) => b.timeRemainingMs - a.timeRemainingMs);
+        break;
+    }
+
+    return result;
+  }, [transformedBattles, gameFilter, tierFilter, sortBy]);
+
+  // Build stats
+  const stats: StandsStats = useMemo(() => ({
+    ...MOCK_STATS,
+    liveBattles: liveBattles.length,
+    spectatorsOnline: liveBattles.reduce((sum, b) => sum + (b.spectatorCount || 0), 0) + 12,
+  }), [liveBattles]);
+
+  // Recent results for empty state
+  const recentResults: RecentResult[] = useMemo(() => {
+    return MOCK_RESULTS.slice(0, 3).map((r) => ({
+      id: r.id,
+      winner: r.winner === 'fighter1' ? r.fighter1.name : r.fighter2.name,
+      loser: r.winner === 'fighter1' ? r.fighter2.name : r.fighter1.name,
+      timeAgo: r.timeAgo,
+    }));
+  }, []);
+
+  const handleSelectBattle = useCallback((battle: LiveBattle) => {
     setSelectedBattle(battle);
     const socket = getSocket();
     socket.emit('spectate_battle', battle.id);
-  };
+  }, []);
 
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     if (selectedBattle) {
       const socket = getSocket();
       socket.emit('leave_spectate', selectedBattle.id);
     }
     setSelectedBattle(null);
-  };
+  }, [selectedBattle]);
+
+  const handleBet = useCallback((battleId: string, side: 'fighter1' | 'fighter2') => {
+    // Find the original battle and select it for betting
+    const battle = liveBattles.find((b) => b.id === battleId);
+    if (battle) {
+      handleSelectBattle(battle);
+    }
+  }, [liveBattles, handleSelectBattle]);
+
+  const handleWatch = useCallback((battleId: string) => {
+    const battle = liveBattles.find((b) => b.id === battleId);
+    if (battle) {
+      handleSelectBattle(battle);
+    }
+  }, [liveBattles, handleSelectBattle]);
+
+  const handleSetReminder = useCallback((battleId: string) => {
+    // TODO: Implement reminder functionality
+    console.log('Set reminder for battle:', battleId);
+  }, []);
 
   if (!mounted) {
     return <PageLoading message="Entering the stands..." />;
@@ -92,197 +322,101 @@ export default function SpectatePage() {
       <SpectatorView
         battle={selectedBattle}
         onBack={handleBackToList}
-        walletAddress={publicKey?.toBase58()}
+        walletAddress={walletAddress}
       />
     );
   }
 
-  const featuredBattle = liveBattles.find(b => b.featured) || liveBattles[0];
-  const otherBattles = liveBattles.filter(b => b.id !== featuredBattle?.id);
-
   return (
-    <div className="max-w-6xl mx-auto animate-fadeIn">
-      {/* Header */}
-      <div className="text-center py-12">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-danger/10 border border-danger/30 text-danger text-sm font-bold uppercase tracking-wider mb-6">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
-          </span>
-          {liveBattles.length} Live Battles
-        </div>
-
-        <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
-          THE <span className="text-danger">STANDS</span>
-        </h1>
-
-        <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-6">
-          Witness the carnage from above. Watch degens battle for glory and back your champion to claim a share of the spoils.
-        </p>
-      </div>
+    <div className="max-w-6xl mx-auto px-4 animate-fadeIn">
+      {/* Hero Section */}
+      <StandsHero stats={stats} />
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8 justify-center">
-        <button
-          onClick={() => setActiveTab('live')}
-          className={`px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
-            activeTab === 'live'
-              ? 'bg-danger text-white'
-              : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-primary'
-          }`}
-        >
-          Live Now
-        </button>
-        <button
-          onClick={() => setActiveTab('my-wagers')}
-          className={`px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
-            activeTab === 'my-wagers'
-              ? 'bg-danger text-white'
-              : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-primary'
-          }`}
-        >
-          My Wagers
-        </button>
-        <button
-          onClick={() => setActiveTab('claims')}
-          className={`px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${
-            activeTab === 'claims'
-              ? 'bg-success text-white'
-              : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border-primary'
-          }`}
-        >
-          Claims
-        </button>
+      <StandsTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        liveBattlesCount={liveBattles.length}
+        upcomingCount={MOCK_UPCOMING.length}
+        activeBetsCount={activeBets.length}
+      />
+
+      {/* Filters (only show on Live tab) */}
+      {activeTab === 'live' && (
+        <FiltersBar
+          gameFilter={gameFilter}
+          tierFilter={tierFilter}
+          sortBy={sortBy}
+          onGameFilterChange={setGameFilter}
+          onTierFilterChange={setTierFilter}
+          onSortChange={setSortBy}
+        />
+      )}
+
+      {/* Content Area */}
+      <div className="min-h-[400px]">
+        {activeTab === 'live' && (
+          <>
+            {isLoading ? (
+              <div className="grid md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-80 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : filteredBattles.length === 0 ? (
+              <EmptyState
+                recentResults={recentResults}
+                upcomingBattles={MOCK_UPCOMING}
+                onViewResults={() => setActiveTab('results')}
+              />
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {filteredBattles.map((battle) => (
+                  <BattleCard
+                    key={battle.id}
+                    battle={battle}
+                    onWatch={() => handleWatch(battle.id)}
+                    onBet={(side) => handleBet(battle.id, side)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'upcoming' && (
+          <UpcomingBattles
+            battles={MOCK_UPCOMING}
+            onSetReminder={handleSetReminder}
+          />
+        )}
+
+        {activeTab === 'mybets' && (
+          <MyBetsSection
+            activeBets={activeBets}
+            betHistory={betHistory}
+            stats={MOCK_USER_STATS}
+            isConnected={!!walletAddress}
+            onWatchBattle={handleWatch}
+            onViewLive={() => setActiveTab('live')}
+          />
+        )}
+
+        {activeTab === 'results' && (
+          <ResultsSection results={MOCK_RESULTS} />
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <TopBettorsLeaderboard
+            topBettors={MOCK_TOP_BETTORS}
+            userPosition={undefined}
+            userStats={walletAddress ? MOCK_USER_STATS : undefined}
+          />
+        )}
       </div>
 
-      {activeTab === 'live' && (
-        <>
-          {isLoading ? (
-            <div className="space-y-6">
-              <div className="text-xs font-bold text-danger uppercase tracking-wider mb-3">Featured Combat</div>
-              <SkeletonBattleCard className="mb-8" />
-              <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">All Battles</div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <SkeletonBattleCard />
-                <SkeletonBattleCard />
-              </div>
-            </div>
-          ) : liveBattles.length === 0 ? (
-            <div className="card text-center py-12 border border-danger/20">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-danger/10 flex items-center justify-center border border-danger/30">
-                <svg className="w-8 h-8 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-2 uppercase">The Arena is Empty</h3>
-              <p className="text-text-secondary text-sm">No warriors are fighting right now. Check back soon or enter the cage yourself.</p>
-            </div>
-          ) : (
-            <>
-              {/* Featured Battle */}
-              {featuredBattle && (
-                <div className="mb-8">
-                  <div className="text-xs font-bold text-danger uppercase tracking-wider mb-3">Featured Combat</div>
-                  <LiveBattleCard
-                    battle={featuredBattle}
-                    featured
-                    onWatch={() => handleSelectBattle(featuredBattle)}
-                  />
-                </div>
-              )}
-
-              {/* Other Battles */}
-              {otherBattles.length > 0 && (
-                <div>
-                  <div className="text-xs font-bold text-text-tertiary uppercase tracking-wider mb-3">All Battles</div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {otherBattles.map((battle) => (
-                      <LiveBattleCard
-                        key={battle.id}
-                        battle={battle}
-                        onWatch={() => handleSelectBattle(battle)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
-
-      {activeTab === 'my-wagers' && (
-        <div className="card border border-danger/20">
-          {!publicKey ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-danger/10 flex items-center justify-center border border-danger/30">
-                <svg className="w-8 h-8 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-2 uppercase">Identity Required</h3>
-              <p className="text-text-secondary text-sm">Connect your wallet to view your wager history</p>
-            </div>
-          ) : myBets.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-bg-tertiary flex items-center justify-center border border-border-primary">
-                <svg className="w-8 h-8 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-2 uppercase">No Wagers Yet</h3>
-              <p className="text-text-secondary text-sm">You haven&apos;t backed any warriors yet. Watch a battle and place your first wager!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {myBets.map((bet) => (
-                <div key={bet.id} className="p-4 rounded-lg bg-bg-tertiary border border-border-primary">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-sm font-medium uppercase tracking-wider">Backed: </span>
-                      <span className="text-sm font-mono">{bet.backedPlayer.slice(0, 4)}...{bet.backedPlayer.slice(-4)}</span>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${
-                      bet.status === 'won' ? 'bg-success/20 text-success border border-success/30' :
-                      bet.status === 'lost' ? 'bg-danger/20 text-danger border border-danger/30' :
-                      'bg-warning/20 text-warning border border-warning/30'
-                    }`}>
-                      {bet.status === 'won' ? 'Victory' : bet.status === 'lost' ? 'Defeat' : 'Pending'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-text-secondary">{bet.amount} SOL @ {bet.odds.toFixed(2)}x</span>
-                    <span className={bet.status === 'won' ? 'text-success font-bold' : 'text-text-secondary'}>
-                      {bet.status === 'won' ? `+${bet.potentialPayout.toFixed(2)}` : bet.potentialPayout.toFixed(2)} SOL
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'claims' && (
-        <>
-          {!publicKey ? (
-            <div className="card border border-success/20 text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-success/10 flex items-center justify-center border border-success/30">
-                <svg className="w-8 h-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-2 uppercase">Connect Wallet</h3>
-              <p className="text-text-secondary text-sm">Connect your wallet to view and claim your winnings</p>
-            </div>
-          ) : (
-            <SpectatorClaimsPanel
-              walletAddress={publicKey.toBase58()}
-            />
-          )}
-        </>
-      )}
+      {/* How It Works */}
+      <HowItWorks />
     </div>
   );
 }

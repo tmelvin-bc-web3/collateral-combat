@@ -34,6 +34,8 @@ import {
   getPlayerStats,
   getRecentGames,
   getPlayerHistory,
+  getRecentWinners,
+  getPlatformStats,
   LDSGameRecord,
   LDSPlayerRecord,
   LDSRoundRecord,
@@ -41,9 +43,12 @@ import {
   LDSRoundResult,
   LDSGameStatus,
   LDSLeaderboardEntry,
+  RecentWinnerRecord,
+  PlatformStatsRecord,
 } from '../db/ldsDatabase';
 import { balanceService } from './balanceService';
 import { priceService } from './priceService';
+import { progressionService } from './progressionService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import { pythVerificationService } from './pythVerificationService';
 import {
@@ -1036,7 +1041,13 @@ class LDSManager {
         return { success: false, error: 'Failed to lock entry fee on-chain. Please try again.' };
       }
     } else {
-      console.log(`[LDS] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
+      // SECURITY: Validate user has free bet credits before allowing free bet entry
+      const freeBetResult = await progressionService.useFreeBetCredit(walletAddress, 'lds', `LDS game ${game.id} entry`);
+      if (!freeBetResult.success) {
+        console.warn(`[LDS] Free bet rejected for ${walletAddress.slice(0, 8)}... - no free bet credits available`);
+        return { success: false, error: 'No free bet credits available. Please use SOL to enter.' };
+      }
+      console.log(`[LDS] Processing free bet for ${walletAddress.slice(0, 8)}... (free bet credit deducted, remaining: ${freeBetResult.balance.balance})`);
     }
 
     // Add player to game with free bet flag
@@ -1256,6 +1267,20 @@ class LDSManager {
    */
   getRecentGames(limit: number = 10): LDSGameRecord[] {
     return getRecentGames(limit);
+  }
+
+  /**
+   * Get recent winners for lobby display
+   */
+  getRecentWinners(limit: number = 10): RecentWinnerRecord[] {
+    return getRecentWinners(limit);
+  }
+
+  /**
+   * Get platform stats for lobby display
+   */
+  getPlatformStats(): PlatformStatsRecord {
+    return getPlatformStats();
   }
 
   /**

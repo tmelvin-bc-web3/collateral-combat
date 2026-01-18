@@ -263,6 +263,34 @@ const stmts = {
     ORDER BY total_winnings DESC
     LIMIT ?
   `),
+
+  // Recent winners (1st place from completed games)
+  getRecentWinners: db.prepare(`
+    SELECT
+      p.wallet_address,
+      p.payout_lamports,
+      g.player_count,
+      g.end_time
+    FROM lds_players p
+    JOIN lds_games g ON p.game_id = g.id
+    WHERE g.status = 'completed' AND p.placement = 1
+    ORDER BY g.end_time DESC
+    LIMIT ?
+  `),
+
+  // Platform stats
+  getTotalGamesCompleted: db.prepare(`
+    SELECT COUNT(*) as count FROM lds_games WHERE status = 'completed'
+  `),
+  getTotalSolWon: db.prepare(`
+    SELECT COALESCE(SUM(payout_lamports), 0) as total FROM lds_players
+    JOIN lds_games ON lds_players.game_id = lds_games.id
+    WHERE lds_games.status = 'completed'
+  `),
+  getRecentJoinsCount: db.prepare(`
+    SELECT COUNT(*) as count FROM lds_players
+    WHERE joined_at > ?
+  `),
 };
 
 // ============================================
@@ -658,5 +686,46 @@ export function getPlayerStats(walletAddress: string): {
     totalWinnings,
     bestPlacement,
     avgPlacement: Math.round(avgPlacement * 10) / 10,
+  };
+}
+
+// ============================================
+// Recent Winners & Platform Stats
+// ============================================
+
+export interface RecentWinnerRecord {
+  walletAddress: string;
+  payout: number;
+  totalPlayers: number;
+  completedAt: number;
+}
+
+export function getRecentWinners(limit: number = 10): RecentWinnerRecord[] {
+  const rows = stmts.getRecentWinners.all(limit) as any[];
+  return rows.map(row => ({
+    walletAddress: row.wallet_address,
+    payout: row.payout_lamports,
+    totalPlayers: row.player_count,
+    completedAt: row.end_time,
+  }));
+}
+
+export interface PlatformStatsRecord {
+  totalGamesPlayed: number;
+  totalSolWon: number;
+  recentJoins: number;
+}
+
+export function getPlatformStats(): PlatformStatsRecord {
+  const gamesRow = stmts.getTotalGamesCompleted.get() as any;
+  const solRow = stmts.getTotalSolWon.get() as any;
+  // Count joins in the last hour
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  const joinsRow = stmts.getRecentJoinsCount.get(oneHourAgo) as any;
+
+  return {
+    totalGamesPlayed: gamesRow?.count || 0,
+    totalSolWon: solRow?.total || 0,
+    recentJoins: joinsRow?.count || 0,
   };
 }

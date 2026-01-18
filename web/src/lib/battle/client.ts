@@ -197,11 +197,14 @@ export class BattleClient {
     return tx;
   }
 
-  async createBattle(entryFeeSol: number): Promise<{ tx: string; battleId: BN }> {
+  async createBattle(entryFeeSol: number): Promise<{ tx: string; battleId: BN } | null> {
     if (!this.wallet.publicKey) throw new Error('Wallet not connected');
 
     const config = await this.getConfig();
-    if (!config) throw new Error('Config not initialized');
+    if (!config) {
+      console.warn('[BattleClient] Config not initialized - on-chain battles not available');
+      return null;
+    }
 
     const battleId = config.totalBattles;
     const [configPDA] = this.getConfigPDA();

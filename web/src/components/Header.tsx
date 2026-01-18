@@ -8,11 +8,12 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import dynamic from 'next/dynamic';
 import { UserAvatar } from './UserAvatar';
 import { ProfilePicker } from './ProfilePicker';
-import { WalletBalance, WalletBalanceButton } from './WalletBalance';
+import { WalletBalance } from './WalletBalance';
 import { LevelBadge } from './progression';
 import { useProgressionContext } from '@/contexts/ProgressionContext';
 import { UserStreak } from '@/types';
 import { BACKEND_URL } from '@/config/api';
+import { Flame, AlertTriangle } from 'lucide-react';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -114,7 +115,6 @@ export function Header() {
   const pathname = usePathname();
   const { publicKey } = useWallet();
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
-  const [isBalanceOpen, setIsBalanceOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [streak, setStreak] = useState<UserStreak | null>(null);
@@ -353,7 +353,7 @@ export function Header() {
           {walletAddress && (
             <div className="flex items-center gap-2">
               {progression && (
-                <Link href="/progression" title="View Progression">
+                <Link href="/leaderboard" title="View Ranks">
                   <LevelBadge
                     level={progression.currentLevel}
                     size="sm"
@@ -364,17 +364,19 @@ export function Header() {
               {/* Streak Display */}
               {streak && streak.currentStreak > 0 && (
                 <Link
-                  href="/progression"
+                  href="/leaderboard"
                   title={`${streak.currentStreak} day streak${streak.bonusPercent > 0 ? ` (+${streak.bonusPercent}% XP)` : ''}`}
                   className="flex items-center gap-1 px-2 py-1 rounded bg-bg-secondary/80 border border-fire/30 hover:border-fire/50 transition-all"
                 >
-                  <span className="text-fire text-sm">🔥</span>
+                  <Flame className="w-4 h-4 text-fire" />
                   <span className="text-fire font-bold text-xs">{streak.currentStreak}</span>
                   {streak.bonusPercent > 0 && (
                     <span className="text-[10px] text-accent font-medium">+{streak.bonusPercent}%</span>
                   )}
                   {streak.atRisk && (
-                    <span className="text-yellow-500 text-[10px]" title="Wager today to keep your streak!">⚠️</span>
+                    <span title="Wager today to keep your streak!">
+                      <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                    </span>
                   )}
                 </Link>
               )}
@@ -385,11 +387,6 @@ export function Header() {
                 onClick={() => setIsProfilePickerOpen(true)}
               />
             </div>
-          )}
-
-          {/* Balance Button */}
-          {walletAddress && (
-            <WalletBalanceButton onClick={() => setIsBalanceOpen(true)} />
           )}
 
           {/* Wallet */}
@@ -403,12 +400,6 @@ export function Header() {
       <ProfilePicker
         isOpen={isProfilePickerOpen}
         onClose={() => setIsProfilePickerOpen(false)}
-      />
-
-      {/* Wallet Balance Modal */}
-      <WalletBalance
-        isOpen={isBalanceOpen}
-        onClose={() => setIsBalanceOpen(false)}
       />
     </header>
   );

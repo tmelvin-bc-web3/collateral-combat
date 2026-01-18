@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useProfileContext } from '@/contexts/ProfileContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { PRESET_PFPS } from '@/data/presetPFPs';
 import { PresetPFP } from '@/types';
 import { BACKEND_URL } from '@/config/api';
@@ -14,6 +15,7 @@ interface ProfileSetupProps {
 
 export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const { updateProfile, error: profileError } = useProfileContext();
+  const { isAuthenticated, isLoading: authLoading, signIn } = useAuth();
 
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [username, setUsername] = useState('');
@@ -84,6 +86,16 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
     setSaveError(null);
 
     try {
+      // If not authenticated, prompt sign-in first
+      if (!isAuthenticated) {
+        const signedIn = await signIn();
+        if (!signedIn) {
+          setSaveError('Please sign the message to verify your wallet');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const result = await updateProfile({
         pfpType: selectedPreset ? 'preset' : 'default',
         presetId: selectedPreset?.id,
@@ -92,7 +104,7 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       if (result) {
         onComplete();
       } else {
-        setSaveError(profileError || 'Failed to save profile. Please sign in and try again.');
+        setSaveError(profileError || 'Failed to save profile. Please try again.');
       }
     } catch (err: any) {
       setSaveError(err.message || 'Failed to save profile');
@@ -104,14 +116,27 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const handleSkip = async () => {
     setIsSaving(true);
     try {
+      // If not authenticated, prompt sign-in first
+      if (!isAuthenticated) {
+        const signedIn = await signIn();
+        if (!signedIn) {
+          // User cancelled sign-in, just close the modal anyway
+          onComplete();
+          return;
+        }
+      }
+
       const result = await updateProfile({ pfpType: 'default' });
       if (result) {
         onComplete();
       } else {
-        console.error('Failed to skip profile setup');
+        // If skip fails, just close the modal - profile will be created on next action
+        onComplete();
       }
     } catch (err) {
       console.error('Profile skip error:', err);
+      // On error, still close the modal
+      onComplete();
     } finally {
       setIsSaving(false);
     }
@@ -223,10 +248,10 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving || !!usernameError || isCheckingUsername}
+              disabled={isSaving || !!usernameError || isCheckingUsername || authLoading}
               className="btn btn-primary px-8 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Continue'}
+              {authLoading ? 'Connecting...' : isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Continue'}
             </button>
           </div>
         </div>

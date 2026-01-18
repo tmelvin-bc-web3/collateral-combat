@@ -31,7 +31,7 @@ const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
-const MAINTENANCE_MARGIN = 0.05; // 5% maintenance margin for liquidation
+const MAINTENANCE_MARGIN = 0.02; // 2% maintenance margin for liquidation (must be less than min leverage margin of 5%)
 
 // Ready check constants
 const READY_CHECK_TIMEOUT_MS = 30000; // 30 seconds

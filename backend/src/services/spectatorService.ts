@@ -412,14 +412,14 @@ class SpectatorService {
       return null;
     }
 
-    // Check if lock is already used
-    if (lock.used) {
-      console.error(`[Spectator] Odds lock already used: ${lockId}`);
+    // SECURITY: Atomically mark lock as used - prevents race condition where two
+    // concurrent requests could both use the same lock
+    // This replaces the old check-then-mark pattern which had a race condition
+    const wasMarked = spectatorBetDatabase.markLockUsedAtomic(lockId);
+    if (!wasMarked) {
+      console.error(`[Spectator] Odds lock already used (atomic check): ${lockId}`);
       return null;
     }
-
-    // Mark lock as used
-    spectatorBetDatabase.markLockUsed(lockId);
 
     const battle = battleManager.getBattle(lock.battleId);
     const backedPlayerWallet = this.getWalletFromSide(battle, lock.backedPlayer);
@@ -484,6 +484,21 @@ class SpectatorService {
   getUnclaimedWins(walletAddress: string): SpectatorBet[] {
     const records = spectatorBetDatabase.getUnclaimedWins(walletAddress);
     return records.map(r => this.recordToBet(r));
+  }
+
+  /**
+   * Get a bet by ID (for ownership verification)
+   */
+  getBet(betId: string): SpectatorBet | null {
+    // First check in-memory cache
+    const memBet = this.allBets.get(betId);
+    if (memBet) return memBet;
+
+    // Fall back to database
+    const dbRecord = spectatorBetDatabase.getBet(betId);
+    if (dbRecord) return this.recordToBet(dbRecord);
+
+    return null;
   }
 
   /**

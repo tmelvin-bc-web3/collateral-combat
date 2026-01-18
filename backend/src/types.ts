@@ -349,7 +349,7 @@ export interface ClientToServerEvents {
   request_odds_lock: (data: { battleId: string; backedPlayer: string; amount: number; walletAddress: string }) => void;
   verify_bet: (data: { lockId: string; txSignature: string; walletAddress: string }) => void;
   get_unclaimed_bets: (walletAddress: string) => void;
-  verify_claim: (data: { betId: string; txSignature: string }) => void;
+  verify_claim: (data: { betId: string; txSignature: string; walletAddress: string }) => void;
   // Prediction events
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;

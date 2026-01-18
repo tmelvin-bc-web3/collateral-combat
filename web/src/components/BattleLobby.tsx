@@ -5,8 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
 import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { useChallengeNotifications } from '@/hooks/useChallengeNotifications';
-import { BattleConfig, BattleDuration } from '@/types';
-import { FeaturedBattle } from './FeaturedBattle';
+import { BattleConfig } from '@/types';
 import { AssetIcon } from './AssetIcon';
 import { ASSETS } from '@/lib/assets';
 import { Card } from './ui/Card';
@@ -14,17 +13,76 @@ import { CreateChallengeModal, CreatedChallenge } from './CreateChallengeModal';
 import { ShareChallengeModal } from './ShareChallengeModal';
 import { MatchFoundModal } from './MatchFoundModal';
 import { ChallengeAcceptedModal } from './ChallengeAcceptedModal';
+import {
+  ArenaHeader,
+  LiveBattlesSection,
+  BattleConfigPanel,
+  RecentBattlesSection,
+  LeaderboardPreview,
+  ArenaStats,
+  LiveBattleDisplay,
+  WaitingPlayer,
+  RecentBattle,
+  LeaderboardEntry,
+  QueueData,
+} from './arena';
 
-const DURATION_OPTIONS: { value: BattleDuration; label: string; icon: string }[] = [
-  { value: 1800, label: '30 min', icon: 'flash' },
-  { value: 3600, label: '1 hour', icon: 'fire' },
+// Mock data for the arena
+const mockStats: ArenaStats = {
+  liveBattles: 2,
+  playersInQueue: 8,
+  battlesToday: 34,
+  biggestWin: 4.75,
+};
+
+const mockQueueData: QueueData = {
+  byAsset: { BTC: 3, ETH: 2, SOL: 3 },
+  byDuration: { 1800: 5, 3600: 3 },
+  byTier: { '0.1': 2, '0.5': 3, '1': 2, '5': 1 },
+};
+
+const mockLiveBattles: LiveBattleDisplay[] = [
+  {
+    id: '1',
+    tier: 'Raider',
+    asset: 'BTC/USDT',
+    timeRemaining: 847,
+    prizePool: 0.95,
+    spectators: 12,
+    player1: { name: 'degen42', pnl: 8.5, position: 'long', isWinning: true },
+    player2: { name: 'trader99', pnl: -3.2, position: 'short', isWinning: false },
+  },
+  {
+    id: '2',
+    tier: 'Warlord',
+    asset: 'ETH/USDT',
+    timeRemaining: 1523,
+    prizePool: 1.9,
+    spectators: 8,
+    player1: { name: 'whale_hunter', pnl: -1.8, position: 'short', isWinning: false },
+    player2: { name: 'moonboy', pnl: 4.2, position: 'long', isWinning: true },
+  },
 ];
 
-const ENTRY_FEE_OPTIONS = [
-  { value: 0.1, label: '0.1 SOL', tier: 'Scavenger' },
-  { value: 0.5, label: '0.5 SOL', tier: 'Raider' },
-  { value: 1, label: '1 SOL', tier: 'Warlord' },
-  { value: 5, label: '5 SOL', tier: 'Immortan' },
+const mockWaitingPlayers: WaitingPlayer[] = [
+  { id: '1', name: 'shadow_trader', tier: '0.5', asset: 'BTC', waitTime: '2m' },
+  { id: '2', name: 'crypto_king', tier: '1', asset: 'ETH', waitTime: '45s' },
+];
+
+const mockRecentBattles: RecentBattle[] = [
+  { id: '1', winner: { name: 'degen42', pnl: 12.5 }, loser: { name: 'trader99', pnl: -8.2 }, prize: 0.95, asset: 'BTC', timeAgo: '2m ago' },
+  { id: '2', winner: { name: 'whale_hunter', pnl: 6.8 }, loser: { name: 'moonboy', pnl: -4.1 }, prize: 1.9, asset: 'ETH', timeAgo: '15m ago' },
+  { id: '3', winner: { name: 'alpha_seeker', pnl: 15.2 }, loser: { name: 'paper_hands', pnl: -11.3 }, prize: 0.19, asset: 'SOL', timeAgo: '28m ago' },
+  { id: '4', winner: { name: 'diamond_hands', pnl: 9.1 }, loser: { name: 'fomo_buyer', pnl: -6.7 }, prize: 4.75, asset: 'BTC', timeAgo: '1h ago' },
+  { id: '5', winner: { name: 'steady_trader', pnl: 3.4 }, loser: { name: 'yolo_kid', pnl: -2.9 }, prize: 0.95, asset: 'ETH', timeAgo: '2h ago' },
+];
+
+const mockLeaders: LeaderboardEntry[] = [
+  { id: '1', name: 'diamond_hands', wins: 45, losses: 12, profit: 23.5 },
+  { id: '2', name: 'whale_hunter', wins: 38, losses: 15, profit: 18.2 },
+  { id: '3', name: 'alpha_seeker', wins: 32, losses: 18, profit: 12.8 },
+  { id: '4', name: 'steady_trader', wins: 28, losses: 22, profit: 8.4 },
+  { id: '5', name: 'degen42', wins: 25, losses: 20, profit: 6.1 },
 ];
 
 const STEPS = [
@@ -61,8 +119,6 @@ export function BattleLobby() {
   const { connected, publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || null;
   const [mounted, setMounted] = useState(false);
-  const [hoveredFee, setHoveredFee] = useState<number | null>(null);
-  const [isCreatingOnChain, setIsCreatingOnChain] = useState(false);
 
   const {
     battle,
@@ -70,7 +126,6 @@ export function BattleLobby() {
     error,
     matchmakingStatus,
     queueMatchmaking,
-    startSoloPractice,
     leaveBattle,
     readyCheck,
     readyCheckCancelled,
@@ -91,9 +146,6 @@ export function BattleLobby() {
     isConnected: isOnChainReady,
   } = useBattleOnChain();
 
-  const [selectedDuration, setSelectedDuration] = useState<BattleDuration>(1800);
-  const [selectedFee, setSelectedFee] = useState(0.5);
-
   // Challenge modal state
   const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
   const [createdChallenge, setCreatedChallenge] = useState<CreatedChallenge | null>(null);
@@ -111,57 +163,17 @@ export function BattleLobby() {
 
   const isConnected = mounted && connected;
 
-  const handleFindMatch = () => {
-    const config: BattleConfig = {
-      entryFee: selectedFee,
-      duration: selectedDuration,
-      mode: 'paper',
-      maxPlayers: 2,
-    };
+  const handleFindMatch = (config: BattleConfig) => {
     queueMatchmaking(config);
-  };
-
-  const handleSoloPractice = async () => {
-    const config: BattleConfig = {
-      entryFee: selectedFee,
-      duration: selectedDuration,
-      mode: 'paper',
-      maxPlayers: 1,
-    };
-
-    // Try to create on-chain battle first if wallet is ready
-    if (isOnChainReady) {
-      setIsCreatingOnChain(true);
-      try {
-        const result = await createOnChainBattle(selectedFee);
-        if (result) {
-          console.log('[BattleLobby] On-chain battle created:', result.battlePDA);
-          // Start the battle with the on-chain ID
-          startSoloPractice(config, result.battlePDA);
-        } else {
-          console.log('[BattleLobby] On-chain creation failed, starting off-chain');
-          // Fall back to off-chain battle
-          startSoloPractice(config);
-        }
-      } catch (err) {
-        console.error('[BattleLobby] On-chain error:', err);
-        // Fall back to off-chain battle
-        startSoloPractice(config);
-      } finally {
-        setIsCreatingOnChain(false);
-      }
-    } else {
-      // Off-chain only (no wallet connected to Solana)
-      startSoloPractice(config);
-    }
   };
 
   const handleChallengeCreated = (challenge: CreatedChallenge) => {
     setCreatedChallenge(challenge);
   };
 
-  const combinedError = error || onChainError;
-  const combinedLoading = isLoading || isOnChainLoading || isCreatingOnChain;
+  // Don't show on-chain errors to user since we silently fall back to off-chain mode
+  const combinedError = error;
+  const combinedLoading = isLoading || isOnChainLoading;
 
   // Loading state
   if (!mounted) {
@@ -467,311 +479,38 @@ export function BattleLobby() {
     );
   }
 
-  // Main lobby - completely redesigned
+  // Main lobby - redesigned Arena layout
   return (
-    <div className="max-w-5xl mx-auto animate-fadeIn">
-      {/* Hero Section */}
-      <div className="relative text-center mb-12 mt-8">
-        {/* Background glow */}
-        <div className="absolute inset-0 -top-20 bg-gradient-to-b from-accent/10 via-transparent to-transparent blur-3xl" />
+    <div className="max-w-6xl mx-auto animate-fadeIn">
+      {/* Arena Header */}
+      <ArenaHeader stats={mockStats} />
 
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 border border-accent/30 mb-4">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-            </span>
-            <span className="text-sm font-semibold text-accent">Paper Trading Mode</span>
-          </div>
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-5 gap-6 mt-6">
+        {/* Live Battles Section - 3 columns */}
+        <div className="lg:col-span-3">
+          <LiveBattlesSection
+            battles={mockLiveBattles}
+            waitingPlayers={mockWaitingPlayers}
+          />
+        </div>
 
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>
-            <span className="bg-gradient-to-r from-warning via-fire to-danger bg-clip-text text-transparent">
-              The Arena Awaits
-            </span>
-          </h1>
-          <p className="text-lg text-text-secondary max-w-lg mx-auto">
-            Face your challenger. Best P&L survives and claims all the loot.
-          </p>
+        {/* Battle Config Panel - 2 columns */}
+        <div className="lg:col-span-2">
+          <BattleConfigPanel
+            onFindMatch={handleFindMatch}
+            onChallengeClick={() => setShowCreateChallengeModal(true)}
+            isLoading={isLoading}
+            error={combinedError}
+            queueData={mockQueueData}
+          />
         </div>
       </div>
 
-      {/* Featured Live Battle */}
-      <FeaturedBattle />
-
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Battle Config - Takes up 3 columns */}
-        <div className="lg:col-span-3">
-          <Card className="overflow-hidden">
-            {/* Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-bg-tertiary to-bg-secondary border-b border-border-primary">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="font-bold text-lg">Configure Battle</h2>
-                  <p className="text-text-tertiary text-xs">Set your terms and find an opponent</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {combinedError && (
-                <div className="mb-6 p-4 rounded-xl bg-danger/10 border border-danger/30 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-danger/20 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-danger text-sm">{combinedError}</span>
-                </div>
-              )}
-
-              {/* Duration Selection */}
-              <div className="mb-6">
-                <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-3">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Battle Duration
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {DURATION_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setSelectedDuration(option.value)}
-                      className={`relative p-4 rounded-xl border-2 transition-all ${
-                        selectedDuration === option.value
-                          ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(0,212,170,0.15)]'
-                          : 'border-border-primary bg-bg-tertiary hover:border-border-secondary'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        {option.icon === 'flash' ? (
-                          <svg className={`w-5 h-5 ${selectedDuration === option.value ? 'text-accent' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                        ) : (
-                          <svg className={`w-5 h-5 ${selectedDuration === option.value ? 'text-accent' : 'text-text-tertiary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                          </svg>
-                        )}
-                        <span className={`font-bold ${selectedDuration === option.value ? 'text-text-primary' : 'text-text-secondary'}`}>
-                          {option.label}
-                        </span>
-                      </div>
-                      {selectedDuration === option.value && (
-                        <div className="absolute top-2 right-2">
-                          <div className="w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-                            <svg className="w-2.5 h-2.5 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Entry Fee Selection */}
-              <div className="mb-6">
-                <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-3">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Entry Fee
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {ENTRY_FEE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setSelectedFee(option.value)}
-                      onMouseEnter={() => setHoveredFee(option.value)}
-                      onMouseLeave={() => setHoveredFee(null)}
-                      className={`relative p-3 rounded-xl border-2 transition-all ${
-                        selectedFee === option.value
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border-primary bg-bg-tertiary hover:border-border-secondary'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className={`text-xs font-medium mb-1 ${selectedFee === option.value ? 'text-accent' : 'text-text-tertiary'}`}>
-                          {option.tier}
-                        </div>
-                        <div className={`font-bold ${selectedFee === option.value ? 'text-text-primary' : 'text-text-secondary'}`}>
-                          {option.label}
-                        </div>
-                      </div>
-                      {selectedFee === option.value && (
-                        <div className="absolute top-1.5 right-1.5">
-                          <div className="w-3 h-3 rounded-full bg-accent flex items-center justify-center">
-                            <svg className="w-2 h-2 text-bg-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Prize Pool Display */}
-              <div className="relative p-5 rounded-xl bg-gradient-to-br from-accent/10 via-bg-tertiary to-purple-500/10 border border-accent/20 mb-6 overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
-                <div className="relative flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-text-tertiary mb-1">Winner Takes</div>
-                    <div className="text-3xl font-black text-accent">
-                      {(selectedFee * 2 * 0.95).toFixed(2)} SOL
-                    </div>
-                    <div className="text-xs text-text-tertiary mt-1">
-                      {selectedFee * 2} SOL pool minus 5% fee
-                    </div>
-                  </div>
-                  <div className="w-16 h-16 rounded-2xl bg-accent/20 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleSoloPractice}
-                  disabled={combinedLoading}
-                  className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl bg-bg-tertiary border border-border-primary text-text-secondary font-semibold hover:bg-bg-hover hover:text-text-primary hover:border-border-secondary transition-all disabled:opacity-50"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    {isCreatingOnChain ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-text-secondary border-t-transparent rounded-full animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        Solo Practice
-                      </>
-                    )}
-                  </div>
-                </button>
-                <button
-                  onClick={handleFindMatch}
-                  disabled={combinedLoading}
-                  className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold hover:shadow-fire transition-all disabled:opacity-50 active:scale-[0.98]"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    {combinedLoading && !isCreatingOnChain ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Finding...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Find Match
-                      </>
-                    )}
-                  </div>
-                </button>
-              </div>
-
-              {/* Challenge a Friend */}
-              <div className="mt-4 pt-4 border-t border-border-primary">
-                <button
-                  onClick={() => setShowCreateChallengeModal(true)}
-                  className="w-full py-3 px-4 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 font-semibold hover:bg-purple-500/20 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                  Challenge a Friend
-                </button>
-                <p className="text-center text-text-tertiary text-xs mt-2">
-                  Create a shareable 1v1 battle link
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Side - 2 columns */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* How it Works */}
-          <Card>
-            <h2 className="font-bold text-lg mb-5 flex items-center gap-2">
-              <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              How it Works
-            </h2>
-
-            <div className="space-y-4">
-              {STEPS.map((step, index) => (
-                <div key={step.title} className="flex gap-4 group">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-purple-500/20 border border-accent/30 flex items-center justify-center text-accent group-hover:border-accent/50 transition-all">
-                      {step.icon}
-                    </div>
-                    {index < STEPS.length - 1 && (
-                      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-gradient-to-b from-accent/30 to-transparent" />
-                    )}
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <h3 className="font-semibold mb-1">{step.title}</h3>
-                    <p className="text-text-secondary text-sm leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Tradeable Assets */}
-          <Card>
-            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              Assets
-            </h2>
-
-            <div className="grid grid-cols-2 gap-2">
-              {ASSETS.map((asset) => (
-                <div
-                  key={asset.symbol}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-bg-tertiary hover:bg-bg-hover border border-transparent hover:border-border-secondary transition-all cursor-default group"
-                >
-                  <div className="group-hover:scale-110 transition-transform">
-                    <AssetIcon symbol={asset.symbol} size="lg" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">{asset.symbol}</div>
-                    <div className="text-text-tertiary text-xs">{asset.name}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-border-primary">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text-tertiary">Max Leverage</span>
-                <span className="font-bold text-accent">20x</span>
-              </div>
-            </div>
-          </Card>
-        </div>
+      {/* Bottom Row - Recent Battles & Leaderboard */}
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        <RecentBattlesSection battles={mockRecentBattles} />
+        <LeaderboardPreview leaders={mockLeaders} />
       </div>
 
       {/* Challenge Modals */}
@@ -829,7 +568,7 @@ export function BattleLobby() {
                   <button
                     onClick={() => {
                       clearReadyCheckCancelled();
-                      handleFindMatch();
+                      handleFindMatch({ entryFee: 0.5, duration: 1800, mode: 'paper', maxPlayers: 2 });
                     }}
                     className="mt-3 px-4 py-2 bg-[#7fba00]/20 border border-[#7fba00]/30 rounded-lg text-[#7fba00] text-sm font-medium hover:bg-[#7fba00]/30 transition-colors"
                   >

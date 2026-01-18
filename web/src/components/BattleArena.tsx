@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
 import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { usePrices } from '@/hooks/usePrices';
-import { Battle, PositionSide, Leverage } from '@/types';
+import { Battle, PositionSide, Leverage, UserProfile, UserProgression, BattlePlayer } from '@/types';
 import { ASSETS } from '@/lib/assets';
 import { AssetIcon } from './AssetIcon';
 import { TradingViewChart } from './TradingViewChart';
@@ -14,26 +14,73 @@ import { TradeHistoryTable } from './battle/TradeHistoryTable';
 import { useWinShare } from '@/hooks/useWinShare';
 import { WinShareModal } from './WinShareModal';
 import { WinToast } from './WinToast';
+import {
+  BattleHeader,
+  PnLComparisonBar,
+  OpponentActivityFeed,
+  ForfeitButton,
+  FighterData,
+  ActivityEvent,
+  BattlePhase,
+} from './battle';
 
 interface BattleArenaProps {
   battle: Battle;
 }
 
 const LEVERAGE_OPTIONS: Leverage[] = [2, 5, 10, 20];
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export function BattleArena({ battle }: BattleArenaProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || null;
-  const { currentPlayer, openPosition, closePosition, error, getTimeRemaining } = useBattleContext();
+  const { currentPlayer, openPosition, closePosition, error, getTimeRemaining, leaveBattle } = useBattleContext();
   const { prices } = usePrices();
 
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [selectedAsset, setSelectedAsset] = useState('SOL');
   const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
 
   // Order state
   const [leverage, setLeverage] = useState<Leverage>(5);
   const [margin, setMargin] = useState('100');
+
+  // Opponent profile state
+  const [opponentProfile, setOpponentProfile] = useState<UserProfile | null>(null);
+  const [opponentProgression, setOpponentProgression] = useState<UserProgression | null>(null);
+
+  // Get opponent player
+  const opponent = useMemo(() => {
+    return battle.players.find(p => p.walletAddress !== walletAddress) || null;
+  }, [battle.players, walletAddress]);
+
+  // Fetch opponent profile and progression
+  useEffect(() => {
+    if (!opponent) return;
+
+    const fetchOpponentData = async () => {
+      try {
+        const [profileRes, progressionRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/profile/${opponent.walletAddress}`),
+          fetch(`${BACKEND_URL}/api/progression/${opponent.walletAddress}`),
+        ]);
+
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          setOpponentProfile(profile);
+        }
+        if (progressionRes.ok) {
+          const progression = await progressionRes.json();
+          setOpponentProgression(progression);
+        }
+      } catch (err) {
+        console.error('Failed to fetch opponent data:', err);
+      }
+    };
+
+    fetchOpponentData();
+  }, [opponent]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -41,12 +88,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, [getTimeRemaining]);
-
-  const formatTime = (seconds: number): string => {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
 
   // Calculate real-time P&L for positions using live prices
   const getPositionsWithLivePnL = useCallback(() => {
@@ -70,7 +111,51 @@ export function BattleArena({ battle }: BattleArenaProps) {
     });
   }, [currentPlayer, prices]);
 
+  // Calculate opponent P&L
+  const getOpponentPnL = useCallback(() => {
+    if (!opponent) return { percent: 0, dollar: 0 };
+
+    // Calculate from positions
+    let unrealizedPnl = 0;
+    opponent.account.positions.forEach(position => {
+      const livePrice = prices[position.asset] || position.currentPrice;
+      const priceDiff = position.side === 'long'
+        ? livePrice - position.entryPrice
+        : position.entryPrice - livePrice;
+      const pnlPercent = (priceDiff / position.entryPrice) * 100 * position.leverage;
+      const marginAmount = position.size / position.leverage;
+      unrealizedPnl += marginAmount * (pnlPercent / 100);
+    });
+
+    const closedPnl = opponent.account.closedPnl || 0;
+    const totalPnlDollar = unrealizedPnl + closedPnl;
+    const startingBalance = opponent.account.startingBalance || 10000;
+    const totalPnlPercent = (totalPnlDollar / startingBalance) * 100;
+
+    return { percent: totalPnlPercent, dollar: totalPnlDollar };
+  }, [opponent, prices]);
+
+  // Get opponent activity feed
+  const getOpponentActivity = useCallback((): ActivityEvent[] => {
+    if (!opponent) return [];
+
+    return opponent.trades
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 5)
+      .map(trade => ({
+        id: trade.id,
+        type: trade.type,
+        asset: trade.asset,
+        side: trade.side,
+        leverage: trade.leverage,
+        pnl: trade.pnl,
+        timestamp: trade.timestamp,
+      }));
+  }, [opponent]);
+
   const positionsWithLivePnL = getPositionsWithLivePnL();
+  const opponentPnL = getOpponentPnL();
+  const opponentActivity = getOpponentActivity();
 
   const getAccountValue = () => {
     if (!currentPlayer) return 0;
@@ -83,15 +168,17 @@ export function BattleArena({ battle }: BattleArenaProps) {
     return currentPlayer.account.balance + marginInPositions + unrealizedPnl;
   };
 
-  const getTotalPnLPercent = () => {
-    if (!currentPlayer) return 0;
+  const getTotalPnL = () => {
+    if (!currentPlayer) return { percent: 0, dollar: 0 };
     const totalUnrealizedPnl = positionsWithLivePnL.reduce((sum, p) => sum + p.unrealizedPnl, 0);
     const closedPnl = currentPlayer.account.closedPnl || 0;
-    const totalPnl = totalUnrealizedPnl + closedPnl;
+    const totalPnlDollar = totalUnrealizedPnl + closedPnl;
     const startingBalance = currentPlayer.account.startingBalance || 10000;
-    return (totalPnl / startingBalance) * 100;
+    const totalPnlPercent = (totalPnlDollar / startingBalance) * 100;
+    return { percent: totalPnlPercent, dollar: totalPnlDollar };
   };
 
+  const userPnL = getTotalPnL();
   const marginValue = parseFloat(margin) || 0;
   const positionSize = marginValue * leverage;
   const availableBalance = currentPlayer?.account.balance || 0;
@@ -113,11 +200,47 @@ export function BattleArena({ battle }: BattleArenaProps) {
     return <BattleResults battle={battle} walletAddress={walletAddress} />;
   }
 
-  const totalPnl = getTotalPnLPercent();
-  const isUrgent = timeRemaining < 60;
+  const isSoloPractice = battle.config.maxPlayers === 1;
   const currentPrice = prices[selectedAsset] || 0;
 
-  const [showOrderPanel, setShowOrderPanel] = useState(false);
+  // Determine battle phase
+  const getBattlePhase = (): BattlePhase => {
+    if (battle.status === 'completed') return 'ended';
+    if (timeRemaining < 60) return 'ending';
+    return 'live';
+  };
+
+  // Create fighter data
+  const userFighter: FighterData = {
+    walletAddress: walletAddress || '',
+    username: walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : 'You',
+    avatar: null, // TODO: fetch user's own profile
+    level: 1,
+    title: 'Rookie',
+    pnlPercent: userPnL.percent,
+    pnlDollar: userPnL.dollar,
+    positions: positionsWithLivePnL.map(p => ({
+      id: p.id,
+      asset: p.asset,
+      side: p.side,
+      leverage: p.leverage,
+      pnlPercent: p.unrealizedPnlPercent,
+      pnlDollar: p.unrealizedPnl,
+    })),
+    isCurrentUser: true,
+  };
+
+  const opponentFighter: FighterData = {
+    walletAddress: opponent?.walletAddress || '',
+    username: opponentProfile?.username || (opponent ? `${opponent.walletAddress.slice(0, 4)}...${opponent.walletAddress.slice(-4)}` : 'Opponent'),
+    avatar: opponentProfile?.nftImageUrl || null,
+    level: opponentProgression?.currentLevel || 1,
+    title: opponentProgression?.title || 'Rookie',
+    pnlPercent: opponentPnL.percent,
+    pnlDollar: opponentPnL.dollar,
+    positions: [],
+    isCurrentUser: false,
+  };
 
   return (
     <div className="h-[calc(100vh-64px)] md:h-[calc(100vh-96px)] flex flex-col overflow-hidden animate-fadeIn">
@@ -131,13 +254,33 @@ export function BattleArena({ battle }: BattleArenaProps) {
         </div>
       )}
 
-      {/* Main Layout: Responsive - stacked on mobile, side-by-side on desktop */}
+      {/* Battle Header - Fighter cards + timer + prize */}
+      <BattleHeader
+        userFighter={userFighter}
+        opponentFighter={opponentFighter}
+        timeRemaining={timeRemaining}
+        phase={getBattlePhase()}
+        prizePool={battle.prizePool}
+        spectatorCount={battle.spectatorCount}
+        isSoloPractice={isSoloPractice}
+      />
+
+      {/* P&L Comparison Bar - Only for PvP battles */}
+      {!isSoloPractice && (
+        <PnLComparisonBar
+          userPnL={userPnL.percent}
+          opponentPnL={opponentPnL.percent}
+          userPnLDollar={userPnL.dollar}
+          opponentPnLDollar={opponentPnL.dollar}
+        />
+      )}
+
+      {/* Main Layout */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Chart Area - Full width on mobile, flex-1 on desktop */}
+        {/* Chart Area */}
         <div className="flex-1 flex flex-col min-w-0 lg:border-r border-white/10">
-          {/* Chart Header - Compact on mobile */}
+          {/* Asset Header with Price */}
           <div className="flex items-center justify-between px-2 md:px-4 py-2 border-b border-white/10 bg-black/40 flex-shrink-0 gap-2">
-            {/* Asset Selector & Price */}
             <div className="flex items-center gap-2 md:gap-4 min-w-0">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <AssetIcon symbol={selectedAsset} size="sm" />
@@ -151,35 +294,25 @@ export function BattleArena({ battle }: BattleArenaProps) {
               </div>
             </div>
 
-            {/* Battle Stats - Responsive */}
+            {/* Account Value + Mobile Order Toggle */}
             <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-              {/* Timer - Always visible */}
-              <div className="text-center">
-                <div className="text-[8px] md:text-[10px] text-white/40 uppercase">Time</div>
-                <div className={`text-base md:text-xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
-                  {formatTime(timeRemaining)}
-                </div>
-              </div>
-
-              {/* Account - Hidden on small */}
               <div className="text-center hidden md:block">
                 <div className="text-[10px] text-white/40 uppercase">Account</div>
                 <div className="font-mono font-bold">${getAccountValue().toFixed(0)}</div>
               </div>
 
-              {/* P&L - Always visible */}
-              <div className="text-center">
-                <div className="text-[8px] md:text-[10px] text-white/40 uppercase">P&L</div>
-                <div className={`text-sm md:text-base font-mono font-bold ${totalPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(1)}%
-                </div>
-              </div>
-
-              {/* Prize - Compact on mobile */}
-              <div className="px-2 md:px-3 py-1 rounded bg-warning/10 border border-warning/30 text-center hidden sm:block">
-                <div className="text-[8px] md:text-[10px] text-warning uppercase">Prize</div>
-                <div className="text-sm md:text-base font-bold text-warning">{(battle.prizePool * 0.95).toFixed(2)} SOL</div>
-              </div>
+              {/* Exit Practice Button - Only for solo practice mode */}
+              {isSoloPractice && (
+                <button
+                  onClick={leaveBattle}
+                  className="px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-white/10 border border-white/20 text-white/80 text-xs md:text-sm font-medium hover:bg-white/20 hover:text-white transition-all flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="hidden sm:inline">Exit</span>
+                </button>
+              )}
 
               {/* Mobile Order Panel Toggle */}
               <button
@@ -193,7 +326,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
             </div>
           </div>
 
-          {/* Asset Pills - Scrollable */}
+          {/* Asset Pills */}
           <div className="flex items-center gap-1 px-2 py-1 md:py-1.5 border-b border-white/10 bg-black/20 overflow-x-auto hide-scrollbar flex-shrink-0">
             {ASSETS.map((asset) => {
               const isSelected = selectedAsset === asset.symbol;
@@ -214,13 +347,13 @@ export function BattleArena({ battle }: BattleArenaProps) {
             })}
           </div>
 
-          {/* Chart - Takes remaining space */}
+          {/* Chart */}
           <div className="flex-1 min-h-[200px] bg-[#0d0d0d]">
             <TradingViewChart symbol={selectedAsset} height="100%" />
           </div>
         </div>
 
-        {/* Order Panel - Slide-over on mobile, sidebar on desktop */}
+        {/* Right Panel - Order + Opponent Activity */}
         <div className={`
           ${showOrderPanel ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
           fixed lg:relative inset-y-0 right-0 z-40
@@ -286,7 +419,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
                   className="w-full py-3 pl-7 pr-3 rounded-lg bg-white/5 border border-white/10 focus:border-warning focus:outline-none font-mono text-lg text-right text-white"
                 />
               </div>
-              {/* Quick size buttons */}
               <div className="grid grid-cols-4 gap-1 mt-2">
                 {[25, 50, 75, 100].map((percent) => (
                   <button
@@ -317,9 +449,17 @@ export function BattleArena({ battle }: BattleArenaProps) {
                 <span>Already have {selectedAsset} position</span>
               </div>
             )}
+
+            {/* Opponent Activity Feed - Only for PvP */}
+            {!isSoloPractice && (
+              <OpponentActivityFeed
+                activity={opponentActivity}
+                opponentName={opponentFighter.username}
+              />
+            )}
           </div>
 
-          {/* Long/Short Buttons - Fixed at bottom */}
+          {/* Long/Short Buttons */}
           <div className="p-3 border-t border-white/10 flex-shrink-0">
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -329,7 +469,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
               >
                 <div className="text-success font-bold text-sm tracking-wide">LONG</div>
                 <div className="text-success/60 text-[10px] font-mono mt-0.5 group-hover:text-success/80">
-                  {leverage}x • ${positionSize.toFixed(0)}
+                  {leverage}x  ${positionSize.toFixed(0)}
                 </div>
               </button>
               <button
@@ -339,7 +479,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
               >
                 <div className="text-danger font-bold text-sm tracking-wide">SHORT</div>
                 <div className="text-danger/60 text-[10px] font-mono mt-0.5 group-hover:text-danger/80">
-                  {leverage}x • ${positionSize.toFixed(0)}
+                  {leverage}x  ${positionSize.toFixed(0)}
                 </div>
               </button>
             </div>
@@ -355,30 +495,42 @@ export function BattleArena({ battle }: BattleArenaProps) {
         )}
       </div>
 
-      {/* Bottom: Positions Panel - Responsive height */}
+      {/* Bottom Panel - Positions + Forfeit */}
       <div className="h-[120px] md:h-[160px] flex-shrink-0 border-t border-white/10 bg-black/40 flex flex-col">
-        {/* Tabs */}
-        <div className="flex border-b border-white/10 flex-shrink-0">
-          <button
-            onClick={() => setActiveTab('positions')}
-            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
-              activeTab === 'positions'
-                ? 'border-warning text-warning'
-                : 'border-transparent text-white/40 hover:text-white/60'
-            }`}
-          >
-            Positions ({positionsWithLivePnL.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
-              activeTab === 'history'
-                ? 'border-warning text-warning'
-                : 'border-transparent text-white/40 hover:text-white/60'
-            }`}
-          >
-            History ({currentPlayer?.trades.length || 0})
-          </button>
+        {/* Tabs + Forfeit */}
+        <div className="flex items-center justify-between border-b border-white/10 flex-shrink-0">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('positions')}
+              className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'positions'
+                  ? 'border-warning text-warning'
+                  : 'border-transparent text-white/40 hover:text-white/60'
+              }`}
+            >
+              Positions ({positionsWithLivePnL.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'history'
+                  ? 'border-warning text-warning'
+                  : 'border-transparent text-white/40 hover:text-white/60'
+              }`}
+            >
+              History ({currentPlayer?.trades.length || 0})
+            </button>
+          </div>
+
+          {/* Forfeit Button - Only for PvP */}
+          {!isSoloPractice && (
+            <div className="pr-3">
+              <ForfeitButton
+                onForfeit={leaveBattle}
+                entryFee={battle.config.entryFee}
+              />
+            </div>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -403,7 +555,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   const [claimStatus, setClaimStatus] = useState<'idle' | 'claiming' | 'claimed' | 'error'>('idle');
   const [claimTxSignature, setClaimTxSignature] = useState<string | null>(null);
 
-  // Win share modal hook
   const {
     pendingWin,
     toastWin,
@@ -434,8 +585,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
       if (tx) {
         setClaimStatus('claimed');
         setClaimTxSignature(tx);
-
-        // Show win share modal after successful claim
         showWinShare({
           winAmount: prize,
           gameMode: 'battle',
@@ -461,7 +610,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
           )}
 
           <div className="relative p-8 text-center">
-            {/* Trophy */}
             <div className={`w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-xl ${
               isWinner
                 ? 'bg-gradient-to-br from-warning to-fire shadow-warning/30'
@@ -489,7 +637,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               )}
             </p>
 
-            {/* Claim Button */}
             {isWinner && hasOnChainBattle && (
               <div className="mb-6">
                 {claimStatus === 'claimed' ? (
@@ -549,7 +696,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               </div>
             )}
 
-            {/* Settlement TX Link */}
             {settlementTx && (
               <div className="mb-6 p-3 rounded-lg bg-white/5 border border-white/10">
                 <div className="text-xs text-white/40">Battle settled on-chain</div>
@@ -564,7 +710,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               </div>
             )}
 
-            {/* Results */}
             <div className="space-y-3 mb-8">
               {sortedPlayers.map((player, index) => {
                 const isCurrentPlayer = player.walletAddress === walletAddress;
@@ -606,7 +751,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
               })}
             </div>
 
-            {/* Play Again */}
             <button
               onClick={() => window.location.reload()}
               className="w-full py-4 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-all active:scale-[0.98]"
@@ -622,7 +766,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         </div>
       </div>
 
-      {/* Win Share Modal */}
       <WinShareModal
         winData={pendingWin}
         onClose={dismissWin}
@@ -633,7 +776,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
         winBypassesCooldown={winBypassesCooldown}
       />
 
-      {/* Win Toast for smaller wins */}
       <WinToast
         winData={toastWin}
         onExpand={expandToModal}
