@@ -178,10 +178,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Default values for when context is not available (graceful fallback)
+const defaultContextValue: ProfileContextValue = {
+  ownProfile: null,
+  isLoading: false,
+  error: null,
+  needsSetup: false,
+  completeSetup: () => {},
+  updateProfile: async () => null,
+  resetProfile: async () => {},
+  getProfileForWallet: () => null,
+  fetchProfilesForWallets: async () => {},
+};
+
 export function useProfileContext() {
   const context = useContext(ProfileContext);
+  // Return default values instead of throwing - allows graceful degradation
   if (!context) {
-    throw new Error('useProfileContext must be used within a ProfileProvider');
+    return defaultContextValue;
   }
   return context;
 }
