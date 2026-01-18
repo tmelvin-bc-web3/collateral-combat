@@ -42,7 +42,7 @@ const ESCROW_SEED = Buffer.from('escrow');
 
 // Constants
 const FREE_BET_AMOUNT_LAMPORTS = 10_000_000; // 0.01 SOL (MIN_BET_LAMPORTS)
-const PROCESS_INTERVAL_MS = 10_000; // 10 seconds
+const PROCESS_INTERVAL_MS = 30_000; // 30 seconds (increased from 10s to reduce RPC calls)
 
 // Type for bet side - maps to database 'long'/'short' and contract 'up'/'down'
 type FreeBetSide = 'long' | 'short';
@@ -523,6 +523,13 @@ class FreeBetEscrowService {
       // Get all placed positions (bets placed, waiting for settlement)
       const placedPositions = await getFreeBetPositionsByStatusType('placed');
 
+      // Skip RPC calls if no positions to process
+      if (placedPositions.length === 0) {
+        return;
+      }
+
+      console.log(`[FreeBetEscrow] Processing ${placedPositions.length} placed positions...`);
+
       for (const position of placedPositions) {
         try {
           // Check if round is settled
@@ -571,6 +578,10 @@ class FreeBetEscrowService {
 
       // Also process won positions that haven't been settled yet (claimed but not transferred)
       const wonPositions = await getFreeBetPositionsByStatusType('won');
+
+      if (wonPositions.length > 0) {
+        console.log(`[FreeBetEscrow] Processing ${wonPositions.length} won positions...`);
+      }
 
       for (const position of wonPositions) {
         try {

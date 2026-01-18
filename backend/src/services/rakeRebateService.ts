@@ -25,6 +25,7 @@ import {
   LAMPORTS_PER_SOL,
   ConfirmedSignatureInfo,
   ParsedTransactionWithMeta,
+  Logs,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { progressionService } from './progressionService';
@@ -47,7 +48,9 @@ const PREDICTION_PROGRAM_ID = new PublicKey('9fDpLYmAR1WtaVwSczxz1BZqQGiSRavT6kA
 const ESCROW_SEED = Buffer.from('escrow');
 
 // Constants
-const POLL_INTERVAL_MS = 15_000; // Poll every 15 seconds
+const FALLBACK_POLL_INTERVAL_MS = 60_000; // Fallback poll every 60 seconds (reduced from 15s)
+const PENDING_REBATES_INTERVAL_MS = 30_000; // Process pending rebates every 30 seconds
+const RECONNECT_DELAY_MS = 5_000; // Reconnect after 5 seconds on disconnect
 const BASELINE_FEE_BPS = 500; // 5% baseline fee in basis points
 const MIN_REBATE_LAMPORTS = 100_000; // 0.0001 SOL minimum rebate
 
@@ -62,14 +65,35 @@ class RakeRebateService {
   private connection: Connection;
   private rebateKeypair: Keypair | null = null;
   private escrowPda: PublicKey | null = null;
-  private pollInterval: NodeJS.Timeout | null = null;
+  private logsSubscriptionId: number | null = null;
+  private fallbackPollInterval: NodeJS.Timeout | null = null;
+  private pendingRebatesInterval: NodeJS.Timeout | null = null;
   private lastSignature: string | null = null;
   private listeners: Set<(event: string, data: unknown) => void> = new Set();
   private isInitialized: boolean = false;
+  private isSubscribed: boolean = false;
+  private processedSignatures: Set<string> = new Set(); // Dedup processed txs
 
   constructor() {
     const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-    this.connection = new Connection(rpcUrl, 'confirmed');
+    this.connection = new Connection(rpcUrl, {
+      commitment: 'confirmed',
+      wsEndpoint: this.getWsEndpoint(rpcUrl),
+    });
+  }
+
+  /**
+   * Convert HTTP RPC URL to WebSocket URL
+   */
+  private getWsEndpoint(rpcUrl: string): string | undefined {
+    try {
+      const url = new URL(rpcUrl);
+      // Convert https to wss, http to ws
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      return url.toString();
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -398,41 +422,158 @@ class RakeRebateService {
   }
 
   /**
-   * Start the background polling job
+   * Handle incoming log events from websocket subscription
+   */
+  private async handleLogsEvent(logs: Logs, context: { slot: number }): Promise<void> {
+    const signature = logs.signature;
+
+    // Skip if we've already processed this signature
+    if (this.processedSignatures.has(signature)) {
+      return;
+    }
+
+    // Skip failed transactions
+    if (logs.err) {
+      return;
+    }
+
+    // Mark as processed
+    this.processedSignatures.add(signature);
+
+    // Keep the set from growing too large (keep last 1000)
+    if (this.processedSignatures.size > 1000) {
+      const toRemove = Array.from(this.processedSignatures).slice(0, 500);
+      toRemove.forEach(sig => this.processedSignatures.delete(sig));
+    }
+
+    // Process the transaction
+    try {
+      const sigInfo: ConfirmedSignatureInfo = {
+        signature,
+        slot: context.slot,
+        err: null,
+        memo: null,
+        blockTime: Math.floor(Date.now() / 1000),
+        confirmationStatus: 'confirmed',
+      };
+
+      await this.processTransaction(sigInfo);
+    } catch (err) {
+      console.error('[RakeRebate] Error processing log event:', signature, err);
+    }
+  }
+
+  /**
+   * Subscribe to escrow account logs via websocket
+   */
+  private async subscribeToLogs(): Promise<void> {
+    if (!this.isInitialized || !this.escrowPda) {
+      return;
+    }
+
+    if (this.isSubscribed) {
+      console.log('[RakeRebate] Already subscribed to logs');
+      return;
+    }
+
+    try {
+      console.log('[RakeRebate] Subscribing to escrow logs via websocket...');
+
+      this.logsSubscriptionId = this.connection.onLogs(
+        this.escrowPda,
+        (logs, context) => {
+          this.handleLogsEvent(logs, context);
+        },
+        'confirmed'
+      );
+
+      this.isSubscribed = true;
+      console.log('[RakeRebate] Subscribed to escrow logs (subscription ID:', this.logsSubscriptionId, ')');
+    } catch (err) {
+      console.error('[RakeRebate] Failed to subscribe to logs:', err);
+      this.isSubscribed = false;
+
+      // Retry subscription after delay
+      setTimeout(() => this.subscribeToLogs(), RECONNECT_DELAY_MS);
+    }
+  }
+
+  /**
+   * Unsubscribe from logs
+   */
+  private async unsubscribeFromLogs(): Promise<void> {
+    if (this.logsSubscriptionId !== null) {
+      try {
+        await this.connection.removeOnLogsListener(this.logsSubscriptionId);
+        console.log('[RakeRebate] Unsubscribed from escrow logs');
+      } catch (err) {
+        console.error('[RakeRebate] Error unsubscribing from logs:', err);
+      }
+      this.logsSubscriptionId = null;
+      this.isSubscribed = false;
+    }
+  }
+
+  /**
+   * Start the service with websocket subscription and fallback polling
    */
   startPolling(): void {
-    if (this.pollInterval) {
-      console.warn('[RakeRebate] Polling already started');
+    if (this.fallbackPollInterval || this.isSubscribed) {
+      console.warn('[RakeRebate] Service already started');
       return;
     }
 
     if (!this.isInitialized) {
-      console.warn('[RakeRebate] Cannot start polling - not initialized');
+      console.warn('[RakeRebate] Cannot start - not initialized');
       return;
     }
 
-    console.log('[RakeRebate] Starting background polling');
+    console.log('[RakeRebate] Starting with websocket subscription + fallback polling');
 
-    // Initial poll
+    // Subscribe to logs via websocket (primary method - no CU cost)
+    this.subscribeToLogs();
+
+    // Initial poll to catch up on any missed transactions
     this.pollForClaims();
     this.processPendingRebates();
 
-    // Set up interval
-    this.pollInterval = setInterval(async () => {
+    // Set up fallback polling (much less frequent - only for reliability)
+    this.fallbackPollInterval = setInterval(async () => {
+      // Check if websocket is still connected
+      if (!this.isSubscribed) {
+        console.log('[RakeRebate] Websocket disconnected, attempting to resubscribe...');
+        await this.subscribeToLogs();
+      }
+      // Fallback poll in case websocket missed anything
       await this.pollForClaims();
+    }, FALLBACK_POLL_INTERVAL_MS);
+
+    // Separate interval for processing pending rebates
+    this.pendingRebatesInterval = setInterval(async () => {
       await this.processPendingRebates();
-    }, POLL_INTERVAL_MS);
+    }, PENDING_REBATES_INTERVAL_MS);
   }
 
   /**
-   * Stop the background polling job
+   * Stop the service
    */
   stopPolling(): void {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-      console.log('[RakeRebate] Stopped background polling');
+    // Unsubscribe from websocket
+    this.unsubscribeFromLogs();
+
+    // Clear fallback poll interval
+    if (this.fallbackPollInterval) {
+      clearInterval(this.fallbackPollInterval);
+      this.fallbackPollInterval = null;
     }
+
+    // Clear pending rebates interval
+    if (this.pendingRebatesInterval) {
+      clearInterval(this.pendingRebatesInterval);
+      this.pendingRebatesInterval = null;
+    }
+
+    console.log('[RakeRebate] Service stopped');
   }
 
   /**
