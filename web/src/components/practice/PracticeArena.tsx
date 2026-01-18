@@ -10,6 +10,9 @@ import { AssetIcon } from '@/components/AssetIcon';
 import { TradingViewChart } from '@/components/TradingViewChart';
 import { PositionsTable } from '@/components/battle/PositionsTable';
 import { TradeHistoryTable } from '@/components/battle/TradeHistoryTable';
+import { BattleChat } from '@/components/battle/BattleChat';
+import { useBattleChat } from '@/hooks/useBattleChat';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { PracticeHeader } from './PracticeHeader';
 import { TipsPanel } from './TipsPanel';
 import { PracticeSessionStats, Tip, PRACTICE_TIPS } from './types';
@@ -23,14 +26,21 @@ const LEVERAGE_OPTIONS: Leverage[] = [2, 5, 10, 20];
 
 export function PracticeArena({ battle, onReset }: PracticeArenaProps) {
   const router = useRouter();
+  const { publicKey } = useWallet();
+  const walletAddress = publicKey?.toBase58() || null;
   const { currentPlayer, openPosition, closePosition, error, getTimeRemaining, leaveBattle } = useBattleContext();
   const { prices } = usePrices();
+
+  // Battle chat
+  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected } = useBattleChat(battle.id);
 
   const [sessionStartTime] = useState(Date.now());
   const [sessionTime, setSessionTime] = useState(0);
   const [selectedAsset, setSelectedAsset] = useState('SOL');
-  const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
+  const [activeTab, setActiveTab] = useState<'positions' | 'history' | 'chat'>('positions');
   const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [lastReadTimestamp, setLastReadTimestamp] = useState(Date.now());
 
   // Order state
   const [leverage, setLeverage] = useState<Leverage>(5);
@@ -47,6 +57,17 @@ export function PracticeArena({ battle, onReset }: PracticeArenaProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, [sessionStartTime]);
+
+  // Track unread chat messages
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setUnreadChatCount(0);
+      setLastReadTimestamp(Date.now());
+    } else {
+      const unread = chatMessages.filter(m => m.timestamp > lastReadTimestamp).length;
+      setUnreadChatCount(unread);
+    }
+  }, [chatMessages, activeTab, lastReadTimestamp]);
 
   // Get current tip based on category
   const currentTip = useMemo(() => {
@@ -376,13 +397,34 @@ export function PracticeArena({ battle, onReset }: PracticeArenaProps) {
           >
             History ({currentPlayer?.trades?.filter(t => t.type === 'close').length || 0})
           </button>
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'chat'
+                ? 'border-warning text-warning'
+                : 'border-transparent text-white/50 hover:text-white/70'
+            }`}
+          >
+            Chat {unreadChatCount > 0 && <span className="ml-1 text-warning">({unreadChatCount})</span>}
+          </button>
         </div>
 
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'positions' ? (
+          {activeTab === 'positions' && (
             <PositionsTable positions={positionsWithLivePnL} onClosePosition={handleClosePosition} />
-          ) : (
+          )}
+          {activeTab === 'history' && (
             <TradeHistoryTable trades={currentPlayer?.trades?.filter(t => t.type === 'close') || []} />
+          )}
+          {activeTab === 'chat' && (
+            <BattleChat
+              messages={chatMessages}
+              onSend={sendMessage}
+              error={chatError}
+              currentWallet={walletAddress}
+              battle={battle}
+              isConnected={chatConnected}
+            />
           )}
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
 import { priceService } from './priceService';
 import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
+import { chatService } from './chatService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { PublicKey } from '@solana/web3.js';
@@ -200,12 +201,26 @@ class BattleManager {
     battle.status = 'active';
     battle.startedAt = Date.now();
 
+    // Create chat room for the battle
+    const fighter1 = battle.players[0]?.walletAddress || '';
+    const fighter2 = battle.players[1]?.walletAddress || null;
+    chatService.createRoom(battleId, fighter1, fighter2);
+    chatService.sendSystemMessage(battleId, 'Battle has begun!');
+
     // Set timer for battle end
     const timer = setTimeout(() => {
       this.endBattle(battleId);
     }, battle.config.duration * 1000);
 
     this.battleTimers.set(battleId, timer);
+
+    // Set timer for final minute warning
+    if (battle.config.duration > 60) {
+      const finalMinuteTimer = setTimeout(() => {
+        chatService.sendSystemMessage(battleId, 'FINAL MINUTE! One minute remaining!');
+      }, (battle.config.duration - 60) * 1000);
+      // Store this timer too (we don't need cleanup since battle ends soon after)
+    }
 
     console.log(`Battle ${battleId} started! Duration: ${battle.config.duration}s`);
     this.notifyListeners(battle);
@@ -630,6 +645,15 @@ class BattleManager {
     }
 
     console.log(`Battle ${battleId} ended! Winner: ${battle.winnerId}`);
+
+    // Send battle end system message and close chat room
+    const winner = battle.players.find(p => p.walletAddress === battle.winnerId);
+    const winnerName = winner?.walletAddress ? `${winner.walletAddress.slice(0, 4)}...${winner.walletAddress.slice(-4)}` : 'Unknown';
+    chatService.sendSystemMessage(battleId, `Battle ended! ${winnerName} wins!`);
+    // Close chat room after a short delay so final message is received
+    setTimeout(() => {
+      chatService.closeRoom(battleId);
+    }, 3000);
 
     // Credit winner with prize pool (minus rake)
     const prizeAfterRake = battle.prizePool * (1 - RAKE_PERCENT / 100);

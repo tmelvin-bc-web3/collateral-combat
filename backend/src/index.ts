@@ -22,6 +22,7 @@ import { challengeNotificationService } from './services/challengeNotificationSe
 import { ldsManager, LDSEvent } from './services/ldsManager';
 import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { pythVerificationService } from './services/pythVerificationService';
+import { chatService } from './services/chatService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -31,7 +32,7 @@ import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
-import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT } from './middleware/socketRateLimiter';
+import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
 import { createToken, verifyToken } from './utils/jwt';
 import { WHITELISTED_TOKENS } from './tokens';
@@ -2437,6 +2438,58 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ===================
+  // Battle Chat Socket Handlers
+  // ===================
+
+  socket.on('send_chat_message', async (data: { battleId: string; content: string }) => {
+    try {
+      // SECURITY: Use authenticated wallet
+      const authenticatedWallet = getAuthenticatedWallet(socket, undefined);
+
+      // Rate limit chat messages
+      const rateCheck = checkSocketRateLimit(socket.id, authenticatedWallet, 'chat', CHAT_MESSAGE_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('chat_error', { code: 'rate_limited', message: rateCheck.error || 'Too many messages' });
+        return;
+      }
+
+      // Check if user is in the battle room (spectating or participating)
+      const rooms = Array.from(socket.rooms);
+      if (!rooms.includes(data.battleId)) {
+        socket.emit('chat_error', { code: 'not_in_battle', message: 'Join the battle to chat' });
+        return;
+      }
+
+      // Get user profile for display name and progression for level
+      const profile = await getProfile(authenticatedWallet);
+      const progression = await progressionService.getProgression(authenticatedWallet);
+      const displayName = profile?.username || undefined;
+      const level = progression?.currentLevel || 1;
+
+      const result = await chatService.sendMessage(
+        data.battleId,
+        authenticatedWallet,
+        data.content,
+        displayName,
+        level
+      );
+
+      if (!result.success) {
+        socket.emit('chat_error', { code: result.code || 'error', message: result.error || 'Failed to send message' });
+      }
+      // Message is broadcast via chatService listener
+    } catch (error: any) {
+      socket.emit('chat_error', { code: 'auth_required', message: 'Authentication required to chat' });
+    }
+  });
+
+  socket.on('load_chat_history', (battleId: string) => {
+    // No auth required to load history (spectators can view)
+    const messages = chatService.getHistory(battleId, 50);
+    socket.emit('chat_history', messages);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     if (walletAddress) {
@@ -3165,6 +3218,17 @@ async function start() {
   tokenWarsManager.subscribe((event: TWEvent) => {
     // Broadcast to all connected clients in the Token Wars room
     io.to('token_wars').emit('token_wars_event' as any, event);
+  });
+
+  // Subscribe to Chat events for WebSocket notifications
+  chatService.subscribe((eventType, data) => {
+    if (eventType === 'message' && data.message) {
+      // Broadcast message to all clients in the battle room
+      io.to(data.battleId).emit('chat_message', data.message);
+    } else if (eventType === 'system' && data.content) {
+      // Broadcast system message
+      io.to(data.battleId).emit('chat_system', { battleId: data.battleId, content: data.content });
+    }
   });
 
   httpServer.listen(PORT, () => {

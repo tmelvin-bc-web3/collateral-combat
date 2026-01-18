@@ -531,3 +531,23 @@ export interface ChallengeAcceptedNotification {
   entryFee: number;
   duration: number;
 }
+
+// ===================
+// Battle Chat Types
+// ===================
+
+export type ChatMessageType = 'user' | 'system';
+export type SenderRole = 'spectator' | 'fighter_1' | 'fighter_2';
+
+export interface ChatMessage {
+  id: string;
+  battleId: string;
+  senderWallet: string;
+  senderDisplayName: string;
+  senderLevel: number;
+  senderRole: SenderRole;
+  content: string;
+  wasFiltered: boolean;
+  timestamp: number;
+  type: ChatMessageType;
+}

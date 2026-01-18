@@ -23,6 +23,8 @@ import {
   ActivityEvent,
   BattlePhase,
 } from './battle';
+import { BattleChat } from './battle/BattleChat';
+import { useBattleChat } from '@/hooks/useBattleChat';
 
 interface BattleArenaProps {
   battle: Battle;
@@ -39,8 +41,13 @@ export function BattleArena({ battle }: BattleArenaProps) {
 
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [selectedAsset, setSelectedAsset] = useState('SOL');
-  const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
+  const [activeTab, setActiveTab] = useState<'positions' | 'history' | 'chat'>('positions');
   const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [lastReadTimestamp, setLastReadTimestamp] = useState(Date.now());
+
+  // Battle chat hook
+  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected } = useBattleChat(battle.id);
 
   // Order state
   const [leverage, setLeverage] = useState<Leverage>(5);
@@ -152,6 +159,19 @@ export function BattleArena({ battle }: BattleArenaProps) {
         timestamp: trade.timestamp,
       }));
   }, [opponent]);
+
+  // Track unread chat messages
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      // When viewing chat, mark all as read
+      setUnreadChatCount(0);
+      setLastReadTimestamp(Date.now());
+    } else {
+      // Count unread messages (messages after last read timestamp)
+      const unread = chatMessages.filter(m => m.timestamp > lastReadTimestamp).length;
+      setUnreadChatCount(unread);
+    }
+  }, [chatMessages, activeTab, lastReadTimestamp]);
 
   const positionsWithLivePnL = getPositionsWithLivePnL();
   const opponentPnL = getOpponentPnL();
@@ -520,6 +540,16 @@ export function BattleArena({ battle }: BattleArenaProps) {
             >
               History ({currentPlayer?.trades.length || 0})
             </button>
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'chat'
+                  ? 'border-warning text-warning'
+                  : 'border-transparent text-white/40 hover:text-white/60'
+              }`}
+            >
+              Chat {unreadChatCount > 0 && <span className="ml-1 text-warning">({unreadChatCount})</span>}
+            </button>
           </div>
 
           {/* Forfeit Button - Only for PvP */}
@@ -535,13 +565,24 @@ export function BattleArena({ battle }: BattleArenaProps) {
 
         {/* Tab Content */}
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'positions' ? (
+          {activeTab === 'positions' && (
             <PositionsTable
               positions={positionsWithLivePnL}
               onClosePosition={closePosition}
             />
-          ) : (
+          )}
+          {activeTab === 'history' && (
             <TradeHistoryTable trades={currentPlayer?.trades || []} />
+          )}
+          {activeTab === 'chat' && (
+            <BattleChat
+              messages={chatMessages}
+              onSend={sendMessage}
+              error={chatError}
+              currentWallet={walletAddress}
+              battle={battle}
+              isConnected={chatConnected}
+            />
           )}
         </div>
       </div>

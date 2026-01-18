@@ -98,6 +98,12 @@ export const GENERAL_SOCKET_LIMIT: SocketRateLimitConfig = {
   maxRequests: 100,
 };
 
+// Chat message actions (20 per minute - allows active chatting but prevents spam)
+export const CHAT_MESSAGE_LIMIT: SocketRateLimitConfig = {
+  windowMs: 60 * 1000, // 1 minute
+  maxRequests: 20,
+};
+
 // ===================
 // Helper for common rate limit check pattern
 // ===================

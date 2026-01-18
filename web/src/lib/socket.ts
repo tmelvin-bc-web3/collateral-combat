@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification, ChatMessage } from '@/types';
 import { BACKEND_URL } from '@/config/api';
 
 interface ServerToClientEvents {
@@ -70,6 +70,11 @@ interface ServerToClientEvents {
   token_wars_battle_state: (state: any) => void;
   token_wars_bet_success: (data: { bet: any }) => void;
   token_wars_bet_error: (data: { error: string }) => void;
+  // Battle Chat events
+  chat_message: (message: ChatMessage) => void;
+  chat_history: (messages: ChatMessage[]) => void;
+  chat_error: (error: { code: string; message: string }) => void;
+  chat_system: (message: { battleId: string; content: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -128,6 +133,9 @@ interface ClientToServerEvents {
   subscribe_token_wars: () => void;
   unsubscribe_token_wars: () => void;
   token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => void;
+  // Battle Chat events
+  send_chat_message: (data: { battleId: string; content: string }) => void;
+  load_chat_history: (battleId: string) => void;
 }
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
