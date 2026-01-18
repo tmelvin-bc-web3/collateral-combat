@@ -20,9 +20,9 @@ interface Props {
 }
 
 function WalletProviderInner({ children }: Props) {
-  // Use Carbium RPC for better reliability
+  // Use dedicated RPC from environment, fallback to public devnet
   const endpoint = useMemo(() =>
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://rpc-service.carbium.io/?apiKey=9c6c818b-067b',
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
   []);
 
   const wallets = useMemo(

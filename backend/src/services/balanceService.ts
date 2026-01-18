@@ -57,7 +57,7 @@ class BalanceService {
   private initialized = false;
 
   constructor() {
-    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc-service.carbium.io/?apiKey=9c6c818b-067b';
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
     this.connection = new Connection(rpcUrl, 'confirmed');
 
     // Schedule cleanup every hour
