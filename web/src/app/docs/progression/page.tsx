@@ -45,28 +45,28 @@ export default function ProgressionPage() {
 
         <div className="card p-4">
           <div className="space-y-3">
-            <div className="flex justify-wagerween items-center py-2 border-b border-border-primary">
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
               <span className="flex items-center gap-2">
                 <span>🔮</span>
                 <span>Oracle Predictions</span>
               </span>
               <span className="text-text-secondary text-sm">XP per wager settled</span>
             </div>
-            <div className="flex justify-wagerween items-center py-2 border-b border-border-primary">
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
               <span className="flex items-center gap-2">
                 <span>⚔️</span>
                 <span>Battle Mode</span>
               </span>
               <span className="text-text-secondary text-sm">XP per battle completed</span>
             </div>
-            <div className="flex justify-wagerween items-center py-2 border-b border-border-primary">
+            <div className="flex justify-between items-center py-2 border-b border-border-primary">
               <span className="flex items-center gap-2">
                 <span>🎯</span>
                 <span>Draft Tournaments</span>
               </span>
               <span className="text-text-secondary text-sm">50 XP entry + score bonuses</span>
             </div>
-            <div className="flex justify-wagerween items-center py-2">
+            <div className="flex justify-between items-center py-2">
               <span className="flex items-center gap-2">
                 <span>👁️</span>
                 <span>Spectator Wagering</span>
@@ -86,19 +86,19 @@ export default function ProgressionPage() {
 
         <div className="card p-4 mb-4">
           <div className="space-y-3">
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Day 1</span>
               <span className="font-medium">1.0x XP (base)</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Day 3</span>
               <span className="font-medium text-success">~1.2x XP</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Day 7</span>
               <span className="font-medium text-success">~1.5x XP</span>
             </div>
-            <div className="flex justify-wagerween text-sm">
+            <div className="flex justify-between text-sm">
               <span className="text-text-secondary">Day 14+</span>
               <span className="font-medium text-accent">~2.0x XP (max)</span>
             </div>
@@ -152,15 +152,15 @@ export default function ProgressionPage() {
         <h3 className="font-medium mb-3">Draft Fee Reduction</h3>
         <div className="card p-4 mb-4">
           <div className="space-y-2">
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 15, 25</span>
               <span>9% fee <span className="text-success">(1% discount)</span></span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 40</span>
               <span>8% fee <span className="text-success">(2% discount)</span></span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2">
+            <div className="flex justify-between text-sm py-2">
               <span className="text-text-secondary">Level 75, 100</span>
               <span>7% fee <span className="text-success">(3% discount)</span></span>
             </div>
@@ -170,15 +170,15 @@ export default function ProgressionPage() {
         <h3 className="font-medium mb-3">Oracle Fee Reduction</h3>
         <div className="card p-4 mb-4">
           <div className="space-y-2">
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 15, 25</span>
               <span>4.5% fee <span className="text-success">(0.5% discount)</span></span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 40</span>
               <span>4.0% fee <span className="text-success">(1% discount)</span></span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2">
+            <div className="flex justify-between text-sm py-2">
               <span className="text-text-secondary">Level 75, 100</span>
               <span>3.5% fee <span className="text-success">(1.5% discount)</span></span>
             </div>
@@ -200,23 +200,23 @@ export default function ProgressionPage() {
 
         <div className="card p-4 mb-4">
           <div className="space-y-2">
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 5</span>
               <span className="text-accent">Free Wager Unlocked</span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 10</span>
               <span className="text-accent">Free Wager Unlocked</span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 20</span>
               <span className="text-accent">Free Wager Unlocked</span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2 border-b border-border-primary">
+            <div className="flex justify-between text-sm py-2 border-b border-border-primary">
               <span className="text-text-secondary">Level 35</span>
               <span className="text-accent">Free Wager Unlocked</span>
             </div>
-            <div className="flex justify-wagerween text-sm py-2">
+            <div className="flex justify-between text-sm py-2">
               <span className="text-text-secondary">Level 50+</span>
               <span className="text-accent">Additional Free Wagers</span>
             </div>
