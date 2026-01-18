@@ -11,7 +11,8 @@ import { priceService } from './services/priceService';
 import { battleManager } from './services/battleManager';
 import { spectatorService } from './services/spectatorService';
 import { battleSimulator } from './services/battleSimulator';
-import { predictionServiceOnChain as predictionService } from './services/predictionServiceOnChain';
+// Use off-chain prediction service for development (on-chain requires funded authority wallet)
+import { predictionService } from './services/predictionService';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
 import { progressionService } from './services/progressionService';
@@ -2006,8 +2007,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // New handler using PDA balance
-  socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => {
+  // New handler using PDA balance or free bet
+  socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string; useFreeBet?: boolean }) => {
     try {
       // SECURITY: Rate limit predictions
       const rateCheck = checkSocketRateLimit(socket.id, data.bettor, 'place_prediction_bet', BET_ACTION_LIMIT);
@@ -2017,11 +2018,12 @@ io.on('connection', (socket) => {
       }
       // SECURITY: Use authenticated wallet, not client-provided
       const authenticatedWallet = getAuthenticatedWallet(socket, data.bettor);
-      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, authenticatedWallet);
+      const isFreeBet = data.useFreeBet === true;
+      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, authenticatedWallet, isFreeBet);
       socket.emit('prediction_bet_result', { success: true, bet });
       socket.emit('prediction_bet_placed', bet);
     } catch (error: any) {
-      socket.emit('prediction_bet_result', { success: false, error: 'Authentication required to place prediction' });
+      socket.emit('prediction_bet_result', { success: false, error: error.message || 'Failed to place prediction' });
     }
   });
 

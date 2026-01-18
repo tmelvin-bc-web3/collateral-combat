@@ -238,6 +238,7 @@ export interface PredictionBet {
   payout?: number;
   status: BetStatus;
   lockTx?: string; // On-chain transaction that locked funds in global vault
+  isFreeBet?: boolean; // Whether this bet was placed using a free bet credit
 }
 
 export interface PredictionStats {

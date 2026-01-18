@@ -125,8 +125,8 @@ function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolea
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
 type BetAmountSol = typeof BET_AMOUNTS_SOL[number];
 
-// Free wager is always the minimum amount
-const FREE_BET_AMOUNT_SOL = 0.01;
+// Free bet is always 0.05 SOL
+const FREE_BET_AMOUNT_SOL = 0.05;
 
 
 export default function PredictPage() {
@@ -401,42 +401,54 @@ export default function PredictPage() {
     setError(null);
     setSuccessTx(null);
 
-    // Handle free wager usage via escrow API (always uses minimum wager amount)
+    // Handle free bet usage via socket (0.05 SOL fixed amount)
     if (useFreeBet && freeBetBalance && freeBetBalance.balance > 0) {
       setIsPlacingFreeWager(true);
       setFreeBetError(null);
 
       try {
         const walletAddress = publicKey.toBase58();
-        const res = await fetch(`${BACKEND_URL}/api/prediction/free-bet`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Wallet-Address': walletAddress,
-          },
-          body: JSON.stringify({
-            walletAddress,
-            roundId: parseInt(currentRound.id) || 1, // Use numeric round ID
-            side: side === 'long' ? 'long' : 'short',
-          }),
+        const socket = getSocket();
+
+        // Emit free bet via socket with useFreeBet flag
+        socket.emit('place_prediction_bet', {
+          asset,
+          side,
+          amount: FREE_BET_AMOUNT_SOL, // Fixed at 0.05 SOL
+          bettor: walletAddress,
+          useFreeBet: true,
         });
 
-        if (res.ok) {
-          const data = await res.json();
+        // Wait for response
+        const response = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+          const timeout = setTimeout(() => {
+            resolve({ success: false, error: 'Free bet placement timed out' });
+          }, 10000);
+
+          socket.once('prediction_bet_result', (result: { success: boolean; error?: string }) => {
+            clearTimeout(timeout);
+            resolve(result);
+          });
+
+          socket.once('error', (error: string) => {
+            clearTimeout(timeout);
+            resolve({ success: false, error });
+          });
+        });
+
+        if (response.success) {
           setSuccessTx('free_bet');
           setHasWagerThisRound(true);
           setTimeout(() => setSuccessTx(null), 3000);
-          // Refresh free wager balance and positions
+          // Refresh free bet balance
           fetchFreeBetBalance();
-          fetchFreeBetPositions();
         } else {
-          const errorData = await res.json().catch(() => ({ error: 'Failed to place free wager' }));
-          setFreeBetError(errorData.error || 'Failed to place free wager');
-          setError(errorData.error || 'Failed to place free wager');
+          setFreeBetError(response.error || 'Failed to place free bet');
+          setError(response.error || 'Failed to place free bet');
         }
       } catch (err) {
-        setFreeBetError('Network error placing free wager');
-        setError('Network error placing free wager');
+        setFreeBetError('Network error placing free bet');
+        setError('Network error placing free bet');
       } finally {
         setIsPlacingFreeWager(false);
         setIsPlacing(false);
@@ -994,10 +1006,10 @@ export default function PredictPage() {
                 {amount}
               </button>
             ))}
-            {/* Show locked 0.01 SOL when using free wager */}
+            {/* Show locked 0.05 SOL when using free bet */}
             {useFreeBet && (
               <div className="min-h-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold bg-warning/20 text-warning border border-warning/40 flex items-center gap-1.5">
-                <span>0.01</span>
+                <span>0.05</span>
                 <span className="text-[10px] text-warning/60">(fixed)</span>
               </div>
             )}
@@ -1013,7 +1025,7 @@ export default function PredictPage() {
                 title={!freeBetBalance || freeBetBalance.balance === 0 ? 'Earn free bets by leveling up!' : `You have ${freeBetBalance.balance} free bet${freeBetBalance.balance !== 1 ? 's' : ''}`}
                 className={`min-h-[44px] min-w-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold transition-all touch-manipulation flex-shrink-0 ${
                   !freeBetBalance || freeBetBalance.balance === 0
-                    ? 'bg-white/5 text-text-tertiary border border-white/10 cursor-not-allowed opacity-50'
+                    ? 'bg-white/10 text-white/30 border border-white/20 cursor-not-allowed'
                     : useFreeBet
                       ? 'bg-warning/30 text-warning border border-warning/50 active:scale-95'
                       : 'bg-warning/10 text-warning/60 border border-transparent hover:bg-warning/20 active:bg-warning/25 active:scale-95'
