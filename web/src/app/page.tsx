@@ -14,6 +14,8 @@ import {
   HomepageData,
   ActivityItem,
 } from '@/components/home';
+import { getSocket } from '@/lib/socket';
+import { getTokenLogo } from '@/config/tokenLogos';
 
 // Mock data for demonstration - replace with real API/WebSocket data
 const MOCK_DATA: HomepageData = {
@@ -202,6 +204,66 @@ export default function Home() {
     }, 8000);
 
     return () => clearInterval(interval);
+  }, [mounted]);
+
+  // Connect to Token Wars socket for real-time battle data
+  useEffect(() => {
+    if (!mounted) return;
+
+    const socket = getSocket();
+
+    // Subscribe to Token Wars updates
+    socket.emit('subscribe_token_wars');
+
+    // Listen for Token Wars battle updates
+    const handleTokenWarsBattle = (battle: {
+      id: string;
+      tokenA: { symbol: string };
+      tokenB: { symbol: string };
+      status: string;
+      startTime?: number;
+      endTime?: number;
+      bettingEndsAt?: number;
+      poolA: number;
+      poolB: number;
+    }) => {
+      if (!battle) return;
+
+      // Calculate time remaining
+      let timeRemaining = 300;
+      if (battle.status === 'betting' && battle.bettingEndsAt) {
+        timeRemaining = Math.max(0, Math.floor((battle.bettingEndsAt - Date.now()) / 1000));
+      } else if (battle.status === 'in_progress' && battle.endTime) {
+        timeRemaining = Math.max(0, Math.floor((battle.endTime - Date.now()) / 1000));
+      }
+
+      setHomepageData(prev => ({
+        ...prev,
+        tokenWars: {
+          currentBattle: {
+            tokenA: {
+              symbol: battle.tokenA.symbol,
+              image: getTokenLogo(battle.tokenA.symbol),
+              change: 0, // We don't have real-time price change data here
+            },
+            tokenB: {
+              symbol: battle.tokenB.symbol,
+              image: getTokenLogo(battle.tokenB.symbol),
+              change: 0,
+            },
+            timeRemaining,
+            totalPool: (battle.poolA || 0) + (battle.poolB || 0),
+          },
+        },
+      }));
+    };
+
+    socket.on('token_wars_battle', handleTokenWarsBattle);
+
+    return () => {
+      socket.emit('unsubscribe_token_wars');
+      socket.off('token_wars_battle', handleTokenWarsBattle);
+    };
   }, [mounted]);
 
   if (!mounted) {
