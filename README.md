@@ -10,7 +10,7 @@ A competitive trading platform where players battle head-to-head, predict prices
 |------|-------------|-------|
 | **Battle Arena** | 1v1 trading battles - best P&L wins the pot | 0.1 - 5 SOL |
 | **Oracle/Predict** | Predict if price goes UP or DOWN in 30 seconds | 0.01 - 0.5 SOL |
-| **Draft** | Pick 5 memecoins, compete on weekly performance | 0.1 - 1 SOL |
+| **Draft** | Pick 6 memecoins, compete on weekly performance | 0.1 - 1 SOL |
 | **Spectator** | Wager on live battles between other players | 0.01 - 1 SOL |
 
 ## Architecture
