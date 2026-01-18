@@ -110,7 +110,7 @@ interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
-  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => void;
+  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string; useFreeBet?: boolean }) => void;
   // Draft events
   start_draft: (entryId: string) => void;
   make_draft_pick: (entryId: string, roundNumber: number, coinId: string) => void;

@@ -215,54 +215,49 @@ export default function Home() {
     // Subscribe to Token Wars updates
     socket.emit('subscribe_token_wars');
 
-    // Listen for Token Wars battle updates
-    const handleTokenWarsBattle = (battle: {
-      id: string;
-      tokenA: { symbol: string };
-      tokenB: { symbol: string };
-      status: string;
-      startTime?: number;
-      endTime?: number;
-      bettingEndsAt?: number;
-      poolA: number;
-      poolB: number;
+    // Listen for Token Wars battle state updates
+    const handleTokenWarsBattleState = (state: {
+      battle?: {
+        id: string;
+        tokenA: string;
+        tokenB: string;
+        status: string;
+        poolA: number;
+        poolB: number;
+      };
+      phase?: string;
+      timeRemaining?: number;
     }) => {
-      if (!battle) return;
+      if (!state?.battle) return;
 
-      // Calculate time remaining
-      let timeRemaining = 300;
-      if (battle.status === 'betting' && battle.bettingEndsAt) {
-        timeRemaining = Math.max(0, Math.floor((battle.bettingEndsAt - Date.now()) / 1000));
-      } else if (battle.status === 'in_progress' && battle.endTime) {
-        timeRemaining = Math.max(0, Math.floor((battle.endTime - Date.now()) / 1000));
-      }
+      const { battle, timeRemaining: tr } = state;
 
       setHomepageData(prev => ({
         ...prev,
         tokenWars: {
           currentBattle: {
             tokenA: {
-              symbol: battle.tokenA.symbol,
-              image: getTokenLogo(battle.tokenA.symbol),
-              change: 0, // We don't have real-time price change data here
-            },
-            tokenB: {
-              symbol: battle.tokenB.symbol,
-              image: getTokenLogo(battle.tokenB.symbol),
+              symbol: battle.tokenA,
+              image: getTokenLogo(battle.tokenA),
               change: 0,
             },
-            timeRemaining,
-            totalPool: (battle.poolA || 0) + (battle.poolB || 0),
+            tokenB: {
+              symbol: battle.tokenB,
+              image: getTokenLogo(battle.tokenB),
+              change: 0,
+            },
+            timeRemaining: tr || 300,
+            totalPool: ((battle.poolA || 0) + (battle.poolB || 0)) / 1_000_000_000, // Convert from lamports
           },
         },
       }));
     };
 
-    socket.on('token_wars_battle', handleTokenWarsBattle);
+    socket.on('token_wars_battle_state', handleTokenWarsBattleState);
 
     return () => {
       socket.emit('unsubscribe_token_wars');
-      socket.off('token_wars_battle', handleTokenWarsBattle);
+      socket.off('token_wars_battle_state', handleTokenWarsBattleState);
     };
   }, [mounted]);
 
