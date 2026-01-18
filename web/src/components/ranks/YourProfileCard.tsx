@@ -160,31 +160,8 @@ export function YourProfileCard({ stats, isLoading }: YourProfileCardProps) {
           </div>
         </div>
 
-        {/* Far Right: Achievements Preview + View Profile */}
+        {/* Far Right: View Profile */}
         <div className="flex flex-col items-end gap-2">
-          {stats.recentAchievements.length > 0 && (
-            <div>
-              <span className="block text-[11px] text-white/40 uppercase tracking-wider text-right mb-1">
-                Recent Achievements
-              </span>
-              <div className="flex gap-1.5">
-                {stats.recentAchievements.slice(0, 4).map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center text-lg"
-                    title={achievement.name}
-                  >
-                    {achievement.icon}
-                  </div>
-                ))}
-                {stats.totalAchievements > 4 && (
-                  <span className="text-xs text-white/50 flex items-center">
-                    +{stats.totalAchievements - 4}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
           <button
             onClick={handleViewProfile}
             className="px-4 py-2 bg-warning hover:bg-warning/90 text-black text-[13px] font-semibold rounded-lg transition-colors"
