@@ -96,10 +96,10 @@ export function LevelBadge({ level, size = 'md', showTitle = false, title, class
   const colors = getLevelColors(level);
 
   const sizeConfig = {
-    xs: { width: 24, height: 28, fontSize: 9, titleSize: 'text-[10px]' },
-    sm: { width: 32, height: 38, fontSize: 11, titleSize: 'text-xs' },
-    md: { width: 40, height: 48, fontSize: 14, titleSize: 'text-sm' },
-    lg: { width: 56, height: 67, fontSize: 20, titleSize: 'text-base' },
+    xs: { width: 28, height: 32, fontSize: 12, titleSize: 'text-[10px]' },
+    sm: { width: 36, height: 42, fontSize: 15, titleSize: 'text-xs' },
+    md: { width: 48, height: 56, fontSize: 18, titleSize: 'text-sm' },
+    lg: { width: 64, height: 75, fontSize: 24, titleSize: 'text-base' },
   };
 
   const config = sizeConfig[size];
@@ -177,17 +177,31 @@ export function LevelBadge({ level, size = 'md', showTitle = false, title, class
             </>
           )}
 
-          {/* Level number */}
+          {/* Level number - stroke for outline effect */}
           <text
             x="20"
-            y="28"
+            y="26"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="none"
+            stroke={colors.secondary}
+            strokeWidth="3"
+            fontSize={config.fontSize}
+            fontWeight="bold"
+            fontFamily="Impact, sans-serif"
+          >
+            {level}
+          </text>
+          {/* Level number - main fill */}
+          <text
+            x="20"
+            y="26"
             textAnchor="middle"
             dominantBaseline="middle"
             fill={colors.text}
             fontSize={config.fontSize}
             fontWeight="bold"
             fontFamily="Impact, sans-serif"
-            style={{ letterSpacing: '-0.5px' }}
           >
             {level}
           </text>
