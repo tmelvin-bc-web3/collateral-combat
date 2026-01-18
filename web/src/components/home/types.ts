@@ -34,8 +34,8 @@ export interface LDSData {
 
 export interface TokenWarsData {
   currentBattle: {
-    tokenA: { symbol: string; icon: string; change: number };
-    tokenB: { symbol: string; icon: string; change: number };
+    tokenA: { symbol: string; image: string; change: number };
+    tokenB: { symbol: string; image: string; change: number };
     timeRemaining: number;
     totalPool: number;
   };

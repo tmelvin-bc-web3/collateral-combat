@@ -3153,9 +3153,8 @@ const PORT = process.env.PORT || 3001;
 
 async function start() {
   // Start price service
-  // 30s API fetches + 1s tick simulation keeps UI smooth while reducing API calls
-  // At 30s interval: 2,880 calls/day vs 17,280 at 5s
-  await priceService.start(30000);
+  // 5s API fetches from Pyth Hermes (free, no rate limits) for near real-time prices
+  await priceService.start(5000);
 
   // Start CoinMarketCap service for memecoins
   await coinMarketCapService.start();

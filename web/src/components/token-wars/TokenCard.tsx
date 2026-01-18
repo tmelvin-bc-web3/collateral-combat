@@ -5,6 +5,24 @@ import Image from 'next/image';
 import { TWPhase, TWBetSide, LAMPORTS_PER_SOL } from './types';
 import { getTokenLogo, getTokenColor, getTokenConfig } from '@/config/tokenLogos';
 
+// Smart price formatter for tokens with very small or large prices
+function formatPrice(price: number): string {
+  if (price === 0) return '$0';
+  if (price >= 1) return `$${price.toFixed(2)}`;
+  if (price >= 0.01) return `$${price.toFixed(4)}`;
+  if (price >= 0.0001) return `$${price.toFixed(6)}`;
+  if (price >= 0.000001) return `$${price.toFixed(8)}`;
+  // For very small prices (like BABYDOGE), count leading zeros and show significant digits
+  const str = price.toFixed(20);
+  const match = str.match(/^0\.(0*)([1-9]\d{0,3})/);
+  if (match) {
+    const zeros = match[1].length;
+    const digits = match[2];
+    return `$0.0(${zeros})${digits}`;
+  }
+  return `$${price.toExponential(2)}`;
+}
+
 interface TokenCardProps {
   symbol: string;
   name: string;
@@ -109,7 +127,7 @@ export function TokenCard({
         <div>
           <div className="text-[11px] text-white/40 uppercase">Price</div>
           <div className="text-lg font-semibold text-white">
-            {price !== null ? `$${price.toFixed(6)}` : '-'}
+            {price !== null ? formatPrice(price) : '-'}
           </div>
         </div>
 

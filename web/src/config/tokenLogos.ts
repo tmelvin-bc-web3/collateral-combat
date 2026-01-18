@@ -70,6 +70,48 @@ export const TOKEN_CONFIGS: Record<string, TokenConfig> = {
     logo: '/tokens/goat.png',
     color: '#8B4513',
   },
+  DOGE: {
+    symbol: 'DOGE',
+    name: 'Dogecoin',
+    logo: '/tokens/doge.png',
+    color: '#C2A633',
+  },
+  TRUMP: {
+    symbol: 'TRUMP',
+    name: 'Official Trump',
+    logo: '/tokens/trump.png',
+    color: '#D4AF37',
+  },
+  SPX: {
+    symbol: 'SPX',
+    name: 'SPX6900',
+    logo: '/tokens/spx.png',
+    color: '#FF4500',
+  },
+  FLOKI: {
+    symbol: 'FLOKI',
+    name: 'Floki',
+    logo: '/tokens/floki.png',
+    color: '#F7931A',
+  },
+  PIPPIN: {
+    symbol: 'PIPPIN',
+    name: 'Pippin',
+    logo: '/tokens/pippin.png',
+    color: '#7CFC00',
+  },
+  BRETT: {
+    symbol: 'BRETT',
+    name: 'Brett',
+    logo: '/tokens/brett.png',
+    color: '#0052FF',
+  },
+  BABYDOGE: {
+    symbol: 'BABYDOGE',
+    name: 'Baby Doge Coin',
+    logo: '/tokens/babydoge.png',
+    color: '#F9A825',
+  },
 };
 
 // Get token config by symbol (case-insensitive)

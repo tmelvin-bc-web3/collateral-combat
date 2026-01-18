@@ -47,8 +47,8 @@ const MOCK_DATA: HomepageData = {
   },
   tokenWars: {
     currentBattle: {
-      tokenA: { symbol: 'BONK', icon: '🐕', change: 2.3 },
-      tokenB: { symbol: 'WIF', icon: '🐶', change: -0.8 },
+      tokenA: { symbol: 'BONK', image: '/tokens/bonk.png', change: 2.3 },
+      tokenB: { symbol: 'WIF', image: '/tokens/wif.png', change: -0.8 },
       timeRemaining: 154,
       totalPool: 8.5,
     },

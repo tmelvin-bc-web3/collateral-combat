@@ -85,17 +85,25 @@ export interface TokenInfo {
 // Available memecoins for Token Wars (volatile, uncorrelated - more exciting battles!)
 const AVAILABLE_TOKENS: TokenInfo[] = [
   // Solana OG memecoins
-  { symbol: 'WIF', name: 'dogwifhat', pythFeed: '6B23K3tkb51vLZA14jcEQVCA1pfHptzEHFA93V5dYwbT' },
-  { symbol: 'BONK', name: 'Bonk', pythFeed: '8ihFLu5FimgTQ1Unh4dVyEHUGodJ5gJQCrQf4KUVB9bN' },
+  { symbol: 'WIF', name: 'dogwifhat', pythFeed: '4ca4beeca86f0d164160323817a4e42b10010a724c2217c6ee41b54cd4cc61fc' },
+  { symbol: 'BONK', name: 'Bonk', pythFeed: '72b021217ca3fe68922a19aaf990109cb9d84e9ad004b4d2025ad6f529314419' },
   // Popular Solana memecoins
-  { symbol: 'PONKE', name: 'Ponke' },
-  { symbol: 'PENGU', name: 'Pudgy Penguins' },
-  { symbol: 'TURBO', name: 'Turbo' },
-  { symbol: 'POPCAT', name: 'Popcat' },
-  { symbol: 'FARTCOIN', name: 'Fartcoin' },
-  { symbol: 'MEW', name: 'cat in a dogs world' },
-  { symbol: 'PNUT', name: 'Peanut the Squirrel' },
-  { symbol: 'GOAT', name: 'Goatseus Maximus' },
+  { symbol: 'PONKE', name: 'Ponke', pythFeed: 'f4cb880742ecf6525885a239968914798c44cd83749856a6dff5c140ba5bf69b' },
+  { symbol: 'PENGU', name: 'Pudgy Penguins', pythFeed: 'bed3097008b9b5e3c93bec20be79cb43986b85a996475589351a21e67bae9b61' },
+  { symbol: 'TURBO', name: 'Turbo', pythFeed: 'a00e67c6232f2f564932c252c440ed30759d10fee966b601c1613b0ed8692a5c' },
+  { symbol: 'POPCAT', name: 'Popcat', pythFeed: 'b9312a7ee50e189ef045aa3c7842e099b061bd9bdc99ac645956c3b660dc8cce' },
+  { symbol: 'FARTCOIN', name: 'Fartcoin', pythFeed: '58cd29ef0e714c5affc44f269b2c1899a52da4169d7acc147b9da692e6953608' },
+  { symbol: 'MEW', name: 'cat in a dogs world', pythFeed: '514aed52ca5294177f20187ae883cec4a018619772ddce41efcc36a6448f5d5d' },
+  { symbol: 'PNUT', name: 'Peanut the Squirrel', pythFeed: '116da895807f81f6b5c5f01b109376e7f6834dc8b51365ab7cdfa66634340e54' },
+  { symbol: 'GOAT', name: 'Goatseus Maximus', pythFeed: 'f7731dc812590214d3eb4343bfb13d1b4cfa9b1d4e020644b5d5d8e07d60c66c' },
+  // Cross-chain memecoins
+  { symbol: 'DOGE', name: 'Dogecoin', pythFeed: 'dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c' },
+  { symbol: 'TRUMP', name: 'Official Trump', pythFeed: '879551021853eec7a7dc827578e8e69da7e4fa8148339aa0d3d5296405be4b1a' },
+  { symbol: 'SPX', name: 'SPX6900', pythFeed: '8414cfadf82f6bed644d2e399c11df21ec0131aa574c56030b132113dbbf3a0a' },
+  { symbol: 'FLOKI', name: 'Floki', pythFeed: '6b1381ce7e874dc5410b197ac8348162c0dd6c0d4c9cd6322672d6c2b1d58293' },
+  { symbol: 'PIPPIN', name: 'Pippin' }, // No Pyth feed yet - uses fallback price
+  { symbol: 'BRETT', name: 'Brett', pythFeed: '9b5729efe3d68e537cdcb2ca70444dea5f06e1660b562632609757076d0b9448' },
+  { symbol: 'BABYDOGE', name: 'Baby Doge Coin', pythFeed: '053e0a17cc9282f191a6e60165dabd4a4861a8847c06eb34f54e07155eebedba' },
 ];
 
 // Track recently used matchups to avoid repetition
@@ -686,11 +694,19 @@ class TokenWarsManager {
    * Start price update loop for real-time battle updates
    */
   private startPriceUpdates(): void {
-    // Update every 2 seconds during battles
+    // Update every 2 seconds during both betting and in-progress phases
     this.priceUpdateTimer = setInterval(() => {
-      const battle = getInProgressBattle();
-      if (battle) {
-        this.emitPriceUpdate(battle);
+      // Check for in-progress battle first (has change data)
+      const inProgressBattle = getInProgressBattle();
+      if (inProgressBattle) {
+        this.emitPriceUpdate(inProgressBattle);
+        return;
+      }
+
+      // Also emit prices during betting phase (no change data yet)
+      const bettingBattle = getBettingBattle();
+      if (bettingBattle) {
+        this.emitPriceUpdate(bettingBattle);
       }
     }, 2000);
   }
@@ -702,29 +718,35 @@ class TokenWarsManager {
     const tokenAPrice = priceService.getPrice(battle.tokenA);
     const tokenBPrice = priceService.getPrice(battle.tokenB);
 
-    if (battle.tokenAStartPrice && battle.tokenBStartPrice) {
-      const tokenAChange = ((tokenAPrice - battle.tokenAStartPrice) / battle.tokenAStartPrice) * 100;
-      const tokenBChange = ((tokenBPrice - battle.tokenBStartPrice) / battle.tokenBStartPrice) * 100;
+    // Calculate changes only if battle has started (has start prices)
+    let tokenAChange: number | null = null;
+    let tokenBChange: number | null = null;
+    let leader: 'token_a' | 'token_b' | 'tie' | null = null;
 
-      this.emitEvent({
-        type: 'price_update',
-        battleId: battle.id,
-        data: {
-          tokenA: {
-            symbol: battle.tokenA,
-            price: tokenAPrice,
-            change: tokenAChange,
-          },
-          tokenB: {
-            symbol: battle.tokenB,
-            price: tokenBPrice,
-            change: tokenBChange,
-          },
-          leader: tokenAChange > tokenBChange ? 'token_a' : (tokenBChange > tokenAChange ? 'token_b' : 'tie'),
-        },
-        timestamp: Date.now(),
-      });
+    if (battle.tokenAStartPrice && battle.tokenBStartPrice) {
+      tokenAChange = ((tokenAPrice - battle.tokenAStartPrice) / battle.tokenAStartPrice) * 100;
+      tokenBChange = ((tokenBPrice - battle.tokenBStartPrice) / battle.tokenBStartPrice) * 100;
+      leader = tokenAChange > tokenBChange ? 'token_a' : (tokenBChange > tokenAChange ? 'token_b' : 'tie');
     }
+
+    this.emitEvent({
+      type: 'price_update',
+      battleId: battle.id,
+      data: {
+        tokenA: {
+          symbol: battle.tokenA,
+          price: tokenAPrice,
+          change: tokenAChange,
+        },
+        tokenB: {
+          symbol: battle.tokenB,
+          price: tokenBPrice,
+          change: tokenBChange,
+        },
+        leader,
+      },
+      timestamp: Date.now(),
+    });
   }
 
   // ============================================
@@ -898,11 +920,14 @@ class TokenWarsManager {
         phase = 'completed';
     }
 
-    // Calculate current prices and changes for in-progress battles
+    // Calculate current prices and changes
     let tokenAPriceNow, tokenBPriceNow, tokenAChangeNow, tokenBChangeNow;
+    // Always get current prices for display
+    tokenAPriceNow = priceService.getPrice(battle.tokenA);
+    tokenBPriceNow = priceService.getPrice(battle.tokenB);
+
+    // Calculate change only during in-progress battles (when we have start prices)
     if (battle.status === 'in_progress' && battle.tokenAStartPrice && battle.tokenBStartPrice) {
-      tokenAPriceNow = priceService.getPrice(battle.tokenA);
-      tokenBPriceNow = priceService.getPrice(battle.tokenB);
       tokenAChangeNow = ((tokenAPriceNow - battle.tokenAStartPrice) / battle.tokenAStartPrice) * 100;
       tokenBChangeNow = ((tokenBPriceNow - battle.tokenBStartPrice) / battle.tokenBStartPrice) * 100;
     }

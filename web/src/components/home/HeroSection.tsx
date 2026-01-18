@@ -95,7 +95,7 @@ export function HeroSection({
                 <Sparkles className="w-5 h-5" />
                 Start Playing
               </span>
-              <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-white/40 whitespace-nowrap">
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] text-white/40 whitespace-nowrap">
                 Try Oracle - 30 second games
               </span>
             </button>

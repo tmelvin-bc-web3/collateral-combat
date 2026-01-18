@@ -14,7 +14,7 @@ const PYTH_FEED_IDS: Record<string, string> = {
   JUP: '0a0408d619e9380abad35060f9192039ed5042fa6f82301d0e48bb52be830996',
   RAY: '91568baa8beb53db23eb3fb7f22c6e8bd303d103919e19733f2bb642d3e7987a',
   JTO: 'b43660a5f790c69354b0729a5ef9d50d68f1df92107540210b9cccba1f947cc2',
-  // Token Wars memecoins
+  // Token Wars memecoins - Solana native
   WIF: '4ca4beeca86f0d164160323817a4e42b10010a724c2217c6ee41b54cd4cc61fc',
   BONK: '72b021217ca3fe68922a19aaf990109cb9d84e9ad004b4d2025ad6f529314419',
   PONKE: 'f4cb880742ecf6525885a239968914798c44cd83749856a6dff5c140ba5bf69b',
@@ -25,6 +25,14 @@ const PYTH_FEED_IDS: Record<string, string> = {
   MEW: '514aed52ca5294177f20187ae883cec4a018619772ddce41efcc36a6448f5d5d',
   PNUT: '116da895807f81f6b5c5f01b109376e7f6834dc8b51365ab7cdfa66634340e54',
   GOAT: 'f7731dc812590214d3eb4343bfb13d1b4cfa9b1d4e020644b5d5d8e07d60c66c',
+  // Token Wars memecoins - Cross-chain
+  DOGE: 'dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c',
+  TRUMP: '879551021853eec7a7dc827578e8e69da7e4fa8148339aa0d3d5296405be4b1a',
+  SPX: '8414cfadf82f6bed644d2e399c11df21ec0131aa574c56030b132113dbbf3a0a',
+  FLOKI: '6b1381ce7e874dc5410b197ac8348162c0dd6c0d4c9cd6322672d6c2b1d58293',
+  BRETT: '9b5729efe3d68e537cdcb2ca70444dea5f06e1660b562632609757076d0b9448',
+  BABYDOGE: '053e0a17cc9282f191a6e60165dabd4a4861a8847c06eb34f54e07155eebedba',
+  // Note: PIPPIN not available on Pyth yet, uses CMC fallback
 };
 
 // Reverse lookup: feed ID -> symbol
@@ -113,6 +121,14 @@ class PriceService {
     this.prices.set('MEW', 0.0095);
     this.prices.set('PNUT', 0.72);
     this.prices.set('GOAT', 0.65);
+    // Cross-chain memecoins
+    this.prices.set('DOGE', 0.32);
+    this.prices.set('TRUMP', 27.0);
+    this.prices.set('SPX', 0.85);
+    this.prices.set('FLOKI', 0.00016);
+    this.prices.set('BRETT', 0.12);
+    this.prices.set('BABYDOGE', 0.0000000025);
+    this.prices.set('PIPPIN', 0.065);
 
     // Copy to base prices
     this.prices.forEach((price, symbol) => {

@@ -36,7 +36,7 @@ interface CMCQuotesResponse {
 // Known memecoin symbols to filter from CMC data
 const MEMECOIN_SYMBOLS = new Set([
   // Top memecoins
-  'DOGE', 'SHIB', 'PEPE', 'BONK', 'WIF', 'FLOKI', 'MEME', 'BRETT', 'POPCAT', 'MEW',
+  'DOGE', 'SHIB', 'PEPE', 'BONK', 'WIF', 'FLOKI', 'MEME', 'BRETT', 'POPCAT', 'MEW', 'TRUMP',
   'BOME', 'TURBO', 'COQ', 'MYRO', 'SLERF', 'TOSHI', 'MOCHI', 'PONKE', 'WEN', 'SAMO',
   // Solana memecoins
   'PNUT', 'GOAT', 'GIGA', 'MOG', 'SPX', 'MOODENG', 'CHILLGUY', 'ACT', 'FARTCOIN',

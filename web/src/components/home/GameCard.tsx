@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Clock, Coins, Users, Eye, TrendingUp, TrendingDown, Crown, Swords, Trophy, Scale, Clapperboard, Flame } from 'lucide-react';
 
 interface GameCardProps {
@@ -172,7 +173,14 @@ function LiveDataSection({ liveData }: { liveData: GameCardProps['liveData'] }) 
         <div className="mb-4">
           <div className="flex items-center justify-between bg-white/[0.03] rounded-lg p-2">
             <div className="flex items-center gap-2">
-              <span className="text-lg">{tokenA.icon}</span>
+              <Image
+                src={tokenA.image}
+                alt={tokenA.symbol}
+                width={28}
+                height={28}
+                className="rounded-full"
+                unoptimized
+              />
               <div>
                 <div className="text-sm font-bold text-white">{tokenA.symbol}</div>
                 <div className={`text-xs ${tokenA.change >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -188,7 +196,14 @@ function LiveDataSection({ liveData }: { liveData: GameCardProps['liveData'] }) 
                   {tokenB.change >= 0 ? '+' : ''}{tokenB.change.toFixed(1)}%
                 </div>
               </div>
-              <span className="text-lg">{tokenB.icon}</span>
+              <Image
+                src={tokenB.image}
+                alt={tokenB.symbol}
+                width={28}
+                height={28}
+                className="rounded-full"
+                unoptimized
+              />
             </div>
           </div>
         </div>
