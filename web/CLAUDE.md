@@ -1,84 +1,185 @@
-# DegenDome (Sol Battles) - Project Context
+# DegenDome Frontend - Claude Code Context
 
 ## Overview
-DegenDome is a PvP trading battle platform on Solana where players compete in timed trading competitions. Players open leveraged perpetual positions on crypto assets, and the player with the highest P&L at the end wins the prize pool.
+
+Next.js 16 frontend with App Router, React, TailwindCSS, and Solana wallet integration.
 
 **Live URL**: https://www.degendome.xyz
 
 ## Tech Stack
+
 - **Framework**: Next.js 16.1.1 with App Router and Turbopack
-- **Language**: TypeScript
+- **Language**: TypeScript (strict mode)
 - **Styling**: Tailwind CSS with custom theme
-- **Blockchain**: Solana (devnet currently)
-- **Wallet**: Solana Wallet Adapter (@solana/wallet-adapter-react)
-- **Smart Contracts**: Anchor framework
-- **Deployment**: Vercel (auto-deploy may not be configured - use `vercel --prod` to deploy)
+- **Real-time**: Socket.IO client
+- **Blockchain**: Solana Wallet Adapter
+- **Charts**: TradingView, Lightweight Charts
+- **Package Manager**: pnpm
 
-## Project Structure
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── battle/            # Battle arena page
-│   ├── draft/             # Draft mode (pick assets)
-│   ├── predict/           # Oracle/prediction page
-│   ├── spectate/          # Watch live battles
-│   ├── leaderboard/       # Rankings
-│   ├── progression/       # Player progression system
-│   ├── profile/[wallet]/  # Player profiles
-│   └── docs/              # Documentation pages
-├── components/            # React components
-│   ├── battle/           # Battle-specific components
-│   └── ui/               # Reusable UI components
-├── contexts/             # React contexts (BattleContext, etc.)
-├── hooks/                # Custom hooks (usePrices, useBattleOnChain)
-├── lib/                  # Utilities and helpers
-├── types/                # TypeScript type definitions
-└── config/               # Configuration (whitelist, assets, etc.)
+## Commands
+
+```bash
+pnpm install      # Install dependencies
+pnpm dev          # Start dev server (localhost:3000)
+pnpm build        # Production build
+pnpm typecheck    # TypeScript checking
+vercel --prod     # Deploy to Vercel
 ```
 
-## Key Features
-1. **Battle Arena** (`/battle`) - Real-time trading competition with TradingView charts
-2. **Oracle/Predict** (`/predict`) - Price prediction game
-3. **Draft Mode** (`/draft`) - Pick assets before battle
-4. **Spectate** (`/spectate`) - Watch live battles
-5. **Progression** (`/progression`) - XP and ranking system
+## Directory Structure
+
+```
+web/src/
+├── app/                      # App Router pages
+│   ├── battle/              # Battle arena
+│   ├── predict/             # Oracle predictions
+│   ├── draft/               # Draft tournaments
+│   ├── spectate/            # Watch & wager
+│   ├── lds/                 # Last Degen Standing
+│   ├── token-wars/          # Token Wars
+│   ├── leaderboard/         # Rankings
+│   ├── progression/         # XP and perks
+│   ├── profile/[wallet]/    # User profiles
+│   └── docs/                # Documentation
+│
+├── components/              # React components
+│   ├── battle/             # Battle-specific
+│   ├── prediction/         # Oracle-specific
+│   ├── progression/        # XP/level UI
+│   ├── ranks/              # Leaderboard
+│   └── ui/                 # Shared UI
+│
+├── hooks/                   # Custom hooks
+│   ├── useSessionBetting.ts # Balance & session management
+│   ├── usePrices.ts        # Real-time prices
+│   └── useBattleOnChain.ts # Battle blockchain integration
+│
+├── lib/                     # Utilities
+│   ├── socket.ts           # Socket.IO client singleton
+│   └── session-betting/    # Solana program client
+│       ├── client.ts       # Program interactions
+│       └── types.ts        # Constants & types
+│
+├── contexts/               # React contexts
+│   └── BattleContext.tsx   # Battle state management
+│
+├── config/                 # Configuration
+│   └── whitelist.ts       # Early access wallets
+│
+└── types/                  # TypeScript types
+```
+
+## Key Files
+
+### Pages
+- `app/predict/page.tsx` - Oracle predictions (main feature)
+- `app/battle/page.tsx` - Battle arena
+- `app/draft/page.tsx` - Draft tournaments
+- `app/spectate/page.tsx` - Spectator wagering
+
+### Components
+- `components/BattleArena.tsx` - Main trading interface
+- `components/BattleLobby.tsx` - Battle matchmaking
+- `components/WalletBalance.tsx` - Deposit/withdraw/session modal
+- `components/TradingViewChart.tsx` - Chart embed
+
+### Hooks
+- `hooks/useSessionBetting.ts` - Core hook for balance, sessions, wagering
+- `hooks/usePrices.ts` - Real-time price feeds via WebSocket
+
+### Lib
+- `lib/socket.ts` - Socket.IO singleton (connects to backend)
+- `lib/session-betting/client.ts` - Solana program interactions
 
 ## Design System
-- **Theme**: "Wasteland" post-apocalyptic aesthetic
-- **Primary Colors**:
-  - Warning/Accent: `#ff5500` (orange)
-  - Success (Long): `#7fba00` (green)
-  - Danger (Short): `#cc2200` (red)
-  - Fire: `#e63900`
-- **Background**: Dark with `#080705` as primary
-- **Glass-morphism**: `bg-black/40 backdrop-blur border border-white/10`
-- **Font**: Impact for dramatic headers, Inter for body
 
-## Important Files
-- `src/components/BattleArena.tsx` - Main trading interface
-- `src/components/BattleLobby.tsx` - Battle matchmaking
-- `src/components/TradingViewChart.tsx` - Chart embed
-- `src/contexts/BattleContext.tsx` - Battle state management
-- `src/hooks/usePrices.ts` - Real-time price feeds
-- `src/config/whitelist.ts` - Early access wallet list
-- `tailwind.config.ts` - Theme configuration
+### Theme: "Wasteland"
+Post-apocalyptic aesthetic with dark backgrounds and orange accents.
 
-## Development Commands
+### Colors
+| Name | Value | Usage |
+|------|-------|-------|
+| `warning` | `#ff5500` | Primary accent/CTA |
+| `success` | `#7fba00` | Long positions, wins |
+| `danger` | `#cc2200` | Short positions, losses |
+| `bg-primary` | `#080705` | Main background |
+
+### Glass-morphism Pattern
+```css
+bg-black/40 backdrop-blur border border-white/10
+```
+
+### Typography
+- **Headers**: Impact font for dramatic effect
+- **Body**: Inter for readability
+
+## Common Patterns
+
+### Client Components
+```tsx
+'use client';  // Required for interactivity, hooks, wallet
+```
+
+### Socket Connection
+```typescript
+import { socket } from '@/lib/socket';
+socket.emit('subscribe_prediction', 'SOL');
+socket.on('prediction_round', handleRound);
+```
+
+### Session Betting Hook
+```typescript
+const {
+  balance,
+  sessionActive,
+  deposit,
+  withdraw,
+  createSession,
+  placeBet,
+} = useSessionBetting();
+```
+
+### Wallet Connection
+```typescript
+import { useWallet } from '@solana/wallet-adapter-react';
+const { publicKey, connected, signTransaction } = useWallet();
+```
+
+## Environment Variables
+
 ```bash
-npm run dev      # Start dev server
-npm run build    # Build for production
-vercel --prod    # Deploy to production (manual)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
+NEXT_PUBLIC_PROGRAM_ID=4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA
 ```
 
 ## Common Issues & Solutions
-1. **Leverage buttons going blank**: Use `bg-warning text-black` instead of broken color classes
-2. **TradingView chart sizing**: Use iframe embed with 100% width/height
-3. **Color classes not working**: Use explicit colors (warning, success, danger) instead of CSS variable-based ones (accent, bg-primary)
+
+### 1. Color classes not working
+Use explicit Tailwind colors (`text-warning`, `bg-success`) instead of CSS variable-based ones.
+
+### 2. TradingView chart sizing
+Use iframe embed with 100% width/height in a flex container.
+
+### 3. Hydration errors
+Ensure client-only code (wallet, localStorage) is in `'use client'` components with proper loading states.
+
+### 4. Socket not connecting
+Check that backend is running on port 3001 and `NEXT_PUBLIC_BACKEND_URL` is set.
 
 ## Deployment
-- Pushes to `main` branch should auto-deploy to Vercel
-- If auto-deploy isn't working, manually deploy with `vercel --prod`
-- Check deployment status with `vercel ls`
 
-## Whitelisted Wallets (Early Access)
-Located in `src/config/whitelist.ts` - add wallet addresses here for early access
+- **Production**: Vercel (manual deploy with `vercel --prod`)
+- **Preview**: Auto-deploys on PR branches
+- **Domain**: degendome.xyz (configured in Vercel)
+
+## Testing
+
+```bash
+pnpm build  # Must pass before deploying
+```
+
+Manual testing:
+- Oracle page: http://localhost:3000/predict
+- Battle page: http://localhost:3000/battle
+- Connect wallet and test session creation

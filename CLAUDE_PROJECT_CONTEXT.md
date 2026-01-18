@@ -18,7 +18,7 @@
 ### Frontend (`/web`)
 | Technology | Usage |
 |------------|-------|
-| Next.js 15+ | App Router, Server/Client Components |
+| Next.js 16.1.1 | App Router, Server/Client Components |
 | TypeScript | Strict mode enabled |
 | Tailwind CSS | Custom theme (bg-primary, bg-secondary, text-accent) |
 | Radix UI | Accessible component primitives |
@@ -87,14 +87,14 @@ sol-battles/
 │   │   └── middleware/
 │   └── package.json
 │
-├── prediction_program/           # Solana Oracle program (Anchor/Rust)
-│   ├── programs/prediction_program/src/
-│   │   └── lib.rs                # Main contract code
-│   └── target/
-│       └── idl/prediction_program.json  # Contract interface
+├── programs/
+│   └── session_betting/          # Main Solana program (Anchor/Rust)
+│       └── programs/session_betting/src/
+│           └── lib.rs            # PDA balance, sessions, Oracle rounds
 │
-├── battle_program/               # Solana Battle program (DO NOT MODIFY)
-├── draft_program/                # Solana Draft program
+├── prediction_program/           # Legacy Oracle program
+├── battle_program/               # Legacy Battle program
+├── draft_program/                # Legacy Draft program
 │
 ├── PRODUCT.md                    # Product overview
 ├── CONTEXT.md                    # Coding standards
@@ -166,6 +166,21 @@ time_multiplier = 1 + (time_remaining / BETTING_WINDOW) × 0.5
 - Dynamic odds update as battle progresses
 - Social features: spectator count, chat
 
+### 5. Last Degen Standing - `/lds`
+**Battle Royale Elimination**
+
+- Entry Fee: 0.1 SOL
+- Predict SOL direction each round
+- Wrong prediction = elimination
+- Last player standing wins
+
+### 6. Token Wars - `/token-wars`
+**Head-to-Head Token Performance**
+
+- Two tokens face off
+- Bet on which performs better over 5 minutes
+- Parimutuel odds
+
 ---
 
 ## Progression System
@@ -205,7 +220,7 @@ time_multiplier = 1 + (time_remaining / BETTING_WINDOW) × 0.5
 
 ## Smart Contract (Prediction Program)
 
-**Program ID**: `9fDpLYmAR1WtaVwSczxz1BZqQGiSRavT6kAMLSCAh1dF`
+**Program ID**: `4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`
 
 ### Instructions
 | Instruction | Purpose |
