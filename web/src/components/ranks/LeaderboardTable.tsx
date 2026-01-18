@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { TrendingUp, TrendingDown, Flame, User, Swords, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LeaderboardEntry, getRankTierBgColor, getRankTierColor } from './types';
+import { LevelBadge } from '@/components/progression/LevelBadge';
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -102,9 +103,7 @@ export function LeaderboardTable({
 
             {/* Level */}
             <div className="col-span-1 flex justify-center">
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-semibold text-warning">
-                {player.level}
-              </div>
+              <LevelBadge level={player.level} size="sm" />
             </div>
 
             {/* Record */}
@@ -199,7 +198,7 @@ export function LeaderboardTable({
                   <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${getRankTierBgColor(player.rankTier)} ${getRankTierColor(player.rankTier)}`}>
                     {player.rankTitle}
                   </span>
-                  <span className="text-xs text-white/40">Lv {player.level}</span>
+                  <LevelBadge level={player.level} size="xs" />
                 </div>
               </div>
               {player.streak >= 3 && (

@@ -108,6 +108,7 @@ export interface BettorLeaderboardEntry {
   winRate: number;
   profit: number;
   isUser: boolean;
+  level?: number;
 }
 
 export interface RecentResult {

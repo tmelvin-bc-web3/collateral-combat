@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BarChart3, Medal, TrendingUp, TrendingDown } from 'lucide-react';
 import { BettorLeaderboardEntry, BettingStats } from './types';
+import { LevelBadge } from '@/components/progression/LevelBadge';
 
 type Period = 'week' | 'month' | 'all';
 
@@ -86,6 +87,9 @@ export function TopBettorsLeaderboard({
 
                 {/* User Info */}
                 <div className="flex items-center gap-2 flex-1">
+                  {bettor.level && (
+                    <LevelBadge level={bettor.level} size="xs" />
+                  )}
                   <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">
                     {bettor.avatar || bettor.name[0]}
                   </span>

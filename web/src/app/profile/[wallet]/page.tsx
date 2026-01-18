@@ -54,7 +54,7 @@ const LEVEL_TIERS = [
   { minLevel: 21, maxLevel: 35, title: 'Veteran', color: 'text-red-400' },
   { minLevel: 36, maxLevel: 50, title: 'Champion', color: 'text-cyan-400' },
   { minLevel: 51, maxLevel: 75, title: 'Legend', color: 'text-amber-400' },
-  { minLevel: 76, maxLevel: 100, title: 'Mythic', color: 'text-violet-400' },
+  { minLevel: 76, maxLevel: 100, title: 'Immortan', color: 'text-violet-400' },
 ];
 
 function getTierForLevel(level: number): { title: string; color: string } {

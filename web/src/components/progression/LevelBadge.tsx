@@ -20,7 +20,7 @@ function getLevelColors(level: number): {
   stars: number;
 } {
   if (level >= 76) {
-    // Mythic (76-100) - Purple/violet with glow
+    // Immortan (76-100) - Purple/violet with glow
     return {
       primary: '#8B5CF6',
       secondary: '#6D28D9',

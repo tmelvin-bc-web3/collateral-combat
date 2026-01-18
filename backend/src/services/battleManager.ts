@@ -63,9 +63,42 @@ class BattleManager {
   // Track wallets in ready check to prevent re-queueing
   private walletsInReadyCheck: Set<string> = new Set();
 
+  // SECURITY: Track used trade signatures to prevent replay attacks
+  // Map of signature -> expiry timestamp for cleanup
+  private usedTradeSignatures: Map<string, number> = new Map();
+  private readonly SIGNATURE_EXPIRY_MS = 120000; // 2 minutes (60s window + buffer)
+
   constructor() {
     // Start matchmaking loop
     setInterval(() => this.processMatchmaking(), 1000);
+
+    // SECURITY: Clean up expired trade signatures every 30 seconds
+    setInterval(() => this.cleanupExpiredSignatures(), 30000);
+  }
+
+  // SECURITY: Clean up expired trade signatures to prevent memory leak
+  private cleanupExpiredSignatures(): void {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [sig, expiry] of this.usedTradeSignatures) {
+      if (now > expiry) {
+        this.usedTradeSignatures.delete(sig);
+        cleaned++;
+      }
+    }
+    if (cleaned > 0) {
+      console.log(`[BattleManager] Cleaned up ${cleaned} expired trade signatures`);
+    }
+  }
+
+  // SECURITY: Check if signature was already used (replay attack prevention)
+  private isSignatureUsed(signature: string): boolean {
+    return this.usedTradeSignatures.has(signature);
+  }
+
+  // SECURITY: Mark signature as used
+  private markSignatureUsed(signature: string): void {
+    this.usedTradeSignatures.set(signature, Date.now() + this.SIGNATURE_EXPIRY_MS);
   }
 
   // Create a new battle
@@ -149,7 +182,14 @@ class BattleManager {
         throw new Error('Failed to lock entry fee on-chain. Please try again.');
       }
     } else {
-      console.log(`[Battle] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
+      // SECURITY FIX: Validate and atomically deduct free bet credit
+      // This prevents clients from spoofing isFreeBet=true without actually having credits
+      console.log(`[Battle] Validating free bet credit for ${walletAddress.slice(0, 8)}...`);
+      const freeBetResult = await progressionService.useFreeBetCredit(walletAddress, 'battle', `Battle ${battleId} entry`);
+      if (!freeBetResult.success) {
+        throw new Error('No free bet credits available. Please deposit SOL to play.');
+      }
+      console.log(`[Battle] Free bet credit validated for ${walletAddress.slice(0, 8)}... (balance: ${freeBetResult.balance.balance})`);
     }
 
     // Create player with starting account
@@ -401,6 +441,11 @@ class BattleManager {
       throw new Error('Invalid trade signature');
     }
 
+    // SECURITY: Check for replay attack - signature must not have been used before
+    if (this.isSignatureUsed(signature)) {
+      throw new Error('Trade signature already used (replay attack prevented)');
+    }
+
     // Verify message fields
     if (message.version !== 1 || message.action !== 'open') {
       throw new Error('Invalid message format');
@@ -417,6 +462,9 @@ class BattleManager {
     if (timeDiff > 60000) { // 60 second tolerance
       throw new Error('Trade timestamp too old');
     }
+
+    // SECURITY: Mark signature as used BEFORE processing to prevent race condition
+    this.markSignatureUsed(signature);
 
     // Open the position using the existing method
     const position = this.openPosition(
@@ -461,6 +509,11 @@ class BattleManager {
       throw new Error('Invalid trade signature');
     }
 
+    // SECURITY: Check for replay attack - signature must not have been used before
+    if (this.isSignatureUsed(signature)) {
+      throw new Error('Trade signature already used (replay attack prevented)');
+    }
+
     // Verify message fields
     if (message.version !== 1 || message.action !== 'close') {
       throw new Error('Invalid message format');
@@ -481,6 +534,9 @@ class BattleManager {
     if (timeDiff > 60000) {
       throw new Error('Trade timestamp too old');
     }
+
+    // SECURITY: Mark signature as used BEFORE processing to prevent race condition
+    this.markSignatureUsed(signature);
 
     // Close the position using existing method
     const trade = this.closePosition(
@@ -969,13 +1025,32 @@ class BattleManager {
       balanceService.transferToGlobalVault(player2Wallet, entryFeeLamports, 'battle'),
     ]);
 
-    // If either lock failed, cancel both and abort
+    // SECURITY FIX: If either lock failed, cancel both debits and refund any successful lock
     if (!lockTx1 || !lockTx2) {
       console.error(`[BattleManager] Failed to lock funds for ready check. P1: ${!!lockTx1}, P2: ${!!lockTx2}`);
+
+      // Cancel pending debits first
       balanceService.cancelDebit(pendingId1);
       balanceService.cancelDebit(pendingId2);
-      // TODO: If one succeeded but other failed, need to refund the successful one
-      // For now, transferToGlobalVault failures should be rare
+
+      // Refund whichever lock succeeded (atomic - only one can succeed if we're here)
+      if (lockTx1 && !lockTx2) {
+        console.log(`[BattleManager] Refunding P1 ${player1Wallet.slice(0, 8)}... after P2 lock failure`);
+        try {
+          await balanceService.refundFromGlobalVault(player1Wallet, entryFeeLamports, 'battle', 'ready_check_refund');
+        } catch (refundErr) {
+          console.error(`[BattleManager] CRITICAL: Failed to refund P1 after partial lock failure:`, refundErr);
+          // Log for manual intervention - funds are locked but battle didn't start
+        }
+      } else if (lockTx2 && !lockTx1) {
+        console.log(`[BattleManager] Refunding P2 ${player2Wallet.slice(0, 8)}... after P1 lock failure`);
+        try {
+          await balanceService.refundFromGlobalVault(player2Wallet, entryFeeLamports, 'battle', 'ready_check_refund');
+        } catch (refundErr) {
+          console.error(`[BattleManager] CRITICAL: Failed to refund P2 after partial lock failure:`, refundErr);
+          // Log for manual intervention - funds are locked but battle didn't start
+        }
+      }
       return;
     }
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { ChatMessage, Battle } from '@/types';
+import { LevelBadge } from '@/components/progression/LevelBadge';
 
 interface BattleChatProps {
   messages: ChatMessage[];
@@ -91,11 +92,9 @@ export function BattleChat({
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {/* Level badge */}
-                    <span className="text-xs text-white/40">
-                      [Lv.{message.senderLevel}]
-                    </span>
+                    <LevelBadge level={message.senderLevel} size="xs" />
                     {/* Fighter role badge */}
                     {getRoleLabel(message) && (
                       <span className="text-xs text-warning font-bold">

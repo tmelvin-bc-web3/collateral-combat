@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Trophy, TrendingUp, TrendingDown, Flame, Target, Award } from 'lucide-react';
 import { UserRankStats, getRankTierBgColor, getRankTierColor } from './types';
+import { LevelBadge } from '@/components/progression/LevelBadge';
 
 interface YourProfileCardProps {
   stats: UserRankStats | null;
@@ -62,7 +63,10 @@ export function YourProfileCard({ stats, isLoading }: YourProfileCardProps) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         {/* Left: Avatar & Identity */}
         <div className="flex items-center gap-4">
-          {/* Avatar with Level Badge */}
+          {/* Level Badge */}
+          <LevelBadge level={stats.level} size="md" />
+
+          {/* Avatar */}
           <div className="relative">
             {stats.avatar ? (
               <Image
@@ -80,9 +84,6 @@ export function YourProfileCard({ stats, isLoading }: YourProfileCardProps) {
                 </span>
               </div>
             )}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-warning rounded-full flex items-center justify-center text-xs font-bold text-black border-2 border-[#1a1a1a]">
-              {stats.level}
-            </div>
           </div>
 
           {/* Identity Info */}

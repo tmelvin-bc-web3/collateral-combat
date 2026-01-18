@@ -33,7 +33,7 @@ function getCosmeticInfo(cosmeticType: string, cosmeticId: string): { label: str
       silver: 'Silver Border',
       gold: 'Gold Border',
       platinum: 'Platinum Border',
-      mythic: 'Mythic Border',
+      mythic: 'Immortan Border',
     };
     return { label: labels[cosmeticId] || 'Profile Border', icon: '/' };
   }

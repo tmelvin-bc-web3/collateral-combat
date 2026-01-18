@@ -13,6 +13,7 @@ export interface LDSPlayer {
   avatar?: string;
   isVIP?: boolean;
   streak?: number;
+  level?: number;
 }
 
 export interface RecentWinner {

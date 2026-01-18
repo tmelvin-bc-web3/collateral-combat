@@ -131,7 +131,7 @@ export default function ProgressionPage() {
               { range: '21-35', title: 'Veteran', color: 'text-purple-400' },
               { range: '36-50', title: 'Champion', color: 'text-yellow-400' },
               { range: '51-75', title: 'Legend', color: 'text-orange-400' },
-              { range: '76-100', title: 'Mythic', color: 'text-accent' },
+              { range: '76-100', title: 'Immortan', color: 'text-accent' },
             ].map((tier) => (
               <div key={tier.title} className="grid grid-cols-2 text-sm py-2">
                 <span className="text-text-secondary">Level {tier.range}</span>
@@ -242,7 +242,7 @@ export default function ProgressionPage() {
             { name: 'Silver', level: 25, color: 'border-gray-400' },
             { name: 'Gold', level: 50, color: 'border-yellow-400' },
             { name: 'Platinum', level: 75, color: 'border-cyan-300' },
-            { name: 'Mythic', level: 100, color: 'border-accent' },
+            { name: 'Immortan', level: 100, color: 'border-accent' },
           ].map((border) => (
             <div key={border.name} className={`card p-3 text-center border-2 ${border.color}`}>
               <div className="font-medium text-sm">{border.name}</div>
