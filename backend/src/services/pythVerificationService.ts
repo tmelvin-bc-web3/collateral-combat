@@ -101,7 +101,7 @@ class PythVerificationService {
 
   constructor() {
     // Initialize connection for on-chain reads if needed
-    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc-service.carbium.io/?apiKey=9c6c818b-067b';
     try {
       this.connection = new Connection(rpcUrl, 'confirmed');
       this.initialized = true;

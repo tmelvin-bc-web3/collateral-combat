@@ -97,7 +97,7 @@ class PredictionServiceOnChain {
   private closeCheckInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://rpc-service.carbium.io/?apiKey=9c6c818b-067b';
     this.connection = new Connection(rpcUrl, 'confirmed');
 
     // Derive PDAs

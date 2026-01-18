@@ -10,7 +10,6 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
-import { clusterApiUrl } from '@solana/web3.js';
 import { ClientOnly } from './ClientOnly';
 
 // Import wallet adapter styles
@@ -21,8 +20,10 @@ interface Props {
 }
 
 function WalletProviderInner({ children }: Props) {
-  // Use devnet for testing
-  const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
+  // Use Carbium RPC for better reliability
+  const endpoint = useMemo(() =>
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://rpc-service.carbium.io/?apiKey=9c6c818b-067b',
+  []);
 
   const wallets = useMemo(
     () => [
