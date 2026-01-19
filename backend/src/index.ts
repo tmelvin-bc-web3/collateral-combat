@@ -783,8 +783,22 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
   try {
     const { email, walletAddress } = req.body;
 
+    // Get signature verification headers
+    const signature = req.headers['x-signature'] as string;
+    const timestamp = req.headers['x-timestamp'] as string;
+
     if (!email || !walletAddress) {
       return res.status(400).json({ error: 'Email and wallet address required' });
+    }
+
+    // SECURITY: Require wallet signature to prove ownership
+    if (!signature || !timestamp) {
+      return res.status(400).json({ error: 'Wallet verification required' });
+    }
+
+    if (!verifyWalletSignature(walletAddress, signature, timestamp)) {
+      logSecurityEvent('WALLET_UPDATE_SIGNATURE_FAILED', { wallet: walletAddress, email, ip: getClientIp(req) });
+      return res.status(400).json({ error: 'Wallet verification failed' });
     }
 
     const updated = await waitlistDb.updateWalletAddress(email, walletAddress);

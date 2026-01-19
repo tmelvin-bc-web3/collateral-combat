@@ -43,14 +43,46 @@ export default function ComingSoon() {
       .catch(() => {});
   }, []);
 
-  // Redirect whitelisted users to the full app
+  // Redirect whitelisted users to the full app (with secure verification)
   useEffect(() => {
-    if (hasAccess && mounted) {
-      // Set a cookie to bypass middleware for whitelisted users
-      document.cookie = `whitelist_access=${walletAddress};path=/;max-age=86400`;
-      window.location.href = '/predict';
+    if (hasAccess && mounted && signMessage && walletAddress) {
+      // Request wallet signature and verify with backend for secure access
+      const verifyAndRedirect = async () => {
+        try {
+          const timestamp = Date.now().toString();
+          const message = `DegenDome:whitelist:${timestamp}`;
+          const messageBytes = new TextEncoder().encode(message);
+
+          // Request wallet signature
+          const signature = await signMessage(messageBytes);
+          const signatureBase58 = bs58.encode(signature);
+
+          // Verify with backend - this sets a secure HTTP-only cookie
+          const response = await fetch('/api/auth/verify-whitelist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress,
+              signature: signatureBase58,
+              message,
+              timestamp,
+            }),
+          });
+
+          if (response.ok) {
+            // Cookie is set by the API - now redirect
+            window.location.href = '/predict';
+          } else {
+            console.error('Whitelist verification failed');
+          }
+        } catch (error) {
+          console.error('Error during whitelist verification:', error);
+        }
+      };
+
+      verifyAndRedirect();
     }
-  }, [hasAccess, mounted, walletAddress]);
+  }, [hasAccess, mounted, walletAddress, signMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,11 +337,27 @@ export default function ComingSoon() {
               Be first to enter when the dome opens
             </p>
             {totalSignups > 0 && (
-              <p className="text-xs text-[#ff5500] text-center mb-6">
+              <p className="text-xs text-[#ff5500] text-center mb-3">
                 {totalSignups.toLocaleString()} degens already waiting
               </p>
             )}
-            {totalSignups === 0 && <div className="mb-4" />}
+            {totalSignups === 0 && <div className="mb-2" />}
+
+            {/* Founding Degen callout */}
+            {totalSignups < 1000 && (
+              <div className="mb-6 px-4 py-3 rounded-lg bg-gradient-to-r from-[#ff5500]/10 to-[#8b4513]/10 border border-[#ff5500]/20">
+                <p className="text-xs text-center">
+                  <span className="text-[#ff5500] font-bold">First 1,000 signups</span>
+                  <span className="text-[#8a7f72]"> become </span>
+                  <span className="text-[#e8dfd4] font-bold">Founding Degens</span>
+                  <span className="text-[#8a7f72]"> with exclusive bonuses</span>
+                </p>
+                <p className="text-[10px] text-[#5c5348] text-center mt-1">
+                  {1000 - totalSignups} spots remaining
+                </p>
+              </div>
+            )}
+            {totalSignups >= 1000 && <div className="mb-4" />}
 
             {status === 'success' && waitlistData ? (
               <div className="text-center py-2">
