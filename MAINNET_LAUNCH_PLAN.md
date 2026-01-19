@@ -328,11 +328,11 @@ if (!rpcUrl) throw new Error('RPC URL not configured');
 
 | Service | Plan | Cost/Month | Purpose |
 |---------|------|------------|---------|
-| **Sentry** | Team | $26 | Error tracking |
-| **Datadog** | Free | $0 | Basic APM |
+| **Render Logs** | Included | $0 | Backend error logs |
+| **Vercel Logs** | Included | $0 | Frontend error logs |
 | **Better Uptime** | Free | $0 | Uptime monitoring |
 
-**Recommendation**: Sentry Team ($26/mo) + Better Uptime (free)
+**Recommendation**: Use built-in Render/Vercel logs + Better Uptime (free). Add Sentry ($26/mo) post-revenue if needed.
 
 ---
 
@@ -506,15 +506,15 @@ Dashboard > Project > Deployments > Previous > "Instant Rollback"
 | Vercel | Pro | $20 |
 | Render (Backend) | Standard | $25 |
 | Render (Database) | Starter | $7 |
-| Sentry | Team | $26 |
-| **Total** | | **$78/mo** |
+| Better Uptime | Free | $0 |
+| **Total** | | **$52/mo** |
 
 ### Optional Additions
 
 | Service | Cost | Notes |
 |---------|------|-------|
-| Cloudflare Pro | $20 | DDoS protection |
-| Better monitoring | $50-100 | Datadog, etc. |
+| Sentry | $26/mo | Error tracking (post-revenue) |
+| Cloudflare Pro | $20/mo | DDoS protection |
 
 ### One-Time Costs
 
@@ -545,9 +545,9 @@ Dashboard > Project > Deployments > Previous > "Instant Rollback"
 
 ### Should Have (P1)
 - [ ] PostgreSQL database migration
-- [ ] Comprehensive error tracking (Sentry)
 - [ ] Load testing completed
 - [ ] Conservative bet limits at launch
+- [ ] Better Uptime monitoring configured
 
 ### Nice to Have (P2)
 - [ ] Cloudflare DDoS protection
@@ -556,8 +556,8 @@ Dashboard > Project > Deployments > Previous > "Instant Rollback"
 
 ### Post-Revenue (P3)
 - [ ] Third-party security audit ($10k-50k)
+- [ ] Sentry error tracking ($26/mo)
 - [ ] Enhanced analytics
-- [ ] Additional monitoring tools
 
 ---
 
