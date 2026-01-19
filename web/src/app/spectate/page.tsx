@@ -212,7 +212,8 @@ export default function SpectatePage() {
       }
     });
 
-    const interval = setInterval(fetchLiveBattles, 5000);
+    // Socket provides real-time updates, only poll as a fallback every 30s
+    const interval = setInterval(fetchLiveBattles, 30000);
 
     return () => {
       clearInterval(interval);

@@ -80,18 +80,13 @@ export default function TokenWarsPage() {
   const [freeBetBalance, setFreeBetBalance] = useState(0);
   const [useFreeBet, setUseFreeBet] = useState(false);
 
-  // Fetch free bet balance
-  const fetchFreeBetBalance = useCallback(async () => {
-    if (!publicKey) {
-      setFreeBetBalance(0);
-      return;
-    }
+  // Refetch free bet balance (used after placing a free bet)
+  const refetchFreeBetBalance = useCallback(async () => {
+    if (!publicKey) return;
     try {
       const walletAddress = publicKey.toBase58();
       const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
-        headers: {
-          'x-wallet-address': walletAddress,
-        },
+        headers: { 'x-wallet-address': walletAddress },
       });
       if (res.ok) {
         const data = await res.json();
@@ -102,60 +97,26 @@ export default function TokenWarsPage() {
     }
   }, [publicKey]);
 
-  // Fetch recent battles
-  const fetchRecentBattles = useCallback(async () => {
+  // Refetch recent battles (used after battle ends)
+  const refetchRecentBattles = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/token-wars/battles/recent`);
-      if (res.ok) {
-        const data = await res.json();
-        setRecentBattles(data);
-      }
+      if (res.ok) setRecentBattles(await res.json());
     } catch (e) {
       console.error('Failed to fetch recent battles:', e);
     }
   }, []);
 
-  // Fetch bet history
-  const fetchBetHistory = useCallback(async () => {
-    if (!publicKey) {
-      setBetHistory([]);
-      return;
-    }
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/token-wars/player/${publicKey.toBase58()}/history`);
-      if (res.ok) {
-        const data = await res.json();
-        setBetHistory(data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch bet history:', e);
-    }
-  }, [publicKey]);
-
-  // Fetch leaderboard
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/token-wars/leaderboard`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeaderboard(data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch leaderboard:', e);
-    }
-  }, []);
-
-  // Fetch upcoming matchups
-  const fetchUpcomingMatchups = useCallback(async () => {
+  // Refetch upcoming matchups (used after battle created)
+  const refetchUpcomingMatchups = useCallback(async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/token-wars/upcoming?count=1`);
       if (res.ok) {
         const data = await res.json();
-        // Transform backend TokenInfo to UpcomingMatchup format with logos
-        const matchups: UpcomingMatchup[] = data.map((m: { tokenA: TokenInfo; tokenB: TokenInfo }, i: number) => ({
+        const matchups: UpcomingMatchup[] = data.map((m: { tokenA: TokenInfo; tokenB: TokenInfo }) => ({
           tokenA: { symbol: m.tokenA.symbol, logo: getTokenLogo(m.tokenA.symbol) },
           tokenB: { symbol: m.tokenB.symbol, logo: getTokenLogo(m.tokenB.symbol) },
-          startsIn: 6, // Approximate timing: 1min bet + 5min battle
+          startsIn: 6,
         }));
         setUpcomingMatchups(matchups);
       }
@@ -164,56 +125,86 @@ export default function TokenWarsPage() {
     }
   }, []);
 
-  // Fetch player stats
-  const fetchPlayerStats = useCallback(async () => {
-    if (!publicKey) {
-      setPlayerStats(null);
-      return;
-    }
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/token-wars/player/${publicKey.toBase58()}/stats`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlayerStats(data);
+  // Fetch config, tokens, and public panel data on mount (all in parallel)
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [configRes, tokensRes, recentRes, leaderboardRes, upcomingRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/token-wars/config`),
+          fetch(`${BACKEND_URL}/api/token-wars/tokens`),
+          fetch(`${BACKEND_URL}/api/token-wars/battles/recent`),
+          fetch(`${BACKEND_URL}/api/token-wars/leaderboard`),
+          fetch(`${BACKEND_URL}/api/token-wars/upcoming?count=1`),
+        ]);
+
+        if (configRes.ok) setConfig(await configRes.json());
+        if (tokensRes.ok) setTokens(await tokensRes.json());
+        if (recentRes.ok) setRecentBattles(await recentRes.json());
+        if (leaderboardRes.ok) setLeaderboard(await leaderboardRes.json());
+        if (upcomingRes.ok) {
+          const data = await upcomingRes.json();
+          const matchups: UpcomingMatchup[] = data.map((m: { tokenA: TokenInfo; tokenB: TokenInfo }) => ({
+            tokenA: { symbol: m.tokenA.symbol, logo: getTokenLogo(m.tokenA.symbol) },
+            tokenB: { symbol: m.tokenB.symbol, logo: getTokenLogo(m.tokenB.symbol) },
+            startsIn: 6,
+          }));
+          setUpcomingMatchups(matchups);
+        }
+      } catch (e) {
+        console.error('Failed to fetch initial Token Wars data:', e);
       }
-    } catch (e) {
-      console.error('Failed to fetch player stats:', e);
-    }
-  }, [publicKey]);
+    };
 
-  // Fetch config and tokens
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/api/token-wars/config`)
-      .then(res => res.json())
-      .then(setConfig)
-      .catch(console.error);
+    fetchInitialData();
 
-    fetch(`${BACKEND_URL}/api/token-wars/tokens`)
-      .then(res => res.json())
-      .then(setTokens)
-      .catch(console.error);
-  }, []);
-
-  // Fetch panel data on mount and periodically
-  useEffect(() => {
-    fetchRecentBattles();
-    fetchLeaderboard();
-    fetchUpcomingMatchups();
-
+    // Periodic refresh for dynamic data only
     const interval = setInterval(() => {
-      fetchRecentBattles();
-      fetchUpcomingMatchups();
+      Promise.all([
+        fetch(`${BACKEND_URL}/api/token-wars/battles/recent`),
+        fetch(`${BACKEND_URL}/api/token-wars/upcoming?count=1`),
+      ]).then(async ([recentRes, upcomingRes]) => {
+        if (recentRes.ok) setRecentBattles(await recentRes.json());
+        if (upcomingRes.ok) {
+          const data = await upcomingRes.json();
+          const matchups: UpcomingMatchup[] = data.map((m: { tokenA: TokenInfo; tokenB: TokenInfo }) => ({
+            tokenA: { symbol: m.tokenA.symbol, logo: getTokenLogo(m.tokenA.symbol) },
+            tokenB: { symbol: m.tokenB.symbol, logo: getTokenLogo(m.tokenB.symbol) },
+            startsIn: 6,
+          }));
+          setUpcomingMatchups(matchups);
+        }
+      }).catch(console.error);
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [fetchRecentBattles, fetchLeaderboard, fetchUpcomingMatchups]);
+  }, []);
 
-  // Fetch user-specific data when wallet changes
+  // Fetch user-specific data when wallet changes (all in parallel)
   useEffect(() => {
-    fetchBetHistory();
-    fetchPlayerStats();
-    fetchFreeBetBalance();
-  }, [fetchBetHistory, fetchPlayerStats, fetchFreeBetBalance]);
+    if (!publicKey) {
+      setBetHistory([]);
+      setPlayerStats(null);
+      setFreeBetBalance(0);
+      return;
+    }
+
+    const walletAddress = publicKey.toBase58();
+
+    Promise.all([
+      fetch(`${BACKEND_URL}/api/token-wars/player/${walletAddress}/history`),
+      fetch(`${BACKEND_URL}/api/token-wars/player/${walletAddress}/stats`),
+      fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
+        headers: { 'x-wallet-address': walletAddress },
+      }),
+    ]).then(async ([historyRes, statsRes, freeBetRes]) => {
+      if (historyRes.ok) setBetHistory(await historyRes.json());
+      if (statsRes.ok) setPlayerStats(await statsRes.json());
+      if (freeBetRes.ok) {
+        const data = await freeBetRes.json();
+        setFreeBetBalance(data.balance || 0);
+      }
+    }).catch(e => console.error('Failed to fetch user Token Wars data:', e));
+  }, [publicKey]);
 
   // Fetch user's bet for current battle
   const fetchMyBet = useCallback(async () => {
@@ -272,7 +263,7 @@ export default function TokenWarsPage() {
           fetchBattleState();
           setMyBet(null);
           setLiveBets([]);
-          fetchUpcomingMatchups();
+          refetchUpcomingMatchups();
           break;
 
         case 'bet_placed':
@@ -317,7 +308,7 @@ export default function TokenWarsPage() {
           setTimeout(() => setShowResultAnimation(false), 4000);
           fetchBattleState();
           fetchBalance();
-          fetchRecentBattles();
+          refetchRecentBattles();
           break;
 
         case 'cooldown_started':
@@ -351,7 +342,7 @@ export default function TokenWarsPage() {
       socket.off('token_wars_bet_success');
       socket.off('token_wars_bet_error');
     };
-  }, [fetchBattleState, fetchMyBet, fetchBalance, fetchRecentBattles, fetchUpcomingMatchups]);
+  }, [fetchBattleState, fetchMyBet, fetchBalance, refetchRecentBattles, refetchUpcomingMatchups]);
 
   // Refetch bet when battle changes
   useEffect(() => {
@@ -429,7 +420,7 @@ export default function TokenWarsPage() {
     });
 
     if (useFreeBet) {
-      setTimeout(() => fetchFreeBetBalance(), 1000);
+      setTimeout(() => refetchFreeBetBalance(), 1000);
     }
   };
 
