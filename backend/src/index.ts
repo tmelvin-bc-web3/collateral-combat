@@ -767,6 +767,7 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
       referralCode: entry.referralCode,
       position: entry.position,
       tier: entry.tier,
+      referralCount: entry.referralCount,
       referralLink: `https://www.degendome.xyz/ref/${entry.referralCode}`,
     });
   } catch (error: any) {
@@ -780,6 +781,7 @@ app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response
           referralCode: existing.referralCode,
           position: existing.position,
           tier: existing.tier,
+          referralCount: existing.referralCount,
           referralLink: `https://www.degendome.xyz/ref/${existing.referralCode}`,
         });
       }

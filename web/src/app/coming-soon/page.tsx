@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
@@ -16,6 +15,7 @@ interface WaitlistSuccess {
   referralCode: string;
   position: number;
   tier: string;
+  referralCount: number;
   referralLink: string;
 }
 
@@ -152,9 +152,10 @@ export default function ComingSoon() {
           referralCode: data.referralCode,
           position: data.position,
           tier: data.tier,
+          referralCount: data.referralCount || 0,
           referralLink: data.referralLink,
         });
-        // Save email to localStorage for dashboard
+        // Save email to localStorage
         localStorage.setItem('waitlist_email', email);
         setEmail('');
       } else {
@@ -387,9 +388,35 @@ export default function ComingSoon() {
                   <span className="font-semibold text-[#7fba00]">You&apos;re #{waitlistData.position} on the list!</span>
                 </div>
 
+                {/* Referral stats */}
+                <div className="bg-[#0d0b09] rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-[#5c5348]">Accepted Referrals</span>
+                    <span className="text-lg font-bold text-[#e8dfd4]">{waitlistData.referralCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#5c5348]">Current Tier</span>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                      waitlistData.tier === 'founding' ? 'bg-[#ff5500]/20 text-[#ff5500]' :
+                      waitlistData.tier === 'vip' ? 'bg-purple-500/20 text-purple-400' :
+                      waitlistData.tier === 'priority' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-white/10 text-white/60'
+                    }`}>
+                      {waitlistData.tier.toUpperCase()}
+                    </span>
+                  </div>
+                  {waitlistData.tier !== 'founding' && (
+                    <p className="text-[10px] text-[#5c5348] mt-2">
+                      {waitlistData.tier === 'standard' && `${3 - waitlistData.referralCount} more referrals for Priority tier`}
+                      {waitlistData.tier === 'priority' && `${10 - waitlistData.referralCount} more referrals for VIP tier`}
+                      {waitlistData.tier === 'vip' && `${25 - waitlistData.referralCount} more referrals for Founding tier`}
+                    </p>
+                  )}
+                </div>
+
                 {/* Referral link */}
                 <div className="bg-[#0d0b09] rounded-xl p-4 mb-4">
-                  <p className="text-xs text-[#5c5348] mb-2">Share your referral link to move up:</p>
+                  <p className="text-xs text-[#5c5348] mb-2">Share to earn referrals:</p>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -410,23 +437,15 @@ export default function ComingSoon() {
                   </div>
                 </div>
 
-                {/* Share & Dashboard links */}
-                <div className="flex gap-3 justify-center">
-                  <a
-                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🏟️ Just secured my spot in the DegenDome arena!\n\n1v1 trading battles on Solana. May the best degen win.\n\nJoin the waitlist:`)}&url=${encodeURIComponent(waitlistData.referralLink)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#151210] border border-[#2a2218] rounded-lg text-[#c4a574] text-xs hover:border-[#ff5500]/30 transition-colors"
-                  >
-                    Share on X
-                  </a>
-                  <Link
-                    href="/waitlist/dashboard"
-                    className="px-4 py-2 bg-[#ff5500]/20 border border-[#ff5500]/40 rounded-lg text-[#ff5500] text-xs hover:bg-[#ff5500]/30 transition-colors"
-                  >
-                    View Dashboard
-                  </Link>
-                </div>
+                {/* Share on X */}
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🏟️ Just secured my spot in the DegenDome arena!\n\n1v1 trading battles on Solana. May the best degen win.\n\nJoin the waitlist:`)}&url=${encodeURIComponent(waitlistData.referralLink)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-2 bg-[#151210] border border-[#2a2218] rounded-lg text-[#c4a574] text-xs hover:border-[#ff5500]/30 transition-colors"
+                >
+                  Share on X
+                </a>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
