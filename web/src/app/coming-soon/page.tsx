@@ -371,7 +371,7 @@ export default function ComingSoon() {
                   <span className="text-[#e8dfd4] font-bold">Founding Degens</span>
                   <span className="text-[#8a7f72]"> with exclusive bonuses</span>
                 </p>
-                <p className="text-[10px] text-[#5c5348] text-center mt-1">
+                <p className="text-sm text-[#c4a574] text-center mt-2 font-semibold">
                   {1000 - totalSignups} spots remaining
                 </p>
               </div>
@@ -434,6 +434,29 @@ export default function ComingSoon() {
                     >
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
+                  </div>
+                </div>
+
+                {/* Tier Benefits */}
+                <div className="bg-[#0d0b09] rounded-xl p-4 mb-4">
+                  <p className="text-xs text-[#5c5348] mb-3 text-left">Tier Rewards:</p>
+                  <div className="space-y-2 text-left">
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60 font-medium shrink-0">STANDARD</span>
+                      <span className="text-[10px] text-[#8a7f72]">Beta access lottery entry</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium shrink-0">PRIORITY</span>
+                      <span className="text-[10px] text-[#8a7f72]">3+ refs = Guaranteed beta access</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium shrink-0">VIP</span>
+                      <span className="text-[10px] text-[#8a7f72]">10+ refs = Beta + 100 XP + Discord role</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ff5500]/20 text-[#ff5500] font-medium shrink-0">FOUNDING</span>
+                      <span className="text-[10px] text-[#8a7f72]">25+ refs = Beta + 500 XP + Founding badge</span>
+                    </div>
                   </div>
                 </div>
 

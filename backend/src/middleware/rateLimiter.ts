@@ -165,6 +165,13 @@ export const pythLimiter = createRateLimiter({
   message: 'Verification rate limit exceeded. Price verification is cached - no need to refresh frequently.',
 });
 
+// Waitlist signup limiter (5 attempts per 10 minutes - very strict to prevent spam)
+export const waitlistLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  maxRequests: 5,
+  message: 'Too many signup attempts. Please try again in a few minutes.',
+});
+
 // ===================
 // Utility Functions
 // ===================

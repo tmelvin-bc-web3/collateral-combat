@@ -36,7 +36,7 @@ import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
 import { ensureTokenVersion } from './db/authDatabase';
-import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
+import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter, waitlistLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
 import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
@@ -692,8 +692,8 @@ app.get('/api/nfts/:wallet', standardLimiter, async (req: Request, res: Response
 // Waitlist Endpoints
 // ===================
 
-// Join the waitlist
-app.post('/api/waitlist/join', strictLimiter, async (req: Request, res: Response) => {
+// Join the waitlist (very strict rate limit: 5 attempts per 10 minutes)
+app.post('/api/waitlist/join', waitlistLimiter, async (req: Request, res: Response) => {
   try {
     const { email, walletAddress, referralCode, utmSource, utmCampaign } = req.body;
 

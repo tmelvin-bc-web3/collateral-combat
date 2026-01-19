@@ -59,6 +59,9 @@ async function initializeDatabase(): Promise<void> {
       -- Add ip_address column if it doesn't exist (for existing databases)
       ALTER TABLE waitlist_entries ADD COLUMN IF NOT EXISTS ip_address TEXT;
 
+      -- Add unique constraint on wallet_address (ignore if already exists)
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_wallet_unique ON waitlist_entries(wallet_address) WHERE wallet_address IS NOT NULL;
+
       CREATE TABLE IF NOT EXISTS waitlist_referrals (
         id TEXT PRIMARY KEY,
         referrer_code TEXT NOT NULL,
@@ -204,6 +207,36 @@ export async function findByEmail(email: string): Promise<WaitlistEntry | null> 
   }
 }
 
+export async function findByWallet(walletAddress: string): Promise<WaitlistEntry | null> {
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM waitlist_entries WHERE wallet_address = $1',
+      [walletAddress]
+    );
+    return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
+  } catch (error) {
+    console.error('[WaitlistDB] findByWallet error:', error);
+    return null;
+  }
+}
+
+export async function countByIp(ipAddress: string): Promise<number> {
+  if (!pool || !ipAddress) return 0;
+
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) as count FROM waitlist_entries WHERE ip_address = $1',
+      [ipAddress]
+    );
+    return parseInt(result.rows[0].count);
+  } catch (error) {
+    console.error('[WaitlistDB] countByIp error:', error);
+    return 0;
+  }
+}
+
 export async function findByReferralCode(code: string): Promise<WaitlistEntry | null> {
   if (!pool) return null;
 
@@ -246,6 +279,9 @@ export async function getTotalCount(): Promise<number> {
   }
 }
 
+// Max signups per IP to prevent spam (allows shared households, blocks mass spam)
+const MAX_SIGNUPS_PER_IP = 3;
+
 export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistEntry> {
   if (!pool) {
     throw new Error('Database not configured');
@@ -269,6 +305,22 @@ export async function joinWaitlist(data: WaitlistJoinRequest): Promise<WaitlistE
   const existing = await findByEmail(data.email);
   if (existing) {
     throw new Error('Email already registered');
+  }
+
+  // Check if wallet already registered
+  const existingWallet = await findByWallet(data.walletAddress);
+  if (existingWallet) {
+    throw new Error('Wallet already registered');
+  }
+
+  // Check IP signup limit (prevent spam from same IP)
+  if (data.ipAddress) {
+    const ipSignupCount = await countByIp(data.ipAddress);
+    if (ipSignupCount >= MAX_SIGNUPS_PER_IP) {
+      const maskedIp = data.ipAddress.replace(/\.\d+$/, '.***');
+      console.log(`[SECURITY] IP_SIGNUP_LIMIT_REACHED | ip: ${maskedIp} | count: ${ipSignupCount}`);
+      throw new Error('Too many signups from this network');
+    }
   }
 
   // Generate unique referral code
