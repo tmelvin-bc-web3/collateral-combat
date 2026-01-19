@@ -137,8 +137,8 @@ Update `.env.production`:
 NODE_ENV=production
 PORT=3001
 
-# Solana RPC (use premium RPC - see Infrastructure section)
-SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY
+# Solana RPC (Carbium - already have access)
+SOLANA_RPC_URL=https://your-carbium-mainnet-rpc-url
 
 # Program ID (update after mainnet deployment)
 SESSION_BETTING_PROGRAM_ID=NEW_MAINNET_PROGRAM_ID
@@ -211,7 +211,7 @@ Update Vercel environment variables:
 ```bash
 # Production Environment Variables (Vercel Dashboard)
 NEXT_PUBLIC_BACKEND_URL=https://api.degendome.xyz
-NEXT_PUBLIC_SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY
+NEXT_PUBLIC_SOLANA_RPC_URL=https://your-carbium-mainnet-rpc-url
 NEXT_PUBLIC_PROGRAM_ID=NEW_MAINNET_PROGRAM_ID
 NEXT_PUBLIC_COMING_SOON=false
 NEXT_PUBLIC_USE_ON_CHAIN=true
@@ -260,16 +260,16 @@ if (!rpcUrl) throw new Error('RPC URL not configured');
 
 **Do NOT use public RPC for mainnet!** You will get rate limited.
 
-| Provider | Plan | Cost/Month | Rate Limits | Recommended |
-|----------|------|------------|-------------|-------------|
-| **Helius** | Business | $499 | 500 RPS | Yes |
-| **Helius** | Pro | $99 | 100 RPS | Budget option |
-| **QuickNode** | Build | $49 | 25 RPS | Budget option |
-| **Triton** | Standard | $150 | 100 RPS | Alternative |
+**Current Setup**: Carbium RPC (already have access)
 
-**Recommendation**: Helius Pro ($99/mo) to start, upgrade to Business if needed.
+| Provider | Status | Cost/Month |
+|----------|--------|------------|
+| **Carbium** | Already have | $0 (existing) |
 
-Sign up: https://helius.xyz
+**Action Items:**
+- [ ] Get mainnet RPC URL from Carbium
+- [ ] Test rate limits are sufficient for expected traffic
+- [ ] Set up monitoring for RPC errors/rate limits
 
 ### 2. Vercel (Frontend Hosting)
 
@@ -501,18 +501,17 @@ Dashboard > Project > Deployments > Previous > "Instant Rollback"
 
 | Service | Plan | Monthly Cost |
 |---------|------|--------------|
-| Helius RPC | Pro | $99 |
+| Carbium RPC | Already have | $0 |
 | Vercel | Pro | $20 |
 | Render (Backend) | Standard | $25 |
 | Render (Database) | Starter | $7 |
 | Sentry | Team | $26 |
-| **Total** | | **$177/mo** |
+| **Total** | | **$78/mo** |
 
 ### Optional Additions
 
 | Service | Cost | Notes |
 |---------|------|-------|
-| Helius Business | +$400 | If traffic grows |
 | Cloudflare Pro | $20 | DDoS protection |
 | Better monitoring | $50-100 | Datadog, etc. |
 
