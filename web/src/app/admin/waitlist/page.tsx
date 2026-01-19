@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { isWhitelisted } from '@/config/whitelist';
 import { BACKEND_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-
+import bs58 from 'bs58';
 
 interface WaitlistEntry {
   id: string;
@@ -41,16 +40,83 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export default function AdminWaitlistPage() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signMessage } = useWallet();
   const walletAddress = publicKey?.toBase58();
-  const isAdmin = isWhitelisted(walletAddress);
   const { isAuthenticated, isLoading: authLoading, signIn, authenticatedFetch, error: authError } = useAuth();
+
+  // Admin verification state - starts as unverified
+  const [isVerifiedAdmin, setIsVerifiedAdmin] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const [data, setData] = useState<WaitlistData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'created_at' | 'referral_count' | 'position'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Verify admin status with server-side check
+  const verifyAdmin = useCallback(async () => {
+    if (!walletAddress || !signMessage) return;
+
+    setIsVerifying(true);
+    setVerificationError(null);
+
+    try {
+      const timestamp = Date.now().toString();
+      const message = `DegenDome:admin:${timestamp}`;
+      const messageBytes = new TextEncoder().encode(message);
+
+      // Request wallet signature
+      const signature = await signMessage(messageBytes);
+      const signatureBase58 = bs58.encode(signature);
+
+      // Verify with server
+      const response = await fetch('/api/auth/verify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          signature: signatureBase58,
+          timestamp,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.isAdmin) {
+          setIsVerifiedAdmin(true);
+        } else {
+          setVerificationError('Access denied');
+        }
+      } else {
+        setVerificationError('Access denied');
+      }
+    } catch (err: any) {
+      if (err.message?.includes('User rejected')) {
+        setVerificationError('Signature required for admin access');
+      } else {
+        setVerificationError('Verification failed');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [walletAddress, signMessage]);
+
+  // Auto-verify when wallet connects
+  useEffect(() => {
+    if (connected && walletAddress && signMessage && !isVerifiedAdmin && !isVerifying) {
+      verifyAdmin();
+    }
+  }, [connected, walletAddress, signMessage, isVerifiedAdmin, isVerifying, verifyAdmin]);
+
+  // Reset verification when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      setIsVerifiedAdmin(false);
+      setVerificationError(null);
+    }
+  }, [connected]);
 
   const fetchData = useCallback(async () => {
     if (!walletAddress || !isAuthenticated) return;
@@ -82,19 +148,19 @@ export default function AdminWaitlistPage() {
     }
   }, [walletAddress, isAuthenticated, authenticatedFetch, sortBy, sortOrder]);
 
-  // Auto sign-in for admin if not authenticated
+  // Auto sign-in for admin if verified but not authenticated
   useEffect(() => {
-    if (isAdmin && walletAddress && !isAuthenticated && !authLoading) {
+    if (isVerifiedAdmin && walletAddress && !isAuthenticated && !authLoading) {
       signIn();
     }
-  }, [isAdmin, walletAddress, isAuthenticated, authLoading, signIn]);
+  }, [isVerifiedAdmin, walletAddress, isAuthenticated, authLoading, signIn]);
 
   // Fetch data once authenticated
   useEffect(() => {
-    if (isAdmin && isAuthenticated) {
+    if (isVerifiedAdmin && isAuthenticated) {
       fetchData();
     }
-  }, [isAdmin, isAuthenticated, sortBy, sortOrder, fetchData]);
+  }, [isVerifiedAdmin, isAuthenticated, sortBy, sortOrder, fetchData]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
@@ -125,37 +191,53 @@ export default function AdminWaitlistPage() {
     a.click();
   };
 
-  // Not connected
+  // Not connected - show minimal connect prompt
   if (!connected) {
     return (
       <div className="min-h-screen bg-[#0a0908] flex items-center justify-center p-4">
         <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center max-w-md">
-          <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-          <p className="text-white/60 mb-6">Connect your wallet to access the admin dashboard</p>
-          <WalletMultiButton className="!bg-warning !text-black !font-bold !rounded-xl" />
+          <h1 className="text-2xl font-bold mb-4">Restricted Area</h1>
+          <p className="text-white/60 mb-6">Connect wallet to continue</p>
+          <WalletMultiButton className="!bg-white/10 !border !border-white/20 !rounded-xl" />
         </div>
       </div>
     );
   }
 
-  // Not admin
-  if (!isAdmin) {
+  // Verifying admin status
+  if (isVerifying) {
     return (
       <div className="min-h-screen bg-[#0a0908] flex items-center justify-center p-4">
-        <div className="bg-black/60 backdrop-blur-xl border border-danger/30 rounded-2xl p-8 text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-danger/20 flex items-center justify-center">
-            <svg className="w-8 h-8 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-white/60 mb-4">Your wallet is not authorized to access this page.</p>
-          <p className="text-xs text-white/40 font-mono break-all">{walletAddress}</p>
+        <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center max-w-md">
+          <div className="w-8 h-8 border-2 border-warning border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/60">Verifying access...</p>
         </div>
       </div>
     );
   }
 
+  // Not verified as admin - show nothing useful
+  if (!isVerifiedAdmin) {
+    return (
+      <div className="min-h-screen bg-[#0a0908] flex items-center justify-center p-4">
+        <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center max-w-md">
+          <p className="text-white/40 text-sm">
+            {verificationError || 'Access denied'}
+          </p>
+          {verificationError === 'Signature required for admin access' && (
+            <button
+              onClick={verifyAdmin}
+              className="mt-4 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm hover:bg-white/20"
+            >
+              Try Again
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Verified admin - show dashboard
   return (
     <div className="min-h-screen bg-[#0a0908] p-4 md:p-8">
       {/* Header */}
@@ -208,10 +290,10 @@ export default function AdminWaitlistPage() {
         )}
 
         {/* Auth status */}
-        {!isAuthenticated && isAdmin && (
+        {!isAuthenticated && isVerifiedAdmin && (
           <div className="bg-warning/20 border border-warning/40 rounded-xl p-4 mb-6 flex items-center justify-between">
             <span className="text-warning">
-              {authLoading ? 'Signing in...' : 'Please sign in to access admin dashboard'}
+              {authLoading ? 'Signing in...' : 'Please sign in to load data'}
             </span>
             {!authLoading && (
               <button
