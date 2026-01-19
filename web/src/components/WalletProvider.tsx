@@ -14,6 +14,8 @@ import {
   TorusWalletAdapter,
   TrustWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
+// Note: Backpack and MetaMask (with Solana Snap) use Wallet Standard
+// They'll be auto-detected and shown in the modal if installed
 import { ClientOnly } from './ClientOnly';
 
 // Import wallet adapter styles
