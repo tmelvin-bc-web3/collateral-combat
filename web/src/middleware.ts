@@ -110,6 +110,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth',
     '/waitlist',
     '/ref',
+    '/admin',
   ];
 
   // Allow static files and Next.js internals
