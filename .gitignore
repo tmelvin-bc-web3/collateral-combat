@@ -29,6 +29,9 @@ yarn-error.log*
 # Data
 backend/data
 .vercel
+*.db
+*.sqlite
+*.sqlite3
 
 # Claude/Ralph automation
 .agents/
