@@ -21,11 +21,11 @@
 
 ## Pre-Launch Checklist
 
-### Code Freeze & Audit
-- [ ] Complete security audit of smart contract (consider: OtterSec, Neodyme, Sec3)
-- [ ] Fix any audit findings
+### Code Freeze & Review
+- [ ] Internal security review of smart contract
 - [ ] Code freeze 1 week before launch
 - [ ] Final internal review of all changes
+- [ ] **Note**: Third-party audit deferred until post-revenue (see Post-Launch section)
 
 ### Testing
 - [ ] Full end-to-end testing on devnet
@@ -339,10 +339,11 @@ if (!rpcUrl) throw new Error('RPC URL not configured');
 ## Security Hardening
 
 ### 1. Smart Contract Security
-- [ ] Complete third-party audit
+- [ ] Internal security review (third-party audit deferred to post-revenue)
 - [ ] Transfer authority to multi-sig
 - [ ] Set up monitoring for unusual activity
 - [ ] Document emergency procedures
+- [ ] Start with conservative bet limits, increase gradually
 
 ### 2. Backend Security
 - [ ] Enable `REQUIRE_WALLET_SIGNATURES=true`
@@ -519,34 +520,44 @@ Dashboard > Project > Deployments > Previous > "Instant Rollback"
 
 | Item | Cost | Notes |
 |------|------|-------|
-| Security Audit | $10k-50k | Highly recommended |
 | Mainnet SOL (deployment) | ~2-5 SOL | Contract deployment |
 | Authority funding | 10+ SOL | For transaction fees |
 | Multi-sig setup | ~0.1 SOL | Squads protocol |
+
+### Post-Revenue (Deferred)
+
+| Item | Cost | Notes |
+|------|------|-------|
+| Security Audit | $10k-50k | OtterSec, Neodyme, or Sec3 |
 
 ---
 
 ## Summary Checklist
 
 ### Must Have (P0)
-- [ ] Security audit completed
 - [ ] Smart contract deployed to mainnet
 - [ ] Multi-sig authority set up
-- [ ] Premium RPC provider (Helius)
+- [ ] Carbium RPC configured for mainnet
 - [ ] All environment variables updated
 - [ ] Hardcoded devnet references removed
+- [ ] Internal security review completed
 - [ ] Monitoring and alerts configured
 
 ### Should Have (P1)
 - [ ] PostgreSQL database migration
-- [ ] Cloudflare DDoS protection
 - [ ] Comprehensive error tracking (Sentry)
 - [ ] Load testing completed
+- [ ] Conservative bet limits at launch
 
 ### Nice to Have (P2)
+- [ ] Cloudflare DDoS protection
 - [ ] Mobile-responsive improvements
 - [ ] Performance optimization
+
+### Post-Revenue (P3)
+- [ ] Third-party security audit ($10k-50k)
 - [ ] Enhanced analytics
+- [ ] Additional monitoring tools
 
 ---
 
