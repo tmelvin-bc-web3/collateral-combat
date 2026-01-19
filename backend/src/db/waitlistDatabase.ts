@@ -20,6 +20,10 @@ const pool = DATABASE_URL
       ssl: {
         rejectUnauthorized: process.env.NODE_ENV === 'production',
       },
+      // Connection pool settings for handling traffic spikes
+      max: 20,                    // Max connections in pool (Neon free tier supports ~100)
+      idleTimeoutMillis: 30000,   // Close idle connections after 30s
+      connectionTimeoutMillis: 10000, // Timeout after 10s if can't connect
     })
   : null;
 
