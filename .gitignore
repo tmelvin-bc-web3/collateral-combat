@@ -36,6 +36,9 @@ backend/data
 # Claude/Ralph automation
 .agents/
 .ralph/
+CLAUDE.md
+CLAUDE_*.md
+**/CLAUDE.md
 automation/
 logs/
 MIGRATION_PLAN.md
