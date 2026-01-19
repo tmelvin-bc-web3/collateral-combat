@@ -262,9 +262,6 @@ class TokenWarsManager {
    * Avoids recently used matchups for variety
    */
   private getNextMatchup(): [string, string] {
-    // TEMP: Force PONKE matchup for screenshot - remove after!
-    return ['PONKE', 'WIF'];
-
     const tokens = AVAILABLE_TOKENS.map(t => t.symbol);
 
     // Generate all possible pairs
