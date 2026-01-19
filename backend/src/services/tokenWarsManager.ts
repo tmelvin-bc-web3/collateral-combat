@@ -262,6 +262,9 @@ class TokenWarsManager {
    * Avoids recently used matchups for variety
    */
   private getNextMatchup(): [string, string] {
+    // TEMP: Force TURBO matchup for screenshot - remove after!
+    return ['TURBO', 'WIF'];
+
     const tokens = AVAILABLE_TOKENS.map(t => t.symbol);
 
     // Generate all possible pairs
