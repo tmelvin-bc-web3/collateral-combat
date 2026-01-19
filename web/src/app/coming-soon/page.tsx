@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +8,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { isWhitelisted } from '@/config/whitelist';
 import { BACKEND_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 import bs58 from 'bs58';
 
 
@@ -30,6 +31,10 @@ export default function ComingSoon() {
   const [totalSignups, setTotalSignups] = useState(0);
   const [copied, setCopied] = useState(false);
   const { publicKey, connected, signMessage } = useWallet();
+  const { isAuthenticated, signIn, token } = useAuth();
+
+  // Track if we've attempted the whitelist flow to prevent repeated attempts
+  const hasAttemptedWhitelistFlow = useRef(false);
 
   const walletAddress = publicKey?.toBase58();
   const hasAccess = isWhitelisted(walletAddress);
@@ -44,45 +49,58 @@ export default function ComingSoon() {
   }, []);
 
   // Redirect whitelisted users to the full app (with secure verification)
+  // Uses AuthContext for single signature - JWT proves identity
   useEffect(() => {
-    if (hasAccess && mounted && signMessage && walletAddress) {
-      // Request wallet signature and verify with backend for secure access
-      const verifyAndRedirect = async () => {
-        try {
-          const timestamp = Date.now().toString();
-          const message = `DegenDome:whitelist:${timestamp}`;
-          const messageBytes = new TextEncoder().encode(message);
-
-          // Request wallet signature
-          const signature = await signMessage(messageBytes);
-          const signatureBase58 = bs58.encode(signature);
-
-          // Verify with backend - this sets a secure HTTP-only cookie
-          const response = await fetch('/api/auth/verify-whitelist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              walletAddress,
-              signature: signatureBase58,
-              message,
-              timestamp,
-            }),
-          });
-
-          if (response.ok) {
-            // Cookie is set by the API - now redirect
-            window.location.href = '/predict';
-          } else {
-            console.error('Whitelist verification failed');
-          }
-        } catch (error) {
-          console.error('Error during whitelist verification:', error);
-        }
-      };
-
-      verifyAndRedirect();
+    if (!hasAccess || !mounted || !walletAddress || hasAttemptedWhitelistFlow.current) {
+      return;
     }
-  }, [hasAccess, mounted, walletAddress, signMessage]);
+
+    const verifyAndRedirect = async () => {
+      hasAttemptedWhitelistFlow.current = true;
+
+      try {
+        // Step 1: If not authenticated, sign in via AuthContext (ONE signature)
+        let currentToken = token;
+        if (!isAuthenticated) {
+          const success = await signIn();
+          if (!success) {
+            console.error('Sign in failed or rejected');
+            hasAttemptedWhitelistFlow.current = false; // Allow retry
+            return;
+          }
+          // Get the token from localStorage since state might not update immediately
+          currentToken = localStorage.getItem('degendome_auth_token');
+        }
+
+        if (!currentToken) {
+          console.error('No token available after sign in');
+          hasAttemptedWhitelistFlow.current = false;
+          return;
+        }
+
+        // Step 2: Set the whitelist cookie using JWT (no additional signature)
+        const response = await fetch('/api/auth/set-whitelist-cookie', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentToken}`,
+          },
+        });
+
+        if (response.ok) {
+          // Cookie is set by the API - now redirect
+          window.location.href = '/predict';
+        } else {
+          console.error('Failed to set whitelist cookie');
+          hasAttemptedWhitelistFlow.current = false;
+        }
+      } catch (error) {
+        console.error('Error during whitelist verification:', error);
+        hasAttemptedWhitelistFlow.current = false;
+      }
+    };
+
+    verifyAndRedirect();
+  }, [hasAccess, mounted, walletAddress, isAuthenticated, signIn, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

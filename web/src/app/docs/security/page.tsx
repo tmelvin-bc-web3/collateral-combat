@@ -190,11 +190,7 @@ export default function SecurityPage() {
             </div>
             <div>
               <span className="text-text-tertiary">Framework:</span>
-              <span className="ml-2">Anchor 0.31.1</span>
-            </div>
-            <div>
-              <span className="text-text-tertiary">Functions:</span>
-              <span className="ml-2">Deposits, withdrawals, sessions, Oracle rounds, fund locking, payouts</span>
+              <span className="ml-2">Anchor (Solana)</span>
             </div>
           </div>
         </div>
@@ -210,40 +206,16 @@ export default function SecurityPage() {
         <h2 className="text-xl font-semibold mb-4">Program Derived Addresses (PDAs)</h2>
         <p className="text-text-secondary mb-4">
           Our smart contracts use PDAs to store data and funds on-chain. PDAs are
-          deterministically generated addresses controlled by the program.
+          deterministically generated addresses controlled by the program — not by any
+          individual or private key.
         </p>
 
         <div className="card p-4">
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Game State</span>
-              <span className="text-text-secondary">Global configuration and authority</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">User Balance</span>
-              <span className="text-text-secondary">Tracks deposited, withdrawn, won amounts</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">User Vault</span>
-              <span className="text-text-secondary">Holds user&apos;s SOL (personal PDA)</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Global Vault</span>
-              <span className="text-text-secondary">Holds locked wager funds</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Session Token</span>
-              <span className="text-text-secondary">Authorized session key with expiry</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Betting Round</span>
-              <span className="text-text-secondary">Round state with Pyth prices</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="font-medium">Betting Pool</span>
-              <span className="text-text-secondary">Long/Short pool totals</span>
-            </div>
-          </div>
+          <p className="text-text-secondary text-sm">
+            Each user has their own personal vault PDA that holds their deposited funds.
+            Only the user&apos;s wallet can authorize withdrawals from their vault.
+            Game state and betting pools are stored in separate PDAs managed by the program.
+          </p>
         </div>
       </section>
 
@@ -256,24 +228,11 @@ export default function SecurityPage() {
         </p>
 
         <div className="card p-4 mb-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-1">
-              <span className="text-text-tertiary">Oracle Provider</span>
-              <span>Pyth Network</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-tertiary">Update Frequency</span>
-              <span>~400ms</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-tertiary">Data Sources</span>
-              <span>70+ institutional providers</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-tertiary">Max Price Age</span>
-              <span>60 seconds</span>
-            </div>
-          </div>
+          <p className="text-text-secondary text-sm">
+            Pyth Network aggregates price data from dozens of institutional providers,
+            ensuring accurate and manipulation-resistant pricing. Prices are validated
+            for freshness before being used in settlements.
+          </p>
         </div>
 
         <DocsCallout type="info" title="Tamper-Proof Prices">
@@ -320,26 +279,12 @@ export default function SecurityPage() {
         </p>
 
         <div className="card p-4 mb-4">
-          <h3 className="font-medium mb-3">What&apos;s Signed</h3>
-          <ul className="list-disc list-inside space-y-1 text-text-secondary text-sm">
-            <li>Battle ID — Links trade to specific battle</li>
-            <li>Action — Open or close position</li>
-            <li>Asset, side, leverage, size — Trade parameters</li>
-            <li>Timestamp — When the trade was made</li>
-            <li>Nonce — Prevents replay attacks</li>
-          </ul>
+          <p className="text-text-secondary text-sm">
+            Each trade includes all relevant parameters (battle, action, asset, size, etc.)
+            and is cryptographically signed by your wallet. The server verifies the signature
+            is valid and hasn&apos;t been used before, preventing replay attacks and forgery.
+          </p>
         </div>
-
-        <h3 className="font-medium mb-3">Verification Process</h3>
-        <p className="text-text-secondary mb-4">
-          Signatures are verified using ED25519 (via tweetnacl). The server checks:
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-text-secondary text-sm">
-          <li>Signature matches the message content</li>
-          <li>Signer&apos;s public key matches the wallet address</li>
-          <li>Nonce hasn&apos;t been used before (prevents replay)</li>
-          <li>Timestamp is within acceptable range</li>
-        </ol>
 
         <DocsCallout type="info" title="Why This Matters">
           Even if our servers were compromised, an attacker couldn&apos;t forge trades on your behalf
@@ -353,28 +298,9 @@ export default function SecurityPage() {
 
         <h3 className="font-medium mb-3">Rate Limiting</h3>
         <p className="text-text-secondary mb-4">
-          API endpoints are protected by multi-tier rate limiting:
+          API endpoints are protected by multi-tier rate limiting to prevent abuse.
+          Different endpoints have different limits based on their sensitivity.
         </p>
-        <div className="card p-4 mb-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-1">
-              <span className="text-text-secondary">Global limit</span>
-              <span>1000 requests/minute per IP</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-secondary">Standard endpoints</span>
-              <span>100 requests/minute</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-secondary">Sensitive actions</span>
-              <span>30 requests/minute</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-text-secondary">Write operations</span>
-              <span>10 requests/minute</span>
-            </div>
-          </div>
-        </div>
 
         <h3 className="font-medium mb-3">Wallet Authentication</h3>
         <p className="text-text-secondary mb-4">
@@ -385,6 +311,45 @@ export default function SecurityPage() {
         <DocsCallout type="warning" title="Never Share Your Private Key">
           DegenDome will NEVER ask for your private key or seed phrase. All interactions
           use your wallet&apos;s signing capability without exposing your keys.
+        </DocsCallout>
+      </section>
+
+      {/* Authentication Security */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Authentication Security</h2>
+        <p className="text-text-secondary mb-4">
+          DegenDome uses a multi-layered authentication system to protect your account and prevent unauthorized access.
+        </p>
+
+        <div className="card p-4 mb-4 border-success/30">
+          <h3 className="font-medium text-success mb-3">Session Security</h3>
+          <ul className="list-disc list-inside space-y-2 text-text-secondary text-sm">
+            <li>
+              <strong>Short-lived tokens</strong> — Sessions expire automatically to limit exposure if compromised
+            </li>
+            <li>
+              <strong>XSS protection</strong> — Authentication tokens are stored securely and cannot be accessed by malicious scripts
+            </li>
+            <li>
+              <strong>CSRF protection</strong> — Cross-site request forgery attacks are blocked
+            </li>
+            <li>
+              <strong>Instant revocation</strong> — If suspicious activity is detected, all your sessions can be invalidated immediately
+            </li>
+          </ul>
+        </div>
+
+        <div className="card p-4 mb-4">
+          <h3 className="font-medium mb-3">Replay Attack Protection</h3>
+          <p className="text-text-secondary text-sm mb-2">
+            Every wallet signature includes a timestamp and is tracked server-side.
+            Intercepted signatures cannot be reused — each signature can only be used once.
+          </p>
+        </div>
+
+        <DocsCallout type="info" title="Multi-Layer Defense">
+          Multiple independent security measures protect your account. Even if one layer is bypassed,
+          others continue to provide protection. This defense-in-depth approach is an industry best practice.
         </DocsCallout>
       </section>
 

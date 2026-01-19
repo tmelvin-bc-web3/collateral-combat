@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'x-signature': signature,
             'x-timestamp': timestamp,
           },
+          credentials: 'include', // Allow cookie to be set
         });
 
         if (res.ok) {
@@ -167,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'x-signature': signature,
           'x-timestamp': timestamp,
         },
+        credentials: 'include', // Allow cookie to be set
       });
 
       if (!res.ok) {
@@ -215,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   // Authenticated fetch wrapper
+  // Includes credentials for cookie-based auth AND Authorization header for backward compatibility
   const authenticatedFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       const headers = {
@@ -222,7 +225,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...getAuthHeaders(),
       };
 
-      const response = await fetch(url, { ...options, headers });
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Send cookies for httpOnly auth
+      });
 
       // If token is invalid, clear it
       if (response.status === 401) {

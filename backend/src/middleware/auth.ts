@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { verifyToken, extractToken } from '../utils/jwt';
+import { checkAndMarkSignature } from '../utils/replayCache';
 
 // ===================
 // Auth Middleware Configuration
@@ -20,19 +21,8 @@ declare global {
 // Signature Replay Protection
 // ===================
 
-// SECURITY: In-memory cache to prevent signature replay attacks
-const usedAuthSignatures = new Map<string, number>();
 const AUTH_SIGNATURE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-
-// Clean up expired signatures every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [sig, expiry] of usedAuthSignatures.entries()) {
-    if (now > expiry) {
-      usedAuthSignatures.delete(sig);
-    }
-  }
-}, 60 * 1000);
+const AUTH_SIGNATURE_TTL_SECONDS = 300; // 5 minutes in seconds
 
 // ===================
 // Wallet Address Validation
@@ -59,12 +49,13 @@ function isValidSolanaAddress(address: string): boolean {
 /**
  * Verifies a wallet signature for authentication.
  * Message format: "DegenDome:auth:{timestamp}"
+ * Uses Redis/memory cache for replay protection.
  */
-function verifyAuthSignature(
+async function verifyAuthSignature(
   walletAddress: string,
   signature: string,
   timestamp: string
-): { valid: boolean; error?: string } {
+): Promise<{ valid: boolean; error?: string }> {
   try {
     // Check timestamp is within 5 minutes
     const now = Date.now();
@@ -73,9 +64,10 @@ function verifyAuthSignature(
       return { valid: false, error: 'Signature expired' };
     }
 
-    // Check for replay attack
-    const sigKey = `${walletAddress}:${signature}`;
-    if (usedAuthSignatures.has(sigKey)) {
+    // Check for replay attack using Redis/memory cache
+    const sigKey = `auth:${walletAddress}:${signature}`;
+    const wasUsed = await checkAndMarkSignature(sigKey, AUTH_SIGNATURE_TTL_SECONDS);
+    if (wasUsed) {
       console.log(`[SECURITY] AUTH_SIGNATURE_REPLAY_BLOCKED | wallet: ${walletAddress}`);
       return { valid: false, error: 'Signature already used' };
     }
@@ -87,11 +79,6 @@ function verifyAuthSignature(
     const publicKeyBytes = bs58.decode(walletAddress);
 
     const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
-
-    if (isValid) {
-      // Mark signature as used
-      usedAuthSignatures.set(sigKey, now + AUTH_SIGNATURE_EXPIRY_MS);
-    }
 
     return { valid: isValid, error: isValid ? undefined : 'Invalid signature' };
   } catch (error) {
@@ -110,6 +97,7 @@ function verifyAuthSignature(
  *
  * 1. JWT Token (preferred - session-based):
  *    - Authorization: Bearer <token>
+ *    - Also checks for auth_token cookie (httpOnly)
  *
  * 2. Wallet Signature (for one-time actions like waitlist):
  *    - x-wallet-address: The wallet public key (base58 encoded)
@@ -119,12 +107,17 @@ function verifyAuthSignature(
  * JWT is checked first. If no JWT, falls back to signature verification.
  */
 export function requireAuth(): RequestHandler {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    // Method 1: Check for JWT token first
-    const token = extractToken(req.headers.authorization);
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Method 1: Check for JWT token first (header or cookie)
+    let token = extractToken(req.headers.authorization);
+
+    // Also check for httpOnly cookie if no header token
+    if (!token && req.cookies?.auth_token) {
+      token = req.cookies.auth_token;
+    }
 
     if (token) {
-      const walletFromToken = verifyToken(token);
+      const walletFromToken = await verifyToken(token);
 
       if (walletFromToken) {
         // Valid JWT - authenticated via session
@@ -174,7 +167,7 @@ export function requireAuth(): RequestHandler {
         return;
       }
 
-      const verification = verifyAuthSignature(walletAddress, signature, timestamp);
+      const verification = await verifyAuthSignature(walletAddress, signature, timestamp);
       if (!verification.valid) {
         res.status(401).json({
           error: verification.error || 'Signature verification failed',
@@ -184,7 +177,7 @@ export function requireAuth(): RequestHandler {
       }
     } else if (signature && timestamp) {
       // If signatures provided but not required, still verify them
-      const verification = verifyAuthSignature(walletAddress, signature, timestamp);
+      const verification = await verifyAuthSignature(walletAddress, signature, timestamp);
       if (!verification.valid) {
         console.warn(`[Auth] Signature verification failed: ${verification.error}`);
       }

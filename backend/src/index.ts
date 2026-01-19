@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { corsOptions, socketCorsOptions } from './config';
@@ -24,6 +25,8 @@ import { ldsManager, LDSEvent } from './services/ldsManager';
 import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { pythVerificationService } from './services/pythVerificationService';
 import { chatService } from './services/chatService';
+import adminRoutes from './routes/admin';
+import { setActiveConnections } from './services/adminService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -32,10 +35,12 @@ import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
+import { ensureTokenVersion } from './db/authDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
-import { createToken, verifyToken } from './utils/jwt';
+import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
+import { checkAndMarkSignature } from './utils/replayCache';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
@@ -139,11 +144,13 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 // ===================
 // Authenticate socket connections using JWT token
 // This prevents wallet spoofing - clients can't claim to be a different wallet
+// Note: Uses sync version because socket.io middleware is synchronous
+// Token version check is skipped here for performance - financial ops will verify properly
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
 
   if (token) {
-    const wallet = verifyToken(token);
+    const wallet = verifyTokenSync(token);
     if (wallet) {
       // Store authenticated wallet on socket - this CANNOT be spoofed by client
       socket.data.authenticatedWallet = wallet;
@@ -186,6 +193,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' })); // Limit request body size
 
 // Apply global rate limiting to all API routes
@@ -456,8 +464,9 @@ app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, async (req: 
  *   x-timestamp: Unix timestamp (ms)
  *
  * Returns: { token: string, expiresIn: string }
+ * Also sets httpOnly cookie for enhanced security
  */
-app.post('/api/auth/login', strictLimiter, (req: Request, res: Response) => {
+app.post('/api/auth/login', strictLimiter, async (req: Request, res: Response) => {
   try {
     const walletAddress = req.headers['x-wallet-address'] as string;
     const signature = req.headers['x-signature'] as string;
@@ -490,9 +499,10 @@ app.post('/api/auth/login', strictLimiter, (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Signature expired' });
       }
 
-      // Check for replay attack
+      // Check for replay attack using Redis/memory cache
       const sigKey = `login:${walletAddress}:${signature}`;
-      if (usedSignatures.has(sigKey)) {
+      const wasUsed = await checkAndMarkSignature(sigKey, 300);
+      if (wasUsed) {
         logSecurityEvent('LOGIN_REPLAY_BLOCKED', { wallet: walletAddress });
         return res.status(401).json({ error: 'Signature already used' });
       }
@@ -505,17 +515,27 @@ app.post('/api/auth/login', strictLimiter, (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Invalid signature' });
       }
 
-      // Mark signature as used
-      usedSignatures.set(sigKey, now + 5 * 60 * 1000);
+      // Get/create token version for this wallet
+      const tokenVersion = await ensureTokenVersion(walletAddress);
 
-      // Create JWT token
-      const token = createToken(walletAddress);
+      // Create JWT token with version
+      const token = createToken(walletAddress, tokenVersion);
 
       console.log(`[Auth] Login successful: ${walletAddress.slice(0, 8)}...`);
 
+      // Set httpOnly cookie for enhanced security
+      res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 4 * 60 * 60 * 1000, // 4 hours (matches JWT expiry)
+        path: '/',
+      });
+
+      // Also return token in body for clients that need it
       res.json({
         token,
-        expiresIn: '24h',
+        expiresIn: '4h',
         wallet: walletAddress,
       });
     } catch {
@@ -529,34 +549,55 @@ app.post('/api/auth/login', strictLimiter, (req: Request, res: Response) => {
 
 /**
  * GET /api/auth/verify
- * Verify a JWT token is still valid
+ * Verify a JWT token is still valid (checks version for revocation)
  *
  * Headers:
  *   Authorization: Bearer <token>
+ *   OR auth_token cookie
  *
  * Returns: { valid: boolean, wallet?: string }
  */
-app.get('/api/auth/verify', (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
+app.get('/api/auth/verify', async (req: Request, res: Response) => {
+  // Check header first, then cookie
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (req.cookies?.auth_token) {
+    token = req.cookies.auth_token;
+  }
+
+  if (!token) {
     return res.json({ valid: false });
   }
 
-  const token = authHeader.slice(7);
-
   try {
-    const { verifyToken } = require('./utils/jwt');
-    const wallet = verifyToken(token);
+    const wallet = await verifyToken(token);
 
     if (wallet) {
-      res.json({ valid: true, wallet });
+      res.json({ valid: true, wallet, walletAddress: wallet });
     } else {
       res.json({ valid: false });
     }
   } catch {
     res.json({ valid: false });
   }
+});
+
+/**
+ * POST /api/auth/logout
+ * Clear the auth cookie
+ */
+app.post('/api/auth/logout', (req: Request, res: Response) => {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    path: '/',
+  });
+
+  res.json({ success: true, message: 'Logged out' });
 });
 
 // ===================
@@ -811,6 +852,9 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
     res.status(400).json({ error: error.message || 'Failed to update wallet' });
   }
 });
+
+// Admin dashboard routes
+app.use('/api/admin', adminRoutes);
 
 // Admin: Get all waitlist entries (rate limited even for admins)
 app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (req: Request, res: Response) => {
@@ -1667,6 +1711,7 @@ app.post('/api/achievements/:wallet/check', requireOwnWallet, (req: Request, res
 // WebSocket handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
+  setActiveConnections(io.engine.clientsCount);
 
   let currentBattleId: string | null = null;
   let walletAddress: string | null = null;
@@ -2508,6 +2553,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
+    setActiveConnections(io.engine.clientsCount);
     if (walletAddress) {
       battleManager.leaveMatchmaking(walletAddress);
       battleManager.unregisterWalletSocket(walletAddress);

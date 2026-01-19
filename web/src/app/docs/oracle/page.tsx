@@ -97,7 +97,7 @@ export default function OraclePage() {
 
         <DocsCallout type="info" title="Pyth Network Oracle">
           We use Pyth Network for price data, the same oracle used by major DeFi protocols on Solana.
-          Prices are updated every 400ms with multiple data sources for accuracy.
+          Prices are sourced from multiple institutional providers for accuracy and reliability.
         </DocsCallout>
       </section>
 
@@ -182,23 +182,12 @@ export default function OraclePage() {
         </p>
 
         <div className="card p-4">
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">First 5 seconds</span>
-              <span className="text-success font-medium">+20% bonus</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">5-15 seconds</span>
-              <span className="text-success font-medium">+10% to +20% (decaying)</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">15-25 seconds</span>
-              <span className="text-yellow-400 font-medium">+0% to +10% (decaying)</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">After 25 seconds</span>
-              <span className="text-text-tertiary">Round locked - no wagers</span>
-            </div>
+          <p className="text-text-secondary text-sm mb-3">
+            The earlier you wager in a round, the higher your bonus multiplier. The bonus
+            decays linearly as the round progresses, reaching 0% near the end of the betting window.
+          </p>
+          <div className="bg-success/10 border border-success/30 rounded p-3 text-sm text-success">
+            Wager early for maximum bonus!
           </div>
         </div>
 

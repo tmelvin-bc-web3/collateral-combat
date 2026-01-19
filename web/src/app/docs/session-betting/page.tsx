@@ -105,8 +105,8 @@ export default function SessionBettingPage() {
                   A temporary keypair is generated and stored in your browser. You sign once to
                   authorize this keypair for up to 24 hours.
                 </p>
-                <div className="bg-bg-tertiary rounded p-3 font-mono text-xs text-text-secondary">
-                  Session Token: valid_until, session_key, authority
+                <div className="bg-bg-tertiary rounded p-3 text-xs text-text-secondary">
+                  Session tokens include an expiry time and authorized key, stored securely on-chain.
                 </div>
               </div>
             </div>
@@ -327,7 +327,7 @@ export default function SessionBettingPage() {
             </div>
             <div>
               <span className="text-text-tertiary">Framework:</span>
-              <span className="ml-2">Anchor 0.31.1</span>
+              <span className="ml-2">Anchor (Solana)</span>
             </div>
             <div>
               <span className="text-text-tertiary">Price Oracle:</span>
@@ -336,39 +336,11 @@ export default function SessionBettingPage() {
           </div>
         </div>
 
-        <h3 className="font-medium mb-3">Program Accounts (PDAs)</h3>
-        <div className="card p-4">
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Game State</span>
-              <span className="text-text-secondary">Global configuration and authority</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">User Balance</span>
-              <span className="text-text-secondary">Per-user balance tracking</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">User Vault</span>
-              <span className="text-text-secondary">Per-user SOL storage</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Global Vault</span>
-              <span className="text-text-secondary">Locked wager funds and payout pool</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Session Token</span>
-              <span className="text-text-secondary">Authorized session key + expiry</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-border-primary">
-              <span className="font-medium">Betting Round</span>
-              <span className="text-text-secondary">On-chain round state with Pyth prices</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="font-medium">Betting Pool</span>
-              <span className="text-text-secondary">Long/Short pool totals per round</span>
-            </div>
-          </div>
-        </div>
+        <p className="text-text-secondary text-sm">
+          The program uses secure on-chain accounts (PDAs) to store user balances, session tokens,
+          and game state. All funds are held in program-controlled vaults that only respond to
+          authorized instructions.
+        </p>
       </section>
 
       {/* Using Session Wagering */}
@@ -399,8 +371,8 @@ export default function SessionBettingPage() {
           <div className="card p-4">
             <h3 className="font-medium mb-2">What happens if I close my browser?</h3>
             <p className="text-text-secondary text-sm">
-              Your session key is stored in localStorage, so it persists across browser sessions.
-              When you return, your session will still be active (if not expired).
+              Your session persists across browser sessions. When you return, your session will
+              still be active (if not expired).
             </p>
           </div>
 
