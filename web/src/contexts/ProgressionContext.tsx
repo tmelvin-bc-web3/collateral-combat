@@ -19,6 +19,7 @@ import {
   LevelUpEvent,
   RebateSummary,
   RebateReceivedEvent,
+  UserStreak,
 } from '@/types';
 import { BACKEND_URL } from '@/config/api';
 
@@ -26,6 +27,7 @@ import { BACKEND_URL } from '@/config/api';
 interface ProgressionContextValue {
   // State
   progression: UserProgression | null;
+  streak: UserStreak | null;
   perks: UserPerk[];
   cosmetics: UserCosmetic[];
   xpHistory: XpHistoryEntry[];
@@ -64,6 +66,7 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
 
   // Core state
   const [progression, setProgression] = useState<UserProgression | null>(null);
+  const [streak, setStreak] = useState<UserStreak | null>(null);
   const [perks, setPerks] = useState<UserPerk[]>([]);
   const [cosmetics, setCosmetics] = useState<UserCosmetic[]>([]);
   const [xpHistory, setXpHistory] = useState<XpHistoryEntry[]>([]);
@@ -91,8 +94,9 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const [progressionRes, perksRes, cosmeticsRes, rakeRes] = await Promise.all([
+      const [progressionRes, streakRes, perksRes, cosmeticsRes, rakeRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
+        fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`),
         fetch(`${BACKEND_URL}/api/progression/${walletAddress}/perks`),
         fetch(`${BACKEND_URL}/api/progression/${walletAddress}/cosmetics`),
         fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rake`),
@@ -101,6 +105,11 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
       if (progressionRes.ok) {
         const data = await progressionRes.json();
         setProgression(data);
+      }
+
+      if (streakRes.ok) {
+        const data = await streakRes.json();
+        setStreak(data);
       }
 
       if (perksRes.ok) {
@@ -203,6 +212,7 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
     if (!walletAddress) {
       // Reset state when wallet disconnects
       setProgression(null);
+      setStreak(null);
       setPerks([]);
       setCosmetics([]);
       setXpHistory([]);
@@ -299,6 +309,7 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
     <ProgressionContext.Provider
       value={{
         progression,
+        streak,
         perks,
         cosmetics,
         xpHistory,
@@ -327,6 +338,7 @@ export function ProgressionProvider({ children }: { children: ReactNode }) {
 // Default values for when context is not available (graceful fallback)
 const defaultContextValue: ProgressionContextValue = {
   progression: null,
+  streak: null,
   perks: [],
   cosmetics: [],
   xpHistory: [],

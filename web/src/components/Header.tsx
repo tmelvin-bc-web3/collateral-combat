@@ -11,8 +11,6 @@ import { ProfilePicker } from './ProfilePicker';
 import { WalletBalance } from './WalletBalance';
 import { LevelBadge } from './progression';
 import { useProgressionContext } from '@/contexts/ProgressionContext';
-import { UserStreak } from '@/types';
-import { BACKEND_URL } from '@/config/api';
 import { Flame, AlertTriangle } from 'lucide-react';
 
 const WalletMultiButton = dynamic(
@@ -117,33 +115,10 @@ export function Header() {
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [streak, setStreak] = useState<UserStreak | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const walletAddress = publicKey?.toBase58();
-  const { progression } = useProgressionContext();
-
-  // Fetch streak data
-  useEffect(() => {
-    if (!walletAddress) {
-      setStreak(null);
-      return;
-    }
-
-    const fetchStreak = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`);
-        if (res.ok) {
-          const data = await res.json();
-          setStreak(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch streak:', error);
-      }
-    };
-
-    fetchStreak();
-  }, [walletAddress]);
+  const { progression, streak } = useProgressionContext();
 
   // Close dropdown when clicking outside
   useEffect(() => {
