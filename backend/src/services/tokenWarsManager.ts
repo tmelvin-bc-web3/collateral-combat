@@ -262,8 +262,8 @@ class TokenWarsManager {
    * Avoids recently used matchups for variety
    */
   private getNextMatchup(): [string, string] {
-    // TEMP: Force TURBO matchup for screenshot - remove after!
-    return ['TURBO', 'WIF'];
+    // TEMP: Force PONKE matchup for screenshot - remove after!
+    return ['PONKE', 'WIF'];
 
     const tokens = AVAILABLE_TOKENS.map(t => t.symbol);
 
