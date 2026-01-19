@@ -9,6 +9,10 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
+  CoinbaseWalletAdapter,
+  LedgerWalletAdapter,
+  TorusWalletAdapter,
+  TrustWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { ClientOnly } from './ClientOnly';
 
@@ -29,6 +33,10 @@ function WalletProviderInner({ children }: Props) {
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
+      new CoinbaseWalletAdapter(),
+      new LedgerWalletAdapter(),
+      new TorusWalletAdapter(),
+      new TrustWalletAdapter(),
     ],
     []
   );
