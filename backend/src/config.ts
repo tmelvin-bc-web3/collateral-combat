@@ -6,6 +6,21 @@
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+/**
+ * Log Levels:
+ * - debug: Detailed information for debugging (disabled in production by default)
+ * - info: General operational information
+ * - warn: Warning conditions that should be reviewed
+ * - error: Error conditions that require attention
+ *
+ * Set via LOG_LEVEL environment variable.
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export const LOG_LEVEL = process.env.LOG_LEVEL || (
+  process.env.NODE_ENV === 'production' ? 'info' : 'debug'
+);
+
 const parseAllowedOrigins = (): string[] => {
   const envOrigins = process.env.ALLOWED_ORIGINS;
 
