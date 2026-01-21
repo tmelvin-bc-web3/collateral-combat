@@ -13,6 +13,8 @@ import { WinToast } from '@/components/WinToast';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
 import { ArrowUp, ArrowDown, Target, BarChart3 } from 'lucide-react';
 import { PageErrorBoundary } from '@/components/error-boundaries/PageErrorBoundary';
+import { FirstMatchGuide, shouldShowGuide } from '@/components/FirstMatchGuide';
+import { OnboardingOverlay } from '@/components/OnboardingOverlay';
 
 // Mobile panel tab type
 type MobilePanel = 'none' | 'wagers' | 'history';
@@ -181,6 +183,10 @@ export default function PredictPage() {
   // Mobile panel state
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
+  // Onboarding state
+  const [showGuide, setShowGuide] = useState(false);
+  const [showWalletPrompt, setShowWalletPrompt] = useState(false);
+
   // Win share modal/toast hook
   const {
     pendingWin,
@@ -276,6 +282,13 @@ export default function PredictPage() {
       // Failed to fetch prediction data
     }
   }, [asset]);
+
+  // Check if first-time guide should be shown (client-side only)
+  useEffect(() => {
+    if (shouldShowGuide()) {
+      setShowGuide(true);
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -389,7 +402,8 @@ export default function PredictPage() {
 
   const handlePlaceWager = async (side: PredictionSide) => {
     if (!publicKey) {
-      setError('Connect wallet to play');
+      // Show wallet connection overlay instead of error
+      setShowWalletPrompt(true);
       return;
     }
 
@@ -676,6 +690,16 @@ export default function PredictPage() {
           )}
         </div>
       </div>
+
+      {/* First Match Guide - shown for new users */}
+      {showGuide && (
+        <div className="mb-2 flex-shrink-0">
+          <FirstMatchGuide
+            onDismiss={() => setShowGuide(false)}
+            className="max-w-xl mx-auto"
+          />
+        </div>
+      )}
 
       {/* Mobile Panel - Slides in from top */}
       {mobilePanel !== 'none' && (
@@ -1170,6 +1194,12 @@ export default function PredictPage() {
         onDismiss={dismissToast}
         cooldownStatus={cooldownStatus}
         winBypassesCooldown={winBypassesCooldown}
+      />
+
+      {/* Onboarding Overlay - wallet connection prompt */}
+      <OnboardingOverlay
+        isOpen={showWalletPrompt}
+        onClose={() => setShowWalletPrompt(false)}
       />
 
       {/* Deposit Modal */}
