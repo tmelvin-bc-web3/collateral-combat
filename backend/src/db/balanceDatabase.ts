@@ -3,6 +3,8 @@
 
 import fs from 'fs';
 import path from 'path';
+import { createDatabaseError } from '../utils/errors';
+import { DatabaseErrorCode } from '../types/errors';
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const BALANCE_FILE = path.join(DATA_DIR, 'pending_balance.json');
@@ -15,6 +17,7 @@ if (!fs.existsSync(DATA_DIR)) {
 export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'lds' | 'token_wars';
 export type TransactionType = 'debit' | 'credit';
 export type TransactionStatus = 'pending' | 'confirmed' | 'cancelled';
+export type TransactionState = TransactionStatus | 'failed';
 
 export interface PendingTransaction {
   id: string;
@@ -24,8 +27,11 @@ export interface PendingTransaction {
   gameType: GameMode;
   gameId: string;
   status: TransactionStatus;
+  state: TransactionState;
   createdAt: number;
   confirmedAt?: number;
+  txSignature?: string;
+  error?: string;
 }
 
 // Per-game mode balance tracking for solvency checks
@@ -113,6 +119,7 @@ export function createPendingTransaction(
     gameType,
     gameId,
     status: 'pending',
+    state: 'pending',
     createdAt: Date.now(),
   };
 
@@ -154,7 +161,7 @@ export function getTotalPendingDebits(walletAddress: string): number {
 /**
  * Confirm a pending transaction
  */
-export function confirmTransaction(transactionId: string): boolean {
+export function confirmTransaction(transactionId: string, txSignature?: string): boolean {
   const data = loadBalanceData();
   const txn = data.transactions[transactionId];
 
@@ -169,17 +176,21 @@ export function confirmTransaction(transactionId: string): boolean {
   }
 
   txn.status = 'confirmed';
+  txn.state = 'confirmed';
   txn.confirmedAt = Date.now();
+  if (txSignature) {
+    txn.txSignature = txSignature;
+  }
   saveBalanceData(data);
 
-  console.log(`[BalanceDB] Confirmed transaction: ${transactionId}`);
+  console.log(`[BalanceDB] Confirmed transaction: ${transactionId}${txSignature ? ` (TX: ${txSignature})` : ''}`);
   return true;
 }
 
 /**
  * Cancel a pending transaction (e.g., game was cancelled)
  */
-export function cancelTransaction(transactionId: string): boolean {
+export function cancelTransaction(transactionId: string, error?: string): boolean {
   const data = loadBalanceData();
   const txn = data.transactions[transactionId];
 
@@ -194,10 +205,14 @@ export function cancelTransaction(transactionId: string): boolean {
   }
 
   txn.status = 'cancelled';
+  txn.state = 'cancelled';
   txn.confirmedAt = Date.now();
+  if (error) {
+    txn.error = error;
+  }
   saveBalanceData(data);
 
-  console.log(`[BalanceDB] Cancelled transaction: ${transactionId}`);
+  console.log(`[BalanceDB] Cancelled transaction: ${transactionId}${error ? ` (${error})` : ''}`);
   return true;
 }
 
@@ -231,6 +246,34 @@ export function getGameTransactions(gameType: GameMode, gameId: string): Pending
   return Object.values(data.transactions)
     .filter(txn => txn.gameType === gameType && txn.gameId === gameId)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Mark stale pending transactions as failed (pending for more than 1 minute)
+ */
+const PENDING_TX_TIMEOUT_MS = 60 * 1000; // 1 minute timeout
+
+export function cleanupStalePendingTransactions(): number {
+  const data = loadBalanceData();
+  const now = Date.now();
+  let failedCount = 0;
+
+  for (const [id, txn] of Object.entries(data.transactions)) {
+    if (txn.status === 'pending' && now - txn.createdAt > PENDING_TX_TIMEOUT_MS) {
+      txn.status = 'cancelled';
+      txn.state = 'failed';
+      txn.error = 'Transaction timed out';
+      txn.confirmedAt = now;
+      failedCount++;
+    }
+  }
+
+  if (failedCount > 0) {
+    saveBalanceData(data);
+    console.log(`[BalanceDB] Marked ${failedCount} stale pending transactions as failed`);
+  }
+
+  return failedCount;
 }
 
 /**
