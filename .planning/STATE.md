@@ -1,20 +1,20 @@
 # Sol-Battles Project State
 
-**Last updated:** 2026-01-21T21:30:14Z
+**Last updated:** 2026-01-21T21:40:28Z
 
 ---
 
 ## Current Position
 
 **Phase:** 1 of 4 (Security Hardening)
-**Plan:** 3 of 7 (Signature replay protection)
+**Plan:** 6 of 7 (Structured logging infrastructure)
 **Status:** In progress
-**Last activity:** 2026-01-21 - Completed 01-03-PLAN.md
+**Last activity:** 2026-01-21 - Completed 01-06-PLAN.md
 
-**Progress:** ███░░░░░░░░░░░░░ 21% (3/14 total plans across all phases estimated)
+**Progress:** █████░░░░░░░░░░░ 36% (5/14 total plans across all phases estimated)
 
 ```
-Phase 1: Security Hardening    [███░░░░] 3/7 plans complete
+Phase 1: Security Hardening    [█████░░] 5/7 plans complete
 Phase 2: UX Polish             [░░░░░░░] 0/? plans (not planned yet)
 Phase 3: Launch Prep           [░░░░░░░] 0/? plans (not planned yet)
 Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned yet)
@@ -24,8 +24,8 @@ Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned ye
 
 ## Session Continuity
 
-**Last session:** 2026-01-21T21:30:14Z
-**Stopped at:** Completed 01-03-PLAN.md (Signature replay protection)
+**Last session:** 2026-01-21T21:40:28Z
+**Stopped at:** Completed 01-06-PLAN.md (Structured logging infrastructure)
 **Resume file:** None (ready for next plan)
 
 ---
@@ -46,6 +46,14 @@ Decisions made during execution that constrain future work:
 | 01-03 | Synchronous lockSet for memory fallback | Atomic check-and-set without Redis | Auth middleware, fallback strategy |
 | 01-03 | Cache size limit with eviction | Prevents memory exhaustion DoS | All cache implementations |
 | 01-03 | Signature-based cache keys | Each signature unique per signing | Auth key design patterns |
+| 01-04 | verifyAndLockBalance is ONLY safe wagering method | Prevents TOCTOU race (check then lock) | All game modes, balance operations |
+| 01-04 | canPlaceWager for UI display only | Non-authoritative preview | Frontend balance checks |
+| 01-04 | 1-minute timeout for pending transactions | Stale transaction cleanup | Transaction lifecycle |
+| 01-04 | releaseLockedBalance throws instead of null | Critical errors require attention | Error handling patterns |
+| 01-06 | Structured context objects over string concatenation | Machine parsability for log aggregation | All logging, monitoring |
+| 01-06 | Automatic sensitive data redaction at logger level | Prevents accidental PII leakage | All logging, security compliance |
+| 01-06 | Service-specific loggers for component isolation | Better filtering in production | Backend architecture |
+| 01-06 | Debug for verbose, info for events, warn for issues, error for failures | Consistent log level semantics | All backend services |
 
 ---
 
@@ -53,16 +61,16 @@ Decisions made during execution that constrain future work:
 
 ### Phase 1: Security Hardening (In Progress)
 
-**Plans completed:** 3/7
+**Plans completed:** 5/7
 
 | Plan | Status | Duration | Summary |
 |------|--------|----------|---------|
 | 01-01 | ✅ Complete | 3min | Error handling foundation |
 | 01-02 | ✅ Complete | 3min | Smart contract audit trail and arithmetic safety |
 | 01-03 | ✅ Complete | 3min | Atomic signature replay protection |
-| 01-04 | ⏳ Pending | - | Atomic PDA balance verification |
+| 01-04 | ✅ Complete | 5min | Atomic PDA balance verification |
 | 01-05 | ⏳ Pending | - | Silent error handling refactor |
-| 01-06 | ⏳ Pending | - | Structured logging infrastructure |
+| 01-06 | ✅ Complete | 4min | Structured logging infrastructure |
 | 01-07 | ⏳ Pending | - | Final verification checkpoint |
 
 **Key accomplishments:**
@@ -72,6 +80,10 @@ Decisions made during execution that constrain future work:
 - Verified arithmetic safety (26 checked operations)
 - Atomic signature replay protection (TOCTOU race eliminated)
 - Cache size limits with DDoS protection
+- Atomic balance verification (check-and-lock in single operation)
+- Transaction state tracking with timeout handling
+- Structured logging with automatic sensitive data redaction
+- 98% reduction in raw console statements (50 → 1 in index.ts)
 
 **Blockers:** None
 
@@ -88,8 +100,8 @@ Decisions made during execution that constrain future work:
 | Smart Contract Safety | ✅ Arithmetic verified | 01-02 | checked_* throughout, overflow-checks enabled |
 | Emergency Controls | ✅ Pause implemented | 01-02 | Deposits block, withdrawals work |
 | Backend Auth | ✅ Replay protection complete | 01-03 | Atomic signature caching, no race conditions |
-| Balance Management | ⏳ Pending | - | Atomic PDA verification (01-04) |
-| Logging | ⏳ Pending | - | Structured logging (01-06) |
+| Balance Management | ✅ Atomic operations ready | 01-04 | verifyAndLockBalance prevents TOCTOU |
+| Logging | ✅ Infrastructure complete | 01-06 | Structured logging with auto-redaction, JSON output |
 
 ---
 
@@ -127,32 +139,45 @@ Decisions made during execution that constrain future work:
    - Privacy-aware (wallet truncation)
    - Foundation for Plan 01-06 logging infrastructure
 
+7. **Atomic balance operations** (01-04)
+   - verifyAndLockBalance combines check and lock in single on-chain instruction
+   - Transaction state tracking (pending/confirmed/cancelled/failed)
+   - Timeout handling for stale transactions (1 minute)
+   - Error-first design with typed BalanceError/DatabaseError
+
 ---
 
 ## Files Changed This Phase
 
-### Created (5 files)
+### Created (8 files)
 - `backend/src/types/errors.ts` - Error type definitions
 - `backend/src/utils/errors.ts` - Error utility functions
 - `backend/src/types/index.ts` - Types barrel file
+- `backend/src/utils/logger.ts` - Structured logging utility
 - `.planning/phases/01-security-hardening/01-01-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-03-SUMMARY.md`
+- `.planning/phases/01-security-hardening/01-04-SUMMARY.md`
+- `.planning/phases/01-security-hardening/01-06-SUMMARY.md`
 
-### Modified (4 files)
+### Modified (8 files)
 - `programs/session_betting/programs/session_betting/src/lib.rs` - Events, pause checks, verified arithmetic
 - `backend/src/utils/replayCache.ts` - Atomic signature caching
 - `backend/src/middleware/auth.ts` - Enhanced signature replay protection
+- `backend/src/services/balanceService.ts` - Atomic balance operations
+- `backend/src/db/balanceDatabase.ts` - Transaction state tracking
+- `backend/src/config.ts` - LOG_LEVEL configuration
+- `backend/src/index.ts` - Structured logging (50 → 1 console statements)
 - `.planning/phases/01-security-hardening/01-02-SUMMARY.md`
 
 ---
 
 ## Velocity Metrics
 
-**Current phase velocity:** 3 min/plan average (3 plans, 9 min total)
+**Current phase velocity:** 3.6 min/plan average (5 plans, 18 min total)
 
 **Projection:**
-- Phase 1 remaining: 4 plans × 3 min = ~12 min
-- Phase 1 total estimate: ~21 min
+- Phase 1 remaining: 2 plans × 3.6 min = ~7.2 min
+- Phase 1 total estimate: ~25.2 min
 
 ---
 
@@ -171,11 +196,11 @@ None currently
 
 ## Next Steps
 
-1. **Immediate:** Execute 01-04-PLAN.md (Atomic PDA balance verification)
-2. **This phase:** Complete plans 04-07
+1. **Immediate:** Execute 01-05-PLAN.md (Silent error handling refactor)
+2. **This phase:** Complete plans 05, 07 (skipped 06 - already done)
 3. **Next phase:** Plan Phase 2 (UX Polish) after Phase 1 complete
 
 ---
 
 *State tracking initialized: 2026-01-21*
-*Last execution: 01-03 (Signature replay protection)*
+*Last execution: 01-04 (Atomic PDA balance verification)*
