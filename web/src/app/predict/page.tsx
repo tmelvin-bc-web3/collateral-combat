@@ -12,6 +12,7 @@ import { WinShareModal } from '@/components/WinShareModal';
 import { WinToast } from '@/components/WinToast';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
 import { ArrowUp, ArrowDown, Target, BarChart3 } from 'lucide-react';
+import { PageErrorBoundary } from '@/components/error-boundaries/PageErrorBoundary';
 
 // Mobile panel tab type
 type MobilePanel = 'none' | 'wagers' | 'history';
@@ -582,7 +583,8 @@ export default function PredictPage() {
   const isLocked = currentRound?.status === 'locked';
 
   return (
-    <div className="h-screen flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden safe-area-inset">
+    <PageErrorBoundary pageName="Predictions">
+      <div className="h-screen flex flex-col px-3 sm:px-4 lg:px-6 py-2 overflow-hidden safe-area-inset">
       {/* Round End Dim Overlay */}
       {showRoundEndDim && (
         <div
@@ -1232,6 +1234,7 @@ export default function PredictPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageErrorBoundary>
   );
 }

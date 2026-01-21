@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { getFriendlyErrorMessage } from '@/lib/error-messages';
 
 interface WalletBalanceProps {
   isOpen: boolean;
@@ -101,7 +102,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
       }
     } catch (e: unknown) {
       setTxStatus('error');
-      setTxMessage(e instanceof Error ? e.message : 'Deposit failed');
+      setTxMessage(getFriendlyErrorMessage(e));
     }
   }, [amount, walletBalance, deposit, publicKey, connection]);
 
@@ -134,7 +135,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
       }
     } catch (e: unknown) {
       setTxStatus('error');
-      setTxMessage(e instanceof Error ? e.message : 'Withdrawal failed');
+      setTxMessage(getFriendlyErrorMessage(e));
     }
   }, [amount, balanceInSol, withdraw, publicKey, connection]);
 
@@ -148,7 +149,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
       setTxMessage('Session created! You can now bet without signing each transaction.');
     } catch (e: unknown) {
       setTxStatus('error');
-      setTxMessage(e instanceof Error ? e.message : 'Failed to create session');
+      setTxMessage(getFriendlyErrorMessage(e));
     }
   }, [createSession]);
 
@@ -162,7 +163,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
       setTxMessage('Session revoked successfully');
     } catch (e: unknown) {
       setTxStatus('error');
-      setTxMessage(e instanceof Error ? e.message : 'Failed to revoke session');
+      setTxMessage(getFriendlyErrorMessage(e));
     }
   }, [revokeSession]);
 

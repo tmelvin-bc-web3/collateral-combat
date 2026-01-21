@@ -6,6 +6,7 @@ import { BattleProvider, useBattleContext } from '@/contexts/BattleContext';
 import { BattleLobby } from '@/components/BattleLobby';
 import { BattleArena } from '@/components/BattleArena';
 import { PageLoading } from '@/components/ui/skeleton';
+import { PageErrorBoundary } from '@/components/error-boundaries/PageErrorBoundary';
 
 function BattleContent() {
   const { battle } = useBattleContext();
@@ -45,5 +46,9 @@ export default function BattlePage() {
     return <PageLoading message="Entering the Arena..." />;
   }
 
-  return <BattleWithWallet />;
+  return (
+    <PageErrorBoundary pageName="Battle Arena">
+      <BattleWithWallet />
+    </PageErrorBoundary>
+  );
 }
