@@ -3,6 +3,8 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { verifyToken, extractToken } from '../utils/jwt';
 import { checkAndMarkSignature } from '../utils/replayCache';
+import { AuthErrorCode } from '../types/errors';
+import { createAuthError } from '../utils/errors';
 
 // ===================
 // Auth Middleware Configuration
@@ -57,6 +59,13 @@ async function verifyAuthSignature(
   timestamp: string
 ): Promise<{ valid: boolean; error?: string }> {
   try {
+    // TODO: Add rate limiting check before signature verification to prevent DoS
+    // Example: Max 10 auth attempts per minute per wallet
+    // const rateKey = `auth:rate:${walletAddress}`;
+    // if (await isRateLimited(rateKey, 10, 60)) {
+    //   return { valid: false, error: 'Rate limit exceeded' };
+    // }
+
     // Check timestamp is within 5 minutes
     const now = Date.now();
     const signedAt = parseInt(timestamp);
@@ -65,14 +74,25 @@ async function verifyAuthSignature(
     }
 
     // Check for replay attack using Redis/memory cache
-    const sigKey = `auth:${walletAddress}:${signature}`;
+    // Use full signature as key since each signature is unique
+    const sigKey = `auth:sig:${signature}`;
     const wasUsed = await checkAndMarkSignature(sigKey, AUTH_SIGNATURE_TTL_SECONDS);
     if (wasUsed) {
-      console.log(`[SECURITY] AUTH_SIGNATURE_REPLAY_BLOCKED | wallet: ${walletAddress}`);
+      // Structured logging for security events (will be enhanced with proper logger in Plan 06)
+      console.warn(JSON.stringify({
+        level: 'warn',
+        type: 'SECURITY',
+        event: 'AUTH_SIGNATURE_REPLAY_BLOCKED',
+        wallet: walletAddress.slice(0, 8) + '...', // Truncate for privacy
+        timestamp: new Date().toISOString()
+      }));
       return { valid: false, error: 'Signature already used' };
     }
 
     // Verify signature
+    // Message format: "DegenDome:auth:{timestamp}"
+    // Future enhancement: support "DegenDome:auth:{timestamp}:{nonce}" for additional replay protection
+    // The signature itself is unique per signing, so using full signature as cache key provides sufficient protection
     const message = `DegenDome:auth:${timestamp}`;
     const messageBytes = new TextEncoder().encode(message);
     const signatureBytes = bs58.decode(signature);
