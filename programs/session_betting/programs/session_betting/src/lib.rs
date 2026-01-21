@@ -255,6 +255,18 @@ pub mod session_betting {
         game_state.total_volume = game_state.total_volume
             .checked_add(pool.total_pool)
             .ok_or(SessionBettingError::MathOverflow)?;
+
+        // Emit audit event
+        emit!(RoundSettled {
+            round_id: round.round_id,
+            start_price: round.start_price,
+            end_price: round.end_price,
+            winner,
+            up_pool: pool.up_pool,
+            down_pool: pool.down_pool,
+            timestamp: clock.unix_timestamp,
+        });
+
         Ok(())
     }
 
@@ -305,6 +317,15 @@ pub mod session_betting {
         );
 
         game_state.is_paused = paused;
+
+        // Emit audit event
+        let clock = Clock::get()?;
+        emit!(GamePaused {
+            authority: ctx.accounts.authority.key(),
+            paused,
+            timestamp: clock.unix_timestamp,
+        });
+
         Ok(())
     }
 
@@ -503,6 +524,16 @@ pub mod session_betting {
             signer_seeds,
         );
         transfer(cpi_context, amount)?;
+
+        // Emit audit event
+        let clock = Clock::get()?;
+        emit!(FundsLocked {
+            user: ctx.accounts.owner.key(),
+            amount,
+            game_mode: GameType::Battle, // Default to Battle, backend should track actual game mode
+            timestamp: clock.unix_timestamp,
+        });
+
         Ok(())
     }
 
@@ -652,6 +683,16 @@ pub mod session_betting {
             .checked_add(amount)
             .ok_or(SessionBettingError::MathOverflow)?;
         user_balance.bump = ctx.bumps.user_balance;
+
+        // Emit audit event
+        let clock = Clock::get()?;
+        emit!(FundsDeposited {
+            user: ctx.accounts.user.key(),
+            amount,
+            new_balance: user_balance.balance,
+            timestamp: clock.unix_timestamp,
+        });
+
         Ok(())
     }
 
@@ -699,6 +740,14 @@ pub mod session_betting {
             signer_seeds,
         );
         transfer(cpi_context, amount)?;
+
+        // Emit audit event
+        let clock = Clock::get()?;
+        emit!(FundsWithdrawn {
+            user: ctx.accounts.user.key(),
+            amount,
+            timestamp: clock.unix_timestamp,
+        });
 
         Ok(())
     }
@@ -777,6 +826,15 @@ pub mod session_betting {
         pool.total_pool = pool.total_pool
             .checked_add(amount)
             .ok_or(SessionBettingError::MathOverflow)?;
+
+        // Emit audit event
+        emit!(BetPlaced {
+            user: user_balance.owner,
+            round_id: round.round_id,
+            side,
+            amount,
+            timestamp: clock.unix_timestamp,
+        });
 
         Ok(())
     }
@@ -1646,6 +1704,62 @@ pub struct FeesWithdrawn {
     pub authority: Pubkey,
     pub amount: u64,
     pub remaining_fees: u64,
+}
+
+/// Emitted when a bet is placed
+#[event]
+pub struct BetPlaced {
+    pub user: Pubkey,
+    pub round_id: u64,
+    pub side: BetSide,
+    pub amount: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when a round is settled
+#[event]
+pub struct RoundSettled {
+    pub round_id: u64,
+    pub start_price: u64,
+    pub end_price: u64,
+    pub winner: WinnerSide,
+    pub up_pool: u64,
+    pub down_pool: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when funds are withdrawn
+#[event]
+pub struct FundsWithdrawn {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when funds are deposited
+#[event]
+pub struct FundsDeposited {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub new_balance: u64,
+    pub timestamp: i64,
+}
+
+/// Emitted when funds are locked for a game mode
+#[event]
+pub struct FundsLocked {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub game_mode: GameType,
+    pub timestamp: i64,
+}
+
+/// Emitted when game is paused or unpaused
+#[event]
+pub struct GamePaused {
+    pub authority: Pubkey,
+    pub paused: bool,
+    pub timestamp: i64,
 }
 
 // ===================
