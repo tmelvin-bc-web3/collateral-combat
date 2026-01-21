@@ -22,6 +22,8 @@ import {
   PendingTransaction,
   GameModeBalance,
 } from '../db/balanceDatabase';
+import { createBalanceError } from '../utils/errors';
+import { BalanceErrorCode } from '../types/errors';
 
 const SESSION_BETTING_PROGRAM_ID = new PublicKey('4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA');
 
@@ -186,10 +188,82 @@ class BalanceService {
 
   /**
    * Check if user has sufficient balance for an action
+   * @deprecated Use verifyAndLockBalance() instead. This method has a race condition.
+   * Checking balance without locking allows withdraw between check and bet placement.
    */
   async hasSufficientBalance(walletAddress: string, amountLamports: number): Promise<boolean> {
+    console.warn('[DEPRECATED] hasSufficientBalance called - use verifyAndLockBalance instead');
     const available = await this.getAvailableBalance(walletAddress);
     return available >= amountLamports;
+  }
+
+  /**
+   * Verify user has sufficient balance AND lock funds atomically on-chain.
+   * Returns transaction ID on success, throws on failure.
+   *
+   * SECURITY: This is the ONLY way to verify balance for wagering.
+   * Do NOT use getBalance() followed by a separate lock - that creates a race condition.
+   */
+  async verifyAndLockBalance(
+    walletAddress: string,
+    amount: number,
+    gameMode: GameMode,
+    gameId: string
+  ): Promise<{ txId: string; newBalance: number }> {
+    // 1. Create pending transaction in database (optimistic lock)
+    const pendingTx = createPendingTransaction(walletAddress, amount, 'debit', gameMode, gameId);
+
+    try {
+      // 2. Execute on-chain transfer_to_global_vault (atomic balance check + debit)
+      const txId = await this.transferToGlobalVault(walletAddress, amount, gameMode);
+
+      if (!txId) {
+        throw createBalanceError(
+          BalanceErrorCode.TRANSFER_FAILED,
+          'Failed to lock funds on-chain',
+          { wallet: walletAddress, amount, gameMode, gameId }
+        );
+      }
+
+      // 3. Confirm the pending transaction
+      confirmTransaction(pendingTx.id);
+
+      // 4. Return success
+      const newBalance = await this.getOnChainBalance(walletAddress);
+      return { txId, newBalance };
+    } catch (error) {
+      // 5. Cancel pending transaction on failure
+      cancelTransaction(pendingTx.id);
+
+      // Check if it's an insufficient balance error from the contract
+      if (this.isInsufficientBalanceError(error)) {
+        throw createBalanceError(
+          BalanceErrorCode.INSUFFICIENT_BALANCE,
+          'Insufficient balance for this wager',
+          { wallet: walletAddress, requested: amount }
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a wager amount would be possible (for UI display only).
+   * WARNING: This is NOT a guarantee - use verifyAndLockBalance for actual wagers.
+   */
+  async canPlaceWager(walletAddress: string, amount: number): Promise<boolean> {
+    const available = await this.getAvailableBalance(walletAddress);
+    return available >= amount;
+  }
+
+  /**
+   * Helper to check for insufficient balance errors from Anchor
+   */
+  private isInsufficientBalanceError(error: unknown): boolean {
+    const errorStr = String(error);
+    return errorStr.includes('InsufficientBalance') ||
+           errorStr.includes('6016') ||  // Error code from contract
+           errorStr.includes('Low balance');
   }
 
   /**
@@ -454,6 +528,70 @@ class BalanceService {
     } catch (error) {
       console.error(`[BalanceService] Error refunding from global vault:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Release locked funds back to user's balance (for cancelled games).
+   * Calls credit_winnings on-chain to return funds from global vault.
+   */
+  async releaseLockedBalance(
+    walletAddress: string,
+    amount: number,
+    gameMode: GameMode,
+    gameId: string,
+    reason: 'cancelled' | 'refund' | 'timeout'
+  ): Promise<{ txId: string; newBalance: number }> {
+    if (!this.isReady() || !this.program || !this.authority) {
+      throw createBalanceError(
+        BalanceErrorCode.WITHDRAWAL_FAILED,
+        'Balance service not ready',
+        { wallet: walletAddress }
+      );
+    }
+
+    try {
+      const userPubkey = new PublicKey(walletAddress);
+      const gameStatePDA = this.getGameStatePDA();
+      const userBalancePDA = this.getBalancePDA(userPubkey);
+      const userVaultPDA = this.getVaultPDA(userPubkey);
+      const globalVaultPDA = this.getGlobalVaultPDA();
+
+      const gameIdBytes = new Uint8Array(32);
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(gameId);
+      gameIdBytes.set(encoded.slice(0, 32));
+
+      const gameTypeEnum = GAME_MODE_TO_TYPE[gameMode];
+      const gameTypeArg = this.gameTypeToArg(gameTypeEnum);
+
+      const txId = await (this.program.methods as any)
+        .creditWinnings(new BN(amount), gameTypeArg, Array.from(gameIdBytes))
+        .accounts({
+          gameState: gameStatePDA,
+          authority: this.authority.publicKey,
+          owner: userPubkey,
+          userBalance: userBalancePDA,
+          userVault: userVaultPDA,
+          globalVault: globalVaultPDA,
+        })
+        .signers([this.authority])
+        .rpc();
+
+      console.log(`[BalanceService] Released ${amount} lamports to ${walletAddress} for ${reason} ${gameMode}/${gameId}. TX: ${txId}`);
+
+      // Record the refund in database
+      recordGameModeRefund(gameMode, amount);
+
+      const newBalance = await this.getOnChainBalance(walletAddress);
+      return { txId, newBalance };
+    } catch (error) {
+      console.error(`[BalanceService] Error releasing locked balance:`, error);
+      throw createBalanceError(
+        BalanceErrorCode.WITHDRAWAL_FAILED,
+        'Failed to release locked funds',
+        { wallet: walletAddress, amount, gameMode, gameId, reason, error: String(error) }
+      );
     }
   }
 
