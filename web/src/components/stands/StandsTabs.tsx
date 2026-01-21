@@ -43,7 +43,7 @@ export function StandsTabs({
   };
 
   return (
-    <div className="flex gap-2 mb-4 pb-4 border-b border-white/[0.06] overflow-x-auto">
+    <div className="flex gap-1.5 sm:gap-2 mb-4 pb-4 border-b border-white/[0.06] overflow-x-auto hide-scrollbar">
       {(Object.keys(TAB_CONFIG) as StandsTab[]).map((tab) => {
         const { icon: Icon, label } = TAB_CONFIG[tab];
         const badge = getBadgeCount(tab);
@@ -53,14 +53,15 @@ export function StandsTabs({
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 min-h-[44px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all touch-manipulation ${
               isActive
                 ? 'bg-warning text-black'
                 : 'bg-white/5 border border-white/[0.06] text-white/50 hover:text-white hover:border-white/20'
             }`}
           >
             <Icon className="w-4 h-4" />
-            {label}
+            <span className="hidden sm:inline">{label}</span>
+            <span className="sm:hidden">{label.split(' ')[0]}</span>
             {badge !== null && (
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[11px] font-bold ${

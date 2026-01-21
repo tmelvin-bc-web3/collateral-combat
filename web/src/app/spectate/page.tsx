@@ -329,7 +329,7 @@ export default function SpectatePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 animate-fadeIn">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-fadeIn overflow-x-hidden">
       {/* Hero Section */}
       <StandsHero stats={stats} />
 
@@ -355,13 +355,13 @@ export default function SpectatePage() {
       )}
 
       {/* Content Area */}
-      <div className="min-h-[400px]">
+      <div className="min-h-[300px] sm:min-h-[400px]">
         {activeTab === 'live' && (
           <>
             {isLoading ? (
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-80 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl animate-pulse" />
+                  <div key={i} className="h-64 sm:h-80 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl animate-pulse" />
                 ))}
               </div>
             ) : filteredBattles.length === 0 ? (
@@ -371,7 +371,7 @@ export default function SpectatePage() {
                 onViewResults={() => setActiveTab('results')}
               />
             ) : (
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {filteredBattles.map((battle) => (
                   <BattleCard
                     key={battle.id}

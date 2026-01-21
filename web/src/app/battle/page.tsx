@@ -48,7 +48,9 @@ export default function BattlePage() {
 
   return (
     <PageErrorBoundary pageName="Battle Arena">
-      <BattleWithWallet />
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
+        <BattleWithWallet />
+      </div>
     </PageErrorBoundary>
   );
 }

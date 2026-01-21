@@ -219,11 +219,11 @@ export function BattleLobby() {
             </p>
 
             {/* CTA */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <div className="relative group">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12 px-4 sm:px-0">
+              <div className="relative group w-full sm:w-auto">
                 <div className="absolute -inset-1 bg-gradient-to-r from-accent to-purple-500 rounded-xl blur opacity-40 group-hover:opacity-70 transition-opacity" />
                 <button
-                  className="relative px-8 py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide"
+                  className="relative w-full sm:w-auto min-h-[44px] px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-base sm:text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide touch-manipulation"
                   onClick={() => {
                     // Trigger wallet modal - find the wallet button and click it
                     const walletBtn = document.querySelector('.wallet-adapter-button') as HTMLButtonElement;
@@ -235,7 +235,7 @@ export function BattleLobby() {
               </div>
               <a
                 href="/spectate"
-                className="px-8 py-4 bg-bg-tertiary border border-warning/30 text-warning font-semibold rounded-xl hover:bg-warning/10 hover:text-warning hover:border-warning/50 transition-all uppercase tracking-wide"
+                className="w-full sm:w-auto min-h-[44px] px-6 sm:px-8 py-3 sm:py-4 bg-bg-tertiary border border-warning/30 text-warning font-semibold rounded-xl hover:bg-warning/10 hover:text-warning hover:border-warning/50 transition-all uppercase tracking-wide touch-manipulation text-center"
               >
                 Watch the Carnage
               </a>
@@ -244,32 +244,32 @@ export function BattleLobby() {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16 max-w-4xl mx-auto px-4 sm:px-0">
           {[
             { value: '$1,000', label: 'War Chest', color: 'text-warning' },
             { value: '20x', label: 'Max Leverage', color: 'text-danger' },
             { value: '30 min', label: 'Fight Duration', color: 'text-accent' },
             { value: '95%', label: 'Survivor Loot', color: 'text-success' },
           ].map((stat) => (
-            <Card key={stat.label} className="text-center p-6 hover:border-warning/30 transition-colors border-warning/10">
-              <div className={`text-2xl font-black mb-1 ${stat.color}`}>{stat.value}</div>
-              <div className="text-sm text-text-tertiary uppercase tracking-wide">{stat.label}</div>
+            <Card key={stat.label} className="text-center p-4 sm:p-6 hover:border-warning/30 transition-colors border-warning/10">
+              <div className={`text-xl sm:text-2xl font-black mb-1 ${stat.color}`}>{stat.value}</div>
+              <div className="text-xs sm:text-sm text-text-tertiary uppercase tracking-wide">{stat.label}</div>
             </Card>
           ))}
         </div>
 
         {/* How it Works */}
-        <div className="max-w-4xl mx-auto mb-16">
-          <h2 className="text-3xl font-black text-center mb-12 uppercase tracking-wider" style={{ fontFamily: 'Impact, sans-serif' }}>Rules of the <span className="text-warning">Arena</span></h2>
+        <div className="max-w-4xl mx-auto mb-12 sm:mb-16 px-4 sm:px-0">
+          <h2 className="text-2xl sm:text-3xl font-black text-center mb-8 sm:mb-12 uppercase tracking-wider" style={{ fontFamily: 'Impact, sans-serif' }}>Rules of the <span className="text-warning">Arena</span></h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
             {[
               {
                 step: '01',
                 title: 'Enter the Cage',
                 description: 'Pay your blood price and face your challenger. Both degens start with $1,000 war chest.',
                 icon: (
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
                 ),
@@ -279,7 +279,7 @@ export function BattleLobby() {
                 title: 'Fight to Survive',
                 description: 'Long or short with 20x leverage. Real prices. No mercy. Only skill decides who walks out.',
                 icon: (
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                   </svg>
                 ),
@@ -289,23 +289,23 @@ export function BattleLobby() {
                 title: 'Claim the Spoils',
                 description: 'When the bell rings, best P&L takes the entire loot pile. Winner. Takes. All.',
                 icon: (
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
                   </svg>
                 ),
               },
             ].map((item) => (
               <div key={item.step} className="relative">
-                <Card className="h-full p-8 hover:border-warning/30 transition-all group border-warning/10">
-                  <div className="absolute -top-4 -left-2 text-6xl font-black text-warning/10 group-hover:text-warning/20 transition-colors">
+                <Card className="h-full p-5 sm:p-8 hover:border-warning/30 transition-all group border-warning/10">
+                  <div className="absolute -top-3 sm:-top-4 -left-1 sm:-left-2 text-4xl sm:text-6xl font-black text-warning/10 group-hover:text-warning/20 transition-colors">
                     {item.step}
                   </div>
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-warning/20 to-danger/20 border border-warning/30 flex items-center justify-center text-warning mb-4 group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-warning/20 to-danger/20 border border-warning/30 flex items-center justify-center text-warning mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
                       {item.icon}
                     </div>
-                    <h3 className="text-xl font-bold mb-3 uppercase">{item.title}</h3>
-                    <p className="text-text-secondary leading-relaxed">{item.description}</p>
+                    <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 uppercase">{item.title}</h3>
+                    <p className="text-sm sm:text-base text-text-secondary leading-relaxed">{item.description}</p>
                   </div>
                 </Card>
               </div>
@@ -314,20 +314,20 @@ export function BattleLobby() {
         </div>
 
         {/* Available Assets */}
-        <div className="max-w-4xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-center mb-4">Trade Top Assets</h2>
-          <p className="text-text-secondary text-center mb-8">Real-time prices from major exchanges</p>
+        <div className="max-w-4xl mx-auto mb-12 sm:mb-16 px-4 sm:px-0">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3 sm:mb-4">Trade Top Assets</h2>
+          <p className="text-sm sm:text-base text-text-secondary text-center mb-6 sm:mb-8">Real-time prices from major exchanges</p>
 
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
             {ASSETS.map((asset) => (
               <div
                 key={asset.symbol}
-                className="flex items-center gap-3 px-5 py-3 rounded-xl bg-bg-secondary border border-border-primary hover:border-accent/30 transition-all"
+                className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-3 rounded-xl bg-bg-secondary border border-border-primary hover:border-accent/30 transition-all touch-manipulation"
               >
                 <AssetIcon symbol={asset.symbol} size="lg" />
                 <div>
-                  <div className="font-bold">{asset.symbol}</div>
-                  <div className="text-xs text-text-tertiary">{asset.name}</div>
+                  <div className="font-bold text-sm sm:text-base">{asset.symbol}</div>
+                  <div className="text-[10px] sm:text-xs text-text-tertiary">{asset.name}</div>
                 </div>
               </div>
             ))}
@@ -335,14 +335,14 @@ export function BattleLobby() {
         </div>
 
         {/* Final CTA */}
-        <div className="max-w-2xl mx-auto text-center mb-16">
-          <Card className="p-8 bg-gradient-to-br from-warning/5 via-bg-secondary to-danger/5 border-warning/20">
-            <h2 className="text-2xl font-black mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>Ready to <span className="text-warning">Enter the Dome?</span></h2>
-            <p className="text-text-secondary mb-6">
+        <div className="max-w-2xl mx-auto text-center mb-12 sm:mb-16 px-4 sm:px-0">
+          <Card className="p-5 sm:p-8 bg-gradient-to-br from-warning/5 via-bg-secondary to-danger/5 border-warning/20">
+            <h2 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4 uppercase" style={{ fontFamily: 'Impact, sans-serif' }}>Ready to <span className="text-warning">Enter the Dome?</span></h2>
+            <p className="text-sm sm:text-base text-text-secondary mb-4 sm:mb-6">
               Connect your wallet and face your challenger. No risk to your real funds - just pure degen combat.
             </p>
             <button
-              className="px-8 py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide"
+              className="w-full sm:w-auto min-h-[44px] px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-warning to-fire text-bg-primary font-bold text-base sm:text-lg rounded-xl hover:shadow-2xl hover:shadow-warning/30 transition-all uppercase tracking-wide touch-manipulation"
               onClick={() => {
                 const walletBtn = document.querySelector('.wallet-adapter-button') as HTMLButtonElement;
                 if (walletBtn) walletBtn.click();
@@ -359,37 +359,37 @@ export function BattleLobby() {
   // In matchmaking queue - make it exciting
   if (matchmakingStatus.inQueue) {
     return (
-      <div className="max-w-md mx-auto mt-16 text-center animate-fadeIn">
+      <div className="w-full max-w-md mx-auto mt-8 sm:mt-16 text-center animate-fadeIn px-4 sm:px-0">
         <div className="relative">
           {/* Pulsing glow */}
           <div className="absolute inset-0 bg-accent/20 blur-3xl animate-pulse" />
 
           <Card className="relative overflow-hidden">
-            <div className="p-8">
+            <div className="p-5 sm:p-8">
               {/* Radar animation */}
-              <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6">
                 <div className="absolute inset-0 rounded-full border-2 border-accent/30" />
                 <div className="absolute inset-2 rounded-full border-2 border-accent/20" />
                 <div className="absolute inset-4 rounded-full border-2 border-accent/10" />
                 <div className="absolute inset-0 rounded-full border-t-2 border-accent animate-spin" style={{ animationDuration: '2s' }} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
               </div>
 
-              <h2 className="text-2xl font-bold mb-2 uppercase">Searching for Prey</h2>
-              <p className="text-text-secondary mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2 uppercase">Searching for Prey</h2>
+              <p className="text-sm sm:text-base text-text-secondary mb-4 sm:mb-6">
                 Scanning the wasteland for worthy challengers...
               </p>
 
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <div className="px-4 py-2 rounded-lg bg-bg-tertiary border border-border-primary">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="w-full sm:w-auto px-4 py-2 rounded-lg bg-bg-tertiary border border-border-primary">
                   <span className="text-text-tertiary text-sm">Position: </span>
                   <span className="font-bold text-accent">#{matchmakingStatus.position}</span>
                 </div>
-                <div className="px-4 py-2 rounded-lg bg-bg-tertiary border border-border-primary">
+                <div className="w-full sm:w-auto px-4 py-2 rounded-lg bg-bg-tertiary border border-border-primary">
                   <span className="text-text-tertiary text-sm">Est. wait: </span>
                   <span className="font-bold">~{matchmakingStatus.estimated}s</span>
                 </div>
@@ -397,7 +397,7 @@ export function BattleLobby() {
 
               <button
                 onClick={leaveBattle}
-                className="px-6 py-2.5 rounded-lg bg-bg-tertiary border border-border-primary text-text-secondary hover:text-text-primary hover:border-border-secondary transition-all"
+                className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-lg bg-bg-tertiary border border-border-primary text-text-secondary hover:text-text-primary hover:border-border-secondary transition-all touch-manipulation"
               >
                 Cancel Search
               </button>
@@ -411,40 +411,40 @@ export function BattleLobby() {
   // Waiting for opponent - countdown style
   if (battle && battle.status === 'waiting') {
     return (
-      <div className="max-w-md mx-auto mt-16 text-center animate-fadeIn">
+      <div className="w-full max-w-md mx-auto mt-8 sm:mt-16 text-center animate-fadeIn px-4 sm:px-0">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-accent/20 via-success/20 to-accent/20 blur-3xl" />
 
           <Card className="relative overflow-hidden">
-            <div className="p-8">
+            <div className="p-5 sm:p-8">
               {/* Player avatars with VS */}
-              <div className="flex items-center justify-center gap-6 mb-6">
+              <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="relative">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-bg-primary">You</span>
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-accent to-accent/70 flex items-center justify-center">
+                    <span className="text-xl sm:text-2xl font-bold text-bg-primary">You</span>
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-success border-2 border-bg-primary flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-success border-2 border-bg-primary flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 </div>
 
-                <div className="text-2xl font-black text-text-tertiary">VS</div>
+                <div className="text-xl sm:text-2xl font-black text-text-tertiary">VS</div>
 
                 <div className="relative">
-                  <div className="w-16 h-16 rounded-xl bg-bg-tertiary border-2 border-dashed border-border-secondary flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-text-tertiary border-t-transparent rounded-full animate-spin" />
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-bg-tertiary border-2 border-dashed border-border-secondary flex items-center justify-center">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-text-tertiary border-t-transparent rounded-full animate-spin" />
                   </div>
                 </div>
               </div>
 
-              <h2 className="text-xl font-bold mb-2 uppercase">Challenger Approaching...</h2>
-              <p className="text-text-secondary text-sm mb-4">
+              <h2 className="text-lg sm:text-xl font-bold mb-2 uppercase">Challenger Approaching...</h2>
+              <p className="text-xs sm:text-sm text-text-secondary mb-3 sm:mb-4">
                 The cage is set. Waiting for your prey to enter.
               </p>
 
-              <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <span className="px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/30 text-accent text-sm font-semibold">
                   {battle.config.entryFee} SOL
                 </span>
@@ -453,7 +453,7 @@ export function BattleLobby() {
                 </span>
               </div>
 
-              <div className="p-3 rounded-lg bg-bg-tertiary mb-6">
+              <div className="p-3 rounded-lg bg-bg-tertiary mb-4 sm:mb-6">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-text-tertiary">Players</span>
                   <span className="font-semibold">{battle.players.length}/{battle.config.maxPlayers}</span>
@@ -468,7 +468,7 @@ export function BattleLobby() {
 
               <button
                 onClick={leaveBattle}
-                className="px-6 py-2.5 rounded-lg bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 transition-all"
+                className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 rounded-lg bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 transition-all touch-manipulation"
               >
                 Leave Room
               </button>
@@ -481,22 +481,22 @@ export function BattleLobby() {
 
   // Main lobby - redesigned Arena layout
   return (
-    <div className="max-w-6xl mx-auto animate-fadeIn">
+    <div className="w-full max-w-6xl mx-auto animate-fadeIn overflow-x-hidden">
       {/* Arena Header */}
       <ArenaHeader stats={mockStats} />
 
       {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-5 gap-6 mt-6">
-        {/* Live Battles Section - 3 columns */}
-        <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 mt-4 sm:mt-6">
+        {/* Live Battles Section - 3 columns on lg */}
+        <div className="lg:col-span-3 order-2 lg:order-1">
           <LiveBattlesSection
             battles={mockLiveBattles}
             waitingPlayers={mockWaitingPlayers}
           />
         </div>
 
-        {/* Battle Config Panel - 2 columns */}
-        <div className="lg:col-span-2">
+        {/* Battle Config Panel - 2 columns on lg, shown first on mobile */}
+        <div className="lg:col-span-2 order-1 lg:order-2">
           <BattleConfigPanel
             onFindMatch={handleFindMatch}
             onChallengeClick={() => setShowCreateChallengeModal(true)}
@@ -508,7 +508,7 @@ export function BattleLobby() {
       </div>
 
       {/* Bottom Row - Recent Battles & Leaderboard */}
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
         <RecentBattlesSection battles={mockRecentBattles} />
         <LeaderboardPreview leaders={mockLeaders} />
       </div>

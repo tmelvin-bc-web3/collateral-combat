@@ -221,7 +221,7 @@ function DraftLobbyContent() {
   const userPosition = userLeaderboardEntry?.rank;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 animate-fadeIn">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 animate-fadeIn overflow-x-hidden">
       {/* Hero Section */}
       <WarPartyHero stats={stats} />
 
@@ -229,7 +229,7 @@ function DraftLobbyContent() {
       {userEnrollment && <UserStatusBar enrollment={userEnrollment} />}
 
       {/* Tier Cards */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {(['0.1 SOL', '0.5 SOL', '1 SOL'] as DraftTournamentTier[]).map((tier) => {
           const tierData = getTierData(tier);
           const isEnrolled = hasEntryForTier(tier);
@@ -251,7 +251,7 @@ function DraftLobbyContent() {
       </div>
 
       {/* Leaderboard + Hot Tokens */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <LeaderboardSection
           entries={leaderboard}
           userPosition={userPosition}
@@ -314,17 +314,17 @@ function EntryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#1a1a1a] border border-warning/30 rounded-2xl p-6 max-w-md w-full animate-fadeIn">
+      <div className="relative bg-[#1a1a1a] border border-warning/30 rounded-2xl p-4 sm:p-6 max-w-md w-full mx-4 animate-fadeIn overflow-y-auto max-h-[90vh]">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors touch-manipulation flex items-center justify-center"
         >
           <svg className="w-5 h-5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        <h2 className="text-2xl font-bold mb-2 uppercase tracking-wide">Join the {config.name} War</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 uppercase tracking-wide pr-10">Join the {config.name} War</h2>
         <p className="text-sm text-white/40 mb-4">{tier} Entry Tier</p>
 
         {!walletAddress ? (
@@ -333,28 +333,28 @@ function EntryModal({
           </div>
         ) : (
           <>
-            <div className="space-y-3 mb-6">
+            <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
               <div className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-white/[0.06]">
-                <span className="text-white/50 text-sm uppercase tracking-wider">Blood Price</span>
-                <span className="font-bold">{tier}</span>
+                <span className="text-white/50 text-xs sm:text-sm uppercase tracking-wider">Blood Price</span>
+                <span className="font-bold text-sm sm:text-base">{tier}</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-white/[0.06]">
-                <span className="text-white/50 text-sm uppercase tracking-wider">War Chest</span>
-                <span className="font-bold text-success">{(tournament?.prizePoolUsd || 0).toFixed(1)} SOL</span>
+                <span className="text-white/50 text-xs sm:text-sm uppercase tracking-wider">War Chest</span>
+                <span className="font-bold text-sm sm:text-base text-success">{(tournament?.prizePoolUsd || 0).toFixed(1)} SOL</span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-white/[0.06]">
-                <span className="text-white/50 text-sm uppercase tracking-wider">Warriors Enlisted</span>
-                <span className="font-bold">{tournament?.totalEntries || 0}</span>
+                <span className="text-white/50 text-xs sm:text-sm uppercase tracking-wider">Warriors Enlisted</span>
+                <span className="font-bold text-sm sm:text-base">{tournament?.totalEntries || 0}</span>
               </div>
             </div>
 
-            <p className="text-sm text-white/40 mb-6">
+            <p className="text-xs sm:text-sm text-white/40 mb-4 sm:mb-6">
               After enlisting, you&apos;ll draft 6 memecoins for your war party. Your score is the total % change
               of your picks over the week. Top 10% of warriors claim the spoils!
             </p>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-danger/20 border border-danger/30 text-danger text-sm">
+              <div className="mb-4 p-3 rounded-lg bg-danger/20 border border-danger/30 text-danger text-xs sm:text-sm">
                 {error}
               </div>
             )}
@@ -362,7 +362,7 @@ function EntryModal({
             <button
               onClick={handleEnter}
               disabled={entering || isLoading}
-              className="w-full py-3 px-6 rounded-xl font-bold uppercase tracking-wider transition-all disabled:opacity-50"
+              className="w-full min-h-[44px] py-3 px-6 rounded-xl font-bold uppercase tracking-wider transition-all disabled:opacity-50 touch-manipulation text-sm sm:text-base"
               style={{
                 background: 'linear-gradient(135deg, #ff6b00 0%, #ff4500 50%, #ff3131 100%)',
                 boxShadow: '0 0 20px rgba(255, 107, 0, 0.3)',

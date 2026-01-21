@@ -24,13 +24,13 @@ function FilterSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[11px] text-white/40 uppercase tracking-wider">{label}</label>
+    <div className="flex flex-col gap-1 flex-1 sm:flex-none min-w-[100px]">
+      <label className="text-[10px] sm:text-[11px] text-white/40 uppercase tracking-wider">{label}</label>
       <div className="relative">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="appearance-none w-full px-3 py-2 pr-8 bg-white/5 border border-white/10 rounded-lg text-sm text-white cursor-pointer hover:border-warning/50 focus:border-warning focus:outline-none transition-colors"
+          className="appearance-none w-full min-h-[44px] px-3 py-2 pr-8 bg-white/5 border border-white/10 rounded-lg text-sm text-base text-white cursor-pointer hover:border-warning/50 focus:border-warning focus:outline-none transition-colors touch-manipulation"
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value} className="bg-[#1a1a1a]">
@@ -53,7 +53,7 @@ export function FiltersBar({
   onSortChange,
 }: FiltersBarProps) {
   return (
-    <div className="flex gap-4 mb-6 flex-wrap">
+    <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap">
       <FilterSelect
         label="Game Type"
         value={gameFilter}

@@ -41,7 +41,7 @@ export function TierCard({
       return (
         <Link
           href={`/draft/entry/${userEntryId}`}
-          className={`w-full py-3 rounded-xl font-semibold text-center transition-all border-2 border-${color} text-${color} hover:bg-${color}/10`}
+          className={`block w-full min-h-[44px] py-3 rounded-xl font-semibold text-center transition-all border-2 border-${color} text-${color} hover:bg-${color}/10 touch-manipulation`}
         >
           View My Squad
         </Link>
@@ -52,7 +52,7 @@ export function TierCard({
       return (
         <button
           disabled
-          className="w-full py-3 rounded-xl font-semibold text-center bg-white/5 border border-white/[0.06] text-white/30 cursor-not-allowed"
+          className="w-full min-h-[44px] py-3 rounded-xl font-semibold text-center bg-white/5 border border-white/[0.06] text-white/30 cursor-not-allowed"
         >
           Already Enlisted
         </button>
@@ -63,7 +63,7 @@ export function TierCard({
       return (
         <button
           disabled
-          className="w-full py-3 rounded-xl font-semibold text-center bg-white/5 border border-white/[0.06] text-white/30 cursor-not-allowed"
+          className="w-full min-h-[44px] py-3 rounded-xl font-semibold text-center bg-white/5 border border-white/[0.06] text-white/30 cursor-not-allowed"
         >
           Enrollment Closed
         </button>
@@ -73,7 +73,7 @@ export function TierCard({
     return (
       <button
         onClick={onJoin}
-        className="w-full py-3 rounded-xl font-semibold text-center transition-all flex items-center justify-center gap-2"
+        className="w-full min-h-[44px] py-3 rounded-xl font-semibold text-center transition-all flex items-center justify-center gap-2 touch-manipulation"
         style={{
           background: 'linear-gradient(135deg, #ff6b00 0%, #ff4500 50%, #ff3131 100%)',
           boxShadow: '0 4px 15px rgba(255, 107, 0, 0.3)',

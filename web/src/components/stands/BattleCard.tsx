@@ -113,13 +113,13 @@ export function BattleCard({ battle, onWatch, onBet, selectedWager = 0.1 }: Batt
       <div className="flex gap-2 mb-3">
         <button
           onClick={() => onBet('fighter1')}
-          className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold border border-success text-success bg-success/10 hover:bg-success hover:text-white transition-colors"
+          className="flex-1 min-h-[44px] py-2 px-3 rounded-lg text-xs font-semibold border border-success text-success bg-success/10 hover:bg-success hover:text-white transition-colors touch-manipulation"
         >
           Bet {selectedWager} on {truncateName(battle.fighter1.name, 6)}
         </button>
         <button
           onClick={() => onBet('fighter2')}
-          className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold border border-danger text-danger bg-danger/10 hover:bg-danger hover:text-white transition-colors"
+          className="flex-1 min-h-[44px] py-2 px-3 rounded-lg text-xs font-semibold border border-danger text-danger bg-danger/10 hover:bg-danger hover:text-white transition-colors touch-manipulation"
         >
           Bet {selectedWager} on {truncateName(battle.fighter2.name, 6)}
         </button>
@@ -128,7 +128,7 @@ export function BattleCard({ battle, onWatch, onBet, selectedWager = 0.1 }: Batt
       {/* Watch Button */}
       <button
         onClick={onWatch}
-        className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+        className="w-full min-h-[44px] py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all touch-manipulation"
         style={{
           background: 'linear-gradient(135deg, #ff6b00 0%, #ff4500 50%, #ff3131 100%)',
         }}
