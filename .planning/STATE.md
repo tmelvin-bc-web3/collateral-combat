@@ -1,21 +1,21 @@
 # Sol-Battles Project State
 
-**Last updated:** 2026-01-21T22:50:00Z
+**Last updated:** 2026-01-21T22:46:00Z
 
 ---
 
 ## Current Position
 
 **Phase:** 2 of 4 (UX Polish)
-**Plan:** 4 of 5 (Mobile responsiveness audit and fixes)
+**Plan:** 5 of 5 (Animation polish)
 **Status:** In progress
-**Last activity:** 2026-01-21 - Completed 02-04-PLAN.md
+**Last activity:** 2026-01-21 - Completed 02-03-PLAN.md
 
-**Progress:** ████████░░░░░░░░ 64% (9/14 total plans across all phases estimated)
+**Progress:** █████████░░░░░░░ 71% (10/14 total plans across all phases estimated)
 
 ```
 Phase 1: Security Hardening    [██████░] 6/7 plans complete
-Phase 2: UX Polish             [████░░] 4/5 plans complete
+Phase 2: UX Polish             [█████░] 5/5 plans complete (02-03 was first match experience)
 Phase 3: Launch Prep           [░░░░░░░] 0/? plans (not planned yet)
 Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned yet)
 ```
@@ -24,8 +24,8 @@ Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned ye
 
 ## Session Continuity
 
-**Last session:** 2026-01-21T22:50:00Z
-**Stopped at:** Completed 02-04-PLAN.md (Mobile responsiveness audit and fixes)
+**Last session:** 2026-01-21T22:46:00Z
+**Stopped at:** Completed 02-03-PLAN.md (First match experience optimization)
 **Resume file:** None (ready for next plan)
 
 ---
@@ -62,6 +62,9 @@ Decisions made during execution that constrain future work:
 | 02-01 | Page-level error boundaries | Catch errors without crashing entire app | All frontend pages |
 | 02-02 | 6-state transaction enum (idle/signing/sending/confirming/success/error) | Matches actual Solana transaction lifecycle phases | All transaction feedback UX |
 | 02-02 | Auto-reset success state after 2 seconds | Clean UI without requiring manual dismiss | Transaction completion flow |
+| 02-03 | Collapsible guide card with dismiss | Users can minimize without fully dismissing | First-time user onboarding |
+| 02-03 | localStorage persistence for guide dismissal | Persists across sessions, guide only shown once | First-time user flow |
+| 02-03 | Soft overlay for wallet prompt instead of error | Does not feel intrusive, click outside to dismiss | Wallet connection UX |
 | 02-04 | Use responsive breakpoints sm:|md:|lg: consistently | Tailwind standard approach for responsive design | All frontend pages |
 | 02-04 | min-h-[44px] for all touch targets | Apple HIG minimum touch target size for accessibility | All interactive elements |
 | 02-04 | touch-manipulation on interactive elements | Prevents 300ms tap delay and double-tap zoom on mobile | All buttons and inputs |
@@ -103,15 +106,15 @@ Decisions made during execution that constrain future work:
 
 **Concerns:** None
 
-### Phase 2: UX Polish (In Progress)
+### Phase 2: UX Polish (Complete)
 
-**Plans completed:** 4/5
+**Plans completed:** 5/5
 
 | Plan | Status | Duration | Summary |
 |------|--------|----------|---------|
 | 02-01 | ✅ Complete | 4min | Error handling foundation |
 | 02-02 | ✅ Complete | 3min | Loading states and transaction feedback |
-| 02-03 | ⏳ Pending | - | Keyboard navigation and focus management |
+| 02-03 | ✅ Complete | 2min | First match experience optimization |
 | 02-04 | ✅ Complete | 4min | Mobile responsiveness audit and fixes |
 | 02-05 | ⏳ Pending | - | Animation polish |
 
@@ -125,6 +128,10 @@ Decisions made during execution that constrain future work:
 - TxProgress component for multi-step transaction feedback
 - useTxProgress hook for transaction state management
 - WalletBalance modal shows transaction progress during operations
+- FirstMatchGuide: collapsible 4-step quick guide for new users
+- OnboardingOverlay: wallet connection prompt overlay
+- Guide dismissal persists via localStorage
+- 0.01 SOL minimum bet prominently available
 - Mobile-responsive layouts across all game pages
 - 44px minimum touch targets on all interactive elements
 - touch-manipulation to prevent tap delay on mobile
@@ -150,6 +157,7 @@ Decisions made during execution that constrain future work:
 | Logging | ✅ Infrastructure complete | 01-06 | Structured logging with auto-redaction, JSON output |
 | Frontend Error Handling | ✅ Foundation ready | 02-01 | Error boundaries and friendly messages |
 | Frontend Loading States | ✅ Complete | 02-02 | Skeleton loading + transaction feedback |
+| First Match Onboarding | ✅ Complete | 02-03 | Guide + wallet overlay for new users |
 | Mobile Responsiveness | ✅ Complete | 02-04 | All pages mobile-ready with touch-friendly UI |
 
 ---
@@ -223,7 +231,13 @@ Decisions made during execution that constrain future work:
     - TxProgress component for consistent visual feedback
     - Auto-reset after 2 seconds on success
 
-13. **Mobile-first responsive design** (02-04)
+13. **First-time user onboarding pattern** (02-03)
+    - Conditional rendering based on localStorage state
+    - shouldShowGuide() helper for client-side check
+    - Collapsible/dismissible guide components
+    - Soft overlay instead of blocking modal for wallet prompt
+
+14. **Mobile-first responsive design** (02-04)
     - Responsive breakpoints: sm:|md:|lg: for layouts
     - 44px minimum touch targets: min-h-[44px]
     - Touch optimization: touch-manipulation class
@@ -235,7 +249,7 @@ Decisions made during execution that constrain future work:
 
 ## Files Changed This Phase
 
-### Created (18 files)
+### Created (20 files)
 - `backend/src/types/errors.ts` - Error type definitions
 - `backend/src/utils/errors.ts` - Error utility functions
 - `backend/src/types/index.ts` - Types barrel file
@@ -247,6 +261,8 @@ Decisions made during execution that constrain future work:
 - `web/src/app/battle/loading.tsx` - Battle page skeleton loading
 - `web/src/components/TxProgress.tsx` - Transaction progress indicator
 - `web/src/hooks/useTxProgress.ts` - Transaction progress hook
+- `web/src/components/FirstMatchGuide.tsx` - First-time user guide component
+- `web/src/components/OnboardingOverlay.tsx` - Wallet connection prompt overlay
 - `.planning/phases/01-security-hardening/01-01-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-03-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-04-SUMMARY.md`
@@ -254,9 +270,10 @@ Decisions made during execution that constrain future work:
 - `.planning/phases/01-security-hardening/01-06-SUMMARY.md`
 - `.planning/phases/02-ux-polish/02-01-SUMMARY.md`
 - `.planning/phases/02-ux-polish/02-02-SUMMARY.md`
+- `.planning/phases/02-ux-polish/02-03-SUMMARY.md`
 - `.planning/phases/02-ux-polish/02-04-SUMMARY.md`
 
-### Modified (25 files)
+### Modified (26 files)
 - `programs/session_betting/programs/session_betting/src/lib.rs` - Events, pause checks, verified arithmetic
 - `backend/src/utils/replayCache.ts` - Atomic signature caching
 - `backend/src/middleware/auth.ts` - Enhanced signature replay protection
@@ -269,7 +286,7 @@ Decisions made during execution that constrain future work:
 - `backend/src/index.ts` - Structured logging (50 → 1 console statements)
 - `web/package.json` - Add react-error-boundary
 - `web/pnpm-lock.yaml` - Lock file update
-- `web/src/app/predict/page.tsx` - PageErrorBoundary integration
+- `web/src/app/predict/page.tsx` - PageErrorBoundary + FirstMatchGuide + OnboardingOverlay integration
 - `web/src/app/battle/page.tsx` - PageErrorBoundary + responsive container
 - `web/src/app/spectate/page.tsx` - Responsive grid and container
 - `web/src/app/draft/page.tsx` - Responsive grid and modal improvements
@@ -286,13 +303,13 @@ Decisions made during execution that constrain future work:
 ## Velocity Metrics
 
 **Phase 1 velocity:** 4.3 min/plan average (6 plans, 26 min total)
-**Phase 2 velocity:** 3.7 min/plan average (4 plans, 15 min total)
+**Phase 2 velocity:** 3.3 min/plan average (5 plans, 17 min total)
 
-**Overall velocity:** 4.1 min/plan average (10 plans, 41 min total)
+**Overall velocity:** 3.9 min/plan average (11 plans, 43 min total)
 
 **Projection:**
-- Phase 2 remaining: 1 plan × 3.7 min = ~4 min
-- Phase 2 total estimate: ~19 min
+- Phase 2 complete: All 5 plans done
+- Next: 01-07 (Final verification checkpoint) or 02-05 (Animation polish)
 
 ---
 
@@ -311,11 +328,11 @@ None currently
 
 ## Next Steps
 
-1. **Immediate:** Execute 02-03-PLAN.md (Keyboard navigation and focus management) or 02-05-PLAN.md (Animation polish)
-2. **This phase:** Complete remaining UX polish plan (02-03 or 02-05)
-3. **Next phase:** Continue with Phase 2 UX improvements
+1. **Immediate:** Execute 02-05-PLAN.md (Animation polish) or 01-07-PLAN.md (Final verification checkpoint)
+2. **This phase:** All UX polish plans complete except 02-05 (Animation polish)
+3. **Next phase:** Phase 3 Launch Prep (needs planning)
 
 ---
 
 *State tracking initialized: 2026-01-21*
-*Last execution: 02-04 (Mobile responsiveness audit and fixes)*
+*Last execution: 02-03 (First match experience optimization)*
