@@ -151,7 +151,7 @@ export function wrapDatabaseError(
   );
 
   // Preserve original stack trace if available
-  if (originalStack && Error.captureStackTrace) {
+  if (originalStack) {
     wrappedError.stack = originalStack;
   }
 
@@ -179,7 +179,7 @@ export function wrapServiceError(error: unknown, service: string): ServiceError 
   );
 
   // Preserve original stack trace if available
-  if (originalStack && Error.captureStackTrace) {
+  if (originalStack) {
     wrappedError.stack = originalStack;
   }
 
