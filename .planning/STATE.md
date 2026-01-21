@@ -1,21 +1,21 @@
 # Sol-Battles Project State
 
-**Last updated:** 2026-01-21T21:45:00Z
+**Last updated:** 2026-01-21T22:50:00Z
 
 ---
 
 ## Current Position
 
-**Phase:** 1 of 4 (Security Hardening)
-**Plan:** 5 of 7 (Silent error handling refactor)
+**Phase:** 2 of 4 (UX Polish)
+**Plan:** 4 of 5 (Mobile responsiveness audit and fixes)
 **Status:** In progress
-**Last activity:** 2026-01-21 - Completed 01-05-PLAN.md
+**Last activity:** 2026-01-21 - Completed 02-04-PLAN.md
 
-**Progress:** █████░░░░░░░░░░░ 43% (6/14 total plans across all phases estimated)
+**Progress:** ████████░░░░░░░░ 64% (9/14 total plans across all phases estimated)
 
 ```
 Phase 1: Security Hardening    [██████░] 6/7 plans complete
-Phase 2: UX Polish             [░░░░░░░] 0/? plans (not planned yet)
+Phase 2: UX Polish             [████░░] 4/5 plans complete
 Phase 3: Launch Prep           [░░░░░░░] 0/? plans (not planned yet)
 Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned yet)
 ```
@@ -24,8 +24,8 @@ Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned ye
 
 ## Session Continuity
 
-**Last session:** 2026-01-21T21:45:00Z
-**Stopped at:** Completed 01-05-PLAN.md (Silent error handling refactor)
+**Last session:** 2026-01-21T22:50:00Z
+**Stopped at:** Completed 02-04-PLAN.md (Mobile responsiveness audit and fixes)
 **Resume file:** None (ready for next plan)
 
 ---
@@ -57,6 +57,15 @@ Decisions made during execution that constrain future work:
 | 01-06 | Automatic sensitive data redaction at logger level | Prevents accidental PII leakage | All logging, security compliance |
 | 01-06 | Service-specific loggers for component isolation | Better filtering in production | Backend architecture |
 | 01-06 | Debug for verbose, info for events, warn for issues, error for failures | Consistent log level semantics | All backend services |
+| 02-01 | Use react-error-boundary library | Mature, well-tested solution for React error boundaries | Frontend error handling |
+| 02-01 | Pattern matching for error translation | Simple, maintainable approach for Solana/wallet errors | All user-facing error messages |
+| 02-01 | Page-level error boundaries | Catch errors without crashing entire app | All frontend pages |
+| 02-02 | 6-state transaction enum (idle/signing/sending/confirming/success/error) | Matches actual Solana transaction lifecycle phases | All transaction feedback UX |
+| 02-02 | Auto-reset success state after 2 seconds | Clean UI without requiring manual dismiss | Transaction completion flow |
+| 02-04 | Use responsive breakpoints sm:|md:|lg: consistently | Tailwind standard approach for responsive design | All frontend pages |
+| 02-04 | min-h-[44px] for all touch targets | Apple HIG minimum touch target size for accessibility | All interactive elements |
+| 02-04 | touch-manipulation on interactive elements | Prevents 300ms tap delay and double-tap zoom on mobile | All buttons and inputs |
+| 02-04 | text-base (16px) minimum for inputs | Prevents iOS auto-zoom when focusing input fields | All form inputs |
 
 ---
 
@@ -94,6 +103,37 @@ Decisions made during execution that constrain future work:
 
 **Concerns:** None
 
+### Phase 2: UX Polish (In Progress)
+
+**Plans completed:** 4/5
+
+| Plan | Status | Duration | Summary |
+|------|--------|----------|---------|
+| 02-01 | ✅ Complete | 4min | Error handling foundation |
+| 02-02 | ✅ Complete | 3min | Loading states and transaction feedback |
+| 02-03 | ⏳ Pending | - | Keyboard navigation and focus management |
+| 02-04 | ✅ Complete | 4min | Mobile responsiveness audit and fixes |
+| 02-05 | ⏳ Pending | - | Animation polish |
+
+**Key accomplishments:**
+- React error boundaries (PageErrorBoundary, WalletErrorBoundary)
+- Wasteland-themed error fallback UI
+- User-friendly Solana error message translation (8+ patterns)
+- Error handling integrated in predict, battle pages
+- WalletBalance modal shows friendly errors
+- Skeleton loading states for predict and battle pages
+- TxProgress component for multi-step transaction feedback
+- useTxProgress hook for transaction state management
+- WalletBalance modal shows transaction progress during operations
+- Mobile-responsive layouts across all game pages
+- 44px minimum touch targets on all interactive elements
+- touch-manipulation to prevent tap delay on mobile
+- No horizontal scrolling at 375px viewport width
+
+**Blockers:** None
+
+**Concerns:** None
+
 ---
 
 ## Subsystem Status
@@ -108,13 +148,16 @@ Decisions made during execution that constrain future work:
 | Balance Management | ✅ Atomic operations ready | 01-04 | verifyAndLockBalance prevents TOCTOU |
 | Database Layer | ✅ Explicit error propagation | 01-05 | Zero silent failures, privacy-safe context |
 | Logging | ✅ Infrastructure complete | 01-06 | Structured logging with auto-redaction, JSON output |
+| Frontend Error Handling | ✅ Foundation ready | 02-01 | Error boundaries and friendly messages |
+| Frontend Loading States | ✅ Complete | 02-02 | Skeleton loading + transaction feedback |
+| Mobile Responsiveness | ✅ Complete | 02-04 | All pages mobile-ready with touch-friendly UI |
 
 ---
 
 ## Technical Inventory
 
 ### Technologies Added This Phase
-- None (using existing stack)
+- react-error-boundary 6.1.0 (Phase 2)
 
 ### Patterns Established
 1. **Error handling via typed AppError subclasses** (01-01)
@@ -157,22 +200,63 @@ Decisions made during execution that constrain future work:
    - Privacy-safe error context (mask emails, IPs, wallets)
    - Distinction: null = "not found" (valid), throw = error (invalid)
 
+9. **Error boundary wrapping for pages** (02-01)
+   - react-error-boundary library with FallbackComponent
+   - Wasteland-themed error UI with recovery buttons
+   - Page-level wrapping prevents full app crashes
+   - Logs errors to console for monitoring
+
+10. **Centralized error message translation** (02-01)
+    - getFriendlyErrorMessage utility function
+    - Pattern matching on error strings
+    - 8+ Solana/wallet error patterns translated
+    - User-friendly, actionable error messages
+
+11. **Next.js App Router loading convention** (02-02)
+    - loading.tsx files for automatic Suspense wrapping
+    - Skeleton layouts match actual page structure
+    - No layout shift when content loads
+
+12. **Transaction progress state machine** (02-02)
+    - useTxProgress hook for state management
+    - 6-state enum: idle -> signing -> sending -> confirming -> success/error
+    - TxProgress component for consistent visual feedback
+    - Auto-reset after 2 seconds on success
+
+13. **Mobile-first responsive design** (02-04)
+    - Responsive breakpoints: sm:|md:|lg: for layouts
+    - 44px minimum touch targets: min-h-[44px]
+    - Touch optimization: touch-manipulation class
+    - iOS zoom prevention: text-base (16px) on inputs
+    - Container patterns: max-w-7xl mx-auto px-4 sm:px-6 lg:px-8
+    - No horizontal scroll: overflow-x-hidden
+
 ---
 
 ## Files Changed This Phase
 
-### Created (9 files)
+### Created (18 files)
 - `backend/src/types/errors.ts` - Error type definitions
 - `backend/src/utils/errors.ts` - Error utility functions
 - `backend/src/types/index.ts` - Types barrel file
 - `backend/src/utils/logger.ts` - Structured logging utility
+- `web/src/components/error-boundaries/PageErrorBoundary.tsx` - Page-level error boundary
+- `web/src/components/error-boundaries/WalletErrorBoundary.tsx` - Wallet-specific error boundary
+- `web/src/lib/error-messages.ts` - Error message translation utility
+- `web/src/app/predict/loading.tsx` - Predict page skeleton loading
+- `web/src/app/battle/loading.tsx` - Battle page skeleton loading
+- `web/src/components/TxProgress.tsx` - Transaction progress indicator
+- `web/src/hooks/useTxProgress.ts` - Transaction progress hook
 - `.planning/phases/01-security-hardening/01-01-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-03-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-04-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-05-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-06-SUMMARY.md`
+- `.planning/phases/02-ux-polish/02-01-SUMMARY.md`
+- `.planning/phases/02-ux-polish/02-02-SUMMARY.md`
+- `.planning/phases/02-ux-polish/02-04-SUMMARY.md`
 
-### Modified (11 files)
+### Modified (25 files)
 - `programs/session_betting/programs/session_betting/src/lib.rs` - Events, pause checks, verified arithmetic
 - `backend/src/utils/replayCache.ts` - Atomic signature caching
 - `backend/src/middleware/auth.ts` - Enhanced signature replay protection
@@ -183,17 +267,32 @@ Decisions made during execution that constrain future work:
 - `backend/src/db/waitlistDatabase.ts` - Explicit error propagation
 - `backend/src/config.ts` - LOG_LEVEL configuration
 - `backend/src/index.ts` - Structured logging (50 → 1 console statements)
+- `web/package.json` - Add react-error-boundary
+- `web/pnpm-lock.yaml` - Lock file update
+- `web/src/app/predict/page.tsx` - PageErrorBoundary integration
+- `web/src/app/battle/page.tsx` - PageErrorBoundary + responsive container
+- `web/src/app/spectate/page.tsx` - Responsive grid and container
+- `web/src/app/draft/page.tsx` - Responsive grid and modal improvements
+- `web/src/components/WalletBalance.tsx` - Friendly errors + TxProgress + mobile optimization
+- `web/src/components/BattleLobby.tsx` - Mobile-friendly layouts and touch targets
+- `web/src/components/stands/BattleCard.tsx` - Touch-friendly buttons
+- `web/src/components/stands/FiltersBar.tsx` - Touch-friendly selects
+- `web/src/components/stands/StandsTabs.tsx` - Touch-friendly tabs
+- `web/src/components/war-party/TierCard.tsx` - Touch-friendly CTAs
 - `.planning/phases/01-security-hardening/01-02-SUMMARY.md`
 
 ---
 
 ## Velocity Metrics
 
-**Current phase velocity:** 4.3 min/plan average (6 plans, 26 min total)
+**Phase 1 velocity:** 4.3 min/plan average (6 plans, 26 min total)
+**Phase 2 velocity:** 3.7 min/plan average (4 plans, 15 min total)
+
+**Overall velocity:** 4.1 min/plan average (10 plans, 41 min total)
 
 **Projection:**
-- Phase 1 remaining: 1 plan × 4.3 min = ~4.3 min
-- Phase 1 total estimate: ~30.3 min
+- Phase 2 remaining: 1 plan × 3.7 min = ~4 min
+- Phase 2 total estimate: ~19 min
 
 ---
 
@@ -212,11 +311,11 @@ None currently
 
 ## Next Steps
 
-1. **Immediate:** Execute 01-07-PLAN.md (Final verification checkpoint)
-2. **This phase:** Complete plan 07 (final checkpoint)
-3. **Next phase:** Plan Phase 2 (UX Polish) after Phase 1 complete
+1. **Immediate:** Execute 02-03-PLAN.md (Keyboard navigation and focus management) or 02-05-PLAN.md (Animation polish)
+2. **This phase:** Complete remaining UX polish plan (02-03 or 02-05)
+3. **Next phase:** Continue with Phase 2 UX improvements
 
 ---
 
 *State tracking initialized: 2026-01-21*
-*Last execution: 01-05 (Silent error handling refactor)*
+*Last execution: 02-04 (Mobile responsiveness audit and fixes)*
