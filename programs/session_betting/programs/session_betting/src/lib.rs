@@ -660,6 +660,9 @@ pub mod session_betting {
     /// Deposit SOL into user's balance account
     /// REQUIRES wallet signature - cannot use session key
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        // SECURITY: Game not paused
+        require!(!ctx.accounts.game_state.is_paused, SessionBettingError::GamePaused);
+
         // SECURITY: Minimum deposit check
         require!(amount >= MIN_BET, SessionBettingError::AmountTooSmall);
 
@@ -1303,6 +1306,12 @@ pub struct RevokeSession<'info> {
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
+    #[account(
+        seeds = [b"game"],
+        bump = game_state.bump
+    )]
+    pub game_state: Account<'info, GameState>,
+
     #[account(
         init_if_needed,
         payer = user,
