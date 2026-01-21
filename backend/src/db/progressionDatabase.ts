@@ -1,4 +1,6 @@
 import { Pool } from 'pg';
+import { createDatabaseError } from '../utils/errors';
+import { DatabaseErrorCode } from '../types/errors';
 
 // ===================
 // PostgreSQL Connection
@@ -148,6 +150,11 @@ async function initializeDatabase(): Promise<void> {
     console.log('[ProgressionDB] Database initialized successfully');
   } catch (error) {
     console.error('[ProgressionDB] Failed to initialize database:', error);
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database initialization failed',
+      { originalError: String(error) }
+    );
   }
 }
 
@@ -381,7 +388,13 @@ function mapRakeRebateRow(row: any): RakeRebate {
 // ===================
 
 export async function getProgression(walletAddress: string): Promise<UserProgressionData | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getProgression' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM user_progression WHERE wallet_address = $1',
@@ -389,15 +402,21 @@ export async function getProgression(walletAddress: string): Promise<UserProgres
     );
     return result.rows.length > 0 ? mapProgressionRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getProgression error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get user progression',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function createProgression(walletAddress: string): Promise<UserProgressionData> {
   if (!pool) {
-    const now = Date.now();
-    return { walletAddress, totalXp: 0, currentLevel: 1, createdAt: now, updatedAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'createProgression' }
+    );
   }
   const now = Date.now();
   try {
@@ -407,20 +426,33 @@ export async function createProgression(walletAddress: string): Promise<UserProg
     );
     return { walletAddress, totalXp: 0, currentLevel: 1, createdAt: now, updatedAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] createProgression error:', error);
-    return { walletAddress, totalXp: 0, currentLevel: 1, createdAt: now, updatedAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to create user progression',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function updateUserProgression(walletAddress: string, totalXp: number, level: number): Promise<void> {
-  if (!pool) return;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateUserProgression' }
+    );
+  }
   try {
     await pool.query(
       'UPDATE user_progression SET total_xp = $1, current_level = $2, updated_at = $3 WHERE wallet_address = $4',
       [totalXp, level, Date.now(), walletAddress]
     );
   } catch (error) {
-    console.error('[ProgressionDB] updateUserProgression error:', error);
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update user progression',
+      { walletAddress, totalXp, level, originalError: String(error) }
+    );
   }
 }
 
@@ -445,7 +477,11 @@ export async function addXpHistoryEntry(
 ): Promise<XpHistoryEntry> {
   const now = Date.now();
   if (!pool) {
-    return { id: 0, walletAddress, xpAmount, source, sourceId, description, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'addXpHistoryEntry' }
+    );
   }
   try {
     const result = await pool.query(
@@ -454,13 +490,22 @@ export async function addXpHistoryEntry(
     );
     return { id: result.rows[0].id, walletAddress, xpAmount, source, sourceId, description, createdAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] addXpHistoryEntry error:', error);
-    return { id: 0, walletAddress, xpAmount, source, sourceId, description, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to add XP history entry',
+      { walletAddress, xpAmount, source, originalError: String(error) }
+    );
   }
 }
 
 export async function getXpHistory(walletAddress: string, limit: number = 50): Promise<XpHistoryEntry[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getXpHistory' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM xp_history WHERE wallet_address = $1 ORDER BY created_at DESC LIMIT $2',
@@ -468,13 +513,22 @@ export async function getXpHistory(walletAddress: string, limit: number = 50): P
     );
     return result.rows.map(mapXpHistoryRow);
   } catch (error) {
-    console.error('[ProgressionDB] getXpHistory error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get XP history',
+      { walletAddress, limit, originalError: String(error) }
+    );
   }
 }
 
 export async function getXpHistoryPaginated(walletAddress: string, limit: number, offset: number): Promise<XpHistoryEntry[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getXpHistoryPaginated' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM xp_history WHERE wallet_address = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
@@ -482,8 +536,11 @@ export async function getXpHistoryPaginated(walletAddress: string, limit: number
     );
     return result.rows.map(mapXpHistoryRow);
   } catch (error) {
-    console.error('[ProgressionDB] getXpHistoryPaginated error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get paginated XP history',
+      { walletAddress, limit, offset, originalError: String(error) }
+    );
   }
 }
 
@@ -494,7 +551,11 @@ export async function getXpHistoryPaginated(walletAddress: string, limit: number
 export async function createPerk(walletAddress: string, perkType: PerkType, unlockLevel: number): Promise<UserPerk> {
   const now = Date.now();
   if (!pool) {
-    return { id: 0, walletAddress, perkType, unlockLevel, isUsed: false, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'createPerk' }
+    );
   }
   try {
     const result = await pool.query(
@@ -503,13 +564,22 @@ export async function createPerk(walletAddress: string, perkType: PerkType, unlo
     );
     return { id: result.rows[0].id, walletAddress, perkType, unlockLevel, isUsed: false, createdAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] createPerk error:', error);
-    return { id: 0, walletAddress, perkType, unlockLevel, isUsed: false, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to create perk',
+      { walletAddress, perkType, unlockLevel, originalError: String(error) }
+    );
   }
 }
 
 export async function getPerksForWallet(walletAddress: string): Promise<UserPerk[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getPerksForWallet' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM user_perks WHERE wallet_address = $1 ORDER BY created_at DESC',
@@ -517,24 +587,42 @@ export async function getPerksForWallet(walletAddress: string): Promise<UserPerk
     );
     return result.rows.map(mapPerkRow);
   } catch (error) {
-    console.error('[ProgressionDB] getPerksForWallet error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get perks for wallet',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function getPerk(id: number): Promise<UserPerk | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getPerk' }
+    );
+  }
   try {
     const result = await pool.query('SELECT * FROM user_perks WHERE id = $1', [id]);
     return result.rows.length > 0 ? mapPerkRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getPerk error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get perk',
+      { id, originalError: String(error) }
+    );
   }
 }
 
 export async function getAvailablePerks(walletAddress: string): Promise<UserPerk[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getAvailablePerks' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM user_perks WHERE wallet_address = $1 AND is_used = 0 ORDER BY created_at',
@@ -542,13 +630,22 @@ export async function getAvailablePerks(walletAddress: string): Promise<UserPerk
     );
     return result.rows.map(mapPerkRow);
   } catch (error) {
-    console.error('[ProgressionDB] getAvailablePerks error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get available perks',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function getActivePerk(walletAddress: string): Promise<UserPerk | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getActivePerk' }
+    );
+  }
   const now = Date.now();
   try {
     // First expire old perks
@@ -563,13 +660,22 @@ export async function getActivePerk(walletAddress: string): Promise<UserPerk | n
     );
     return result.rows.length > 0 ? mapPerkRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getActivePerk error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get active perk',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function activatePerk(perkId: number, durationMs: number | null): Promise<UserPerk | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'activatePerk' }
+    );
+  }
   const now = Date.now();
   const expiresAt = durationMs ? now + durationMs : null;
   try {
@@ -579,8 +685,11 @@ export async function activatePerk(perkId: number, durationMs: number | null): P
     );
     return getPerk(perkId);
   } catch (error) {
-    console.error('[ProgressionDB] activatePerk error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to activate perk',
+      { perkId, durationMs, originalError: String(error) }
+    );
   }
 }
 
@@ -594,7 +703,13 @@ export async function createCosmetic(
   cosmeticId: string,
   unlockLevel: number
 ): Promise<UserCosmetic | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'createCosmetic' }
+    );
+  }
   const now = Date.now();
   try {
     const result = await pool.query(
@@ -604,13 +719,22 @@ export async function createCosmetic(
     if (result.rows.length === 0) return null; // Already exists
     return { id: result.rows[0].id, walletAddress, cosmeticType, cosmeticId, unlockLevel, createdAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] createCosmetic error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to create cosmetic',
+      { walletAddress, cosmeticType, cosmeticId, originalError: String(error) }
+    );
   }
 }
 
 export async function getCosmeticsForWallet(walletAddress: string): Promise<UserCosmetic[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getCosmeticsForWallet' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM user_cosmetics WHERE wallet_address = $1 ORDER BY created_at',
@@ -618,13 +742,22 @@ export async function getCosmeticsForWallet(walletAddress: string): Promise<User
     );
     return result.rows.map(mapCosmeticRow);
   } catch (error) {
-    console.error('[ProgressionDB] getCosmeticsForWallet error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get cosmetics for wallet',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function getCosmeticsByType(walletAddress: string, cosmeticType: CosmeticType): Promise<UserCosmetic[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getCosmeticsByType' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM user_cosmetics WHERE wallet_address = $1 AND cosmetic_type = $2 ORDER BY unlock_level',
@@ -632,13 +765,22 @@ export async function getCosmeticsByType(walletAddress: string, cosmeticType: Co
     );
     return result.rows.map(mapCosmeticRow);
   } catch (error) {
-    console.error('[ProgressionDB] getCosmeticsByType error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get cosmetics by type',
+      { walletAddress, cosmeticType, originalError: String(error) }
+    );
   }
 }
 
 export async function userHasCosmetic(walletAddress: string, cosmeticType: CosmeticType, cosmeticId: string): Promise<boolean> {
-  if (!pool) return false;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'userHasCosmetic' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT 1 FROM user_cosmetics WHERE wallet_address = $1 AND cosmetic_type = $2 AND cosmetic_id = $3',
@@ -646,8 +788,11 @@ export async function userHasCosmetic(walletAddress: string, cosmeticType: Cosme
     );
     return result.rows.length > 0;
   } catch (error) {
-    console.error('[ProgressionDB] userHasCosmetic error:', error);
-    return false;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to check if user has cosmetic',
+      { walletAddress, cosmeticType, cosmeticId, originalError: String(error) }
+    );
   }
 }
 
@@ -657,7 +802,11 @@ export async function userHasCosmetic(walletAddress: string, cosmeticType: Cosme
 
 export async function getOrCreateFreeBetBalance(walletAddress: string): Promise<FreeBetBalance> {
   if (!pool) {
-    return { walletAddress, balance: 0, lifetimeEarned: 0, lifetimeUsed: 0, updatedAt: Date.now() };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getOrCreateFreeBetBalance' }
+    );
   }
   try {
     let result = await pool.query('SELECT * FROM free_bet_credits WHERE wallet_address = $1', [walletAddress]);
@@ -671,8 +820,11 @@ export async function getOrCreateFreeBetBalance(walletAddress: string): Promise<
     }
     return mapFreeBetBalanceRow(result.rows[0]);
   } catch (error) {
-    console.error('[ProgressionDB] getOrCreateFreeBetBalance error:', error);
-    return { walletAddress, balance: 0, lifetimeEarned: 0, lifetimeUsed: 0, updatedAt: Date.now() };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get or create free bet balance',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
@@ -682,7 +834,11 @@ export async function addFreeBetCredit(
   description?: string
 ): Promise<FreeBetBalance> {
   if (!pool) {
-    return { walletAddress, balance: count, lifetimeEarned: count, lifetimeUsed: 0, updatedAt: Date.now() };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'addFreeBetCredit' }
+    );
   }
   const now = Date.now();
   try {
@@ -700,8 +856,11 @@ export async function addFreeBetCredit(
     );
     return getOrCreateFreeBetBalance(walletAddress);
   } catch (error) {
-    console.error('[ProgressionDB] addFreeBetCredit error:', error);
-    return { walletAddress, balance: 0, lifetimeEarned: 0, lifetimeUsed: 0, updatedAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to add free bet credit',
+      { walletAddress, count, originalError: String(error) }
+    );
   }
 }
 
@@ -755,7 +914,13 @@ export async function useFreeBetCredit(
 }
 
 export async function getFreeBetHistory(walletAddress: string, limit: number = 50): Promise<FreeBetTransaction[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetHistory' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM free_bet_history WHERE wallet_address = $1 ORDER BY created_at DESC LIMIT $2',
@@ -763,8 +928,11 @@ export async function getFreeBetHistory(walletAddress: string, limit: number = 5
     );
     return result.rows.map(mapFreeBetHistoryRow);
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetHistory error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet history',
+      { walletAddress, limit, originalError: String(error) }
+    );
   }
 }
 
@@ -783,13 +951,22 @@ function getYesterdayDateString(): string {
 }
 
 export async function getStreak(walletAddress: string): Promise<UserStreak | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getStreak' }
+    );
+  }
   try {
     const result = await pool.query('SELECT * FROM user_streaks WHERE wallet_address = $1', [walletAddress]);
     return result.rows.length > 0 ? mapStreakRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getStreak error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get streak',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
@@ -801,7 +978,11 @@ export async function getOrCreateStreak(walletAddress: string): Promise<UserStre
 
 export async function recordActivity(walletAddress: string): Promise<UserStreak> {
   if (!pool) {
-    return { walletAddress, currentStreak: 1, longestStreak: 1, lastActivityDate: getTodayDateString(), updatedAt: Date.now() };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'recordActivity' }
+    );
   }
   const now = Date.now();
   const today = getTodayDateString();
@@ -840,8 +1021,11 @@ export async function recordActivity(walletAddress: string): Promise<UserStreak>
 
     return { walletAddress, currentStreak: newStreak, longestStreak: newLongest, lastActivityDate: today, updatedAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] recordActivity error:', error);
-    return { walletAddress, currentStreak: 1, longestStreak: 1, lastActivityDate: today, updatedAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to record activity',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
@@ -872,7 +1056,11 @@ export async function createFreeBetPosition(
 ): Promise<FreeBetPosition> {
   const now = Date.now();
   if (!pool) {
-    return { id: 0, walletAddress, roundId, side, amountLamports, status: 'pending', createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'createFreeBetPosition' }
+    );
   }
   try {
     const result = await pool.query(
@@ -881,24 +1069,42 @@ export async function createFreeBetPosition(
     );
     return { id: result.rows[0].id, walletAddress, roundId, side, amountLamports, status: 'pending', createdAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] createFreeBetPosition error:', error);
-    return { id: 0, walletAddress, roundId, side, amountLamports, status: 'pending', createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to create free bet position',
+      { walletAddress, roundId, side, originalError: String(error) }
+    );
   }
 }
 
 export async function getFreeBetPosition(id: number): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetPosition' }
+    );
+  }
   try {
     const result = await pool.query('SELECT * FROM free_bet_positions WHERE id = $1', [id]);
     return result.rows.length > 0 ? mapFreeBetPositionRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetPosition error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet position',
+      { id, originalError: String(error) }
+    );
   }
 }
 
 export async function getFreeBetPositionsForWallet(walletAddress: string, limit: number = 50): Promise<FreeBetPosition[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetPositionsForWallet' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM free_bet_positions WHERE wallet_address = $1 ORDER BY created_at DESC LIMIT $2',
@@ -906,13 +1112,22 @@ export async function getFreeBetPositionsForWallet(walletAddress: string, limit:
     );
     return result.rows.map(mapFreeBetPositionRow);
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetPositionsForWallet error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet positions for wallet',
+      { walletAddress, limit, originalError: String(error) }
+    );
   }
 }
 
 export async function getFreeBetPositionsByStatus(status: FreeBetPositionStatus): Promise<FreeBetPosition[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetPositionsByStatus' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM free_bet_positions WHERE status = $1 ORDER BY created_at ASC',
@@ -920,8 +1135,11 @@ export async function getFreeBetPositionsByStatus(status: FreeBetPositionStatus)
     );
     return result.rows.map(mapFreeBetPositionRow);
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetPositionsByStatus error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet positions by status',
+      { status, originalError: String(error) }
+    );
   }
 }
 
@@ -929,7 +1147,13 @@ export async function getFreeBetPositionsByStatus(status: FreeBetPositionStatus)
 export const getFreeBetPositionsByStatusType = getFreeBetPositionsByStatus;
 
 export async function getFreeBetPositionsByWallet(walletAddress: string): Promise<FreeBetPosition[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetPositionsByWallet' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM free_bet_positions WHERE wallet_address = $1 ORDER BY created_at DESC',
@@ -937,13 +1161,22 @@ export async function getFreeBetPositionsByWallet(walletAddress: string): Promis
     );
     return result.rows.map(mapFreeBetPositionRow);
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetPositionsByWallet error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet positions by wallet',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function getFreeBetPositionForWalletAndRound(walletAddress: string, roundId: number): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getFreeBetPositionForWalletAndRound' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM free_bet_positions WHERE wallet_address = $1 AND round_id = $2',
@@ -951,13 +1184,22 @@ export async function getFreeBetPositionForWalletAndRound(walletAddress: string,
     );
     return result.rows.length > 0 ? mapFreeBetPositionRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getFreeBetPositionForWalletAndRound error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get free bet position for wallet and round',
+      { walletAddress, roundId, originalError: String(error) }
+    );
   }
 }
 
 export async function updateFreeBetPositionToPlaced(id: number, txSignature: string): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionToPlaced' }
+    );
+  }
   try {
     await pool.query(
       "UPDATE free_bet_positions SET status = 'placed', tx_signature_bet = $1 WHERE id = $2",
@@ -965,8 +1207,11 @@ export async function updateFreeBetPositionToPlaced(id: number, txSignature: str
     );
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionToPlaced error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position to placed',
+      { id, txSignature, originalError: String(error) }
+    );
   }
 }
 
@@ -976,7 +1221,13 @@ export async function updateFreeBetPositionToClaimed(
   payoutLamports: number,
   txSignature: string
 ): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionToClaimed' }
+    );
+  }
   try {
     await pool.query(
       'UPDATE free_bet_positions SET status = $1, payout_lamports = $2, tx_signature_claim = $3 WHERE id = $4',
@@ -984,13 +1235,22 @@ export async function updateFreeBetPositionToClaimed(
     );
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionToClaimed error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position to claimed',
+      { id, status, payoutLamports, originalError: String(error) }
+    );
   }
 }
 
 export async function updateFreeBetPositionToSettled(id: number, txSignature: string): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionToSettled' }
+    );
+  }
   try {
     await pool.query(
       "UPDATE free_bet_positions SET status = 'settled', tx_signature_settlement = $1 WHERE id = $2",
@@ -998,19 +1258,31 @@ export async function updateFreeBetPositionToSettled(id: number, txSignature: st
     );
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionToSettled error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position to settled',
+      { id, txSignature, originalError: String(error) }
+    );
   }
 }
 
 export async function updateFreeBetPositionStatusOnly(id: number, status: FreeBetPositionStatus): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionStatusOnly' }
+    );
+  }
   try {
     await pool.query('UPDATE free_bet_positions SET status = $1 WHERE id = $2', [status, id]);
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionStatusOnly error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position status',
+      { id, status, originalError: String(error) }
+    );
   }
 }
 
@@ -1020,7 +1292,13 @@ export async function updateFreeBetPositionStatus(
   txSignatureBet?: string,
   txSignatureClaim?: string
 ): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionStatus' }
+    );
+  }
   try {
     await pool.query(
       'UPDATE free_bet_positions SET status = $1, tx_signature_bet = COALESCE($2, tx_signature_bet), tx_signature_claim = COALESCE($3, tx_signature_claim) WHERE id = $4',
@@ -1028,8 +1306,11 @@ export async function updateFreeBetPositionStatus(
     );
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionStatus error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position status with signatures',
+      { id, status, originalError: String(error) }
+    );
   }
 }
 
@@ -1039,7 +1320,13 @@ export async function updateFreeBetPositionPayout(
   status: FreeBetPositionStatus,
   txSignatureSettlement?: string
 ): Promise<FreeBetPosition | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateFreeBetPositionPayout' }
+    );
+  }
   try {
     await pool.query(
       'UPDATE free_bet_positions SET payout_lamports = $1, status = $2, tx_signature_settlement = $3 WHERE id = $4',
@@ -1047,8 +1334,11 @@ export async function updateFreeBetPositionPayout(
     );
     return getFreeBetPosition(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateFreeBetPositionPayout error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update free bet position payout',
+      { id, payoutLamports, status, originalError: String(error) }
+    );
   }
 }
 
@@ -1067,7 +1357,11 @@ export async function createRakeRebate(
 ): Promise<RakeRebate> {
   const now = Date.now();
   if (!pool) {
-    return { id: 0, walletAddress, roundId, grossWinningsLamports, effectiveFeeBps, perkType, rebateLamports, status: 'pending', claimTxSignature, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'createRakeRebate' }
+    );
   }
   try {
     const result = await pool.query(
@@ -1076,24 +1370,42 @@ export async function createRakeRebate(
     );
     return { id: result.rows[0].id, walletAddress, roundId, grossWinningsLamports, effectiveFeeBps, perkType, rebateLamports, status: 'pending', claimTxSignature, createdAt: now };
   } catch (error) {
-    console.error('[ProgressionDB] createRakeRebate error:', error);
-    return { id: 0, walletAddress, roundId, grossWinningsLamports, effectiveFeeBps, perkType, rebateLamports, status: 'pending', claimTxSignature, createdAt: now };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to create rake rebate',
+      { walletAddress, roundId, rebateLamports, originalError: String(error) }
+    );
   }
 }
 
 export async function getRakeRebate(id: number): Promise<RakeRebate | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getRakeRebate' }
+    );
+  }
   try {
     const result = await pool.query('SELECT * FROM rake_rebates WHERE id = $1', [id]);
     return result.rows.length > 0 ? mapRakeRebateRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getRakeRebate error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get rake rebate',
+      { id, originalError: String(error) }
+    );
   }
 }
 
 export async function getRakeRebatesForWallet(walletAddress: string, limit: number = 50): Promise<RakeRebate[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getRakeRebatesForWallet' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM rake_rebates WHERE wallet_address = $1 ORDER BY created_at DESC LIMIT $2',
@@ -1101,13 +1413,22 @@ export async function getRakeRebatesForWallet(walletAddress: string, limit: numb
     );
     return result.rows.map(mapRakeRebateRow);
   } catch (error) {
-    console.error('[ProgressionDB] getRakeRebatesForWallet error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get rake rebates for wallet',
+      { walletAddress, limit, originalError: String(error) }
+    );
   }
 }
 
 export async function getRakeRebatesByStatusType(status: RakeRebateStatus): Promise<RakeRebate[]> {
-  if (!pool) return [];
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getRakeRebatesByStatusType' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM rake_rebates WHERE status = $1 ORDER BY created_at ASC',
@@ -1115,13 +1436,22 @@ export async function getRakeRebatesByStatusType(status: RakeRebateStatus): Prom
     );
     return result.rows.map(mapRakeRebateRow);
   } catch (error) {
-    console.error('[ProgressionDB] getRakeRebatesByStatusType error:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get rake rebates by status',
+      { status, originalError: String(error) }
+    );
   }
 }
 
 export async function getRakeRebateForWalletAndRound(walletAddress: string, roundId: number): Promise<RakeRebate | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getRakeRebateForWalletAndRound' }
+    );
+  }
   try {
     const result = await pool.query(
       'SELECT * FROM rake_rebates WHERE wallet_address = $1 AND round_id = $2',
@@ -1129,24 +1459,42 @@ export async function getRakeRebateForWalletAndRound(walletAddress: string, roun
     );
     return result.rows.length > 0 ? mapRakeRebateRow(result.rows[0]) : null;
   } catch (error) {
-    console.error('[ProgressionDB] getRakeRebateForWalletAndRound error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get rake rebate for wallet and round',
+      { walletAddress, roundId, originalError: String(error) }
+    );
   }
 }
 
 export async function updateRakeRebateStatusOnly(id: number, status: RakeRebateStatus): Promise<RakeRebate | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateRakeRebateStatusOnly' }
+    );
+  }
   try {
     await pool.query('UPDATE rake_rebates SET status = $1 WHERE id = $2', [status, id]);
     return getRakeRebate(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateRakeRebateStatusOnly error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update rake rebate status',
+      { id, status, originalError: String(error) }
+    );
   }
 }
 
 export async function updateRakeRebateToSent(id: number, txSignature: string): Promise<RakeRebate | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'updateRakeRebateToSent' }
+    );
+  }
   try {
     await pool.query(
       "UPDATE rake_rebates SET status = 'sent', rebate_tx_signature = $1 WHERE id = $2",
@@ -1154,8 +1502,11 @@ export async function updateRakeRebateToSent(id: number, txSignature: string): P
     );
     return getRakeRebate(id);
   } catch (error) {
-    console.error('[ProgressionDB] updateRakeRebateToSent error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to update rake rebate to sent',
+      { id, txSignature, originalError: String(error) }
+    );
   }
 }
 
@@ -1168,7 +1519,11 @@ export interface RakeRebateSummary {
 
 export async function getRakeRebateSummary(walletAddress: string): Promise<RakeRebateSummary> {
   if (!pool) {
-    return { totalRebates: 0, totalRebateLamports: 0, sentRebateLamports: 0, pendingRebateLamports: 0 };
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getRakeRebateSummary' }
+    );
   }
   try {
     const result = await pool.query(
@@ -1188,8 +1543,11 @@ export async function getRakeRebateSummary(walletAddress: string): Promise<RakeR
       pendingRebateLamports: parseInt(row.pending_rebate_lamports) || 0,
     };
   } catch (error) {
-    console.error('[ProgressionDB] getRakeRebateSummary error:', error);
-    return { totalRebates: 0, totalRebateLamports: 0, sentRebateLamports: 0, pendingRebateLamports: 0 };
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get rake rebate summary',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
