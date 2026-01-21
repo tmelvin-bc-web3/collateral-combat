@@ -1,20 +1,20 @@
 # Sol-Battles Project State
 
-**Last updated:** 2026-01-21T21:23:23Z
+**Last updated:** 2026-01-21T21:30:14Z
 
 ---
 
 ## Current Position
 
 **Phase:** 1 of 4 (Security Hardening)
-**Plan:** 2 of 7 (Smart contract security)
+**Plan:** 3 of 7 (Signature replay protection)
 **Status:** In progress
-**Last activity:** 2026-01-21 - Completed 01-02-PLAN.md
+**Last activity:** 2026-01-21 - Completed 01-03-PLAN.md
 
-**Progress:** ██░░░░░░░░░░░░░░ 14% (2/14 total plans across all phases estimated)
+**Progress:** ███░░░░░░░░░░░░░ 21% (3/14 total plans across all phases estimated)
 
 ```
-Phase 1: Security Hardening    [██░░░░░] 2/7 plans complete
+Phase 1: Security Hardening    [███░░░░] 3/7 plans complete
 Phase 2: UX Polish             [░░░░░░░] 0/? plans (not planned yet)
 Phase 3: Launch Prep           [░░░░░░░] 0/? plans (not planned yet)
 Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned yet)
@@ -24,8 +24,8 @@ Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned ye
 
 ## Session Continuity
 
-**Last session:** 2026-01-21T21:23:23Z
-**Stopped at:** Completed 01-02-PLAN.md (Smart contract security)
+**Last session:** 2026-01-21T21:30:14Z
+**Stopped at:** Completed 01-03-PLAN.md (Signature replay protection)
 **Resume file:** None (ready for next plan)
 
 ---
@@ -42,6 +42,10 @@ Decisions made during execution that constrain future work:
 | 01-02 | Deposit blocks when paused | User protection during emergency | Frontend UX, user flow |
 | 01-02 | Withdrawals allowed when paused | User safety - funds always accessible | Emergency procedures |
 | 01-02 | All arithmetic uses checked_* functions | Prevent overflow/underflow in production | Smart contract safety |
+| 01-03 | Atomic Redis operations with SET NX EX | Eliminates TOCTOU race in signature replay | Auth security, Redis usage |
+| 01-03 | Synchronous lockSet for memory fallback | Atomic check-and-set without Redis | Auth middleware, fallback strategy |
+| 01-03 | Cache size limit with eviction | Prevents memory exhaustion DoS | All cache implementations |
+| 01-03 | Signature-based cache keys | Each signature unique per signing | Auth key design patterns |
 
 ---
 
@@ -49,13 +53,13 @@ Decisions made during execution that constrain future work:
 
 ### Phase 1: Security Hardening (In Progress)
 
-**Plans completed:** 2/7
+**Plans completed:** 3/7
 
 | Plan | Status | Duration | Summary |
 |------|--------|----------|---------|
 | 01-01 | ✅ Complete | 3min | Error handling foundation |
 | 01-02 | ✅ Complete | 3min | Smart contract audit trail and arithmetic safety |
-| 01-03 | ⏳ Pending | - | Signature replay protection |
+| 01-03 | ✅ Complete | 3min | Atomic signature replay protection |
 | 01-04 | ⏳ Pending | - | Atomic PDA balance verification |
 | 01-05 | ⏳ Pending | - | Silent error handling refactor |
 | 01-06 | ⏳ Pending | - | Structured logging infrastructure |
@@ -66,6 +70,8 @@ Decisions made during execution that constrain future work:
 - 6 audit trail events for compliance
 - Emergency pause with proper checks
 - Verified arithmetic safety (26 checked operations)
+- Atomic signature replay protection (TOCTOU race eliminated)
+- Cache size limits with DDoS protection
 
 **Blockers:** None
 
@@ -81,7 +87,7 @@ Decisions made during execution that constrain future work:
 | Smart Contract Events | ✅ Audit trail complete | 01-02 | 6 events covering all state changes |
 | Smart Contract Safety | ✅ Arithmetic verified | 01-02 | checked_* throughout, overflow-checks enabled |
 | Emergency Controls | ✅ Pause implemented | 01-02 | Deposits block, withdrawals work |
-| Backend Auth | ⏳ Pending | - | Signature replay protection (01-03) |
+| Backend Auth | ✅ Replay protection complete | 01-03 | Atomic signature caching, no race conditions |
 | Balance Management | ⏳ Pending | - | Atomic PDA verification (01-04) |
 | Logging | ⏳ Pending | - | Structured logging (01-06) |
 
@@ -111,28 +117,41 @@ Decisions made during execution that constrain future work:
    - .ok_or(SessionBettingError::MathOverflow)?
    - overflow-checks = true in release profile
 
+5. **Atomic cache operations** (01-03)
+   - Redis: SET with NX and EX options (single command)
+   - Memory: lockSet for synchronous check-and-set
+   - Cache size limits with LRU-ish eviction
+
+6. **Security event logging** (01-03)
+   - Structured JSON format with level, type, event, context
+   - Privacy-aware (wallet truncation)
+   - Foundation for Plan 01-06 logging infrastructure
+
 ---
 
 ## Files Changed This Phase
 
-### Created (4 files)
+### Created (5 files)
 - `backend/src/types/errors.ts` - Error type definitions
 - `backend/src/utils/errors.ts` - Error utility functions
 - `backend/src/types/index.ts` - Types barrel file
 - `.planning/phases/01-security-hardening/01-01-SUMMARY.md`
+- `.planning/phases/01-security-hardening/01-03-SUMMARY.md`
 
-### Modified (2 files)
+### Modified (4 files)
 - `programs/session_betting/programs/session_betting/src/lib.rs` - Events, pause checks, verified arithmetic
+- `backend/src/utils/replayCache.ts` - Atomic signature caching
+- `backend/src/middleware/auth.ts` - Enhanced signature replay protection
 - `.planning/phases/01-security-hardening/01-02-SUMMARY.md`
 
 ---
 
 ## Velocity Metrics
 
-**Current phase velocity:** 3 min/plan average (2 plans, 6 min total)
+**Current phase velocity:** 3 min/plan average (3 plans, 9 min total)
 
 **Projection:**
-- Phase 1 remaining: 5 plans × 3 min = ~15 min
+- Phase 1 remaining: 4 plans × 3 min = ~12 min
 - Phase 1 total estimate: ~21 min
 
 ---
@@ -152,11 +171,11 @@ None currently
 
 ## Next Steps
 
-1. **Immediate:** Execute 01-03-PLAN.md (Signature replay protection)
-2. **This phase:** Complete plans 03-07
+1. **Immediate:** Execute 01-04-PLAN.md (Atomic PDA balance verification)
+2. **This phase:** Complete plans 04-07
 3. **Next phase:** Plan Phase 2 (UX Polish) after Phase 1 complete
 
 ---
 
 *State tracking initialized: 2026-01-21*
-*Last execution: 01-02 (Smart contract security hardening)*
+*Last execution: 01-03 (Signature replay protection)*
