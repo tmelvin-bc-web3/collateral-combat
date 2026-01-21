@@ -1,20 +1,20 @@
 # Sol-Battles Project State
 
-**Last updated:** 2026-01-21T21:40:28Z
+**Last updated:** 2026-01-21T21:45:00Z
 
 ---
 
 ## Current Position
 
 **Phase:** 1 of 4 (Security Hardening)
-**Plan:** 6 of 7 (Structured logging infrastructure)
+**Plan:** 5 of 7 (Silent error handling refactor)
 **Status:** In progress
-**Last activity:** 2026-01-21 - Completed 01-06-PLAN.md
+**Last activity:** 2026-01-21 - Completed 01-05-PLAN.md
 
-**Progress:** █████░░░░░░░░░░░ 36% (5/14 total plans across all phases estimated)
+**Progress:** █████░░░░░░░░░░░ 43% (6/14 total plans across all phases estimated)
 
 ```
-Phase 1: Security Hardening    [█████░░] 5/7 plans complete
+Phase 1: Security Hardening    [██████░] 6/7 plans complete
 Phase 2: UX Polish             [░░░░░░░] 0/? plans (not planned yet)
 Phase 3: Launch Prep           [░░░░░░░] 0/? plans (not planned yet)
 Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned yet)
@@ -24,8 +24,8 @@ Phase 4: Monitoring & Ops      [░░░░░░░] 0/? plans (not planned ye
 
 ## Session Continuity
 
-**Last session:** 2026-01-21T21:40:28Z
-**Stopped at:** Completed 01-06-PLAN.md (Structured logging infrastructure)
+**Last session:** 2026-01-21T21:45:00Z
+**Stopped at:** Completed 01-05-PLAN.md (Silent error handling refactor)
 **Resume file:** None (ready for next plan)
 
 ---
@@ -50,6 +50,9 @@ Decisions made during execution that constrain future work:
 | 01-04 | canPlaceWager for UI display only | Non-authoritative preview | Frontend balance checks |
 | 01-04 | 1-minute timeout for pending transactions | Stale transaction cleanup | Transaction lifecycle |
 | 01-04 | releaseLockedBalance throws instead of null | Critical errors require attention | Error handling patterns |
+| 01-05 | Throw on !pool instead of returning null/[] | Fail fast on misconfiguration | All database operations |
+| 01-05 | Include privacy-safe context in errors | Balance debugging with privacy | Error logging, monitoring |
+| 01-05 | Distinguish 'not found' (null) from errors (throw) | Clearer semantics for callers | All database query patterns |
 | 01-06 | Structured context objects over string concatenation | Machine parsability for log aggregation | All logging, monitoring |
 | 01-06 | Automatic sensitive data redaction at logger level | Prevents accidental PII leakage | All logging, security compliance |
 | 01-06 | Service-specific loggers for component isolation | Better filtering in production | Backend architecture |
@@ -61,7 +64,7 @@ Decisions made during execution that constrain future work:
 
 ### Phase 1: Security Hardening (In Progress)
 
-**Plans completed:** 5/7
+**Plans completed:** 6/7
 
 | Plan | Status | Duration | Summary |
 |------|--------|----------|---------|
@@ -69,7 +72,7 @@ Decisions made during execution that constrain future work:
 | 01-02 | ✅ Complete | 3min | Smart contract audit trail and arithmetic safety |
 | 01-03 | ✅ Complete | 3min | Atomic signature replay protection |
 | 01-04 | ✅ Complete | 5min | Atomic PDA balance verification |
-| 01-05 | ⏳ Pending | - | Silent error handling refactor |
+| 01-05 | ✅ Complete | 8min | Silent error handling refactor |
 | 01-06 | ✅ Complete | 4min | Structured logging infrastructure |
 | 01-07 | ⏳ Pending | - | Final verification checkpoint |
 
@@ -82,6 +85,8 @@ Decisions made during execution that constrain future work:
 - Cache size limits with DDoS protection
 - Atomic balance verification (check-and-lock in single operation)
 - Transaction state tracking with timeout handling
+- Zero silent error handling in database layer (91+ instances fixed)
+- Explicit error propagation with privacy-safe context
 - Structured logging with automatic sensitive data redaction
 - 98% reduction in raw console statements (50 → 1 in index.ts)
 
@@ -101,6 +106,7 @@ Decisions made during execution that constrain future work:
 | Emergency Controls | ✅ Pause implemented | 01-02 | Deposits block, withdrawals work |
 | Backend Auth | ✅ Replay protection complete | 01-03 | Atomic signature caching, no race conditions |
 | Balance Management | ✅ Atomic operations ready | 01-04 | verifyAndLockBalance prevents TOCTOU |
+| Database Layer | ✅ Explicit error propagation | 01-05 | Zero silent failures, privacy-safe context |
 | Logging | ✅ Infrastructure complete | 01-06 | Structured logging with auto-redaction, JSON output |
 
 ---
@@ -145,11 +151,17 @@ Decisions made during execution that constrain future work:
    - Timeout handling for stale transactions (1 minute)
    - Error-first design with typed BalanceError/DatabaseError
 
+8. **Explicit error propagation in database layer** (01-05)
+   - All database operations throw on error, never silently return null/[]
+   - Connection validation throws immediately (fail fast)
+   - Privacy-safe error context (mask emails, IPs, wallets)
+   - Distinction: null = "not found" (valid), throw = error (invalid)
+
 ---
 
 ## Files Changed This Phase
 
-### Created (8 files)
+### Created (9 files)
 - `backend/src/types/errors.ts` - Error type definitions
 - `backend/src/utils/errors.ts` - Error utility functions
 - `backend/src/types/index.ts` - Types barrel file
@@ -157,14 +169,18 @@ Decisions made during execution that constrain future work:
 - `.planning/phases/01-security-hardening/01-01-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-03-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-04-SUMMARY.md`
+- `.planning/phases/01-security-hardening/01-05-SUMMARY.md`
 - `.planning/phases/01-security-hardening/01-06-SUMMARY.md`
 
-### Modified (8 files)
+### Modified (11 files)
 - `programs/session_betting/programs/session_betting/src/lib.rs` - Events, pause checks, verified arithmetic
 - `backend/src/utils/replayCache.ts` - Atomic signature caching
 - `backend/src/middleware/auth.ts` - Enhanced signature replay protection
 - `backend/src/services/balanceService.ts` - Atomic balance operations
 - `backend/src/db/balanceDatabase.ts` - Transaction state tracking
+- `backend/src/db/progressionDatabase.ts` - Explicit error propagation (30+ functions)
+- `backend/src/db/database.ts` - Explicit error propagation (profiles)
+- `backend/src/db/waitlistDatabase.ts` - Explicit error propagation
 - `backend/src/config.ts` - LOG_LEVEL configuration
 - `backend/src/index.ts` - Structured logging (50 → 1 console statements)
 - `.planning/phases/01-security-hardening/01-02-SUMMARY.md`
@@ -173,11 +189,11 @@ Decisions made during execution that constrain future work:
 
 ## Velocity Metrics
 
-**Current phase velocity:** 3.6 min/plan average (5 plans, 18 min total)
+**Current phase velocity:** 4.3 min/plan average (6 plans, 26 min total)
 
 **Projection:**
-- Phase 1 remaining: 2 plans × 3.6 min = ~7.2 min
-- Phase 1 total estimate: ~25.2 min
+- Phase 1 remaining: 1 plan × 4.3 min = ~4.3 min
+- Phase 1 total estimate: ~30.3 min
 
 ---
 
@@ -196,11 +212,11 @@ None currently
 
 ## Next Steps
 
-1. **Immediate:** Execute 01-05-PLAN.md (Silent error handling refactor)
-2. **This phase:** Complete plans 05, 07 (skipped 06 - already done)
+1. **Immediate:** Execute 01-07-PLAN.md (Final verification checkpoint)
+2. **This phase:** Complete plan 07 (final checkpoint)
 3. **Next phase:** Plan Phase 2 (UX Polish) after Phase 1 complete
 
 ---
 
 *State tracking initialized: 2026-01-21*
-*Last execution: 01-04 (Atomic PDA balance verification)*
+*Last execution: 01-05 (Silent error handling refactor)*
