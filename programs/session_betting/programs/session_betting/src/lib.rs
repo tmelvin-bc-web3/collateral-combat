@@ -976,11 +976,7 @@ fn calculate_winnings(
     down_pool: u64,
 ) -> Result<u64> {
     // Check if user won
-    let user_won = match (bet_side, winner) {
-        (BetSide::Up, WinnerSide::Up) => true,
-        (BetSide::Down, WinnerSide::Down) => true,
-        _ => false,
-    };
+    let user_won = matches!((bet_side, winner), (BetSide::Up, WinnerSide::Up) | (BetSide::Down, WinnerSide::Down));
 
     if !user_won {
         return Ok(0);
