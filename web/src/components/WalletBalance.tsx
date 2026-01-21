@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
+import { useTxProgress } from '@/hooks/useTxProgress';
+import { TxProgress } from '@/components/TxProgress';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +47,9 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [txMessage, setTxMessage] = useState('');
 
+  // Transaction progress tracking for multi-step feedback
+  const txProgress = useTxProgress();
+
   // Fetch wallet SOL balance
   useEffect(() => {
     if (!publicKey || !connection) return;
@@ -69,31 +74,38 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
       setAmount('');
       setTxStatus('idle');
       setTxMessage('');
+      txProgress.reset();
       fetchBalance();
     }
-  }, [isOpen, fetchBalance]);
+  }, [isOpen, fetchBalance, txProgress]);
 
   const handleDeposit = useCallback(async () => {
     const value = parseFloat(amount);
     if (isNaN(value) || value <= 0) {
       setTxStatus('error');
       setTxMessage('Please enter a valid amount');
+      txProgress.fail('Please enter a valid amount');
       return;
     }
 
     if (value > walletBalance) {
       setTxStatus('error');
       setTxMessage('Insufficient wallet balance');
+      txProgress.fail('Insufficient wallet balance');
       return;
     }
 
     setTxStatus('pending');
     setTxMessage('Confirming transaction...');
+    txProgress.startSigning();
 
     try {
+      txProgress.startSending();
       await deposit(value);
+      txProgress.startConfirming();
       setTxStatus('success');
       setTxMessage(`Successfully deposited ${value} SOL`);
+      txProgress.complete();
       setAmount('');
       // Refresh wallet balance
       if (publicKey && connection) {
@@ -101,32 +113,40 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
         setWalletBalance(balance / LAMPORTS_PER_SOL);
       }
     } catch (e: unknown) {
+      const errorMsg = getFriendlyErrorMessage(e);
       setTxStatus('error');
-      setTxMessage(getFriendlyErrorMessage(e));
+      setTxMessage(errorMsg);
+      txProgress.fail(errorMsg);
     }
-  }, [amount, walletBalance, deposit, publicKey, connection]);
+  }, [amount, walletBalance, deposit, publicKey, connection, txProgress]);
 
   const handleWithdraw = useCallback(async () => {
     const value = parseFloat(amount);
     if (isNaN(value) || value <= 0) {
       setTxStatus('error');
       setTxMessage('Please enter a valid amount');
+      txProgress.fail('Please enter a valid amount');
       return;
     }
 
     if (value > balanceInSol) {
       setTxStatus('error');
       setTxMessage('Insufficient balance');
+      txProgress.fail('Insufficient balance');
       return;
     }
 
     setTxStatus('pending');
     setTxMessage('Confirming transaction...');
+    txProgress.startSigning();
 
     try {
+      txProgress.startSending();
       await withdraw(value);
+      txProgress.startConfirming();
       setTxStatus('success');
       setTxMessage(`Successfully withdrew ${value} SOL`);
+      txProgress.complete();
       setAmount('');
       // Refresh wallet balance
       if (publicKey && connection) {
@@ -134,38 +154,52 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
         setWalletBalance(balance / LAMPORTS_PER_SOL);
       }
     } catch (e: unknown) {
+      const errorMsg = getFriendlyErrorMessage(e);
       setTxStatus('error');
-      setTxMessage(getFriendlyErrorMessage(e));
+      setTxMessage(errorMsg);
+      txProgress.fail(errorMsg);
     }
-  }, [amount, balanceInSol, withdraw, publicKey, connection]);
+  }, [amount, balanceInSol, withdraw, publicKey, connection, txProgress]);
 
   const handleCreateSession = useCallback(async () => {
     setTxStatus('pending');
     setTxMessage('Creating session...');
+    txProgress.startSigning();
 
     try {
+      txProgress.startSending();
       await createSession(24); // 24 hours
+      txProgress.startConfirming();
       setTxStatus('success');
       setTxMessage('Session created! You can now bet without signing each transaction.');
+      txProgress.complete();
     } catch (e: unknown) {
+      const errorMsg = getFriendlyErrorMessage(e);
       setTxStatus('error');
-      setTxMessage(getFriendlyErrorMessage(e));
+      setTxMessage(errorMsg);
+      txProgress.fail(errorMsg);
     }
-  }, [createSession]);
+  }, [createSession, txProgress]);
 
   const handleRevokeSession = useCallback(async () => {
     setTxStatus('pending');
     setTxMessage('Revoking session...');
+    txProgress.startSigning();
 
     try {
+      txProgress.startSending();
       await revokeSession();
+      txProgress.startConfirming();
       setTxStatus('success');
       setTxMessage('Session revoked successfully');
+      txProgress.complete();
     } catch (e: unknown) {
+      const errorMsg = getFriendlyErrorMessage(e);
       setTxStatus('error');
-      setTxMessage(getFriendlyErrorMessage(e));
+      setTxMessage(errorMsg);
+      txProgress.fail(errorMsg);
     }
-  }, [revokeSession]);
+  }, [revokeSession, txProgress]);
 
   const formatTimeRemaining = (timestamp: number) => {
     const now = Math.floor(Date.now() / 1000);
@@ -216,6 +250,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 setActiveTab(tab);
                 setTxStatus('idle');
                 setAmount('');
+                txProgress.reset();
               }}
               className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all capitalize ${
                 activeTab === tab
@@ -272,14 +307,14 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
             {/* Action Button */}
             <button
               onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
-              disabled={isLoading || txStatus === 'pending' || !amount}
+              disabled={isLoading || txProgress.isActive || !amount}
               className={`w-full py-3 rounded-lg font-bold text-lg transition-all ${
                 activeTab === 'deposit'
                   ? 'bg-success text-black hover:bg-success/80'
                   : 'bg-danger text-white hover:bg-danger/80'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {txStatus === 'pending' ? (
+              {txProgress.isActive ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   Processing...
@@ -290,6 +325,9 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 'Withdraw SOL'
               )}
             </button>
+
+            {/* Transaction Progress Indicator */}
+            <TxProgress status={txProgress.status} errorMessage={txProgress.errorMessage} />
           </div>
         )}
 
@@ -332,10 +370,10 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
             {hasValidSession ? (
               <button
                 onClick={handleRevokeSession}
-                disabled={isLoading || txStatus === 'pending'}
+                disabled={isLoading || txProgress.isActive}
                 className="w-full py-3 rounded-lg font-bold text-lg bg-danger text-white hover:bg-danger/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {txStatus === 'pending' ? (
+                {txProgress.isActive ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     Revoking...
@@ -347,10 +385,10 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
             ) : (
               <button
                 onClick={handleCreateSession}
-                disabled={isLoading || txStatus === 'pending'}
+                disabled={isLoading || txProgress.isActive}
                 className="w-full py-3 rounded-lg font-bold text-lg bg-warning text-black hover:bg-warning/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {txStatus === 'pending' ? (
+                {txProgress.isActive ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     Creating...
@@ -360,6 +398,9 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 )}
               </button>
             )}
+
+            {/* Transaction Progress Indicator */}
+            <TxProgress status={txProgress.status} errorMessage={txProgress.errorMessage} />
           </div>
         )}
 
