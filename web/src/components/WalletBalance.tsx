@@ -221,28 +221,28 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-[#0a0908] border border-white/10 text-white max-w-md">
+      <DialogContent className="bg-[#0a0908] border border-white/10 text-white w-full max-w-md mx-4 overflow-y-auto max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Wallet Balance</DialogTitle>
-          <DialogDescription className="text-white/60">
+          <DialogTitle className="text-lg sm:text-xl font-bold">Wallet Balance</DialogTitle>
+          <DialogDescription className="text-sm sm:text-base text-white/60">
             Manage your betting balance and session
           </DialogDescription>
         </DialogHeader>
 
         {/* Balance Display */}
-        <div className="bg-black/40 rounded-xl p-4 border border-white/10">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-white/60 text-sm">Betting Balance</span>
-            <span className="text-2xl font-bold text-warning">{balanceInSol.toFixed(4)} SOL</span>
+        <div className="bg-black/40 rounded-xl p-3 sm:p-4 border border-white/10">
+          <div className="flex justify-between items-center mb-2 sm:mb-3">
+            <span className="text-white/60 text-xs sm:text-sm">Betting Balance</span>
+            <span className="text-xl sm:text-2xl font-bold text-warning truncate ml-2">{balanceInSol.toFixed(4)} SOL</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          <div className="flex justify-between items-center text-xs sm:text-sm">
             <span className="text-white/40">Wallet Balance</span>
-            <span className="text-white/60">{walletBalance.toFixed(4)} SOL</span>
+            <span className="text-white/60 truncate ml-2">{walletBalance.toFixed(4)} SOL</span>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 bg-black/40 rounded-lg p-1">
+        <div className="flex gap-1 sm:gap-2 bg-black/40 rounded-lg p-1">
           {(['deposit', 'withdraw', 'session'] as TabType[]).map((tab) => (
             <button
               key={tab}
@@ -252,7 +252,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 setAmount('');
                 txProgress.reset();
               }}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all capitalize ${
+              className={`flex-1 min-h-[44px] py-2 px-2 sm:px-3 rounded-md text-xs sm:text-sm font-medium transition-all capitalize touch-manipulation ${
                 activeTab === tab
                   ? 'bg-warning text-black'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -265,15 +265,15 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
         {/* Deposit/Withdraw Tab Content */}
         {(activeTab === 'deposit' || activeTab === 'withdraw') && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Quick Amount Buttons */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {QUICK_AMOUNTS.map((quickAmount) => (
                 <button
                   key={quickAmount}
                   onClick={() => setAmount(quickAmount.toString())}
                   disabled={quickAmount > maxAmount}
-                  className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`min-h-[44px] py-2 rounded-lg text-xs sm:text-sm font-medium transition-all touch-manipulation ${
                     parseFloat(amount) === quickAmount
                       ? 'bg-warning text-black'
                       : 'bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed'
@@ -294,11 +294,11 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
                 step="0.01"
                 min="0"
                 max={maxAmount}
-                className="w-full bg-black/40 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-warning"
+                className="w-full min-h-[44px] bg-black/40 border border-white/20 rounded-lg px-4 py-3 text-base text-white placeholder-white/40 focus:outline-none focus:border-warning"
               />
               <button
                 onClick={() => setAmount(maxAmount.toFixed(4))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-warning hover:underline"
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center text-xs text-warning hover:underline touch-manipulation"
               >
                 MAX
               </button>
@@ -308,7 +308,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
             <button
               onClick={activeTab === 'deposit' ? handleDeposit : handleWithdraw}
               disabled={isLoading || txProgress.isActive || !amount}
-              className={`w-full py-3 rounded-lg font-bold text-lg transition-all ${
+              className={`w-full min-h-[44px] py-3 rounded-lg font-bold text-base sm:text-lg transition-all touch-manipulation ${
                 activeTab === 'deposit'
                   ? 'bg-success text-black hover:bg-success/80'
                   : 'bg-danger text-white hover:bg-danger/80'
@@ -333,10 +333,10 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
         {/* Session Tab Content */}
         {activeTab === 'session' && (
-          <div className="space-y-4">
-            <div className="bg-black/40 rounded-xl p-4 border border-white/10">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="bg-black/40 rounded-xl p-3 sm:p-4 border border-white/10">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-white/60 text-sm">Session Status</span>
+                <span className="text-white/60 text-xs sm:text-sm">Session Status</span>
                 <span
                   className={`px-2 py-1 rounded text-xs font-medium ${
                     hasValidSession
@@ -349,7 +349,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
               </div>
 
               {hasValidSession && sessionValidUntil && (
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-white/40">Expires in</span>
                   <span className="text-white/60">{formatTimeRemaining(sessionValidUntil)}</span>
                 </div>
@@ -357,8 +357,8 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
             </div>
 
             <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-              <h4 className="text-sm font-medium text-white/80 mb-2">What is a Session?</h4>
-              <p className="text-xs text-white/50 leading-relaxed">
+              <h4 className="text-xs sm:text-sm font-medium text-white/80 mb-2">What is a Session?</h4>
+              <p className="text-[11px] sm:text-xs text-white/50 leading-relaxed">
                 A session lets you place bets without signing each transaction.
                 You sign once to create a session (up to 24 hours), then bet freely.
                 <span className="block mt-2 text-warning/80">
@@ -371,7 +371,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
               <button
                 onClick={handleRevokeSession}
                 disabled={isLoading || txProgress.isActive}
-                className="w-full py-3 rounded-lg font-bold text-lg bg-danger text-white hover:bg-danger/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full min-h-[44px] py-3 rounded-lg font-bold text-base sm:text-lg bg-danger text-white hover:bg-danger/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-manipulation"
               >
                 {txProgress.isActive ? (
                   <span className="flex items-center justify-center gap-2">
@@ -386,7 +386,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
               <button
                 onClick={handleCreateSession}
                 disabled={isLoading || txProgress.isActive}
-                className="w-full py-3 rounded-lg font-bold text-lg bg-warning text-black hover:bg-warning/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full min-h-[44px] py-3 rounded-lg font-bold text-base sm:text-lg bg-warning text-black hover:bg-warning/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-manipulation"
               >
                 {txProgress.isActive ? (
                   <span className="flex items-center justify-center gap-2">
@@ -407,7 +407,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
         {/* Status Message */}
         {txStatus !== 'idle' && txMessage && (
           <div
-            className={`p-3 rounded-lg text-sm ${
+            className={`p-3 rounded-lg text-xs sm:text-sm ${
               txStatus === 'success'
                 ? 'bg-success/20 text-success border border-success/30'
                 : txStatus === 'error'
@@ -421,7 +421,7 @@ export function WalletBalance({ isOpen, onClose }: WalletBalanceProps) {
 
         {/* Error from hook */}
         {error && txStatus === 'idle' && (
-          <div className="p-3 rounded-lg text-sm bg-danger/20 text-danger border border-danger/30">
+          <div className="p-3 rounded-lg text-xs sm:text-sm bg-danger/20 text-danger border border-danger/30">
             {error}
           </div>
         )}
@@ -440,9 +440,9 @@ export function WalletBalanceButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 bg-black/40 hover:bg-black/60 border border-white/10 rounded-lg px-3 py-2 transition-all"
+      className="flex items-center gap-2 min-h-[44px] bg-black/40 hover:bg-black/60 border border-white/10 rounded-lg px-3 py-2 transition-all touch-manipulation"
     >
-      <span className="text-warning font-bold">{balanceInSol.toFixed(2)} SOL</span>
+      <span className="text-warning font-bold text-sm sm:text-base">{balanceInSol.toFixed(2)} SOL</span>
       {hasValidSession && (
         <span className="w-2 h-2 rounded-full bg-success animate-pulse" title="Session active" />
       )}
