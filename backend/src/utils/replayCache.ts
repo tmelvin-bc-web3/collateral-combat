@@ -20,6 +20,8 @@ let redisAvailable = false;
 
 // In-memory fallback cache
 const memoryCache = new Map<string, number>();
+const lockSet = new Set<string>(); // Synchronous lock for atomic check-and-set
+const MAX_MEMORY_CACHE_SIZE = 100000; // 100k entries max (DDoS protection)
 const CLEANUP_INTERVAL_MS = 60 * 1000; // Clean up every minute
 
 // Initialize Redis if URL is provided
@@ -127,26 +129,49 @@ export async function markSignatureUsed(key: string, ttlSeconds: number = 300): 
 export async function checkAndMarkSignature(key: string, ttlSeconds: number = 300): Promise<boolean> {
   if (redisAvailable && redisClient) {
     try {
-      // SETNX returns 1 if key was set (not exists), 0 if key already exists
-      const wasSet = await redisClient.setNX(key, '1');
-      if (wasSet) {
-        // Set TTL on the key
-        await redisClient.expire(key, ttlSeconds);
-        return false; // Signature was NOT used before
-      }
-      return true; // Signature WAS already used
+      // Use SET with NX and EX options (single atomic operation)
+      // This is the correct way to set a key with expiry atomically
+      const result = await redisClient.set(key, '1', {
+        NX: true,  // Only set if not exists
+        EX: ttlSeconds,  // Set expiry in same operation
+      });
+      // result is 'OK' if key was set, null if key already existed
+      return result === null; // null means key existed (signature was used)
     } catch (error) {
       console.error('[ReplayCache] Redis atomic check failed, falling back to memory:', error);
       // Fall through to memory check
     }
   }
 
-  // Memory fallback (not truly atomic, but best effort)
+  // Memory fallback - use synchronous operations for atomicity
+  // JavaScript is single-threaded, so synchronous check+set is atomic within one tick
+  // But async operations between check and set create race window
+
+  // Use a lock to make the operation atomic
+  if (lockSet.has(key)) {
+    return true; // Already being processed by another concurrent request
+  }
+
   const expiry = memoryCache.get(key);
   if (expiry && Date.now() <= expiry) {
     return true; // Already used
   }
+
+  // Check cache size limit to prevent memory exhaustion (DDoS protection)
+  if (memoryCache.size >= MAX_MEMORY_CACHE_SIZE) {
+    // LRU-ish: delete oldest entries (first 10%)
+    const deleteCount = Math.floor(MAX_MEMORY_CACHE_SIZE * 0.1);
+    const keys = Array.from(memoryCache.keys()).slice(0, deleteCount);
+    keys.forEach(k => memoryCache.delete(k));
+    console.warn(`[ReplayCache] Cache size limit reached. Evicted ${deleteCount} oldest entries.`);
+  }
+
+  // Acquire lock, set value, release lock (all synchronous = atomic)
+  lockSet.add(key);
   memoryCache.set(key, Date.now() + ttlSeconds * 1000);
+  // Release lock after a microtask to allow the value to be set
+  setImmediate(() => lockSet.delete(key));
+
   return false; // Not used before
 }
 
