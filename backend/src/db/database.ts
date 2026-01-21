@@ -1,4 +1,6 @@
 import { Pool } from 'pg';
+import { createDatabaseError } from '../utils/errors';
+import { DatabaseErrorCode } from '../types/errors';
 
 // ===================
 // PostgreSQL Connection
@@ -50,6 +52,11 @@ async function initializeDatabase(): Promise<void> {
     console.log('[ProfilesDB] Database initialized successfully');
   } catch (error) {
     console.error('[ProfilesDB] Error initializing database:', error);
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database initialization failed',
+      { originalError: String(error) }
+    );
   }
 }
 
@@ -96,8 +103,11 @@ function rowToProfile(row: any): UserProfile {
 
 export async function getProfile(walletAddress: string): Promise<UserProfile | null> {
   if (!pool) {
-    console.warn('[ProfilesDB] No database connection');
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getProfile' }
+    );
   }
 
   try {
@@ -112,8 +122,11 @@ export async function getProfile(walletAddress: string): Promise<UserProfile | n
 
     return rowToProfile(result.rows[0]);
   } catch (error) {
-    console.error('[ProfilesDB] Error getting profile:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get user profile',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
@@ -121,8 +134,11 @@ export async function upsertProfile(
   profile: Omit<UserProfile, 'createdAt' | 'updatedAt'>
 ): Promise<UserProfile | null> {
   if (!pool) {
-    console.warn('[ProfilesDB] No database connection');
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'upsertProfile' }
+    );
   }
 
   const now = Date.now();
@@ -156,13 +172,24 @@ export async function upsertProfile(
 
     return rowToProfile(result.rows[0]);
   } catch (error) {
-    console.error('[ProfilesDB] Error upserting profile:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to upsert user profile',
+      { walletAddress: profile.walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function getProfiles(walletAddresses: string[]): Promise<UserProfile[]> {
-  if (!pool || walletAddresses.length === 0) {
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getProfiles' }
+    );
+  }
+
+  if (walletAddresses.length === 0) {
     return [];
   }
 
@@ -176,15 +203,21 @@ export async function getProfiles(walletAddresses: string[]): Promise<UserProfil
 
     return result.rows.map(rowToProfile);
   } catch (error) {
-    console.error('[ProfilesDB] Error getting profiles:', error);
-    return [];
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get profiles',
+      { count: walletAddresses.length, originalError: String(error) }
+    );
   }
 }
 
 export async function deleteProfile(walletAddress: string): Promise<boolean> {
   if (!pool) {
-    console.warn('[ProfilesDB] No database connection');
-    return false;
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'deleteProfile' }
+    );
   }
 
   try {
@@ -195,15 +228,21 @@ export async function deleteProfile(walletAddress: string): Promise<boolean> {
 
     return (result.rowCount ?? 0) > 0;
   } catch (error) {
-    console.error('[ProfilesDB] Error deleting profile:', error);
-    return false;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to delete profile',
+      { walletAddress, originalError: String(error) }
+    );
   }
 }
 
 export async function isUsernameTaken(username: string, excludeWallet?: string): Promise<boolean> {
   if (!pool) {
-    console.warn('[ProfilesDB] No database connection');
-    return false;
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'isUsernameTaken' }
+    );
   }
 
   try {
@@ -220,7 +259,10 @@ export async function isUsernameTaken(username: string, excludeWallet?: string):
     const result = await pool.query(query, params);
     return result.rows.length > 0;
   } catch (error) {
-    console.error('[ProfilesDB] Error checking username:', error);
-    return false;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to check if username is taken',
+      { username: username.slice(0, 3) + '***', originalError: String(error) }
+    );
   }
 }
