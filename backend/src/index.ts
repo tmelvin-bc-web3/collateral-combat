@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { corsOptions, socketCorsOptions } from './config';
+import { logger, createLogger } from './utils/logger';
 import { priceService } from './services/priceService';
 import { battleManager } from './services/battleManager';
 import { spectatorService } from './services/spectatorService';
@@ -44,6 +45,15 @@ import { checkAndMarkSignature } from './utils/replayCache';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
+
+// ===================
+// Service-Specific Loggers
+// ===================
+const socketLogger = createLogger('socket');
+const authLogger = createLogger('auth');
+const battleLogger = createLogger('battle');
+const challengeLogger = createLogger('challenge');
+const apiLogger = createLogger('api');
 
 // ===================
 // Wallet Signature Verification with Replay Protection
@@ -113,11 +123,9 @@ function getClientIp(req: Request): string | undefined {
 }
 
 // SECURITY: Logging for security events
-// Automatically masks sensitive fields to prevent PII leakage
+// Logger automatically masks sensitive fields (signatures, secrets, wallets)
 function logSecurityEvent(event: string, details: Record<string, any>) {
-  const timestamp = new Date().toISOString();
-
-  // Mask sensitive fields before logging
+  // Additional masking for email and IP if present
   const maskedDetails = { ...details };
   if (maskedDetails.email && typeof maskedDetails.email === 'string') {
     maskedDetails.email = maskedDetails.email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
@@ -125,11 +133,8 @@ function logSecurityEvent(event: string, details: Record<string, any>) {
   if (maskedDetails.ip && typeof maskedDetails.ip === 'string') {
     maskedDetails.ip = maskedDetails.ip.replace(/\.\d+$/, '.***');
   }
-  if (maskedDetails.wallet && typeof maskedDetails.wallet === 'string') {
-    maskedDetails.wallet = maskedDetails.wallet.slice(0, 8) + '...';
-  }
 
-  console.log(`[SECURITY] ${timestamp} | ${event} |`, JSON.stringify(maskedDetails));
+  authLogger.security(event, maskedDetails);
 }
 
 const app = express();
@@ -154,7 +159,7 @@ io.use((socket, next) => {
     if (wallet) {
       // Store authenticated wallet on socket - this CANNOT be spoofed by client
       socket.data.authenticatedWallet = wallet;
-      console.log(`[Socket] Authenticated connection for ${wallet.slice(0, 8)}...`);
+      socketLogger.debug('Authenticated socket connection', { wallet });
     }
   }
 
@@ -177,7 +182,7 @@ function getAuthenticatedWallet(socket: any, clientWallet?: string): string {
   // Fallback: If no JWT auth, require wallet parameter
   // This maintains backwards compatibility but logs a warning
   if (clientWallet) {
-    console.warn(`[Socket] SECURITY WARNING: Unauthenticated socket using wallet ${clientWallet.slice(0, 8)}... - Consider requiring JWT`);
+    socketLogger.warn('Unauthenticated socket using wallet - consider requiring JWT', { wallet: clientWallet });
     return clientWallet;
   }
 
@@ -521,7 +526,7 @@ app.post('/api/auth/login', strictLimiter, async (req: Request, res: Response) =
       // Create JWT token with version
       const token = createToken(walletAddress, tokenVersion);
 
-      console.log(`[Auth] Login successful: ${walletAddress.slice(0, 8)}...`);
+      authLogger.info('Login successful', { wallet: walletAddress });
 
       // Set httpOnly cookie for enhanced security
       res.cookie('auth_token', token, {
@@ -542,7 +547,7 @@ app.post('/api/auth/login', strictLimiter, async (req: Request, res: Response) =
       return res.status(401).json({ error: 'Signature verification failed' });
     }
   } catch (error) {
-    console.error('[Auth] Login error:', error);
+    authLogger.error('Login error', { error: String(error) });
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -640,7 +645,7 @@ app.get('/api/nfts/:wallet', standardLimiter, async (req: Request, res: Response
     });
 
     if (!response.ok) {
-      console.error('[NFT API] Helius error:', response.status);
+      apiLogger.error('Helius NFT API error', { status: response.status });
       return res.status(502).json({ error: 'NFT service error', nfts: [] });
     }
 
@@ -683,7 +688,7 @@ app.get('/api/nfts/:wallet', standardLimiter, async (req: Request, res: Response
 
     res.json({ nfts });
   } catch (error) {
-    console.error('[NFT API] Error:', error);
+    apiLogger.error('NFT API error', { error: String(error) });
     res.status(500).json({ error: 'Failed to fetch NFTs', nfts: [] });
   }
 });
@@ -742,7 +747,7 @@ app.post('/api/waitlist/join', waitlistLimiter, async (req: Request, res: Respon
       if (isValid) {
         validReferralCode = referralCode;
       } else {
-        console.log(`[Waitlist] Invalid referral code attempted: ${referralCode}`);
+        apiLogger.warn('Invalid referral code attempted', { referralCode });
       }
     }
 
@@ -905,7 +910,7 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
 
     const signatureResult = verifyShareSignature(walletAddress, roundId, timestamp, signature);
     if (!signatureResult.valid) {
-      console.warn(`[Shares] Invalid signature from ${walletAddress.slice(0, 8)}...: ${signatureResult.error}`);
+      apiLogger.warn('Invalid share signature', { wallet: walletAddress, error: signatureResult.error });
       return res.status(401).json({ error: signatureResult.error || 'Invalid signature' });
     }
 
@@ -925,7 +930,7 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
 
     if (verifiedWinLamports === null) {
       // No verified win found - could be fake roundId or user didn't actually win
-      console.warn(`[Shares] Unverified share attempt: wallet=${walletAddress.slice(0, 8)}... round=${roundId} mode=${gameMode}`);
+      apiLogger.warn('Unverified share attempt', { wallet: walletAddress, roundId, gameMode });
       return res.status(400).json({
         success: false,
         xpEarned: 0,
@@ -983,7 +988,7 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
         : cooldownMessage || 'Share recorded',
     });
   } catch (error: any) {
-    console.error('[Shares] Error tracking share:', error);
+    apiLogger.error('Share tracking error', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to track share' });
   }
 });
@@ -1158,7 +1163,7 @@ app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: R
     // Deduct free bet credit only after successful on-chain bet
     const useResult = await progressionService.useFreeBetCredit(walletAddress, 'oracle', `Free bet on round ${roundId}`);
     if (!useResult.success) {
-      console.warn('[FreeBet] Failed to deduct credit after successful bet:', walletAddress);
+      apiLogger.warn('Failed to deduct free bet credit after successful bet', { wallet: walletAddress });
     }
 
     res.json({
@@ -1168,7 +1173,7 @@ app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: R
       remainingFreeBets: useResult.success ? useResult.balance.balance : balance.balance - 1,
     });
   } catch (error: any) {
-    console.error('Error placing free bet:', error);
+    apiLogger.error('Free bet placement error', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to place free bet' });
   }
 });
@@ -1712,7 +1717,7 @@ app.post('/api/achievements/:wallet/check', requireOwnWallet, (req: Request, res
 
 // WebSocket handling
 io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
+  socketLogger.debug('Client connected', { socketId: socket.id });
   setActiveConnections(io.engine.clientsCount);
 
   let currentBattleId: string | null = null;
@@ -1831,9 +1836,9 @@ io.on('connection', (socket) => {
           socket.emit('battle_update', battle);
         }
       }
-      console.log(`[Battle] Signed position opened by ${walletAddress}`);
+      battleLogger.info('Signed position opened', { wallet: walletAddress });
     } catch (error: any) {
-      console.error('[Battle] Signed open position error:', error.message);
+      battleLogger.error('Signed open position error', { error: error.message });
       socket.emit('error', error.message);
     }
   });
@@ -1855,9 +1860,9 @@ io.on('connection', (socket) => {
           socket.emit('battle_update', battle);
         }
       }
-      console.log(`[Battle] Signed position closed by ${walletAddress}`);
+      battleLogger.info('Signed position closed', { wallet: walletAddress });
     } catch (error: any) {
-      console.error('[Battle] Signed close position error:', error.message);
+      battleLogger.error('Signed close position error', { error: error.message });
       socket.emit('error', error.message);
     }
   });
@@ -1872,9 +1877,9 @@ io.on('connection', (socket) => {
       socket.join(battle.id);
       socket.emit('battle_update', battle);
       socket.emit('battle_started', battle);
-      console.log(`[Battle] Solo practice started - ID: ${battle.id}, On-chain: ${onChainBattleId || 'none'}`);
+      battleLogger.info('Solo practice started', { battleId: battle.id, onChainBattleId: onChainBattleId || 'none' });
     } catch (error: any) {
-      console.error('[Battle] Solo practice error:', error);
+      battleLogger.error('Solo practice error', { error: String(error) });
       socket.emit('error', error.message);
     }
   });
@@ -2023,7 +2028,7 @@ io.on('connection', (socket) => {
         return;
       }
       if (bet.bettor !== authenticatedWallet) {
-        console.warn(`[Spectator] SECURITY: Wallet ${authenticatedWallet.slice(0, 8)}... attempted to claim bet belonging to ${bet.bettor.slice(0, 8)}...`);
+        socketLogger.security('SPECTATOR_BET_CLAIM_MISMATCH', { authenticatedWallet, betOwner: bet.bettor });
         socket.emit('error', 'Not authorized to claim this bet');
         return;
       }
@@ -2326,7 +2331,7 @@ io.on('connection', (socket) => {
       walletAddress = authenticatedWallet;
       challengeNotificationService.subscribe(authenticatedWallet, socket.id);
       battleManager.registerWalletSocket(authenticatedWallet, socket.id);
-      console.log(`[Challenge] ${authenticatedWallet.slice(0, 8)}... subscribed to challenge notifications`);
+      challengeLogger.debug('User subscribed to challenge notifications', { wallet: authenticatedWallet });
     } catch (error: any) {
       socket.emit('error', 'Authentication required to subscribe to challenges');
     }
@@ -2337,7 +2342,7 @@ io.on('connection', (socket) => {
     // Only unsubscribe authenticated wallet
     if (socket.data.authenticatedWallet) {
       challengeNotificationService.unsubscribe(socket.data.authenticatedWallet);
-      console.log(`[Challenge] ${socket.data.authenticatedWallet.slice(0, 8)}... unsubscribed from challenge notifications`);
+      challengeLogger.debug('User unsubscribed from challenge notifications', { wallet: socket.data.authenticatedWallet });
     }
   });
 
@@ -2362,12 +2367,12 @@ io.on('connection', (socket) => {
       const state = ldsManager.getGameState(game.id);
       socket.emit('lds_game_state' as any, state);
     }
-    console.log(`[LDS] Client ${socket.id} subscribed`);
+    socketLogger.debug('LDS subscription', { socketId: socket.id });
   });
 
   socket.on('unsubscribe_lds', () => {
     socket.leave('lds');
-    console.log(`[LDS] Client ${socket.id} unsubscribed`);
+    socketLogger.debug('LDS unsubscription', { socketId: socket.id });
   });
 
   socket.on('lds_join_game', async (wallet: string) => {
@@ -2454,12 +2459,12 @@ io.on('connection', (socket) => {
     if (state) {
       socket.emit('token_wars_battle_state' as any, state);
     }
-    console.log(`[TokenWars] Client ${socket.id} subscribed`);
+    socketLogger.debug('TokenWars subscription', { socketId: socket.id });
   });
 
   socket.on('unsubscribe_token_wars', () => {
     socket.leave('token_wars');
-    console.log(`[TokenWars] Client ${socket.id} unsubscribed`);
+    socketLogger.debug('TokenWars unsubscription', { socketId: socket.id });
   });
 
   socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => {
@@ -2483,7 +2488,7 @@ io.on('connection', (socket) => {
           return;
         }
         isFreeBet = true;
-        console.log(`[TokenWars] Using free bet for ${authenticatedWallet.slice(0, 8)}...`);
+        socketLogger.info('TokenWars free bet used', { wallet: authenticatedWallet });
       }
 
       const result = await tokenWarsManager.placeBet(authenticatedWallet, data.side, data.amountLamports, isFreeBet);
@@ -2554,7 +2559,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
+    socketLogger.debug('Client disconnected', { socketId: socket.id });
     setActiveConnections(io.engine.clientsCount);
     if (walletAddress) {
       battleManager.leaveMatchmaking(walletAddress);
@@ -2583,7 +2588,7 @@ battleManager.subscribe(async (battle) => {
 
     // Trigger on-chain settlement if this battle has an on-chain ID and hasn't been settled yet
     if (battle.onChainBattleId && !battle.onChainSettled && battle.winnerId) {
-      console.log(`[Settlement] Triggering on-chain settlement for battle ${battle.id}`);
+      battleLogger.info('Triggering on-chain settlement', { battleId: battle.id });
 
       // Determine if winner is creator (for solo practice, always true)
       const isCreator = battle.players.length === 1 ||
@@ -2663,7 +2668,7 @@ battleManager.subscribeToReadyCheckEvents((event, data) => {
         });
       }
 
-      console.log(`[ReadyCheck] Match found emitted for battle ${battleId}`);
+      battleLogger.info('Ready check match found', { battleId });
       break;
     }
 
@@ -2689,7 +2694,7 @@ battleManager.subscribeToReadyCheckEvents((event, data) => {
       // The readyCheck is already deleted at this point, so we broadcast to the battle room
       // Players should have joined the battle room when match_found was emitted
       io.to(data.battleId).emit('ready_check_cancelled', data);
-      console.log(`[ReadyCheck] Cancelled event emitted for battle ${data.battleId}: ${data.reason}`);
+      battleLogger.info('Ready check cancelled', { battleId: data.battleId, reason: data.reason });
       break;
     }
   }
@@ -2815,7 +2820,7 @@ app.get('/api/challenges/mine', requireAuth(), standardLimiter, async (req: Requ
       received: [], // For now, we don't track received challenges separately
     });
   } catch (error: any) {
-    console.error('[Challenges] Error getting challenges:', error);
+    challengeLogger.error('Error getting challenges', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to get challenges' });
   }
 });
@@ -2908,7 +2913,7 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
       expiresAt: challenge.expiresAt,
     });
   } catch (error: any) {
-    console.error('[Challenges] Error creating challenge:', error);
+    challengeLogger.error('Error creating challenge', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to create challenge' });
   }
 });
@@ -2968,7 +2973,7 @@ app.get('/api/challenges/:code', standardLimiter, async (req: Request, res: Resp
       reason,
     });
   } catch (error: any) {
-    console.error('[Challenges] Error getting challenge:', error);
+    challengeLogger.error('Error getting challenge', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to get challenge' });
   }
 });
@@ -3020,7 +3025,7 @@ app.post('/api/challenges/:code/accept', requireAuth(), standardLimiter, async (
 
       io.to(notificationTarget.socketId).emit('challenge_accepted', notificationTarget.notification);
       challengeNotificationService.markChallengeAccepted(challenge.id);
-      console.log(`[Challenge] Notified ${challenge.challengerWallet.slice(0, 8)}... that challenge ${code} was accepted`);
+      challengeLogger.info('Challenge accepted notification sent', { challengerWallet: challenge.challengerWallet, code });
     }
 
     res.json({
@@ -3036,7 +3041,7 @@ app.post('/api/challenges/:code/accept', requireAuth(), standardLimiter, async (
       },
     });
   } catch (error: any) {
-    console.error('[Challenges] Error accepting challenge:', error);
+    challengeLogger.error('Error accepting challenge', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to accept challenge' });
   }
 });
@@ -3059,7 +3064,7 @@ app.delete('/api/challenges/:id', requireAuth(), standardLimiter, async (req: Re
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('[Challenges] Error cancelling challenge:', error);
+    challengeLogger.error('Error cancelling challenge', { error: String(error) });
     res.status(500).json({ error: error.message || 'Failed to cancel challenge' });
   }
 });
@@ -3230,16 +3235,16 @@ async function start() {
   const escrowInitialized = await freeBetEscrowService.init();
   if (escrowInitialized) {
     freeBetEscrowService.startProcessing();
-    console.log('[Startup] Free bet escrow service started');
+    logger.info('Free bet escrow service started');
   } else {
-    console.warn('[Startup] Free bet escrow service not initialized (missing ESCROW_WALLET_PRIVATE_KEY)');
+    logger.warn('Free bet escrow service not initialized (missing ESCROW_WALLET_PRIVATE_KEY)');
   }
 
   // Initialize and start rake rebate service
   const rebateInitialized = await rakeRebateService.initialize();
   if (rebateInitialized) {
     rakeRebateService.startPolling();
-    console.log('[Startup] Rake rebate service started');
+    logger.info('Rake rebate service started');
 
     // Subscribe to rebate events for WebSocket notifications
     rakeRebateService.subscribe((event, data: any) => {
@@ -3252,20 +3257,20 @@ async function start() {
       }
     });
   } else {
-    console.warn('[Startup] Rake rebate service not initialized (missing REBATE_WALLET_PRIVATE_KEY)');
+    logger.warn('Rake rebate service not initialized (missing REBATE_WALLET_PRIVATE_KEY)');
   }
 
   // Initialize battle settlement service for on-chain settlements
   const settlementInitialized = battleSettlementService.initialize();
   if (settlementInitialized) {
-    console.log('[Startup] Battle settlement service started');
+    logger.info('Battle settlement service started');
   } else {
-    console.warn('[Startup] Battle settlement service not initialized (missing BATTLE_AUTHORITY_PRIVATE_KEY)');
+    logger.warn('Battle settlement service not initialized (missing BATTLE_AUTHORITY_PRIVATE_KEY)');
   }
 
   // Initialize LDS (Last Degen Standing) manager
   ldsManager.initialize();
-  console.log('[Startup] LDS manager started');
+  logger.info('LDS manager started');
 
   // Subscribe to LDS events for WebSocket notifications
   ldsManager.subscribe((event: LDSEvent) => {
@@ -3275,7 +3280,7 @@ async function start() {
 
   // Initialize Token Wars manager
   tokenWarsManager.initialize();
-  console.log('[Startup] Token Wars manager started');
+  logger.info('Token Wars manager started');
 
   // Subscribe to Token Wars events for WebSocket notifications
   tokenWarsManager.subscribe((event: TWEvent) => {
@@ -3317,18 +3322,18 @@ async function start() {
 
     // Auto-start simulator in development mode
     if (process.env.NODE_ENV !== 'production' && process.env.DISABLE_SIMULATOR !== 'true') {
-      console.log('\n🎮 Auto-starting battle simulator for development...\n');
+      logger.info('Auto-starting battle simulator for development');
       setTimeout(() => {
         battleSimulator.start(3);
       }, 2000);
     }
 
     // Auto-start prediction game for SOL
-    console.log('\n🎯 Starting prediction game for SOL...\n');
+    logger.info('Starting prediction game for SOL');
     setTimeout(() => {
       predictionService.start('SOL');
     }, 3000);
   });
 }
 
-start().catch(console.error);
+start().catch((error) => logger.error('Server startup failed', { error: String(error) }));
