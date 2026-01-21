@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import { isDisposableEmail } from '../utils/disposableEmails';
+import { createDatabaseError } from '../utils/errors';
+import { DatabaseErrorCode } from '../types/errors';
 
 // ===================
 // PostgreSQL Connection
@@ -79,6 +81,11 @@ async function initializeDatabase(): Promise<void> {
     console.log('[WaitlistDB] Database initialized successfully');
   } catch (error) {
     console.error('[WaitlistDB] Failed to initialize database:', error);
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Waitlist database initialization failed',
+      { originalError: String(error) }
+    );
   }
 }
 
@@ -193,7 +200,13 @@ function maskReferralCode(code: string): string {
 // ===================
 
 export async function findByEmail(email: string): Promise<WaitlistEntry | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'findByEmail' }
+    );
+  }
 
   try {
     const result = await pool.query(
@@ -202,13 +215,22 @@ export async function findByEmail(email: string): Promise<WaitlistEntry | null> 
     );
     return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
   } catch (error) {
-    console.error('[WaitlistDB] findByEmail error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to find waitlist entry by email',
+      { email: email.slice(0, 3) + '***', originalError: String(error) }
+    );
   }
 }
 
 export async function findByWallet(walletAddress: string): Promise<WaitlistEntry | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'findByWallet' }
+    );
+  }
 
   try {
     const result = await pool.query(
@@ -217,13 +239,24 @@ export async function findByWallet(walletAddress: string): Promise<WaitlistEntry
     );
     return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
   } catch (error) {
-    console.error('[WaitlistDB] findByWallet error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to find waitlist entry by wallet',
+      { walletAddress: walletAddress.slice(0, 8), originalError: String(error) }
+    );
   }
 }
 
 export async function countByIp(ipAddress: string): Promise<number> {
-  if (!pool || !ipAddress) return 0;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'countByIp' }
+    );
+  }
+
+  if (!ipAddress) return 0;
 
   try {
     const result = await pool.query(
@@ -232,13 +265,22 @@ export async function countByIp(ipAddress: string): Promise<number> {
     );
     return parseInt(result.rows[0].count);
   } catch (error) {
-    console.error('[WaitlistDB] countByIp error:', error);
-    return 0;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to count entries by IP',
+      { ipAddress: ipAddress.replace(/\.\d+$/, '.***'), originalError: String(error) }
+    );
   }
 }
 
 export async function findByReferralCode(code: string): Promise<WaitlistEntry | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'findByReferralCode' }
+    );
+  }
 
   try {
     const result = await pool.query(
@@ -247,13 +289,22 @@ export async function findByReferralCode(code: string): Promise<WaitlistEntry | 
     );
     return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
   } catch (error) {
-    console.error('[WaitlistDB] findByReferralCode error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to find waitlist entry by referral code',
+      { code, originalError: String(error) }
+    );
   }
 }
 
 export async function findById(id: string): Promise<WaitlistEntry | null> {
-  if (!pool) return null;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'findById' }
+    );
+  }
 
   try {
     const result = await pool.query(
@@ -262,20 +313,32 @@ export async function findById(id: string): Promise<WaitlistEntry | null> {
     );
     return result.rows.length > 0 ? rowToEntry(result.rows[0]) : null;
   } catch (error) {
-    console.error('[WaitlistDB] findById error:', error);
-    return null;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to find waitlist entry by ID',
+      { id, originalError: String(error) }
+    );
   }
 }
 
 export async function getTotalCount(): Promise<number> {
-  if (!pool) return 0;
+  if (!pool) {
+    throw createDatabaseError(
+      DatabaseErrorCode.CONNECTION_FAILED,
+      'Database not initialized',
+      { operation: 'getTotalCount' }
+    );
+  }
 
   try {
     const result = await pool.query('SELECT COUNT(*) as count FROM waitlist_entries');
     return parseInt(result.rows[0].count);
   } catch (error) {
-    console.error('[WaitlistDB] getTotalCount error:', error);
-    return 0;
+    throw createDatabaseError(
+      DatabaseErrorCode.QUERY_FAILED,
+      'Failed to get waitlist total count',
+      { originalError: String(error) }
+    );
   }
 }
 
