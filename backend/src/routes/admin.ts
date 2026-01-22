@@ -140,4 +140,45 @@ router.get('/health', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/admin/metrics
+ * Unified metrics endpoint for monitoring dashboard
+ * Combines overview stats, game stats, and health in one response
+ */
+router.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    const [overview, games, health] = await Promise.all([
+      adminService.getOverviewStats(),
+      adminService.getGameStats(),
+      adminService.getHealthStatus()
+    ]);
+
+    res.json({
+      metrics: {
+        // Key numbers for dashboard
+        dau: overview.users.active24h,
+        totalUsers: overview.users.total,
+        matchesToday: games.oracle.roundsToday + games.battle.completedToday,
+        volumeToday: games.oracle.volumeToday + games.battle.volumeToday,
+        feesToday: games.oracle.volumeToday * 0.05 + games.battle.volumeToday * 0.05,
+        activeMatches: games.battle.activeBattles,
+        // Health summary
+        systemStatus: health.backend.status,
+        databaseStatus: health.database.status,
+        memoryUsage: health.backend.memoryUsage,
+        activeConnections: health.backend.connections,
+        uptime: health.backend.uptime
+      },
+      // Full data for detailed views
+      overview,
+      games,
+      health,
+      generated: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[AdminRoutes] /metrics error:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+});
+
 export default router;
