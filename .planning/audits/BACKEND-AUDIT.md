@@ -18,16 +18,16 @@
 | SEC-01-05 | Input Validation | LOW | Chat content not length-validated | FIXED |
 | SEC-01-06 | Input Validation | LOW | Battle config missing explicit validation | DOCUMENTED |
 | SEC-02-01 | Auth/Session | HIGH | predictionService.ts uses hasSufficientBalance (race condition) | DEFERRED |
-| SEC-02-02 | Auth/Session | CRITICAL | Replay cache is in-memory (doesn't survive restarts) | FIXED |
+| SEC-02-02 | Auth/Session | CRITICAL | Replay cache Redis support | VERIFIED OK |
 | SEC-02-03 | Auth/Session | LOW | Some signed operations use timestamp freshness check | VERIFIED OK |
 | SEC-02-04 | Auth/Session | MEDIUM | Session key isolation verified for withdraw operations | VERIFIED OK |
 | SEC-02-05 | Auth/Session | LOW | Signature verification uses nacl correctly | VERIFIED OK |
 
 **Summary:**
-- **CRITICAL:** 1 (Fixed)
+- **CRITICAL:** 1 (Verified OK - Already Implemented)
 - **HIGH:** 1 (Deferred to Phase 8 - requires migration)
-- **MEDIUM:** 4 (3 Fixed, 1 Documented)
-- **LOW:** 5 (3 Fixed/Documented, 2 Verified OK)
+- **MEDIUM:** 4 (3 Fixed, 1 Verified OK)
+- **LOW:** 5 (2 Fixed/Documented, 3 Verified OK)
 
 ---
 
@@ -301,71 +301,49 @@ export async function verifyWalletSignature(
 
 #### Replay Cache (`backend/src/utils/replayCache.ts`)
 
-### SEC-02-02: Replay Cache In-Memory Issue [CRITICAL] - FIXED
+### SEC-02-02: Replay Cache Redis Support [CRITICAL] - VERIFIED OK (Already Implemented)
 
 **Affected Code:** `backend/src/utils/replayCache.ts`
 
 **Description:**
-The replay cache was using in-memory storage, which:
-1. Doesn't survive server restarts
-2. Allows replay attacks after restart
-3. Doesn't work across multiple server instances
-
-**Before (Vulnerable):**
-```typescript
-// In-memory cache (doesn't survive restarts!)
-const cache = new Map<string, number>();
-```
+Replay attack prevention requires persistent storage that:
+1. Survives server restarts
+2. Works across multiple server instances (load balancing)
+3. Provides atomic check-and-set operations
 
 **Assessment:**
-Per RESEARCH.md and v1.0 decisions, this should use Redis with `SET NX EX` for atomic operations.
+Reviewed the existing implementation and found Redis support is ALREADY IMPLEMENTED:
+- Uses `redis` npm package with proper connection handling
+- Implements atomic `SET NX EX` via `checkAndMarkSignature()` function
+- Falls back to in-memory cache for development (with warnings)
+- Includes DDoS protection via MAX_MEMORY_CACHE_SIZE limit
+- Proper cleanup interval for expired entries
 
-**Remediation Applied:**
-Added Redis support with fallback to in-memory for development:
-
+**Current Implementation (Correct):**
 ```typescript
-import Redis from 'ioredis';
+// Redis connection with fallback
+const REDIS_URL = process.env.REDIS_URL;
+let redisClient: RedisClientType | null = null;
 
-class ReplayCache {
-  private redis: Redis | null = null;
-  private fallbackCache = new Map<string, number>(); // Development fallback
-
-  constructor() {
-    const redisUrl = process.env.REDIS_URL;
-    if (redisUrl) {
-      this.redis = new Redis(redisUrl);
-      console.log('[ReplayCache] Using Redis for replay protection');
-    } else {
-      console.warn('[ReplayCache] REDIS_URL not set - using in-memory cache (NOT safe for production)');
-    }
+// Atomic check-and-set for replay prevention
+export async function checkAndMarkSignature(key: string, ttlSeconds: number = 300): Promise<boolean> {
+  if (redisAvailable && redisClient) {
+    // Use SET with NX and EX options (single atomic operation)
+    const result = await redisClient.set(key, '1', {
+      NX: true,  // Only set if not exists
+      EX: ttlSeconds,  // Set expiry in same operation
+    });
+    return result === null; // null means key existed (signature was used)
   }
-
-  async set(key: string): Promise<boolean> {
-    const ttlSeconds = Math.ceil(SIGNATURE_EXPIRY_MS / 1000);
-
-    if (this.redis) {
-      // Atomic SET NX EX - returns 'OK' only if key didn't exist
-      const result = await this.redis.set(key, '1', 'EX', ttlSeconds, 'NX');
-      return result === 'OK';
-    }
-
-    // Fallback (development only)
-    if (this.fallbackCache.has(key)) return false;
-    this.fallbackCache.set(key, Date.now());
-    return true;
-  }
-
-  async has(key: string): Promise<boolean> {
-    if (this.redis) {
-      const result = await this.redis.exists(key);
-      return result === 1;
-    }
-    return this.fallbackCache.has(key);
-  }
+  // Memory fallback with lock for atomicity
+  ...
 }
 ```
 
-**Status:** FIXED
+**Deployment Note:**
+For production, ensure `REDIS_URL` environment variable is set. The in-memory fallback logs warnings and is NOT safe for production.
+
+**Status:** VERIFIED OK (Already implemented correctly)
 
 ---
 
@@ -513,7 +491,8 @@ Verified that signature verification:
 | File | Changes |
 |------|---------|
 | `backend/src/index.ts` | Added validation for prediction side, token wars side, LDS prediction, chat content |
-| `backend/src/utils/replayCache.ts` | Added Redis support with atomic SET NX EX |
+
+**Note:** `backend/src/utils/replayCache.ts` was reviewed and found to already have Redis support with atomic SET NX EX - no changes needed.
 
 ---
 
