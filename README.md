@@ -37,6 +37,10 @@ sol-battles/
 │           ├── balanceDatabase.ts         # Pending transactions
 │           └── draftDatabase.ts           # Draft tournament data
 │
+├── scripts/                  # Deployment scripts
+│   ├── deploy-mainnet.sh    # Mainnet deployment
+│   └── verify-deployment.sh # Post-deploy verification
+│
 └── web/                      # Next.js 16 frontend
     └── src/
         ├── app/              # App router pages
@@ -111,6 +115,12 @@ When a user places a wager:
 - **Wallet signature authentication** - All sensitive operations require signatures
 - **Rate limiting** - Global, standard, and strict limits per endpoint
 
+### Monitoring & Operations
+- **Health endpoints** - `/livez` (liveness) and `/readyz` (readiness) for Kubernetes
+- **Discord alerting** - Critical errors trigger Discord notifications with 5-minute throttling
+- **Automated backups** - SQLite databases backed up every 6 hours with 7-day retention
+- **Structured logging** - JSON format with DEBUG/INFO/WARN/ERROR levels
+
 ## Quick Start
 
 ### Prerequisites
@@ -125,7 +135,7 @@ npm install
 cp .env.example .env  # Configure environment
 npm run dev
 ```
-Backend runs on `http://localhost:3001`
+Backend runs on `http://localhost:3002`
 
 ### 2. Start the Frontend
 ```bash
@@ -152,16 +162,18 @@ SOLANA_RPC_URL=https://api.devnet.solana.com
 SESSION_BETTING_AUTHORITY_PRIVATE_KEY=<base58 private key>
 
 # Optional
-PORT=3001
+PORT=3002
 FRONTEND_URL=http://localhost:3000
 REQUIRE_WALLET_SIGNATURES=true
+DISCORD_WEBHOOK_URL=<discord webhook for alerts>
+ADMIN_WALLETS=<comma-separated admin wallet addresses>
 CMC_API_KEY=<coinmarketcap api key>
 HELIUS_API_KEY=<helius api key>
 ```
 
 ### Frontend
 ```bash
-NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3002
 NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 ```
 
@@ -251,6 +263,11 @@ Close Round (+1 hour)
 - [x] On-Chain Round Management
 - [x] Immediate Fund Locking
 - [x] Automatic Rent Reclaim
+- [x] Structured Logging
+- [x] Health Check Endpoints
+- [x] Discord Alert Service
+- [x] Automated Database Backups
+- [x] Scheduled Match System
 - [ ] Multi-sig authority (before mainnet)
 - [ ] Mainnet deployment
 - [ ] Mobile app
