@@ -346,7 +346,6 @@ class PredictionService {
     } else {
       // SECURITY: Atomic balance verification and fund locking
       // This prevents TOCTOU race conditions where user could withdraw between check and lock
-      // NOTE: This off-chain service is legacy - predictionServiceOnChain is the active service
       try {
         const lockResult = await balanceService.verifyAndLockBalance(
           bettor,
