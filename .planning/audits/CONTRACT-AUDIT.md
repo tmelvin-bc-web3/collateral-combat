@@ -2,8 +2,168 @@
 
 **Program ID:** `4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA`
 **Audit Date:** 2026-01-22
-**Auditor:** Claude Code (Phase 6 Plan 02)
+**Auditor:** Claude Code (Phase 6 - Smart Contract Audit)
 **Contract:** `programs/session_betting/programs/session_betting/src/lib.rs` (1839 lines)
+
+---
+
+## Sealevel Attack Analysis
+
+### 1. Signer Checks
+
+All privileged instructions require proper signer validation. The contract uses two patterns:
+1. `Signer<'info>` type in account struct for authority accounts
+2. `require!(ctx.accounts.authority.key() == game_state.authority, Unauthorized)` for runtime validation
+
+| Instruction | Signer Type | Runtime Authority Check | Status | Lines |
+|-------------|-------------|------------------------|--------|-------|
+| `initialize_game` | `authority: Signer<'info>` | N/A (deployer becomes authority) | PASS | 1040-1041 |
+| `start_round` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1073, 87-90 |
+| `lock_round` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1098, 134-138 |
+| `lock_round_fallback` | `caller: Signer<'info>` | None (permissionless by design after timeout) | PASS | 1122 |
+| `settle_round` | `caller: Signer<'info>` | None (permissionless by design) | PASS | 1147 |
+| `close_round` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1176-1177, 280-284 |
+| `set_paused` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1189, 313-317 |
+| `set_price_feed` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1201, 336-340 |
+| `propose_authority_transfer` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1214, 355-359 |
+| `accept_authority_transfer` | `new_authority: Signer<'info>` | `ctx.accounts.new_authority.key() == pending` | PASS | 1228, 385-389 |
+| `cancel_authority_transfer` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1240, 407-411 |
+| `withdraw_fees` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1254-1255, 432-436 |
+| `transfer_to_global_vault` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1470-1471, 491-495 |
+| `credit_winnings` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1511-1512, 550-554 |
+| `fund_global_vault` | `authority: Signer<'info>` | `ctx.accounts.authority.key() == game_state.authority` | PASS | 1552-1553, 607-611 |
+| `create_session` | `authority: Signer<'info>` | N/A (creates session for signer) | PASS | 1279-1280 |
+| `revoke_session` | `authority: Signer<'info>` | `constraint = session_token.authority == authority.key()` | PASS | 1295, 1299-1300 |
+| `deposit` | `user: Signer<'info>` | N/A (deposits to own account) | PASS | 1328-1329 |
+| `withdraw` | `user: Signer<'info>` | `constraint = user_balance.owner == user.key()` | PASS | 1340, 1352-1353 |
+| `place_bet` | `signer: Signer<'info>` | `verify_session_or_authority()` helper | PASS | 1404-1405, 770-776 |
+| `claim_winnings` | `signer: Signer<'info>` | `verify_session_or_authority()` helper | PASS | 1453-1454, 855-861 |
+
+**Summary:** All 21 instructions have proper signer checks. No missing signer vulnerabilities found.
+
+### 2. Owner Validation
+
+For instructions that modify user data, ownership is validated either via PDA seeds or explicit constraints.
+
+| Instruction | Validation Method | Status | Lines |
+|-------------|-------------------|--------|-------|
+| `withdraw` | `constraint = user_balance.owner == user.key()` + PDA seeds `[b"balance", user.key()]` | PASS | 1338-1340 |
+| `place_bet` | `verify_session_or_authority()` validates session.authority == user_balance.owner | PASS | 770-776, 929-968 |
+| `claim_winnings` | `constraint = position.player == user_balance.owner` + `verify_session_or_authority()` | PASS | 1442, 855-861, 871-875 |
+| `transfer_to_global_vault` | PDA seeds `[b"balance", owner.key()]` (backend uses owner pubkey) | PASS | 1476-1479 |
+| `credit_winnings` | PDA seeds `[b"balance", owner.key()]` (backend uses owner pubkey) | PASS | 1517-1520 |
+
+**Note on transfer_to_global_vault and credit_winnings:** These authority-only instructions take an `owner: AccountInfo` parameter. The PDA derivation ensures the correct user_balance account is accessed. No owner signature is required because only the backend authority can call these instructions.
+
+**Summary:** All user data modifications have proper ownership validation.
+
+### 3. Reinitialization Protection
+
+| Account Type | Initialization | Discriminator Protection | Status | Lines |
+|--------------|----------------|-------------------------|--------|-------|
+| `GameState` | `init` constraint | Anchor auto-discriminator | PASS | 1023-1030 |
+| `BettingRound` | `init` constraint | Anchor auto-discriminator | PASS | 1055-1062 |
+| `BettingPool` | `init` constraint | Anchor auto-discriminator | PASS | 1064-1071 |
+| `SessionToken` | `init` constraint | Anchor auto-discriminator | PASS | 1269-1277 |
+| `PlayerPosition` | `init` constraint | Anchor auto-discriminator | PASS | 1387-1394 |
+| `UserBalance` | `init_if_needed` | Anchor auto-discriminator | REVIEWED | 1311-1318 |
+
+**`init_if_needed` Analysis (Line 1312):**
+
+The `UserBalance` account uses `init_if_needed`. This is a potential reinitialization vector. However, the pattern is safe here because:
+
+1. **PDA derivation includes user's public key:** `seeds = [b"balance", user.key().as_ref()]`
+2. **User must sign as payer:** The `user` account that signs is the same one used in the PDA seed
+3. **Anchor discriminator is set on first init:** Subsequent calls see the account already has data
+4. **Owner field assignment is idempotent:** Line 681 sets `user_balance.owner = ctx.accounts.user.key()` which is always the same value for the same signer
+
+**Status:** SAFE - `init_if_needed` is used correctly for first-time user onboarding.
+
+### 4. Arithmetic Safety
+
+**Cargo.toml Release Profile (Line 8):**
+```toml
+[profile.release]
+overflow-checks = true
+```
+
+This enables runtime overflow checks even in release builds.
+
+**Checked Arithmetic Usage:**
+
+All critical financial calculations use checked operations:
+
+| Operation | Method | Error | Lines |
+|-----------|--------|-------|-------|
+| Round counter increment | `checked_add(1)` | `MathOverflow` | 122-123 |
+| Total volume update | `checked_add(pool.total_pool)` | `MathOverflow` | 255-257 |
+| Grace period calculation | `checked_add(CLAIM_GRACE_PERIOD_SECONDS)` | `MathOverflow` | 295-297 |
+| Fee deduction | `checked_sub(amount)` | `MathOverflow` | 454-456 |
+| Balance deduction (transfer) | `checked_sub(amount)` | `MathOverflow` | 505-507 |
+| Balance credit | `checked_add(amount)` | `MathOverflow` | 568-573 |
+| Session duration calc | `checked_sub(clock.unix_timestamp)` | `InvalidSessionDuration` | 635-636 |
+| Deposit balance update | `checked_add(amount)` | `MathOverflow` | 682-687 |
+| Withdraw balance update | `checked_sub`, `checked_add` | `MathOverflow` | 721-726 |
+| Bet deduction | `checked_sub(amount)` | `MathOverflow` | 804-806 |
+| Pool updates | `checked_add(amount)` | `MathOverflow` | 819-831 |
+| Fee calculation | `checked_mul`, `checked_div` | `MathOverflow` | 891-895 |
+| Payout credit | `checked_add(payout)` | `MathOverflow` | 902-907 |
+| Fee tracking | `checked_add(fee)` | `MathOverflow` | 910-912 |
+| Draw refund | `checked_add(position.amount)` | `MathOverflow` | 915-917 |
+| Winnings calculation | `checked_mul`, `checked_div`, `checked_add` (u128) | `MathOverflow` | 999-1007 |
+
+**Unchecked Arithmetic Found:**
+
+| Location | Expression | Risk Assessment | Status |
+|----------|------------|-----------------|--------|
+| Line 104 | `clock.unix_timestamp + ROUND_DURATION_SECONDS - LOCK_BUFFER_SECONDS` | LOW - i64 timestamp + 30s - 5s | LOW RISK |
+| Line 105 | `clock.unix_timestamp + ROUND_DURATION_SECONDS` | LOW - i64 timestamp + 30s | LOW RISK |
+| Line 107 | `round.lock_time + FALLBACK_LOCK_DELAY_SECONDS` | LOW - i64 result from line 104 + 60s | LOW RISK |
+| Line 170 | `price.price as u64` | Guarded by positive check | SAFE |
+| Line 217 | `price.price as u64` | Guarded by positive check | SAFE |
+
+**Analysis of Unchecked Operations:**
+
+1. **Time calculations (Lines 104-107):** These are i64 operations with constants (max +90 seconds). Unix timestamps won't overflow for billions of years. With `overflow-checks = true` in release profile, these would panic if overflow occurred. Risk is negligible.
+
+2. **Pyth price cast (Lines 170, 217):** The `price.price as u64` could panic if price is negative. However:
+   - Line 167: `require!(price.price > 0, InvalidPrice)` before cast on line 170
+   - Line 214: `require!(price.price > 0, InvalidPrice)` before cast on line 217
+
+   The positive check ensures safe cast. **SAFE.**
+
+**Recommendation (LOW):** Lines 104-107 could use `checked_add` for defense-in-depth, but risk is minimal due to `overflow-checks = true` and small constant values.
+
+### 5. PDA Validation
+
+All PDA accounts use Anchor's `seeds` and `bump` constraints. No instruction accepts bump as a parameter.
+
+| PDA | Seeds | Bump Source | Status | Lines |
+|-----|-------|-------------|--------|-------|
+| `game_state` | `[b"game"]` | `ctx.bumps.game_state` | PASS | 1027-1028 |
+| `global_vault` | `[b"global_vault"]` | `ctx.bumps.global_vault` | PASS | 1035-1036 |
+| `round` | `[b"round", round_id]` | `ctx.bumps.round` | PASS | 1059-1060 |
+| `pool` | `[b"pool", round_id]` | `ctx.bumps.pool` | PASS | 1068-1069 |
+| `session_token` | `[b"session", authority, session_signer]` | `ctx.bumps.session_token` | PASS | 1274-1275 |
+| `user_balance` | `[b"balance", user]` | `ctx.bumps.user_balance` | PASS | 1315-1316 |
+| `vault` | `[b"vault", user]` | `ctx.bumps.vault` | PASS | 1323-1324 |
+| `position` | `[b"position", round_id, user]` | `ctx.bumps.position` | PASS | 1391-1392 |
+
+**Summary:** All PDAs use canonical bump derivation via Anchor constraints. No PDA validation bypass vulnerabilities.
+
+---
+
+## Sealevel Attack Summary
+
+| Category | Findings | Severity |
+|----------|----------|----------|
+| Missing Signer Checks | None | - |
+| Missing Owner Checks | None | - |
+| Reinitialization | `init_if_needed` used safely | - |
+| Integer Overflow | 3 low-risk unchecked time operations | LOW |
+| PDA Validation | All valid | - |
+
+**Overall Sealevel Assessment:** PASS with LOW severity recommendations.
 
 ---
 
