@@ -1,0 +1,14 @@
+{
+  // audit-ci configuration for backend (npm)
+  // Blocks on high/critical vulnerabilities
+
+  "high": true,
+  "critical": true,
+  "moderate": false,
+  "low": false,
+
+  // Package allowlist with justifications
+  "allowlist": [],
+
+  "registry": "npm"
+}

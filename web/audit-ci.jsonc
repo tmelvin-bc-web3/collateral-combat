@@ -1,0 +1,32 @@
+{
+  // audit-ci configuration for frontend (pnpm)
+  // Blocks on high/critical vulnerabilities
+
+  "high": true,
+  "critical": true,
+  "moderate": false,
+  "low": false,
+
+  // Package allowlist with justifications
+  "allowlist": [
+    // bigint-buffer@1.1.5 - HIGH (CVE-2025-3194)
+    // Buffer overflow in toBigIntLE() - cannot upgrade (locked by @solana/buffer-layout-utils)
+    // Mitigation: Used only in @solana/spl-token internally, not exposed to user input
+    // Deep dependency chain: @solana/spl-token > @solana/buffer-layout-utils > bigint-buffer
+    "GHSA-3gc7-fjrx-p6mg",
+
+    // h3@1.15.4 - HIGH (CVE-2026-23527) Request Smuggling
+    // Deep dependency via @walletconnect/* packages
+    // Note: pnpm shows 1.15.5 installed but audit-ci may see older version in lockfile
+    // Used only in @walletconnect backend for key-value storage, not in request handling path
+    "GHSA-mp2g-9vg9-f4cg",
+
+    // elliptic@6.6.1 - LOW (CVE-2025-14505)
+    // Cryptographic weakness in ECDSA signatures - no patch available
+    // Used by @toruslabs/solana-embed (Torus wallet adapter)
+    // Impact: LOW severity, requires specific attack conditions
+    "GHSA-848j-6mx2-7j84"
+  ],
+
+  "registry": "pnpm"
+}
