@@ -29,6 +29,8 @@ import { chatService } from './services/chatService';
 import { scheduledMatchManager } from './services/scheduledMatchManager';
 import adminRoutes from './routes/admin';
 import { setActiveConnections } from './services/adminService';
+import * as adminService from './services/adminService';
+import { alertService } from './services/alertService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
@@ -213,6 +215,44 @@ const getEntryWallet = (entryId: string): string | null => {
 
 // Create reusable entry ownership middleware
 const requireDraftEntryOwnership = [requireAuth(), requireEntryOwnership(getEntryWallet)];
+
+// ===================
+// Health Check Endpoints (Kubernetes-compatible)
+// ===================
+
+// Liveness probe - is the app running?
+app.get('/livez', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: Date.now()
+  });
+});
+
+// Readiness probe - is the app ready to serve traffic?
+app.get('/readyz', async (req, res) => {
+  try {
+    const health = await adminService.getHealthStatus();
+
+    if (health.database.status === 'down') {
+      return res.status(503).json({
+        status: 'not ready',
+        reason: 'database unavailable',
+        timestamp: Date.now()
+      });
+    }
+
+    res.status(200).json({
+      status: 'ready',
+      timestamp: Date.now()
+    });
+  } catch (error: any) {
+    res.status(503).json({
+      status: 'not ready',
+      error: error.message,
+      timestamp: Date.now()
+    });
+  }
+});
 
 // REST API Routes
 
@@ -3442,6 +3482,32 @@ async function start() {
     setTimeout(() => {
       predictionService.start('SOL');
     }, 3000);
+  });
+
+  // ===================
+  // Global Error Handlers
+  // ===================
+
+  // Send alert for uncaught exceptions (add after server starts)
+  process.on('uncaughtException', async (error) => {
+    logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+    await alertService.sendCriticalAlert(
+      'Uncaught Exception',
+      error.message || 'Unknown error',
+      'UNCAUGHT_EXCEPTION',
+      { stack: error.stack?.substring(0, 500) }
+    );
+    // Give time for alert to send before exiting
+    setTimeout(() => process.exit(1), 1000);
+  });
+
+  process.on('unhandledRejection', async (reason) => {
+    logger.error('Unhandled rejection', { reason });
+    await alertService.sendCriticalAlert(
+      'Unhandled Promise Rejection',
+      String(reason),
+      'UNHANDLED_REJECTION'
+    );
   });
 }
 
