@@ -11,7 +11,24 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "type-coverage": "type-coverage",
+    "type-coverage:ci": "type-coverage --at-least 90.67 --strict",
+    "type-coverage:detail": "type-coverage --detail"
+  },
+  "typeCoverage": {
+    "atLeast": 90.67,
+    "strict": true,
+    "cache": true,
+    "ignoreFiles": [
+      "**/node_modules/**",
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/*.config.{js,ts}",
+      "**/scripts/**"
+    ],
+    "ignoreCatch": true,
+    "ignoreUnread": true
   },
   "keywords": [
     "solana",
@@ -45,7 +62,6 @@
     "redis": "^5.10.0",
     "socket.io": "^4.8.1",
     "tweetnacl": "^1.0.3",
-    "typescript": "^5.9.3",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -56,6 +72,8 @@
     "knip": "^5.82.1",
     "nodemon": "^3.1.11",
     "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "type-coverage": "^2.29.7",
+    "typescript": "^5.9.3"
   }
 }

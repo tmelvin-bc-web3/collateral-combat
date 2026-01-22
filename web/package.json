@@ -12,7 +12,24 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "type-coverage": "type-coverage",
+    "type-coverage:ci": "type-coverage --at-least 97.50 --strict",
+    "type-coverage:detail": "type-coverage --detail"
+  },
+  "typeCoverage": {
+    "atLeast": 97.50,
+    "strict": true,
+    "cache": true,
+    "ignoreFiles": [
+      "**/node_modules/**",
+      "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
+      "**/*.config.{js,ts}",
+      "**/lib/session-betting/types.ts"
+    ],
+    "ignoreCatch": true,
+    "ignoreUnread": true
   },
   "keywords": [
     "solana",
@@ -54,6 +71,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "ts-jest": "^29.4.6",
+    "type-coverage": "^2.29.7",
     "typescript": "^5.9.3"
   }
 }
