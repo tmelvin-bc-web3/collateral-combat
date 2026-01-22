@@ -22,7 +22,7 @@ import {
   PendingTransaction,
   GameModeBalance,
 } from '../db/balanceDatabase';
-import { createBalanceError } from '../utils/errors';
+import { createBalanceError, toApiError } from '../utils/errors';
 import { BalanceErrorCode } from '../types/errors';
 import { alertService } from './alertService';
 
@@ -404,8 +404,9 @@ class BalanceService {
       }
 
       return tx;
-    } catch (error: any) {
-      console.error(`[BalanceService] Error transferring to global vault:`, error);
+    } catch (error) {
+      const apiError = toApiError(error);
+      console.error(`[BalanceService] Error transferring to global vault:`, apiError.message);
       await alertService.sendCriticalAlert(
         'Balance Transfer Failed',
         `Failed to lock funds for wallet: ${userWallet.substring(0, 8)}...`,
@@ -414,7 +415,7 @@ class BalanceService {
           wallet: userWallet.substring(0, 8),
           amount: amountLamports,
           gameType: gameType || 'unknown',
-          errorType: error.name || 'Unknown'
+          errorType: apiError.code
         }
       );
       return null;
@@ -491,8 +492,9 @@ class BalanceService {
       recordGameModePayout(gameType, amountLamports);
 
       return tx;
-    } catch (error: any) {
-      console.error(`[BalanceService] Error crediting winnings:`, error);
+    } catch (error) {
+      const apiError = toApiError(error);
+      console.error(`[BalanceService] Error crediting winnings:`, apiError.message);
       await alertService.sendCriticalAlert(
         'Payout Failed',
         `Failed to credit ${amountLamports} lamports to wallet: ${userWallet.substring(0, 8)}...`,
@@ -502,7 +504,7 @@ class BalanceService {
           amount: amountLamports,
           gameType,
           gameId: gameId.substring(0, 16),
-          errorType: error.name || 'Unknown'
+          errorType: apiError.code
         }
       );
       return null;
@@ -620,8 +622,9 @@ class BalanceService {
 
       const newBalance = await this.getOnChainBalance(walletAddress);
       return { txId, newBalance };
-    } catch (error: any) {
-      console.error(`[BalanceService] Error releasing locked balance:`, error);
+    } catch (error) {
+      const apiError = toApiError(error);
+      console.error(`[BalanceService] Error releasing locked balance:`, apiError.message);
       await alertService.sendCriticalAlert(
         'Refund Failed',
         `Failed to release ${amount} lamports for wallet: ${walletAddress.substring(0, 8)}...`,
@@ -632,13 +635,13 @@ class BalanceService {
           gameMode,
           gameId: gameId.substring(0, 16),
           reason,
-          errorType: error.name || 'Unknown'
+          errorType: apiError.code
         }
       );
       throw createBalanceError(
         BalanceErrorCode.WITHDRAWAL_FAILED,
         'Failed to release locked funds',
-        { wallet: walletAddress, amount, gameMode, gameId, reason, error: String(error) }
+        { wallet: walletAddress, amount, gameMode, gameId, reason, error: apiError.message }
       );
     }
   }

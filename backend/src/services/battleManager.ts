@@ -27,6 +27,7 @@ import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
+import { toApiError } from '../utils/errors';
 
 // Lamports per SOL for entry fee conversion
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -164,9 +165,10 @@ class BattleManager {
           battleId
         );
         lockTx = lockResult.txId;
-      } catch (error: any) {
+      } catch (error) {
+        const apiError = toApiError(error);
         // Check for insufficient balance error
-        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+        if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
           const available = await balanceService.getAvailableBalance(walletAddress);
           throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
         }
@@ -1000,8 +1002,9 @@ class BattleManager {
         'battle',
         readyCheckGameId
       );
-    } catch (error: any) {
-      console.error(`[BattleManager] Player 1 ${player1Wallet.slice(0, 8)}... failed to lock funds for ready check:`, error.message);
+    } catch (error) {
+      const apiError = toApiError(error);
+      console.error(`[BattleManager] Player 1 ${player1Wallet.slice(0, 8)}... failed to lock funds for ready check:`, apiError.message);
       return;
     }
 
@@ -1013,14 +1016,16 @@ class BattleManager {
         'battle',
         readyCheckGameId
       );
-    } catch (error: any) {
-      console.error(`[BattleManager] Player 2 ${player2Wallet.slice(0, 8)}... failed to lock funds for ready check:`, error.message);
+    } catch (error) {
+      const apiError = toApiError(error);
+      console.error(`[BattleManager] Player 2 ${player2Wallet.slice(0, 8)}... failed to lock funds for ready check:`, apiError.message);
       // Refund player 1 since player 2 failed
       console.log(`[BattleManager] Refunding P1 ${player1Wallet.slice(0, 8)}... after P2 lock failure`);
       try {
         await balanceService.refundFromGlobalVault(player1Wallet, entryFeeLamports, 'battle', readyCheckGameId);
       } catch (refundErr) {
-        console.error(`[BattleManager] CRITICAL: Failed to refund P1 after P2 lock failure:`, refundErr);
+        const refundApiError = toApiError(refundErr);
+        console.error(`[BattleManager] CRITICAL: Failed to refund P1 after P2 lock failure:`, refundApiError.message);
         // Log for manual intervention - funds are locked but battle didn't start
       }
       return;

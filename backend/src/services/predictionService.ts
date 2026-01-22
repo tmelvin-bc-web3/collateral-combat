@@ -5,6 +5,7 @@ import { progressionService } from './progressionService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { balanceService } from './balanceService';
+import { toApiError } from '../utils/errors';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 const ROUND_DURATION = 30; // 30 seconds per round
@@ -354,8 +355,9 @@ class PredictionService {
           round.id
         );
         lockTxId = lockResult.txId;
-      } catch (error: any) {
-        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+      } catch (error) {
+        const apiError = toApiError(error);
+        if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
           const available = await balanceService.getAvailableBalance(bettor);
           throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${betAmount} SOL`);
         }

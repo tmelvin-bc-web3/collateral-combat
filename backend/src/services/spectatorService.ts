@@ -5,6 +5,7 @@ import { progressionService } from './progressionService';
 import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
 import { balanceService } from './balanceService';
 import * as userStatsDb from '../db/userStatsDatabase';
+import { toApiError } from '../utils/errors';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
@@ -233,9 +234,10 @@ class SpectatorService {
         'spectator',
         battleId
       );
-    } catch (error: any) {
+    } catch (error) {
+      const apiError = toApiError(error);
       // Check for insufficient balance error
-      if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+      if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
         const available = await balanceService.getAvailableBalance(bettor);
         throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
       }
