@@ -77,3 +77,9 @@ export const socketCorsOptions = {
   methods: ['GET', 'POST'],
   credentials: true,
 };
+
+/**
+ * Discord Webhook URL for critical alerts
+ * Optional - if not set, alerting is disabled
+ */
+export const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
