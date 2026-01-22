@@ -17,6 +17,7 @@ import * as userStatsDb from '../db/userStatsDatabase';
 import { coinMarketCapService } from './coinMarketCapService';
 import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
+import { DRAFT_FEE_PERCENT } from '../utils/fees';
 
 // In-memory state for active draft sessions
 interface ActiveDraftSession {
@@ -25,8 +26,8 @@ interface ActiveDraftSession {
 }
 
 class DraftTournamentManager {
-  // Constants
-  private readonly RAKE_PERCENT = 10;
+  // Constants (RAKE_PERCENT imported from centralized fee config as DRAFT_FEE_PERCENT)
+  private readonly RAKE_PERCENT = DRAFT_FEE_PERCENT;
   private readonly PICKS_PER_ENTRY = 6;
   private readonly OPTIONS_PER_ROUND = 5;
   private readonly PICK_TIME_LIMIT = 30; // seconds

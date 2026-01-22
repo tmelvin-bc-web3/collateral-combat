@@ -61,6 +61,7 @@ import {
 } from '../db/failedPayoutsDatabase';
 
 import crypto from 'crypto';
+import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 // Lamports per SOL
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -93,8 +94,8 @@ const CONFIG = {
   ENTRY_FEE_SOL: 0.1,
   // Entry fee in lamports
   ENTRY_FEE_LAMPORTS: 0.1 * LAMPORTS_PER_SOL,
-  // Rake percentage
-  RAKE_PERCENT: 5,
+  // Rake percentage (from centralized fee config)
+  RAKE_PERCENT: PLATFORM_FEE_PERCENT,
   // Max players per game
   MAX_PLAYERS: 50,
   // Min players to start (otherwise refund)

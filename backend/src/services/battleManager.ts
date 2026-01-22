@@ -26,11 +26,10 @@ import * as userStatsDb from '../db/userStatsDatabase';
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 // Lamports per SOL for entry fee conversion
 const LAMPORTS_PER_SOL = 1_000_000_000;
-
-const RAKE_PERCENT = 5; // 5% platform fee
 const STARTING_BALANCE = 1000; // $1000 starting balance
 const MAINTENANCE_MARGIN = 0.02; // 2% maintenance margin for liquidation (must be less than min leverage margin of 5%)
 
@@ -701,7 +700,7 @@ class BattleManager {
     }, 3000);
 
     // Credit winner with prize pool (minus rake)
-    const prizeAfterRake = battle.prizePool * (1 - RAKE_PERCENT / 100);
+    const prizeAfterRake = battle.prizePool * (1 - PLATFORM_FEE_PERCENT / 100);
     if (battle.winnerId && battle.prizePool > 0) {
       const prizeLamports = Math.floor(prizeAfterRake * LAMPORTS_PER_SOL);
       try {
@@ -918,7 +917,7 @@ class BattleManager {
 
   // Calculate prize distribution (after rake)
   calculatePrize(battle: Battle, rank: number): number {
-    const totalPrize = battle.prizePool * (1 - RAKE_PERCENT / 100);
+    const totalPrize = battle.prizePool * (1 - PLATFORM_FEE_PERCENT / 100);
 
     if (battle.config.maxPlayers === 2) {
       return rank === 1 ? totalPrize : 0;

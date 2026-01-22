@@ -35,6 +35,7 @@ import {
   getPendingFailedPayouts,
   FailedPayoutRecord,
 } from '../db/failedPayoutsDatabase';
+import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 // Lamports per SOL
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -70,8 +71,8 @@ const CONFIG = {
   MIN_BET_SOL: 0.01,
   // Maximum bet in SOL
   MAX_BET_SOL: 10,
-  // Rake percentage
-  RAKE_PERCENT: 5,
+  // Rake percentage (from centralized fee config)
+  RAKE_PERCENT: PLATFORM_FEE_PERCENT,
 };
 
 // Token pairs for battles (tokens available in priceService)

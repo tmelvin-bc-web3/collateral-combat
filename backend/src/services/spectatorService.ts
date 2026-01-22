@@ -5,10 +5,10 @@ import { progressionService } from './progressionService';
 import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
 import { balanceService } from './balanceService';
 import * as userStatsDb from '../db/userStatsDatabase';
+import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 const MIN_BET = 0.01; // Minimum bet in SOL
 const MAX_BET = 10; // Maximum bet in SOL
-const PLATFORM_FEE_PERCENT = 5; // 5% fee on winnings
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const ODDS_LOCK_DURATION_MS = 30_000; // 30 seconds
 

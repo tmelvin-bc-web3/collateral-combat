@@ -5,10 +5,10 @@ import { progressionService } from './progressionService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { balanceService } from './balanceService';
+import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 const ROUND_DURATION = 30; // 30 seconds per round
 const LOCK_BEFORE_END = 5; // Stop accepting bets 5 seconds before end
-const PLATFORM_FEE_PERCENT = 5; // 5% fee on winnings
 const EARLY_BIRD_MAX_BONUS = 0.20; // 20% max bonus for early bets
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
