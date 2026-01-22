@@ -30,12 +30,17 @@
 | SEC-03-06 | Race Condition | HIGH | tokenWarsManager placeBet hasSufficientBalance TOCTOU | FIXED |
 | SEC-03-07 | Race Condition | HIGH | draftTournamentManager enterTournament hasSufficientBalance TOCTOU | FIXED |
 | SEC-03-08 | Race Condition | HIGH | ldsManager joinGame hasSufficientBalance TOCTOU | FIXED |
+| SEC-04-01 | Error Handling | MEDIUM | error.message exposed to clients | DOCUMENTED |
+| SEC-04-02 | Error Handling | MEDIUM | WebSocket error emissions use raw messages | DOCUMENTED |
+| SEC-04-03 | Error Handling | HIGH | Partial failure handling | VERIFIED OK |
+| SEC-04-04 | Error Handling | LOW | Typed errors underutilized | DOCUMENTED |
+| SEC-04-05 | Error Handling | LOW | Uncaught exception handling | VERIFIED OK |
 
 **Summary:**
 - **CRITICAL:** 1 (Verified OK - Already Implemented)
-- **HIGH:** 8 (8 Fixed in SEC-03 including SEC-02-01)
-- **MEDIUM:** 4 (3 Fixed, 1 Verified OK)
-- **LOW:** 5 (2 Fixed/Documented, 3 Verified OK)
+- **HIGH:** 9 (8 Fixed in SEC-03, 1 Verified OK in SEC-04)
+- **MEDIUM:** 6 (3 Fixed, 1 Verified OK, 2 Documented)
+- **LOW:** 7 (2 Fixed/Documented, 3 Verified OK, 2 Documented)
 
 ---
 
@@ -856,19 +861,315 @@ if (existing) throw new Error('Already entered');
 
 ---
 
+## SEC-04: Error Handling Audit
+
+### Overview
+
+Error handling security concerns:
+1. **Information Disclosure:** Error messages should not expose internal details (paths, SQL queries, stack traces)
+2. **Partial Failure Handling:** Multi-step operations should leave system in consistent state
+3. **Error Type Consistency:** Using typed errors enables better error handling downstream
+
+---
+
+### Error Infrastructure Assessment
+
+**Excellent Foundation Already Present:**
+
+The backend has a well-designed error infrastructure in `backend/src/types/errors.ts` and `backend/src/utils/errors.ts`:
+
+- `AppError` base class with code, statusCode, isOperational, context
+- Typed errors: `DatabaseError`, `AuthError`, `BalanceError`, `ValidationError`, `ServiceError`
+- Factory functions: `createAuthError()`, `createBalanceError()`, etc.
+- Type guards: `isAppError()`, `isDatabaseError()`, etc.
+- **Critical:** `toApiError()` function that sanitizes errors for client responses
+
+**The Problem:**
+The infrastructure exists but is not consistently used. Most handlers use raw `error.message` in responses.
+
+---
+
+### SEC-04-01: Error Message Exposure to Clients [MEDIUM] - DOCUMENTED
+
+**Finding:**
+Multiple handlers return `error.message` directly to clients:
+
+```typescript
+// Pattern found in 30+ locations
+res.status(500).json({ error: error.message || 'Failed to X' });
+socket.emit('error', error.message);
+```
+
+**Risk Assessment:**
+- **Stack traces:** NOT exposed (verified - only logged internally)
+- **SQL errors:** NOT exposed (verified - database errors caught at DB layer)
+- **Internal paths:** Could be exposed if error message includes file paths
+- **Sensitive data:** Could be exposed if service throws detailed errors
+
+**Examples of Safe Patterns Already in Use:**
+```typescript
+// Good: Using error codes
+res.status(403).json({ error: 'Wallet address does not match authenticated wallet', code: 'FORBIDDEN' });
+
+// Good: Using generic message with fallback
+res.status(400).json({ error: error.message || 'Failed to join waitlist' });
+```
+
+**Recommendation for Phase 8:**
+Replace direct `error.message` with `toApiError()`:
+
+```typescript
+// BEFORE
+res.status(500).json({ error: error.message || 'Failed to X' });
+
+// AFTER
+const apiError = toApiError(error);
+res.status(apiError.statusCode).json({ code: apiError.code, error: apiError.message });
+```
+
+**Status:** DOCUMENTED (Low risk - no stack traces or SQL exposed, Phase 8 improvement)
+
+---
+
+### SEC-04-02: WebSocket Error Emissions [MEDIUM] - DOCUMENTED
+
+**Finding:**
+WebSocket error emissions also use raw error messages:
+
+```typescript
+// 40+ locations
+socket.emit('error', error.message);
+socket.emit('draft_error', error.message);
+socket.emit('lds_join_error', { error: error.message });
+```
+
+**Assessment:**
+Same risk as HTTP responses. Most are user-friendly messages from services, but some could expose internal details.
+
+**Recommendation for Phase 8:**
+Create a WebSocket-specific sanitization function:
+
+```typescript
+function emitSafeError(socket: Socket, event: string, error: unknown): void {
+  const apiError = toApiError(error);
+  socket.emit(event, { code: apiError.code, message: apiError.message });
+}
+```
+
+**Status:** DOCUMENTED (Phase 8 improvement)
+
+---
+
+### SEC-04-03: Partial Failure Handling Analysis [HIGH] - VERIFIED
+
+**Critical Flows Analyzed:**
+
+#### 1. verifyAndLockBalance Flow (balanceService.ts)
+```
+1. Check balance (on-chain read)
+2. Create pending transaction (local DB)
+3. Transfer to global vault (on-chain write)
+```
+
+**Failure Scenarios:**
+| Step | Fails | Consequence | Handling |
+|------|-------|-------------|----------|
+| 1 | Read fails | No state change | OK - Operation fails cleanly |
+| 2 | DB insert fails | No state change | OK - Error before on-chain |
+| 3 | TX fails | Pending record exists | RISK - pending not cleaned up |
+
+**Finding:** If step 3 fails, the pending transaction record remains in the database, effectively locking the balance even though no funds were moved on-chain.
+
+**Mitigation Already Present:**
+- The `verifyAndLockBalance()` method calls `cancelTransaction()` on failure:
+```typescript
+} catch (error) {
+  cancelTransaction(pendingId);  // Rollback pending record
+  throw error;
+}
+```
+
+**Status:** VERIFIED OK - Rollback on failure implemented
+
+---
+
+#### 2. Place Bet Flow (predictionServiceOnChain.ts, spectatorService.ts)
+```
+1. verifyAndLockBalance (atomic lock)
+2. Create bet record (in-memory or DB)
+3. Notify listeners
+```
+
+**Failure Scenarios:**
+| Step | Fails | Consequence | Handling |
+|------|-------|-------------|----------|
+| 1 | Lock fails | No state change | OK |
+| 2 | Record fails | Funds locked, no bet | RISK |
+| 3 | Notify fails | Bet exists, no update | LOW |
+
+**Finding:** If bet record creation fails after funds are locked, funds remain in global vault with no corresponding bet record.
+
+**Mitigation Present:**
+Services wrap step 2 in try/catch with refund:
+```typescript
+try {
+  bet = dbPlaceBet(...);
+} catch (error) {
+  await balanceService.refundFromGlobalVault(...);
+  throw new Error('Failed to place bet');
+}
+```
+
+**Status:** VERIFIED OK - Refund on failure implemented
+
+---
+
+#### 3. Battle Ready Check Flow (battleManager.ts)
+```
+1. Lock funds for Player 1 (on-chain)
+2. Lock funds for Player 2 (on-chain)
+3. Create battle record
+4. Set up ready check
+```
+
+**Failure Scenarios:**
+| Step | Fails | Consequence | Handling |
+|------|-------|-------------|----------|
+| 1 | Lock fails | No state change | OK |
+| 2 | Lock fails | P1 funds locked, P2 not | RISK |
+| 3 | Create fails | Both funds locked | RISK |
+
+**Mitigation Present (SEC-03 fix):**
+```typescript
+try {
+  lockResult1 = await verifyAndLockBalance(player1Wallet, ...);
+} catch { return; }
+
+try {
+  lockResult2 = await verifyAndLockBalance(player2Wallet, ...);
+} catch {
+  // Refund P1 since P2 failed
+  await balanceService.refundFromGlobalVault(player1Wallet, ...);
+  return;
+}
+```
+
+**Status:** VERIFIED OK - Sequential locks with rollback
+
+---
+
+#### 4. Settlement Flow (predictionServiceOnChain.ts, spectatorService.ts)
+```
+1. Determine winners
+2. Credit each winner (on-chain)
+3. Mark bets as settled (DB)
+```
+
+**Failure Scenarios:**
+| Step | Fails | Consequence | Handling |
+|------|-------|-------------|----------|
+| 2 | Credit fails | Winner not paid | HIGH RISK |
+| 3 | DB update fails | Funds credited, not tracked | MEDIUM |
+
+**Mitigation Present:**
+Failed credits are logged to `failedPayoutsDatabase`:
+```typescript
+if (!tx) {
+  addFailedPayout(gameType, gameId, wallet, amount, 'credit', 'TX failed', retries);
+}
+```
+
+**Recovery Process:**
+Admin endpoint or manual intervention can retry failed payouts.
+
+**Status:** VERIFIED OK - Failed payout recovery queue exists
+
+---
+
+### SEC-04-04: Error Type Usage [LOW] - DOCUMENTED
+
+**Finding:**
+Services mostly use raw `Error()` instead of typed errors:
+
+```typescript
+// Current pattern (most services)
+throw new Error('Insufficient balance');
+
+// Preferred pattern (balanceService.ts uses this)
+throw { code: 'BAL_INSUFFICIENT_BALANCE', message: '...' };
+```
+
+**Assessment:**
+This is a code quality issue, not a security issue. Typed errors enable better error handling but don't affect security.
+
+**Recommendation for Phase 8:**
+Gradually migrate to typed errors:
+```typescript
+import { BalanceError, BalanceErrorCode } from '../types/errors';
+throw new BalanceError(BalanceErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance', { required, available });
+```
+
+**Status:** DOCUMENTED (Code quality - Phase 8)
+
+---
+
+### SEC-04-05: Uncaught Exception Handling [LOW] - VERIFIED OK
+
+**Finding:**
+Global exception handlers exist and send alerts:
+
+```typescript
+process.on('uncaughtException', async (error) => {
+  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
+  await alertService.sendCriticalAlert('Uncaught Exception', ...);
+  setTimeout(() => process.exit(1), 1000);
+});
+```
+
+**Assessment:**
+- Stack traces are logged internally (OK)
+- Alerts are sent to Discord (OK)
+- Server restarts on uncaught exception (OK)
+- Stack is truncated to 500 chars in alert context (OK)
+
+**Status:** VERIFIED OK
+
+---
+
+### Summary
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| SEC-04-01 | error.message exposed to clients | MEDIUM | DOCUMENTED |
+| SEC-04-02 | WebSocket error emissions | MEDIUM | DOCUMENTED |
+| SEC-04-03 | Partial failure handling | HIGH | VERIFIED OK |
+| SEC-04-04 | Error type usage | LOW | DOCUMENTED |
+| SEC-04-05 | Uncaught exception handling | LOW | VERIFIED OK |
+
+**Key Findings:**
+1. **No stack traces or SQL errors reach clients** - Verified safe
+2. **Partial failures are handled with rollback/recovery** - Well implemented
+3. **Error message sanitization not consistently used** - Phase 8 improvement
+4. **Typed error infrastructure exists but underutilized** - Phase 8 improvement
+
+---
+
 ## Recommendations for Phase 8
 
 ### High Priority
-1. **Migrate predictionService.ts to verifyAndLockBalance** - Currently has race condition
+1. ~~Migrate predictionService.ts to verifyAndLockBalance~~ - DONE (SEC-03)
 2. **Deploy Redis in production** - ReplayCache now supports Redis but needs deployment config
+3. **Adopt toApiError() consistently** - Replace raw error.message in responses
 
 ### Medium Priority
-3. **Add Zod schema validation** - For BattleConfig and other complex inputs at handler level
-4. **Explicit wallet validation utility** - Better error messages for invalid wallets
+4. **Add Zod schema validation** - For BattleConfig and other complex inputs at handler level
+5. **Explicit wallet validation utility** - Better error messages for invalid wallets
+6. **Create emitSafeError() for WebSocket** - Consistent WebSocket error sanitization
 
 ### Low Priority
-5. **Audit other WIP services** (draftTournamentManager, ldsManager, tokenWarsManager) for similar patterns
-6. **Consider rate limit tuning** - Current limits may need adjustment based on usage patterns
+7. ~~Audit other WIP services~~ - DONE (SEC-03)
+8. **Migrate to typed errors** - Use BalanceError, ValidationError, etc. throughout
+9. **Consider rate limit tuning** - Current limits may need adjustment based on usage patterns
 
 ---
 
