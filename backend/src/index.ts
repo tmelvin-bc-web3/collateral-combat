@@ -49,6 +49,8 @@ import { checkAndMarkSignature } from './utils/replayCache';
 import { WHITELISTED_TOKENS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
+import { z } from 'zod';
+import { validateBattleConfig } from './validation';
 
 // ===================
 // Service-Specific Loggers
@@ -1768,14 +1770,21 @@ io.on('connection', (socket) => {
   // Create a new battle
   socket.on('create_battle', async (config: BattleConfig, wallet: string) => {
     try {
+      // SECURITY: Validate battle config at runtime before processing
+      const validatedConfig = validateBattleConfig(config);
+
       // SECURITY: Use authenticated wallet, not client-provided
       const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
       walletAddress = authenticatedWallet;
-      const battle = await battleManager.createBattle(config, authenticatedWallet);
+      const battle = await battleManager.createBattle(validatedConfig, authenticatedWallet);
       currentBattleId = battle.id;
       socket.join(battle.id);
       socket.emit('battle_update', battle);
-    } catch (error: any) {
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        socket.emit('error', `Invalid battle config: ${error.issues[0]?.message}`);
+        return;
+      }
       socket.emit('error', 'Authentication required to create battle');
     }
   });
@@ -1804,17 +1813,24 @@ io.on('connection', (socket) => {
   // Queue for matchmaking
   socket.on('queue_matchmaking', (config: BattleConfig, wallet: string) => {
     try {
+      // SECURITY: Validate battle config at runtime before processing
+      const validatedConfig = validateBattleConfig(config);
+
       // SECURITY: Use authenticated wallet, not client-provided
       const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
       walletAddress = authenticatedWallet;
-      battleManager.queueForMatchmaking(config, authenticatedWallet);
+      battleManager.queueForMatchmaking(validatedConfig, authenticatedWallet);
 
-      const status = battleManager.getQueueStatus(config);
+      const status = battleManager.getQueueStatus(validatedConfig);
       socket.emit('matchmaking_status', {
         position: status.position,
         estimated: status.playersInQueue > 1 ? 5 : 30, // seconds
       });
-    } catch (error: any) {
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        socket.emit('error', `Invalid battle config: ${error.issues[0]?.message}`);
+        return;
+      }
       socket.emit('error', 'Authentication required for matchmaking');
     }
   });
