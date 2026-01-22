@@ -833,3 +833,38 @@ export interface ReferralStats {
   hasDiscount: boolean;
   discountExpiresAt: number | null;
 }
+
+// ===================
+// Scheduled Match Types
+// ===================
+
+export type ScheduledMatchStatus =
+  | 'upcoming'
+  | 'registration_open'
+  | 'starting'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
+
+export interface ScheduledMatch {
+  id: string;
+  gameMode: 'battle';
+  scheduledStartTime: number;  // UTC timestamp
+  registrationOpens: number;   // UTC timestamp
+  registrationCloses: number;  // UTC timestamp (5 min before start)
+  minPlayers: number;
+  maxPlayers: number;
+  registeredPlayers: string[]; // wallet addresses
+  confirmedPlayers: string[];  // players who passed ready check
+  status: ScheduledMatchStatus;
+  entryFee: number;            // in SOL
+  createdAt: number;
+}
+
+export interface ScheduledMatchEvent {
+  type: 'match_scheduled' | 'registration_opened' | 'player_registered' |
+        'player_unregistered' | 'ready_check_started' | 'ready_check_response' |
+        'match_started' | 'match_cancelled';
+  matchId: string;
+  data?: any;
+}
