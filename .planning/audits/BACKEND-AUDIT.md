@@ -1173,15 +1173,81 @@ process.on('uncaughtException', async (error) => {
 
 ---
 
-## Appendix: Files Modified During Audit
+## Contract Invariant Compliance
+
+Per Phase 6 (CONTRACT-AUDIT.md), the smart contract enforces 15 invariants. This section verifies backend compliance with relevant invariants.
+
+| Contract Invariant | Backend Compliance | Verified |
+|-------------------|-------------------|----------|
+| **INV-04:** User balance cannot go negative | `verifyAndLockBalance()` checks balance before any debit | YES |
+| **INV-05:** State updated before transfers (no reentrancy) | Backend updates local state before on-chain calls | YES |
+| **INV-10:** Funds locked via transferToGlobalVault | All services use `verifyAndLockBalance()` which calls this | YES |
+| **INV-11:** Only authority can credit/debit global vault | Backend holds authority key, all operations signed | YES |
+| **INV-15:** Session keys cannot withdraw | Backend only uses session for betting, not withdrawals | YES |
+
+### Detailed Verification
+
+**INV-04 (Balance Non-Negative):**
+- `verifyAndLockBalance()` in balanceService.ts reads on-chain balance
+- Pending transactions tracked locally to prevent over-betting
+- Contract enforces this on-chain as well (double protection)
+
+**INV-05 (State Before Transfers):**
+- All services create pending transaction records before on-chain calls
+- If on-chain fails, pending is rolled back
+- Settlement marks bets as settled before crediting winners
+
+**INV-10 (Fund Locking):**
+- SEC-03 migrated all 8 services to use `verifyAndLockBalance()`
+- This method calls `transferToGlobalVault()` atomically
+- Users cannot withdraw locked funds
+
+**INV-11 (Authority Control):**
+- `SESSION_BETTING_AUTHORITY_PRIVATE_KEY` env var holds authority
+- balanceService initializes with authority keypair
+- All vault operations require authority signature
+
+**INV-15 (Session Isolation):**
+- Backend distinguishes between wallet auth and session auth
+- `getAuthenticatedWallet()` returns wallet, not session
+- Withdrawal operations require wallet signature (not session)
+
+---
+
+## Final Verification Checklist
+
+- [x] All API endpoints have input validation
+- [x] All WebSocket events have input validation
+- [x] Signature verification on sensitive operations
+- [x] No hasSufficientBalance TOCTOU patterns (fixed in SEC-03)
+- [x] Error messages don't expose stack traces
+- [x] Partial failures handled with rollback/recovery
+- [x] Contract invariants enforced by backend
+
+---
+
+## Appendix A: Files Modified During Plan 07-01
 
 | File | Changes |
 |------|---------|
 | `backend/src/index.ts` | Added validation for prediction side, token wars side, LDS prediction, chat content |
+
+## Appendix B: Files Modified During Plan 07-02
+
+| File | Changes |
+|------|---------|
+| `backend/src/services/predictionServiceOnChain.ts` | Migrated to verifyAndLockBalance |
+| `backend/src/services/predictionService.ts` | Migrated to verifyAndLockBalance |
+| `backend/src/services/spectatorService.ts` | Migrated to verifyAndLockBalance |
+| `backend/src/services/battleManager.ts` | Migrated joinBattle and createReadyCheck to verifyAndLockBalance |
+| `backend/src/services/tokenWarsManager.ts` | Migrated to verifyAndLockBalance |
+| `backend/src/services/draftTournamentManager.ts` | Migrated to verifyAndLockBalance |
+| `backend/src/services/ldsManager.ts` | Migrated to verifyAndLockBalance |
 
 **Note:** `backend/src/utils/replayCache.ts` was reviewed and found to already have Redis support with atomic SET NX EX - no changes needed.
 
 ---
 
 *Audit completed: 2026-01-22*
-*Next: SEC-03 (Transaction Integrity) and SEC-04 (Rate Limiting) in Plan 07-02*
+*Plan 07-01: SEC-01 Input Validation, SEC-02 Auth/Session*
+*Plan 07-02: SEC-03 Race Conditions, SEC-04 Error Handling*
