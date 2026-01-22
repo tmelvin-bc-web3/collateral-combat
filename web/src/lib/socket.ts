@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification, ChatMessage } from '@/types';
+import { ScheduledMatch } from '@/types/scheduled';
 import { BACKEND_URL } from '@/config/api';
 
 interface ServerToClientEvents {
@@ -75,6 +76,12 @@ interface ServerToClientEvents {
   chat_history: (messages: ChatMessage[]) => void;
   chat_error: (error: { code: string; message: string }) => void;
   chat_system: (message: { battleId: string; content: string }) => void;
+  // Scheduled Matches events
+  scheduled_matches_list: (matches: ScheduledMatch[]) => void;
+  scheduled_match_updated: (match: ScheduledMatch) => void;
+  scheduled_match_created: (match: ScheduledMatch) => void;
+  scheduled_ready_check: (data: { matchId: string; expiresAt: number }) => void;
+  match_registration_success: (data: { matchId: string; message: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -136,6 +143,12 @@ interface ClientToServerEvents {
   // Battle Chat events
   send_chat_message: (data: { battleId: string; content: string }) => void;
   load_chat_history: (battleId: string) => void;
+  // Scheduled Matches events
+  subscribe_scheduled_matches: (gameMode: string) => void;
+  unsubscribe_scheduled_matches: (gameMode: string) => void;
+  register_for_match: (data: { matchId: string; wallet: string }) => void;
+  unregister_from_match: (data: { matchId: string; wallet: string }) => void;
+  scheduled_ready_check_response: (data: { matchId: string; wallet: string; ready: boolean }) => void;
 }
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
