@@ -270,10 +270,106 @@ export interface RakeRebate {
 }
 
 // ===================
+// Database Row Types (match SQL column names - snake_case)
+// ===================
+
+interface ProgressionRow {
+  wallet_address: string;
+  total_xp: number;
+  current_level: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface XpHistoryRow {
+  id: number;
+  wallet_address: string;
+  xp_amount: number;
+  source: string;
+  source_id: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+interface UserPerkRow {
+  id: number;
+  wallet_address: string;
+  perk_type: string;
+  unlock_level: number;
+  is_used: number; // PostgreSQL integer 0/1
+  activated_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+interface UserCosmeticRow {
+  id: number;
+  wallet_address: string;
+  cosmetic_type: string;
+  cosmetic_id: string;
+  unlock_level: number;
+  created_at: string;
+}
+
+interface FreeBetBalanceRow {
+  wallet_address: string;
+  balance: number;
+  lifetime_earned: number;
+  lifetime_used: number;
+  updated_at: string;
+}
+
+interface FreeBetHistoryRow {
+  id: number;
+  wallet_address: string;
+  amount: number;
+  transaction_type: string;
+  game_mode: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+interface UserStreakRow {
+  wallet_address: string;
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+  updated_at: string;
+}
+
+interface FreeBetPositionRow {
+  id: number;
+  wallet_address: string;
+  round_id: number;
+  side: string;
+  amount_lamports: number;
+  status: string;
+  payout_lamports: number | null;
+  tx_signature_bet: string | null;
+  tx_signature_claim: string | null;
+  tx_signature_settlement: string | null;
+  created_at: string;
+}
+
+interface RakeRebateRow {
+  id: number;
+  wallet_address: string;
+  round_id: number;
+  gross_winnings_lamports: number;
+  effective_fee_bps: number;
+  perk_type: string | null;
+  rebate_lamports: number;
+  status: string;
+  claim_tx_signature: string;
+  rebate_tx_signature: string | null;
+  created_at: string;
+}
+
+// ===================
 // Row Mappers
 // ===================
 
-function mapProgressionRow(row: any): UserProgressionData {
+function mapProgressionRow(row: ProgressionRow): UserProgressionData {
   return {
     walletAddress: row.wallet_address,
     totalXp: row.total_xp,
@@ -283,7 +379,7 @@ function mapProgressionRow(row: any): UserProgressionData {
   };
 }
 
-function mapXpHistoryRow(row: any): XpHistoryEntry {
+function mapXpHistoryRow(row: XpHistoryRow): XpHistoryEntry {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
@@ -295,7 +391,7 @@ function mapXpHistoryRow(row: any): XpHistoryEntry {
   };
 }
 
-function mapPerkRow(row: any): UserPerk {
+function mapPerkRow(row: UserPerkRow): UserPerk {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
@@ -308,7 +404,7 @@ function mapPerkRow(row: any): UserPerk {
   };
 }
 
-function mapCosmeticRow(row: any): UserCosmetic {
+function mapCosmeticRow(row: UserCosmeticRow): UserCosmetic {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
@@ -319,7 +415,7 @@ function mapCosmeticRow(row: any): UserCosmetic {
   };
 }
 
-function mapFreeBetBalanceRow(row: any): FreeBetBalance {
+function mapFreeBetBalanceRow(row: FreeBetBalanceRow): FreeBetBalance {
   return {
     walletAddress: row.wallet_address,
     balance: row.balance,
@@ -329,7 +425,7 @@ function mapFreeBetBalanceRow(row: any): FreeBetBalance {
   };
 }
 
-function mapFreeBetHistoryRow(row: any): FreeBetTransaction {
+function mapFreeBetHistoryRow(row: FreeBetHistoryRow): FreeBetTransaction {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
@@ -341,7 +437,7 @@ function mapFreeBetHistoryRow(row: any): FreeBetTransaction {
   };
 }
 
-function mapStreakRow(row: any): UserStreak {
+function mapStreakRow(row: UserStreakRow): UserStreak {
   return {
     walletAddress: row.wallet_address,
     currentStreak: row.current_streak,
@@ -351,7 +447,7 @@ function mapStreakRow(row: any): UserStreak {
   };
 }
 
-function mapFreeBetPositionRow(row: any): FreeBetPosition {
+function mapFreeBetPositionRow(row: FreeBetPositionRow): FreeBetPosition {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
@@ -367,7 +463,7 @@ function mapFreeBetPositionRow(row: any): FreeBetPosition {
   };
 }
 
-function mapRakeRebateRow(row: any): RakeRebate {
+function mapRakeRebateRow(row: RakeRebateRow): RakeRebate {
   return {
     id: row.id,
     walletAddress: row.wallet_address,
