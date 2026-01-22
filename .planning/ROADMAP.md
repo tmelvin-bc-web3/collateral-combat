@@ -40,7 +40,7 @@
 
 - [x] **Phase 5: Automated Analysis** - Quick wins with zero-config tools ✓
 - [x] **Phase 6: Smart Contract Audit** - On-chain security and correctness ✓
-- [ ] **Phase 7: Backend Security** - Off-chain security hardening
+- [x] **Phase 7: Backend Security** - Off-chain security hardening ✓
 - [ ] **Phase 8: Code Quality** - Cleanup informed by audit findings
 - [ ] **Phase 9: Integration** - Cross-cutting concerns and economic model
 
@@ -89,8 +89,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Input validation (SEC-01) and auth/session security (SEC-02)
-- [ ] 07-02-PLAN.md — Race conditions (SEC-03) and error handling (SEC-04)
+- [x] 07-01-PLAN.md — Input validation (SEC-01) and auth/session security (SEC-02)
+- [x] 07-02-PLAN.md — Race conditions (SEC-03) and error handling (SEC-04)
 
 ### Phase 8: Code Quality
 **Goal**: Clean, readable codebase with tight types (informed by audit findings)
@@ -134,7 +134,7 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9
 | 4. Operations | v1.0 | 6/6 | Complete | 2026-01-22 |
 | 5. Automated Analysis | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 6. Smart Contract Audit | v1.1 | 2/2 | Complete | 2026-01-22 |
-| 7. Backend Security | v1.1 | 0/2 | Not started | - |
+| 7. Backend Security | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 8. Code Quality | v1.1 | 0/2 | Not started | - |
 | 9. Integration | v1.1 | 0/2 | Not started | - |
 
