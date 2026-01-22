@@ -24,6 +24,7 @@ import {
 } from '../db/balanceDatabase';
 import { createBalanceError } from '../utils/errors';
 import { BalanceErrorCode } from '../types/errors';
+import { alertService } from './alertService';
 
 const SESSION_BETTING_PROGRAM_ID = new PublicKey('4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA');
 
@@ -403,8 +404,19 @@ class BalanceService {
       }
 
       return tx;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[BalanceService] Error transferring to global vault:`, error);
+      await alertService.sendCriticalAlert(
+        'Balance Transfer Failed',
+        `Failed to lock funds for wallet: ${userWallet.substring(0, 8)}...`,
+        'BALANCE_TRANSFER_FAILED',
+        {
+          wallet: userWallet.substring(0, 8),
+          amount: amountLamports,
+          gameType: gameType || 'unknown',
+          errorType: error.name || 'Unknown'
+        }
+      );
       return null;
     }
   }
@@ -430,6 +442,17 @@ class BalanceService {
     if (!canPayoutFromGameMode(gameType, amountLamports)) {
       console.error(`[BalanceService] SOLVENCY CHECK FAILED: ${gameType} cannot pay ${amountLamports} lamports to ${userWallet}`);
       console.error(`[BalanceService] Game mode ${gameType} balance:`, getGameModeBalance(gameType));
+      await alertService.sendCriticalAlert(
+        'Balance Mismatch - Solvency Check Failed',
+        `Game mode ${gameType} cannot pay ${amountLamports} lamports to wallet ${userWallet.substring(0, 8)}...`,
+        'BALANCE_SOLVENCY_FAILED',
+        {
+          gameType,
+          wallet: userWallet.substring(0, 8),
+          requested: amountLamports,
+          gameId: gameId.substring(0, 16)
+        }
+      );
       return null;
     }
 
@@ -468,8 +491,20 @@ class BalanceService {
       recordGameModePayout(gameType, amountLamports);
 
       return tx;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[BalanceService] Error crediting winnings:`, error);
+      await alertService.sendCriticalAlert(
+        'Payout Failed',
+        `Failed to credit ${amountLamports} lamports to wallet: ${userWallet.substring(0, 8)}...`,
+        'PAYOUT_FAILED',
+        {
+          wallet: userWallet.substring(0, 8),
+          amount: amountLamports,
+          gameType,
+          gameId: gameId.substring(0, 16),
+          errorType: error.name || 'Unknown'
+        }
+      );
       return null;
     }
   }
@@ -585,8 +620,21 @@ class BalanceService {
 
       const newBalance = await this.getOnChainBalance(walletAddress);
       return { txId, newBalance };
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[BalanceService] Error releasing locked balance:`, error);
+      await alertService.sendCriticalAlert(
+        'Refund Failed',
+        `Failed to release ${amount} lamports for wallet: ${walletAddress.substring(0, 8)}...`,
+        'REFUND_FAILED',
+        {
+          wallet: walletAddress.substring(0, 8),
+          amount,
+          gameMode,
+          gameId: gameId.substring(0, 16),
+          reason,
+          errorType: error.name || 'Unknown'
+        }
+      );
       throw createBalanceError(
         BalanceErrorCode.WITHDRAWAL_FAILED,
         'Failed to release locked funds',

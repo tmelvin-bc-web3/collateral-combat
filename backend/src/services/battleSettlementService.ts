@@ -3,6 +3,7 @@ import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import bs58 from 'bs58';
 import * as idl from '../idl/battle_program.json';
 import { SignedTrade, Battle } from '../types';
+import { alertService } from './alertService';
 
 const BATTLE_PROGRAM_ID = new PublicKey('GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9');
 
@@ -157,6 +158,17 @@ class BattleSettlementService {
       if (error.logs) {
         console.error('[Settlement] Logs:', error.logs.slice(-5).join('\n'));
       }
+      await alertService.sendCriticalAlert(
+        'Settlement Failed',
+        `Battle settlement failed for: ${onChainBattleId.substring(0, 16)}...`,
+        'SETTLEMENT_FAILED',
+        {
+          battleId: onChainBattleId.substring(0, 16),
+          winner: winnerWallet.substring(0, 8),
+          phase: 'settlement',
+          errorMessage: error.message?.substring(0, 200)
+        }
+      );
       return null;
     }
   }
@@ -371,6 +383,17 @@ class BattleSettlementService {
       if (error.logs) {
         console.error('[Settlement] Logs:', error.logs.slice(-5).join('\n'));
       }
+      await alertService.sendCriticalAlert(
+        'Settlement Failed',
+        `Verified battle settlement failed: ${battle.id}`,
+        'SETTLEMENT_FAILED',
+        {
+          battleId: battle.id,
+          phase: 'verified_settlement',
+          tradesCount: battle.signedTrades?.length || 0,
+          errorMessage: error.message?.substring(0, 200)
+        }
+      );
       return null;
     }
   }
