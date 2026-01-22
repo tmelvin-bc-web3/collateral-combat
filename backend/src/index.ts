@@ -26,6 +26,7 @@ import { ldsManager, LDSEvent } from './services/ldsManager';
 import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { pythVerificationService } from './services/pythVerificationService';
 import { chatService } from './services/chatService';
+import { scheduledMatchManager } from './services/scheduledMatchManager';
 import adminRoutes from './routes/admin';
 import { setActiveConnections } from './services/adminService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
@@ -2507,6 +2508,75 @@ io.on('connection', (socket) => {
   });
 
   // ===================
+  // Scheduled Matches Socket Handlers
+  // ===================
+
+  // Subscribe to upcoming scheduled matches
+  socket.on('subscribe_scheduled_matches', (gameMode: string) => {
+    const rateCheck = checkSocketRateLimit(socket.id, '', 'subscribe_scheduled', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    socket.join(`scheduled:${gameMode}`);
+    const upcoming = scheduledMatchManager.getUpcomingMatches(gameMode as 'battle');
+    socket.emit('scheduled_matches_list' as any, upcoming);
+  });
+
+  // Unsubscribe from scheduled matches
+  socket.on('unsubscribe_scheduled_matches', (gameMode: string) => {
+    socket.leave(`scheduled:${gameMode}`);
+  });
+
+  // Register for a scheduled match
+  socket.on('register_for_match', async (data: { matchId: string; wallet: string }) => {
+    const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'register_match', GAME_JOIN_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    try {
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
+      await scheduledMatchManager.registerPlayer(data.matchId, authenticatedWallet);
+      socket.emit('match_registration_success' as any, { matchId: data.matchId });
+
+      // Notify all subscribers of updated match
+      const match = scheduledMatchManager.getMatch(data.matchId);
+      if (match) {
+        io.to(`scheduled:${match.gameMode}`).emit('scheduled_match_updated' as any, match);
+      }
+    } catch (error: any) {
+      socket.emit('error', error.message || 'Failed to register for match');
+    }
+  });
+
+  // Unregister from a scheduled match
+  socket.on('unregister_from_match', async (data: { matchId: string; wallet: string }) => {
+    try {
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
+      await scheduledMatchManager.unregisterPlayer(data.matchId, authenticatedWallet);
+      socket.emit('match_unregistration_success' as any, { matchId: data.matchId });
+
+      const match = scheduledMatchManager.getMatch(data.matchId);
+      if (match) {
+        io.to(`scheduled:${match.gameMode}`).emit('scheduled_match_updated' as any, match);
+      }
+    } catch (error: any) {
+      socket.emit('error', error.message || 'Failed to unregister from match');
+    }
+  });
+
+  // Ready check response for scheduled matches
+  socket.on('scheduled_ready_check_response', (data: { matchId: string; wallet: string; ready: boolean }) => {
+    try {
+      const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
+      scheduledMatchManager.handleReadyCheckResponse(data.matchId, authenticatedWallet, data.ready);
+    } catch (error: any) {
+      socket.emit('error', error.message || 'Authentication required');
+    }
+  });
+
+  // ===================
   // Battle Chat Socket Handlers
   // ===================
 
@@ -3296,6 +3366,45 @@ async function start() {
     } else if (eventType === 'system' && data.content) {
       // Broadcast system message
       io.to(data.battleId).emit('chat_system', { battleId: data.battleId, content: data.content });
+    }
+  });
+
+  // Initialize scheduled match system
+  scheduledMatchManager.initialize();
+  logger.info('Scheduled match system started');
+
+  // Subscribe to scheduled match events for WebSocket notifications
+  scheduledMatchManager.subscribe((event) => {
+    const match = scheduledMatchManager.getMatch(event.matchId);
+
+    if (event.type === 'player_registered' || event.type === 'player_unregistered') {
+      if (match) {
+        io.to(`scheduled:${match.gameMode}`).emit('scheduled_match_updated' as any, match);
+      }
+    }
+
+    if (event.type === 'ready_check_started') {
+      // Notify registered players individually
+      const registeredPlayers = event.data?.playersRequired || [];
+      registeredPlayers.forEach((wallet: string) => {
+        const socketId = battleManager.getSocketIdForWallet(wallet);
+        if (socketId) {
+          io.to(socketId).emit('scheduled_ready_check' as any, {
+            matchId: event.matchId,
+            expiresAt: event.data?.expiresAt
+          });
+        }
+      });
+    }
+
+    if (event.type === 'match_started' || event.type === 'match_cancelled') {
+      if (match) {
+        io.to(`scheduled:${match.gameMode}`).emit('scheduled_match_updated' as any, match);
+      }
+    }
+
+    if (event.type === 'match_scheduled') {
+      io.to('scheduled:battle').emit('scheduled_match_created' as any, match);
     }
   });
 

@@ -394,6 +394,12 @@ export interface ClientToServerEvents {
   // Battle Chat events
   send_chat_message: (data: { battleId: string; content: string }) => void;
   load_chat_history: (battleId: string) => void;
+  // Scheduled Matches events
+  subscribe_scheduled_matches: (gameMode: string) => void;
+  unsubscribe_scheduled_matches: (gameMode: string) => void;
+  register_for_match: (data: { matchId: string; wallet: string }) => void;
+  unregister_from_match: (data: { matchId: string; wallet: string }) => void;
+  scheduled_ready_check_response: (data: { matchId: string; wallet: string; ready: boolean }) => void;
 }
 
 // ===================
