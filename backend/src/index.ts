@@ -46,7 +46,7 @@ import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_L
 import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, requireWalletHeader } from './middleware/auth';
 import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
 import { checkAndMarkSignature } from './utils/replayCache';
-import { WHITELISTED_TOKENS } from './tokens';
+import { TRADABLE_ASSETS } from './tokens';
 import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
 import { z } from 'zod';
@@ -259,9 +259,9 @@ app.get('/readyz', async (req, res) => {
 
 // REST API Routes
 
-// Get all whitelisted tokens
+// Get all tradable assets
 app.get('/api/tokens', (req, res) => {
-  res.json(WHITELISTED_TOKENS);
+  res.json(TRADABLE_ASSETS);
 });
 
 // Get current prices

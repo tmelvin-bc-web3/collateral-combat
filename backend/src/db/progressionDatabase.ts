@@ -1239,9 +1239,6 @@ export async function getFreeBetPositionsByStatus(status: FreeBetPositionStatus)
   }
 }
 
-// Alias for compatibility
-export const getFreeBetPositionsByStatusType = getFreeBetPositionsByStatus;
-
 export async function getFreeBetPositionsByWallet(walletAddress: string): Promise<FreeBetPosition[]> {
   if (!pool) {
     throw createDatabaseError(

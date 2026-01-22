@@ -25,10 +25,3 @@ export function isValidAsset(symbol: string): boolean {
 export function getAsset(symbol: string): Asset | undefined {
   return ASSET_BY_SYMBOL[symbol];
 }
-
-// Legacy exports for compatibility
-export const WHITELISTED_TOKENS = TRADABLE_ASSETS;
-export const TOKEN_BY_SYMBOL = ASSET_BY_SYMBOL;
-export function getToken(symbol: string) {
-  return getAsset(symbol);
-}

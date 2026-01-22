@@ -22,7 +22,7 @@ import { Program, AnchorProvider, BN, Idl, Wallet } from '@coral-xyz/anchor';
 import { progressionService } from './progressionService';
 import {
   createFreeBetPosition,
-  getFreeBetPositionsByStatusType,
+  getFreeBetPositionsByStatus,
   getFreeBetPositionsForWallet,
   updateFreeBetPositionToPlaced,
   updateFreeBetPositionToClaimed,
@@ -521,7 +521,7 @@ class FreeBetEscrowService {
 
     try {
       // Get all placed positions (bets placed, waiting for settlement)
-      const placedPositions = await getFreeBetPositionsByStatusType('placed');
+      const placedPositions = await getFreeBetPositionsByStatus('placed');
 
       // Skip RPC calls if no positions to process
       if (placedPositions.length === 0) {
@@ -577,7 +577,7 @@ class FreeBetEscrowService {
       }
 
       // Also process won positions that haven't been settled yet (claimed but not transferred)
-      const wonPositions = await getFreeBetPositionsByStatusType('won');
+      const wonPositions = await getFreeBetPositionsByStatus('won');
 
       if (wonPositions.length > 0) {
         console.log(`[FreeBetEscrow] Processing ${wonPositions.length} won positions...`);
