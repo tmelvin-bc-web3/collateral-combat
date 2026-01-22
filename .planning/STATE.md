@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Current focus:** Phase 8 - Code Quality
+**Current focus:** Phase 8 - Code Quality (Complete)
 
 ## Current Position
 
 Phase: 8 of 9 (Code Quality)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-01-22 - Verified Phase 7 complete (4/4 must-haves passed)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-22 - Completed 08-02-PLAN.md (Backend Type Safety)
 
-Progress: [########################..] 92% (v1.0 complete, Phase 5: 2/2, Phase 6: 2/2, Phase 7: 2/2)
+Progress: [##########################] 100% (v1.0 complete, Phase 5: 2/2, Phase 6: 2/2, Phase 7: 2/2, Phase 8: 2/2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24 (18 v1.0 + 2 Phase 5 + 2 Phase 6 + 2 Phase 7)
-- Average duration: ~35 min (updated with Phase 7 data)
-- Total execution time: ~14.5 hours
+- Total plans completed: 26 (18 v1.0 + 2 Phase 5 + 2 Phase 6 + 2 Phase 7 + 2 Phase 8)
+- Average duration: ~33 min (updated with Phase 8 data)
+- Total execution time: ~14.7 hours
 
 **By Phase:**
 
@@ -34,8 +34,9 @@ Progress: [########################..] 92% (v1.0 complete, Phase 5: 2/2, Phase 6
 | 5. Automated Analysis | 2 | ~17min | 8.5 min |
 | 6. Contract Audit | 2 | ~25min | 12.5 min |
 | 7. Backend Security | 2 | ~40min | 20 min |
+| 8. Code Quality | 2 | ~11min | 5.5 min |
 
-**v1.1 remaining:** 2 plans across 1 phase (Phase 8: 2)
+**v1.1 remaining:** 0 plans (Phase 8 complete)
 
 ## Accumulated Context
 
@@ -66,6 +67,11 @@ Recent decisions affecting current work:
 - [Phase 7.2]: All 8 TOCTOU race conditions fixed via verifyAndLockBalance atomic pattern
 - [Phase 7.2]: Error handling safe - no stack traces or SQL errors exposed to clients
 - [Phase 7.2]: Partial failure handling verified - rollback/recovery implemented
+- [Phase 8.1]: Fee constants centralized to backend/src/utils/fees.ts (PLATFORM_FEE_BPS=500, DRAFT_FEE_BPS=1000)
+- [Phase 8.1]: Removed legacy WHITELISTED_TOKENS/TOKEN_BY_SYMBOL aliases - use TRADABLE_ASSETS/ASSET_BY_SYMBOL
+- [Phase 8.2]: Zod runtime validation for battle configs (entryFee, duration, mode, maxPlayers)
+- [Phase 8.2]: Database row interfaces defined for all progressionDatabase mappers
+- [Phase 8.2]: toApiError adopted in 4 key money-handling services
 
 ### Pending Todos
 
@@ -80,19 +86,16 @@ None yet.
 - [Phase 5.1]: h3 vulnerability needs verification - confirm 1.15.5 propagated, remove from allowlist
 - [Phase 5.1]: bincode unmaintained warning - monitor Anchor ecosystem for migration path
 - [Phase 5.2]: WIP features need decision - complete integration or remove? (LDS, Token Wars, Draft, Referrals, Oracle on-chain)
-- [Phase 5.2]: Unused exports remain (95 web, 116 backend) - should be cleaned up when features are completed/removed
-- [Phase 5.2]: Backend type coverage at 90.67% needs improvement to 95%+ before Phase 8 (100% goal)
+- [Phase 5.2]: Unused exports remain (95 web, 117 backend) - should be cleaned up when features are completed/removed
 - [Phase 7.2]: Redis deployment - Production must have REDIS_URL set for replay protection
-- [Phase 7.2]: Battle config validation deferred to Phase 8 for Zod schema
-- [Phase 7.2]: Error sanitization (toApiError) adoption deferred to Phase 8
-- [Phase 7.2]: Typed error adoption deferred to Phase 8
+- [Phase 8.2]: Backend type coverage at 91.42% (target was 93%+) - still room for improvement
 
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Phase 7 complete, verified, ready for Phase 8
+Stopped at: Completed 08-02-PLAN.md (Phase 8 complete)
 Resume file: None
-Next: /gsd:discuss-phase 8 or /gsd:plan-phase 8
+Next: Phase 9 - Final Review (if planned)
 
 ---
 *State updated: 2026-01-22*
