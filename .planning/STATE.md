@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Current focus:** Phase 5 - Automated Analysis
+**Current focus:** Phase 7 - Backend Security
 
 ## Current Position
 
-Phase: 5 of 9 (Automated Analysis)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-22 — Completed Phase 5 (05-01: Dependency/Secret Audit, 05-02: Dead Code/Type Coverage)
+Phase: 7 of 9 (Backend Security)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-22 - Completed 07-01-PLAN.md (SEC-01, SEC-02 audit)
 
-Progress: [##################........] 76% (v1.0 complete, Phase 5 complete: 2/2 plans)
+Progress: [#######################...] 88% (v1.0 complete, Phase 5: 2/2, Phase 6: 2/2, Phase 7: 1/2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20 (18 v1.0 + 2 Phase 5)
-- Average duration: ~41 min (updated with Phase 5 data)
-- Total execution time: ~13.8 hours
+- Total plans completed: 23 (18 v1.0 + 2 Phase 5 + 2 Phase 6 + 1 Phase 7)
+- Average duration: ~35 min (updated with Phase 6-7 data)
+- Total execution time: ~14.1 hours
 
 **By Phase:**
 
@@ -32,8 +32,10 @@ Progress: [##################........] 76% (v1.0 complete, Phase 5 complete: 2/2
 | 3. Scheduling (v1.0) | 3 | ~2h | 40 min |
 | 4. Operations (v1.0) | 6 | ~4.5h | 45 min |
 | 5. Automated Analysis | 2 | ~17min | 8.5 min |
+| 6. Contract Audit | 2 | ~25min | 12.5 min |
+| 7. Backend Security | 1 | ~15min | 15 min |
 
-**v1.1 remaining:** 8 plans across 4 phases
+**v1.1 remaining:** 3 plans across 2 phases (Phase 7: 1, Phase 8: 2)
 
 ## Accumulated Context
 
@@ -51,6 +53,17 @@ Recent decisions affecting current work:
 - [Phase 5.2]: Type coverage baselines set at 97.50% web, 90.67% backend to prevent regression
 - [Phase 5.2]: WIP features (LDS, Token Wars, Draft, Referrals) documented in knip.json ignore list
 - [Phase 5]: All 4 CI jobs (dependency-audit, secret-scanning, dead-code, type-coverage) block PRs
+- [Phase 6.2]: Round state machine verified - no invalid transitions possible
+- [Phase 6.2]: Double claim prevention confirmed (claimed flag at line 869, set before credit at line 887)
+- [Phase 6.2]: Pyth oracle integration secure in both lock paths
+- [Phase 6.2]: 60s staleness threshold is conservative (Pyth updates ~400ms)
+- [Phase 6.1]: All 21 instructions pass signer checks - no missing signer vulnerabilities
+- [Phase 6.1]: Session keys CANNOT withdraw or transfer authority - isolation verified
+- [Phase 6.1]: init_if_needed on UserBalance is safe (PDA seeds + discriminator)
+- [Phase 6.1]: 15 contract invariants documented for backend consumption
+- [Phase 7.1]: Input validation at handler level - TypeScript types don't validate at runtime
+- [Phase 7.1]: Replay cache Redis support verified already implemented correctly
+- [Phase 7.1]: predictionService race condition deferred to Phase 8 (on-chain service is correct)
 
 ### Pending Todos
 
@@ -67,13 +80,16 @@ None yet.
 - [Phase 5.2]: WIP features need decision - complete integration or remove? (LDS, Token Wars, Draft, Referrals, Oracle on-chain)
 - [Phase 5.2]: Unused exports remain (95 web, 116 backend) - should be cleaned up when features are completed/removed
 - [Phase 5.2]: Backend type coverage at 90.67% needs improvement to 95%+ before Phase 8 (100% goal)
+- [Phase 7.1]: SEC-02-01 HIGH - predictionService.ts race condition needs migration in Phase 8
+- [Phase 7.1]: Redis deployment - Production must have REDIS_URL set for replay protection
+- [Phase 7.1]: Battle config validation deferred to Phase 8 for Zod schema
 
 ## Session Continuity
 
-Last session: 2026-01-22 20:11 UTC
-Stopped at: Completed Phase 5 - Automated Analysis (05-01 + 05-02)
+Last session: 2026-01-22
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
-Next: Phase 6 - Manual Security Review
+Next: Execute 07-02-PLAN.md (SEC-03, SEC-04)
 
 ---
 *State updated: 2026-01-22*
