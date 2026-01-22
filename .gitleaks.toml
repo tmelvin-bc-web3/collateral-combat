@@ -1,0 +1,85 @@
+# Gitleaks configuration for sol-battles
+# Extends default ruleset with project-specific allowlists
+
+[extend]
+# Use default gitleaks rules
+useDefault = true
+
+[allowlist]
+# Commit-specific allowlists (if needed for historical commits)
+commits = []
+
+# Path-based allowlists
+paths = [
+    # Test files and fixtures
+    '''.*\.test\.(ts|tsx|js|jsx)$''',
+    '''.*\.spec\.(ts|tsx|js|jsx)$''',
+    '''.*/__tests__/.*''',
+    '''.*/__mocks__/.*''',
+    '''.*/fixtures/.*''',
+    '''.*/test-data/.*''',
+
+    # Example/documentation files
+    '''.*\.example$''',
+    '''.*\.sample$''',
+    '''README\.md$''',
+    '''.*EXAMPLE.*''',
+
+    # Package lock files (may contain registry URLs with tokens)
+    '''package-lock\.json$''',
+    '''pnpm-lock\.yaml$''',
+    '''Cargo\.lock$''',
+
+    # Generated files
+    '''.*/target/.*''',
+    '''.*/dist/.*''',
+    '''.*/build/.*''',
+    '''.*\.min\.(js|css)$'''
+]
+
+# Regex-based allowlists for known false positives
+regexes = [
+    # Solana program IDs (not secrets, public identifiers)
+    '''[0-9A-HJ-NP-Za-km-z]{32,44}''',
+
+    # Example/placeholder values
+    '''(example|sample|test|demo|placeholder|your_.*_here)''',
+
+    # Devnet/testnet RPC URLs (public endpoints)
+    '''https://api\.(devnet|testnet)\.solana\.com''',
+
+    # Public wallet addresses in documentation
+    '''Example wallet:.*'''
+]
+
+# Additional entropy thresholds
+[extend.entropy]
+# Reduce false positives from base64-encoded data
+min = 4.0
+max = 8.0
+
+# Additional rules (if needed)
+[[rules]]
+id = "solana-private-key"
+description = "Potential Solana private key (base58 encoded)"
+regex = '''[1-9A-HJ-NP-Za-km-z]{87,88}'''
+entropy = 4.5
+secretGroup = 0
+keywords = [
+    "private",
+    "secret",
+    "key",
+    "keypair"
+]
+
+[[rules]]
+id = "anchor-authority-key"
+description = "Potential Anchor authority private key"
+regex = '''SESSION_BETTING_AUTHORITY_PRIVATE_KEY\s*=\s*[1-9A-HJ-NP-Za-km-z]{80,}'''
+entropy = 5.0
+secretGroup = 0
+
+# Allowlist specific strings (example format)
+# [[allowlist.regexes]]
+# regex = '''specific-false-positive-string'''
+# reason = "Explanation of why this is not a real secret"
