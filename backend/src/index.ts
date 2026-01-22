@@ -2100,6 +2100,11 @@ io.on('connection', (socket) => {
   // Legacy handler - kept for compatibility
   socket.on('place_prediction', async (asset: string, side: PredictionSide, amount: number, wallet: string) => {
     try {
+      // SECURITY: Validate side parameter
+      if (side !== 'long' && side !== 'short') {
+        socket.emit('error', 'Invalid side - must be "long" or "short"');
+        return;
+      }
       // SECURITY: Rate limit predictions
       const rateCheck = checkSocketRateLimit(socket.id, wallet, 'place_prediction', BET_ACTION_LIMIT);
       if (!rateCheck.allowed) {
@@ -2118,6 +2123,11 @@ io.on('connection', (socket) => {
   // New handler using PDA balance or free bet
   socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string; useFreeBet?: boolean }) => {
     try {
+      // SECURITY: Validate side parameter
+      if (data.side !== 'long' && data.side !== 'short') {
+        socket.emit('prediction_bet_result', { success: false, error: 'Invalid side - must be "long" or "short"' });
+        return;
+      }
       // SECURITY: Rate limit predictions
       const rateCheck = checkSocketRateLimit(socket.id, data.bettor, 'place_prediction_bet', BET_ACTION_LIMIT);
       if (!rateCheck.allowed) {
@@ -2462,6 +2472,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('lds_submit_prediction', async (data: { gameId: string; wallet: string; prediction: 'up' | 'down' }) => {
+    // SECURITY: Validate prediction parameter
+    if (data.prediction !== 'up' && data.prediction !== 'down') {
+      socket.emit('lds_prediction_error' as any, { error: 'Invalid prediction - must be "up" or "down"' });
+      return;
+    }
     // Rate limit predictions (more generous - players need to predict each round)
     const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'lds_submit_prediction', BET_ACTION_LIMIT);
     if (!rateCheck.allowed) {
@@ -2510,6 +2525,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => {
+    // SECURITY: Validate side parameter
+    if (data.side !== 'token_a' && data.side !== 'token_b') {
+      socket.emit('token_wars_bet_error' as any, { error: 'Invalid side - must be "token_a" or "token_b"' });
+      return;
+    }
     // Rate limit bet placement
     const rateCheck = checkSocketRateLimit(socket.id, data.wallet, 'token_wars_place_bet', BET_ACTION_LIMIT);
     if (!rateCheck.allowed) {
@@ -2623,6 +2643,20 @@ io.on('connection', (socket) => {
 
   socket.on('send_chat_message', async (data: { battleId: string; content: string }) => {
     try {
+      // SECURITY: Validate content
+      if (!data.content || typeof data.content !== 'string') {
+        socket.emit('chat_error', { code: 'invalid_content', message: 'Message content required' });
+        return;
+      }
+      if (data.content.length > 500) {
+        socket.emit('chat_error', { code: 'content_too_long', message: 'Message cannot exceed 500 characters' });
+        return;
+      }
+      if (data.content.trim().length === 0) {
+        socket.emit('chat_error', { code: 'empty_content', message: 'Message cannot be empty' });
+        return;
+      }
+
       // SECURITY: Use authenticated wallet
       const authenticatedWallet = getAuthenticatedWallet(socket, undefined);
 
