@@ -334,7 +334,7 @@ class PredictionService {
     // Calculate bet amount in lamports
     const amountLamports = Math.round(betAmount * LAMPORTS_PER_SOL);
 
-    let pendingId: string | null = null;
+    let lockTxId: string | null = null;
 
     if (isFreeBet) {
       // For free bets, check and deduct free bet credit
@@ -344,15 +344,24 @@ class PredictionService {
       }
       console.log(`[PredictionService] Free bet deducted for ${bettor.slice(0, 8)}... (remaining: ${freeBetResult.balance.balance})`);
     } else {
-      // For regular bets, check PDA balance
-      const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
-      if (!hasSufficient) {
-        const available = await balanceService.getAvailableBalance(bettor);
-        throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${betAmount} SOL`);
+      // SECURITY: Atomic balance verification and fund locking
+      // This prevents TOCTOU race conditions where user could withdraw between check and lock
+      // NOTE: This off-chain service is legacy - predictionServiceOnChain is the active service
+      try {
+        const lockResult = await balanceService.verifyAndLockBalance(
+          bettor,
+          amountLamports,
+          'oracle',
+          round.id
+        );
+        lockTxId = lockResult.txId;
+      } catch (error: any) {
+        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+          const available = await balanceService.getAvailableBalance(bettor);
+          throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${betAmount} SOL`);
+        }
+        throw new Error('Failed to lock funds on-chain. Please try again.');
       }
-
-      // Create pending debit
-      pendingId = await balanceService.debitPending(bettor, amountLamports, 'oracle', round.id);
     }
 
     const bet: PredictionBet = {
@@ -381,10 +390,7 @@ class PredictionService {
     userBets.push(bet);
     this.userBets.set(bettor, userBets);
 
-    // Confirm the debit (only for regular bets)
-    if (pendingId) {
-      balanceService.confirmDebit(pendingId);
-    }
+    // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
     const betType = isFreeBet ? 'FREE BET' : `${betAmount} SOL`;
     console.log(`[PredictionService] ${bettor.slice(0, 8)}... bet ${betType} ${side.toUpperCase()} on ${asset}`);

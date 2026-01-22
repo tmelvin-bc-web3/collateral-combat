@@ -729,36 +729,29 @@ class PredictionServiceOnChain {
     }
 
     const amountLamports = Math.round(amount * LAMPORTS_PER_SOL);
-    const hasSufficient = await balanceService.hasSufficientBalance(
-      bettor,
-      amountLamports
-    );
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(bettor);
-      throw new Error(
-        `Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    let lockResult: { txId: string; newBalance: number };
+    try {
+      lockResult = await balanceService.verifyAndLockBalance(
+        bettor,
+        amountLamports,
+        'oracle',
+        round.id
       );
-    }
-
-    // Create pending debit to prevent double-spending while we process
-    const pendingId = await balanceService.debitPending(
-      bettor,
-      amountLamports,
-      'oracle',
-      round.id
-    );
-
-    // SECURITY: Lock funds on-chain IMMEDIATELY
-    // This prevents the withdraw-after-bet exploit where user could:
-    // 1. Place bet (off-chain tracking)
-    // 2. Withdraw from PDA (on-chain)
-    // 3. Lose the bet but have no funds to collect
-    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'oracle');
-    if (!lockTx) {
-      // Failed to lock funds on-chain - cancel the bet
-      balanceService.cancelDebit(pendingId);
+    } catch (error: any) {
+      // Check for insufficient balance error
+      if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(bettor);
+        throw new Error(
+          `Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+        );
+      }
       throw new Error('Failed to lock funds on-chain. Please try again.');
     }
+
+    const lockTx = lockResult.txId;
 
     const bet: PredictionBet = {
       id: uuidv4(),
@@ -783,8 +776,6 @@ class PredictionServiceOnChain {
     const userBets = this.userBets.get(bettor) || [];
     userBets.push(bet);
     this.userBets.set(bettor, userBets);
-
-    balanceService.confirmDebit(pendingId);
 
     console.log(
       `[PredictionServiceOnChain] ${bettor.slice(0, 8)}... bet ${amount} SOL ${side.toUpperCase()} on ${asset} (locked: ${lockTx.slice(0, 8)}...)`

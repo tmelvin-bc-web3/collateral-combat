@@ -155,30 +155,22 @@ class BattleManager {
 
     // For free bets, skip balance check and on-chain transfer (platform covers it)
     if (!isFreeBet) {
-      // Check if user has sufficient balance in PDA
-      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
-      if (!hasSufficient) {
-        const available = await balanceService.getAvailableBalance(walletAddress);
-        throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
-      }
-
-      // Create pending debit for entry fee
-      pendingId = await balanceService.debitPending(
-        walletAddress,
-        entryFeeLamports,
-        'battle',
-        battleId
-      );
-
-      // SECURITY: Lock funds on-chain IMMEDIATELY
-      // This prevents the withdraw-after-join exploit where user could:
-      // 1. Join battle (off-chain tracking)
-      // 2. Withdraw from PDA (on-chain)
-      // 3. Lose the battle but have no funds to pay
-      lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'battle');
-      if (!lockTx) {
-        // Failed to lock funds on-chain - cancel the join
-        balanceService.cancelDebit(pendingId);
+      // SECURITY: Atomic balance verification and fund locking
+      // This prevents TOCTOU race conditions where user could withdraw between check and lock
+      try {
+        const lockResult = await balanceService.verifyAndLockBalance(
+          walletAddress,
+          entryFeeLamports,
+          'battle',
+          battleId
+        );
+        lockTx = lockResult.txId;
+      } catch (error: any) {
+        // Check for insufficient balance error
+        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+          const available = await balanceService.getAvailableBalance(walletAddress);
+          throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+        }
         throw new Error('Failed to lock entry fee on-chain. Please try again.');
       }
     } else {
@@ -206,10 +198,7 @@ class BattleManager {
     battle.prizePool += battle.config.entryFee;
     this.playerBattles.set(walletAddress, battleId);
 
-    // Confirm the debit now that player is in battle
-    if (pendingId) {
-      balanceService.confirmDebit(pendingId);
-    }
+    // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
     console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL${isFreeBet ? ' (free bet)' : ''}. Lock TX: ${lockTx}`);
 
@@ -997,62 +986,49 @@ class BattleManager {
     config: BattleConfig
   ): Promise<void> {
     const entryFeeLamports = Math.floor(config.entryFee * LAMPORTS_PER_SOL);
+    const readyCheckGameId = `ready_check_${Date.now()}`;
 
-    // Verify both players have sufficient balance BEFORE creating battle
-    const [p1HasBalance, p2HasBalance] = await Promise.all([
-      balanceService.hasSufficientBalance(player1Wallet, entryFeeLamports),
-      balanceService.hasSufficientBalance(player2Wallet, entryFeeLamports),
-    ]);
+    // SECURITY: Atomic balance verification and fund locking for BOTH players
+    // This prevents TOCTOU race conditions where either player could withdraw between check and lock
+    let lockResult1: { txId: string; newBalance: number } | null = null;
+    let lockResult2: { txId: string; newBalance: number } | null = null;
 
-    if (!p1HasBalance) {
-      console.error(`[BattleManager] Player 1 ${player1Wallet.slice(0, 8)}... has insufficient balance for ready check`);
+    try {
+      // Lock player 1's funds first
+      lockResult1 = await balanceService.verifyAndLockBalance(
+        player1Wallet,
+        entryFeeLamports,
+        'battle',
+        readyCheckGameId
+      );
+    } catch (error: any) {
+      console.error(`[BattleManager] Player 1 ${player1Wallet.slice(0, 8)}... failed to lock funds for ready check:`, error.message);
       return;
     }
-    if (!p2HasBalance) {
-      console.error(`[BattleManager] Player 2 ${player2Wallet.slice(0, 8)}... has insufficient balance for ready check`);
-      return;
-    }
 
-    // Create pending debits for both players
-    const [pendingId1, pendingId2] = await Promise.all([
-      balanceService.debitPending(player1Wallet, entryFeeLamports, 'battle', 'ready_check_pending'),
-      balanceService.debitPending(player2Wallet, entryFeeLamports, 'battle', 'ready_check_pending'),
-    ]);
-
-    // SECURITY: Lock funds on-chain for BOTH players
-    const [lockTx1, lockTx2] = await Promise.all([
-      balanceService.transferToGlobalVault(player1Wallet, entryFeeLamports, 'battle'),
-      balanceService.transferToGlobalVault(player2Wallet, entryFeeLamports, 'battle'),
-    ]);
-
-    // SECURITY FIX: If either lock failed, cancel both debits and refund any successful lock
-    if (!lockTx1 || !lockTx2) {
-      console.error(`[BattleManager] Failed to lock funds for ready check. P1: ${!!lockTx1}, P2: ${!!lockTx2}`);
-
-      // Cancel pending debits first
-      balanceService.cancelDebit(pendingId1);
-      balanceService.cancelDebit(pendingId2);
-
-      // Refund whichever lock succeeded (atomic - only one can succeed if we're here)
-      if (lockTx1 && !lockTx2) {
-        console.log(`[BattleManager] Refunding P1 ${player1Wallet.slice(0, 8)}... after P2 lock failure`);
-        try {
-          await balanceService.refundFromGlobalVault(player1Wallet, entryFeeLamports, 'battle', 'ready_check_refund');
-        } catch (refundErr) {
-          console.error(`[BattleManager] CRITICAL: Failed to refund P1 after partial lock failure:`, refundErr);
-          // Log for manual intervention - funds are locked but battle didn't start
-        }
-      } else if (lockTx2 && !lockTx1) {
-        console.log(`[BattleManager] Refunding P2 ${player2Wallet.slice(0, 8)}... after P1 lock failure`);
-        try {
-          await balanceService.refundFromGlobalVault(player2Wallet, entryFeeLamports, 'battle', 'ready_check_refund');
-        } catch (refundErr) {
-          console.error(`[BattleManager] CRITICAL: Failed to refund P2 after partial lock failure:`, refundErr);
-          // Log for manual intervention - funds are locked but battle didn't start
-        }
+    try {
+      // Lock player 2's funds
+      lockResult2 = await balanceService.verifyAndLockBalance(
+        player2Wallet,
+        entryFeeLamports,
+        'battle',
+        readyCheckGameId
+      );
+    } catch (error: any) {
+      console.error(`[BattleManager] Player 2 ${player2Wallet.slice(0, 8)}... failed to lock funds for ready check:`, error.message);
+      // Refund player 1 since player 2 failed
+      console.log(`[BattleManager] Refunding P1 ${player1Wallet.slice(0, 8)}... after P2 lock failure`);
+      try {
+        await balanceService.refundFromGlobalVault(player1Wallet, entryFeeLamports, 'battle', readyCheckGameId);
+      } catch (refundErr) {
+        console.error(`[BattleManager] CRITICAL: Failed to refund P1 after P2 lock failure:`, refundErr);
+        // Log for manual intervention - funds are locked but battle didn't start
       }
       return;
     }
+
+    const lockTx1 = lockResult1.txId;
+    const lockTx2 = lockResult2.txId;
 
     // Create battle manually (don't use createBattle/joinBattle to avoid auto-start)
     const battle: Battle = {
@@ -1069,23 +1045,19 @@ class BattleManager {
       walletAddress: player1Wallet,
       account: this.createInitialAccount(),
       trades: [],
-      pendingDebitId: pendingId1,
       lockTx: lockTx1,
     };
     const player2: BattlePlayer = {
       walletAddress: player2Wallet,
       account: this.createInitialAccount(),
       trades: [],
-      pendingDebitId: pendingId2,
       lockTx: lockTx2,
     };
 
     battle.players.push(player1, player2);
     battle.prizePool = config.entryFee * 2;
 
-    // Confirm debits now that funds are locked
-    balanceService.confirmDebit(pendingId1);
-    balanceService.confirmDebit(pendingId2);
+    // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
     // Store battle
     this.battles.set(battle.id, battle);

@@ -1012,32 +1012,26 @@ class LDSManager {
       return { success: false, error: 'Game is full' };
     }
 
-    let pendingId: string | null = null;
-
     // For free bets, skip balance check and on-chain transfer (platform covers it)
     if (!isFreeBet) {
-      // Check if player has sufficient balance
-      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS);
-      if (!hasSufficient) {
-        const available = await balanceService.getAvailableBalance(walletAddress);
-        return {
-          success: false,
-          error: `Insufficient balance. Need ${CONFIG.ENTRY_FEE_SOL} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
-        };
-      }
-
-      // Create pending debit
-      pendingId = await balanceService.debitPending(
-        walletAddress,
-        CONFIG.ENTRY_FEE_LAMPORTS,
-        'lds',
-        game.id
-      );
-
-      // Lock funds on-chain
-      const lockTx = await balanceService.transferToGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds');
-      if (!lockTx) {
-        balanceService.cancelDebit(pendingId);
+      // SECURITY: Atomic balance verification and fund locking
+      // This prevents TOCTOU race conditions where user could withdraw between check and lock
+      try {
+        await balanceService.verifyAndLockBalance(
+          walletAddress,
+          CONFIG.ENTRY_FEE_LAMPORTS,
+          'lds',
+          game.id
+        );
+      } catch (error: any) {
+        // Check for insufficient balance error
+        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+          const available = await balanceService.getAvailableBalance(walletAddress);
+          return {
+            success: false,
+            error: `Insufficient balance. Need ${CONFIG.ENTRY_FEE_SOL} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+          };
+        }
         return { success: false, error: 'Failed to lock entry fee on-chain. Please try again.' };
       }
     } else {
@@ -1054,19 +1048,16 @@ class LDSManager {
     // SECURITY: Wrap in try/catch to refund if addPlayer fails after funds are locked
     try {
       addPlayer(game.id, walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, isFreeBet);
-      if (pendingId) {
-        balanceService.confirmDebit(pendingId);
-      }
+      // Note: verifyAndLockBalance already handles pending transaction tracking internally
     } catch (error) {
       // Critical error: player couldn't be added
       console.error(`[LDS] addPlayer failed for ${walletAddress.slice(0, 8)}...`);
 
       // Only attempt refund if this wasn't a free bet (which has no locked funds)
-      if (!isFreeBet && pendingId) {
+      if (!isFreeBet) {
         console.error(`[LDS] Attempting refund for locked funds...`);
         try {
           await balanceService.refundFromGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds', game.id);
-          balanceService.cancelDebit(pendingId);
           console.log(`[LDS] Successfully refunded ${walletAddress.slice(0, 8)}... after addPlayer failure`);
         } catch (refundError) {
           // If refund also fails, log to failed payouts for manual recovery

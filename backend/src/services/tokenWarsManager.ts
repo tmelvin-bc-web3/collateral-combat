@@ -794,32 +794,26 @@ class TokenWarsManager {
       return { success: false, error: 'Cannot bet on opposite side of existing bet' };
     }
 
-    let pendingId: string | null = null;
-
     // For free bets, skip balance check and on-chain transfer (platform covers it)
     if (!isFreeBet) {
-      // Check if user has sufficient balance
-      const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, amountLamports);
-      if (!hasSufficient) {
-        const available = await balanceService.getAvailableBalance(walletAddress);
-        return {
-          success: false,
-          error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
-        };
-      }
-
-      // Create pending debit
-      pendingId = await balanceService.debitPending(
-        walletAddress,
-        amountLamports,
-        'token_wars',
-        battle.id
-      );
-
-      // Lock funds on-chain
-      const lockTx = await balanceService.transferToGlobalVault(walletAddress, amountLamports, 'token_wars');
-      if (!lockTx) {
-        balanceService.cancelDebit(pendingId);
+      // SECURITY: Atomic balance verification and fund locking
+      // This prevents TOCTOU race conditions where user could withdraw between check and lock
+      try {
+        await balanceService.verifyAndLockBalance(
+          walletAddress,
+          amountLamports,
+          'token_wars',
+          battle.id
+        );
+      } catch (error: any) {
+        // Check for insufficient balance error
+        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+          const available = await balanceService.getAvailableBalance(walletAddress);
+          return {
+            success: false,
+            error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+          };
+        }
         return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
       }
     } else {
@@ -831,19 +825,16 @@ class TokenWarsManager {
     let bet: TWBetRecord;
     try {
       bet = dbPlaceBet(battle.id, walletAddress, side, amountLamports, isFreeBet);
-      if (pendingId) {
-        balanceService.confirmDebit(pendingId);
-      }
+      // Note: verifyAndLockBalance already handles pending transaction tracking internally
     } catch (error) {
       // Critical error: bet couldn't be placed
       console.error(`[TokenWars] dbPlaceBet failed for ${walletAddress.slice(0, 8)}...`);
 
       // Only attempt refund if this wasn't a free bet (which has no locked funds)
-      if (!isFreeBet && pendingId) {
+      if (!isFreeBet) {
         console.error(`[TokenWars] Attempting refund for locked funds...`);
         try {
           await balanceService.refundFromGlobalVault(walletAddress, amountLamports, 'token_wars', battle.id);
-          balanceService.cancelDebit(pendingId);
           console.log(`[TokenWars] Successfully refunded ${walletAddress.slice(0, 8)}... after placeBet failure`);
         } catch (refundError) {
           // If refund also fails, log to failed payouts for manual recovery

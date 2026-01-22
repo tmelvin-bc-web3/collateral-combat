@@ -223,27 +223,26 @@ class SpectatorService {
     // Calculate bet amount in lamports
     const amountLamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-    // Check PDA balance
-    const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
-    if (!hasSufficient) {
-      const available = await balanceService.getAvailableBalance(bettor);
-      throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
-    }
-
-    // Create pending debit
-    const pendingId = await balanceService.debitPending(bettor, amountLamports, 'spectator', battleId);
-
-    // SECURITY: Lock funds on-chain IMMEDIATELY
-    // This prevents the withdraw-after-bet exploit where user could:
-    // 1. Place spectator bet (off-chain tracking)
-    // 2. Withdraw from PDA (on-chain)
-    // 3. Win the bet but have no funds to collect from losers
-    const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'spectator');
-    if (!lockTx) {
-      // Failed to lock funds on-chain - cancel the bet
-      balanceService.cancelDebit(pendingId);
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    let lockResult: { txId: string; newBalance: number };
+    try {
+      lockResult = await balanceService.verifyAndLockBalance(
+        bettor,
+        amountLamports,
+        'spectator',
+        battleId
+      );
+    } catch (error: any) {
+      // Check for insufficient balance error
+      if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(bettor);
+        throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
+      }
       throw new Error('Failed to lock wager on-chain. Please try again.');
     }
+
+    const lockTx = lockResult.txId;
 
     // Get current implied odds (for display only - actual payout is parimutuel)
     const odds = this.calculateOdds(battleId);
@@ -297,9 +296,6 @@ class SpectatorService {
       createdAt: bet.placedAt,
       settledAt: null,
     });
-
-    // Confirm the debit
-    balanceService.confirmDebit(pendingId);
 
     console.log(`[SpectatorService] Bet placed: ${bettor.slice(0, 8)}... bet ${amount} SOL on ${backedPlayer.slice(0, 8)}... (implied odds: ${impliedOdds}x, parimutuel payout at settlement). Lock TX: ${lockTx.slice(0, 16)}...`);
 

@@ -17,15 +17,23 @@
 | SEC-01-04 | Input Validation | MEDIUM | LDS prediction validation missing | FIXED |
 | SEC-01-05 | Input Validation | LOW | Chat content not length-validated | FIXED |
 | SEC-01-06 | Input Validation | LOW | Battle config missing explicit validation | DOCUMENTED |
-| SEC-02-01 | Auth/Session | HIGH | predictionService.ts uses hasSufficientBalance (race condition) | DEFERRED |
+| SEC-02-01 | Auth/Session | HIGH | predictionService.ts uses hasSufficientBalance (race condition) | FIXED |
 | SEC-02-02 | Auth/Session | CRITICAL | Replay cache Redis support | VERIFIED OK |
 | SEC-02-03 | Auth/Session | LOW | Some signed operations use timestamp freshness check | VERIFIED OK |
 | SEC-02-04 | Auth/Session | MEDIUM | Session key isolation verified for withdraw operations | VERIFIED OK |
 | SEC-02-05 | Auth/Session | LOW | Signature verification uses nacl correctly | VERIFIED OK |
+| SEC-03-01 | Race Condition | HIGH | predictionServiceOnChain hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-02 | Race Condition | HIGH | predictionService hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-03 | Race Condition | HIGH | spectatorService hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-04 | Race Condition | HIGH | battleManager joinBattle hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-05 | Race Condition | HIGH | battleManager createReadyCheck hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-06 | Race Condition | HIGH | tokenWarsManager placeBet hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-07 | Race Condition | HIGH | draftTournamentManager enterTournament hasSufficientBalance TOCTOU | FIXED |
+| SEC-03-08 | Race Condition | HIGH | ldsManager joinGame hasSufficientBalance TOCTOU | FIXED |
 
 **Summary:**
 - **CRITICAL:** 1 (Verified OK - Already Implemented)
-- **HIGH:** 1 (Deferred to Phase 8 - requires migration)
+- **HIGH:** 8 (8 Fixed in SEC-03 including SEC-02-01)
 - **MEDIUM:** 4 (3 Fixed, 1 Verified OK)
 - **LOW:** 5 (2 Fixed/Documented, 3 Verified OK)
 
@@ -347,7 +355,7 @@ For production, ensure `REDIS_URL` environment variable is set. The in-memory fa
 
 ---
 
-### SEC-02-01: predictionService Race Condition [HIGH] - DEFERRED
+### SEC-02-01: predictionService Race Condition [HIGH] - FIXED
 
 **Affected Code:** `backend/src/services/predictionService.ts:348-356`
 
@@ -365,25 +373,10 @@ if (!hasSufficient) {
 pendingId = await balanceService.debitPending(bettor, amountLamports, 'oracle', round.id);
 ```
 
-**Comparison with predictionServiceOnChain.ts:**
-The on-chain service correctly uses immediate fund locking:
-```typescript
-// SECURITY: Lock funds on-chain IMMEDIATELY
-const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'oracle');
-```
+**Remediation Applied (SEC-03 Plan 07-02):**
+Migrated to atomic `verifyAndLockBalance()` pattern - see SEC-03 section for details.
 
-**Assessment:**
-- predictionServiceOnChain.ts is the active service (per code comments in index.ts)
-- predictionService.ts (off-chain) is likely legacy/backup
-- Migration to use verifyAndLockBalance requires testing
-
-**Remediation:**
-Deferred to Phase 8 (Backend Cleanup) as it requires:
-1. Verifying which prediction service is actively used
-2. Migrating off-chain service to use verifyAndLockBalance
-3. Testing the migration
-
-**Status:** DEFERRED (Phase 8)
+**Status:** FIXED (Plan 07-02)
 
 ---
 
@@ -467,6 +460,399 @@ Verified that signature verification:
 | Spectate battle | index.ts:1955 | Watching is public |
 | Load chat history | index.ts:2666 | Public data |
 | Get challenge by code | index.ts:3033 | Public info (code is secret) |
+
+---
+
+## SEC-03: Race Condition (TOCTOU) Audit
+
+### Overview
+
+Time-of-check to time-of-use (TOCTOU) race conditions occur when a security check (balance verification) is temporally separated from the action it authorizes (fund debit). This creates a window where the checked condition can change.
+
+### The Vulnerable Pattern
+
+The deprecated `hasSufficientBalance()` pattern creates a race condition:
+
+```typescript
+// BEFORE: VULNERABLE TO TOCTOU
+const hasSufficient = await balanceService.hasSufficientBalance(wallet, amount);
+if (!hasSufficient) throw new Error('Insufficient balance');
+// RACE WINDOW: User could withdraw between check and lock!
+const pendingId = await balanceService.debitPending(wallet, amount, 'game', gameId);
+const lockTx = await balanceService.transferToGlobalVault(wallet, amount, 'game');
+```
+
+**Exploit Scenario:**
+1. Attacker has 1 SOL balance
+2. Attacker sends two simultaneous bet requests (0.6 SOL each)
+3. Both pass `hasSufficientBalance()` check (balance = 1 SOL > 0.6 SOL)
+4. Both proceed to debit, but only 1 SOL exists
+5. Result: Platform is now short 0.2 SOL
+
+### The Secure Pattern
+
+The `verifyAndLockBalance()` method performs atomic verification and locking:
+
+```typescript
+// AFTER: SECURE - Atomic verification and lock
+const lockResult = await balanceService.verifyAndLockBalance(
+  wallet,
+  amount,
+  'game',
+  gameId
+);
+// Funds are now locked on-chain - no race condition possible
+```
+
+**How it works:**
+1. Creates pending transaction record (marks balance as "in-use")
+2. Transfers funds to global vault on-chain (atomic operation)
+3. If transfer fails, pending transaction is rolled back
+4. User cannot withdraw funds that are locked in vault
+
+---
+
+### SEC-03-01: predictionServiceOnChain.ts Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/predictionServiceOnChain.ts:732-756`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
+if (!hasSufficient) {
+  throw new Error('Insufficient balance');
+}
+const pendingId = await balanceService.debitPending(bettor, amountLamports, 'oracle', round.id);
+const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'oracle');
+```
+
+**After:**
+```typescript
+let lockResult: { txId: string; newBalance: number };
+try {
+  lockResult = await balanceService.verifyAndLockBalance(
+    bettor,
+    amountLamports,
+    'oracle',
+    round.id
+  );
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    const available = await balanceService.getAvailableBalance(bettor);
+    throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
+  }
+  throw new Error('Failed to lock funds on-chain. Please try again.');
+}
+const lockTx = lockResult.txId;
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-02: predictionService.ts Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/predictionService.ts:346-356`
+
+**Note:** This is the legacy off-chain prediction service. While `predictionServiceOnChain.ts` is the active service, this was also fixed to prevent any future issues.
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
+if (!hasSufficient) {
+  throw new Error('Insufficient balance');
+}
+pendingId = await balanceService.debitPending(bettor, amountLamports, 'oracle', round.id);
+```
+
+**After:**
+```typescript
+try {
+  const lockResult = await balanceService.verifyAndLockBalance(
+    bettor,
+    amountLamports,
+    'oracle',
+    round.id
+  );
+  lockTxId = lockResult.txId;
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    throw new Error(`Insufficient balance`);
+  }
+  throw new Error('Failed to lock funds on-chain. Please try again.');
+}
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-03: spectatorService.ts Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/spectatorService.ts:224-241`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(bettor, amountLamports);
+if (!hasSufficient) {
+  throw new Error('Insufficient balance');
+}
+const pendingId = await balanceService.debitPending(bettor, amountLamports, 'spectator', battleId);
+const lockTx = await balanceService.transferToGlobalVault(bettor, amountLamports, 'spectator');
+```
+
+**After:**
+```typescript
+let lockResult: { txId: string; newBalance: number };
+try {
+  lockResult = await balanceService.verifyAndLockBalance(
+    bettor,
+    amountLamports,
+    'spectator',
+    battleId
+  );
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    throw new Error(`Insufficient balance`);
+  }
+  throw new Error('Failed to lock wager on-chain. Please try again.');
+}
+const lockTx = lockResult.txId;
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-04: battleManager.ts joinBattle Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/battleManager.ts:157-183`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+if (!hasSufficient) {
+  throw new Error('Insufficient balance');
+}
+pendingId = await balanceService.debitPending(walletAddress, entryFeeLamports, 'battle', battleId);
+lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'battle');
+```
+
+**After:**
+```typescript
+try {
+  const lockResult = await balanceService.verifyAndLockBalance(
+    walletAddress,
+    entryFeeLamports,
+    'battle',
+    battleId
+  );
+  lockTx = lockResult.txId;
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    throw new Error(`Insufficient balance`);
+  }
+  throw new Error('Failed to lock entry fee on-chain. Please try again.');
+}
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-05: battleManager.ts createReadyCheck Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/battleManager.ts:990-1044`
+
+**Before:**
+```typescript
+// Verify both players have sufficient balance BEFORE creating battle
+const [p1HasBalance, p2HasBalance] = await Promise.all([
+  balanceService.hasSufficientBalance(player1Wallet, entryFeeLamports),
+  balanceService.hasSufficientBalance(player2Wallet, entryFeeLamports),
+]);
+// ... separate debitPending and transferToGlobalVault calls
+```
+
+**After:**
+```typescript
+// SECURITY: Atomic balance verification and fund locking for BOTH players
+let lockResult1: { txId: string; newBalance: number } | null = null;
+let lockResult2: { txId: string; newBalance: number } | null = null;
+
+try {
+  lockResult1 = await balanceService.verifyAndLockBalance(player1Wallet, entryFeeLamports, 'battle', readyCheckGameId);
+} catch (error: any) {
+  console.error(`[BattleManager] Player 1 failed to lock funds`);
+  return;
+}
+
+try {
+  lockResult2 = await balanceService.verifyAndLockBalance(player2Wallet, entryFeeLamports, 'battle', readyCheckGameId);
+} catch (error: any) {
+  // Refund player 1 since player 2 failed
+  await balanceService.refundFromGlobalVault(player1Wallet, entryFeeLamports, 'battle', readyCheckGameId);
+  return;
+}
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-06: tokenWarsManager.ts placeBet Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/tokenWarsManager.ts:797-824`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, amountLamports);
+if (!hasSufficient) {
+  return { success: false, error: 'Insufficient balance' };
+}
+pendingId = await balanceService.debitPending(walletAddress, amountLamports, 'token_wars', battle.id);
+const lockTx = await balanceService.transferToGlobalVault(walletAddress, amountLamports, 'token_wars');
+```
+
+**After:**
+```typescript
+try {
+  await balanceService.verifyAndLockBalance(
+    walletAddress,
+    amountLamports,
+    'token_wars',
+    battle.id
+  );
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    return { success: false, error: 'Insufficient balance' };
+  }
+  return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
+}
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-07: draftTournamentManager.ts enterTournament Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/draftTournamentManager.ts:199-229`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, entryFeeLamports);
+if (!hasSufficient) {
+  throw new Error('Insufficient balance');
+}
+pendingId = await balanceService.debitPending(walletAddress, entryFeeLamports, 'draft', tournamentId);
+lockTx = await balanceService.transferToGlobalVault(walletAddress, entryFeeLamports, 'draft');
+```
+
+**After:**
+```typescript
+try {
+  const lockResult = await balanceService.verifyAndLockBalance(
+    walletAddress,
+    entryFeeLamports,
+    'draft',
+    tournamentId
+  );
+  lockTx = lockResult.txId;
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    throw new Error('Insufficient balance');
+  }
+  throw new Error('Failed to lock entry fee on-chain. Please try again.');
+}
+```
+
+**Status:** FIXED
+
+---
+
+### SEC-03-08: ldsManager.ts joinGame Race Condition [HIGH] - FIXED
+
+**Affected Code:** `backend/src/services/ldsManager.ts:1015-1042`
+
+**Before:**
+```typescript
+const hasSufficient = await balanceService.hasSufficientBalance(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS);
+if (!hasSufficient) {
+  return { success: false, error: 'Insufficient balance' };
+}
+pendingId = await balanceService.debitPending(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds', game.id);
+const lockTx = await balanceService.transferToGlobalVault(walletAddress, CONFIG.ENTRY_FEE_LAMPORTS, 'lds');
+```
+
+**After:**
+```typescript
+try {
+  await balanceService.verifyAndLockBalance(
+    walletAddress,
+    CONFIG.ENTRY_FEE_LAMPORTS,
+    'lds',
+    game.id
+  );
+} catch (error: any) {
+  if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+    return { success: false, error: 'Insufficient balance' };
+  }
+  return { success: false, error: 'Failed to lock entry fee on-chain. Please try again.' };
+}
+```
+
+**Status:** FIXED
+
+---
+
+### Concurrent Request Handling Analysis
+
+Beyond the TOCTOU fixes, the following concurrent request handling patterns were audited:
+
+#### Multiple Bets Same Wallet Same Round
+
+**Finding:** Oracle rounds (both services) allow multiple bets per round from the same wallet. This is by design (users can double down).
+
+**Assessment:** OK - Each bet uses `verifyAndLockBalance()` which atomically checks and locks, preventing over-betting.
+
+#### Concurrent Battle Entry
+
+**Finding:** `battleManager.ts` tracks player battles via `playerBattles` Map. The check `this.playerBattles.get(walletAddress)` is not atomic with battle join.
+
+**Assessment:** LOW RISK - The worst case is a player briefly appears in two battles, but:
+1. On-chain locks prevent fund double-spending
+2. The second battle will fail when trying to lock funds (already locked)
+3. Eventual consistency will resolve within milliseconds
+
+**Recommendation for Phase 8:** Consider adding mutex pattern for battle join operations.
+
+#### Tournament Double-Entry
+
+**Finding:** `draftTournamentManager.ts` checks for existing entry via DB query:
+```typescript
+const existing = db.getEntryForTournamentAndWallet(tournamentId, walletAddress);
+if (existing) throw new Error('Already entered');
+```
+
+**Assessment:** LOW RISK - Database INSERT would fail on unique constraint. On-chain lock prevents fund double-spending.
+
+---
+
+### Summary
+
+| ID | Finding | Severity | Status |
+|----|---------|----------|--------|
+| SEC-03-01 | predictionServiceOnChain hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-02 | predictionService hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-03 | spectatorService hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-04 | battleManager joinBattle hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-05 | battleManager createReadyCheck hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-06 | tokenWarsManager placeBet hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-07 | draftTournamentManager enterTournament hasSufficientBalance TOCTOU | HIGH | FIXED |
+| SEC-03-08 | ldsManager joinGame hasSufficientBalance TOCTOU | HIGH | FIXED |
+
+**All 8 TOCTOU race conditions have been fixed by migrating to the atomic `verifyAndLockBalance()` pattern.**
 
 ---
 
