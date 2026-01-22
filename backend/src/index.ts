@@ -27,6 +27,7 @@ import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { pythVerificationService } from './services/pythVerificationService';
 import { chatService } from './services/chatService';
 import { scheduledMatchManager } from './services/scheduledMatchManager';
+import { startBackupScheduler } from './services/backupService';
 import adminRoutes from './routes/admin';
 import { setActiveConnections } from './services/adminService';
 import * as adminService from './services/adminService';
@@ -3482,6 +3483,9 @@ async function start() {
     setTimeout(() => {
       predictionService.start('SOL');
     }, 3000);
+
+    // Start backup scheduler
+    startBackupScheduler();
   });
 
   // ===================
