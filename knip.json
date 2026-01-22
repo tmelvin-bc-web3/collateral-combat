@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/app/**/page.tsx",
+    "src/app/**/layout.tsx",
+    "src/app/**/route.ts",
+    "src/index.ts",
+    "next.config.js",
+    "next.config.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src/**/*.test.{ts,tsx}",
+    "src/**/*.spec.{ts,tsx}",
+    "src/types/index.ts",
+    "src/components/lds/**",
+    "src/components/token-wars/**",
+    "src/components/stands/**",
+    "src/components/war-party/**",
+    "src/lib/draft/**",
+    "src/lib/prediction/**",
+    "src/hooks/useDraftOnChain.ts",
+    "src/hooks/usePrediction.ts",
+    "src/hooks/useBattle.ts",
+    "src/services/onChainRoundManager.ts",
+    "src/services/predictionServiceOnChain.ts",
+    "src/services/referralService.ts",
+    "src/db/referralDatabase.ts"
+  ]
+}
