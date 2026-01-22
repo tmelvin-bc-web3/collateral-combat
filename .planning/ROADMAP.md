@@ -1,232 +1,144 @@
-# Roadmap: Sol-Battles v1 (Mainnet Launch)
+# Roadmap: Sol-Battles
 
-**Created:** 2026-01-21
-**Core Value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Target:** Mainnet launch readiness
+## Milestones
 
----
+- [x] **v1.0 Mainnet Launch** - Phases 1-4 (shipped 2026-01-22)
+- [ ] **v1.1 Code & Security Audit** - Phases 5-9 (in progress)
 
-## Milestone Overview
+## Phases
 
-| Phase | Name | Requirements | Goal |
-|-------|------|--------------|------|
-| 1 | Security Hardening | SEC-01 through SEC-08 | Code safe for real money |
-| 2 | UX Polish | UX-01 through UX-06 | Frictionless first experience |
-| 3 | Launch Prep | LAUNCH-01 through LAUNCH-06 | Ready to acquire users |
-| 4 | Monitoring & Ops | OPS-01 through OPS-06 | Operate confidently at scale |
+<details>
+<summary>v1.0 Mainnet Launch (Phases 1-4) - SHIPPED 2026-01-22</summary>
 
----
+### Phase 1: Security Hardening
+**Goal**: Eliminate race conditions and replay attacks
+**Plans**: 4 plans (complete)
 
-## Phase 1: Security Hardening
+### Phase 2: UX Polish
+**Goal**: Production-quality user experience
+**Plans**: 5 plans (complete)
 
-**Goal:** Make the codebase safe for real money on mainnet
+### Phase 3: Scheduled Matches
+**Goal**: Solve cold-start player density problem
+**Plans**: 3 plans (complete)
 
-**Why First:** Security issues are blockers. Fixing them after launch is catastrophic. The research identified your current issues align with 85.5% of critical audit findings - address them before anything else.
+### Phase 4: Operations
+**Goal**: Production monitoring and deployment automation
+**Plans**: 6 plans (complete)
 
-**Plans:** 7 plans
+**Total v1.0:** 18 plans across 4 phases
 
-Plans:
-- [x] 01-01-PLAN.md - Error handling foundation (types and utilities)
-- [x] 01-02-PLAN.md - Smart contract security (events, pause, arithmetic)
-- [x] 01-03-PLAN.md - Signature replay protection fix
-- [x] 01-04-PLAN.md - Atomic PDA balance verification
-- [x] 01-05-PLAN.md - Silent error handling refactor (database layer)
-- [x] 01-06-PLAN.md - Structured logging infrastructure
-- [x] 01-07-PLAN.md - Final verification checkpoint
+</details>
 
-### Requirements
+## v1.1 Code & Security Audit (In Progress)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| SEC-01 | Replace 25+ silent error handling instances with explicit error propagation | CRITICAL |
-| SEC-02 | Implement signature replay protection in auth middleware with nonce tracking | CRITICAL |
-| SEC-03 | Make PDA balance verification atomic (check-and-lock in single instruction) | CRITICAL |
-| SEC-04 | Remove or control console.log statements via log levels | HIGH |
-| SEC-05 | Emit audit trail events for all state changes (bets, settlements, withdrawals) | HIGH |
-| SEC-06 | Implement and test emergency pause functionality | HIGH |
-| SEC-07 | Enable overflow checks in Cargo.toml release profile | MEDIUM |
-| SEC-08 | Ensure all arithmetic uses checked_* functions | MEDIUM |
+**Milestone Goal:** Comprehensive audit of codebase and smart contract for code quality and security before mainnet deployment.
 
-### Success Criteria
+**Phase Numbering:**
+- Integer phases (5, 6, 7, 8, 9): Planned milestone work
+- Decimal phases (e.g., 6.1): Urgent insertions if needed
 
-- [x] Zero instances of `return null` or swallowed errors on error paths
-- [x] Nonce tracking prevents signature replay within 150-block window
-- [x] Balance check + lock happen atomically in same instruction
-- [x] All `console.log` either removed or behind feature flag
-- [x] Events emitted for: BetPlaced, BattleSettled, FundsWithdrawn
-- [x] Pause instruction stops all user-facing operations
-- [x] `overflow-checks = true` in `[profile.release]`
-- [x] `cargo clippy` passes with no warnings (framework warnings excluded)
+- [x] **Phase 5: Automated Analysis** - Quick wins with zero-config tools ✓
+- [x] **Phase 6: Smart Contract Audit** - On-chain security and correctness ✓
+- [ ] **Phase 7: Backend Security** - Off-chain security hardening
+- [ ] **Phase 8: Code Quality** - Cleanup informed by audit findings
+- [ ] **Phase 9: Integration** - Cross-cutting concerns and economic model
 
-### Key Files (from codebase mapping)
+## Phase Details
 
-- `programs/session_betting/src/lib.rs` - Core smart contract
-- `backend/src/middleware/` - Auth middleware (signature replay)
-- `backend/src/services/balanceService.ts` - PDA balance verification
-- `backend/src/services/battleManager.ts` - Battle settlement logic
-- `backend/src/services/predictionServiceOnChain.ts` - Prediction settlement
-
----
-
-## Phase 2: UX Polish
-
-**Goal:** Create a frictionless first experience that converts visitors to players
-
-**Why Second:** With security solid, polish the experience. Research shows onboarding friction kills conversion. "Wallet connect → first match" should be under 2 minutes.
-
-**Plans:** (created by /gsd:plan-phase)
+### Phase 5: Automated Analysis
+**Goal**: Surface immediate issues using automated tools before manual review
+**Depends on**: Phase 4 (v1.0 complete)
+**Requirements**: AUTO-01, AUTO-02, AUTO-03, AUTO-04
+**Success Criteria** (what must be TRUE):
+  1. All npm/pnpm/cargo audit findings documented with fix or explicit accept
+  2. Secret scanning reports zero exposed secrets in repository history
+  3. Dead code detection (Knip) reports zero unused exports/files/dependencies
+  4. TypeScript type coverage measured with baseline established
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD - Planned via /gsd:plan-phase 2
+- [x] 05-01-PLAN.md — Dependency audits and secret scanning (AUTO-01, AUTO-02)
+- [x] 05-02-PLAN.md — Dead code detection and type coverage (AUTO-03, AUTO-04)
 
-### Requirements
-
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| UX-01 | Simplify onboarding to wallet-connect-and-play | HIGH |
-| UX-02 | Optimize first match experience (clear instructions, low stakes) | HIGH |
-| UX-03 | Make match results shareable (social cards/screenshots) | MEDIUM |
-| UX-04 | Replace raw errors with user-friendly messages | MEDIUM |
-| UX-05 | Add loading states and feedback for all async operations | MEDIUM |
-| UX-06 | Verify mobile responsiveness for core flows | MEDIUM |
-
-### Success Criteria
-
-- [ ] New user can connect wallet and enter first match in <2 minutes
-- [ ] 0.01 SOL minimum bet available for first-timers
-- [ ] "Share Result" button generates image card with match outcome
-- [ ] No raw error messages visible to users (all have friendly copy)
-- [ ] Every button press shows immediate feedback (loading spinner, state change)
-- [ ] Core flows (connect, deposit, bet, withdraw) work on mobile viewport
-
-### Key Files
-
-- `web/src/app/predict/page.tsx` - Oracle predictions (main entry)
-- `web/src/components/WalletBalance.tsx` - Deposit/withdraw modal
-- `web/src/hooks/useSessionBetting.ts` - Session management
-- `web/src/app/battle/page.tsx` - Battle arena
-
----
-
-## Phase 3: Launch Prep
-
-**Goal:** Build the distribution infrastructure to acquire first 100 users
-
-**Why Third:** Product is secure and polished. Now build the machinery to get users. Research shows: "Don't launch to everyone - launch to 50-100 hand-picked users first."
-
-**Plans:** (created by /gsd:plan-phase)
+### Phase 6: Smart Contract Audit
+**Goal**: Document contract invariants and verify on-chain security
+**Depends on**: Phase 5
+**Requirements**: SC-01, SC-02, SC-03, SC-04
+**Success Criteria** (what must be TRUE):
+  1. All Sealevel attacks checked (signer, owner, reinitialization, overflow, PDA validation) with no vulnerabilities
+  2. Round state machine verified: no invalid transitions, no double claims, correct payouts
+  3. Pyth oracle integration verified: staleness checks exist, feed IDs validated, price manipulation resistant
+  4. Authority/session key permissions documented: session keys verified CANNOT withdraw
+  5. Contract invariants documented for backend consumption
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD - Planned via /gsd:plan-phase 3
+- [x] 06-01-PLAN.md — Sealevel attacks and access control audit (SC-01, SC-04)
+- [x] 06-02-PLAN.md — Betting logic and oracle security audit (SC-02, SC-03)
 
-### Requirements
-
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| LAUNCH-01 | Create landing page with waitlist and referral mechanics | HIGH |
-| LAUNCH-02 | Set up Discord server with proper channel structure | HIGH |
-| LAUNCH-03 | Activate Twitter account with content pipeline | MEDIUM |
-| LAUNCH-04 | Identify and onboard 50-100 hand-picked initial users | HIGH |
-| LAUNCH-05 | Implement scheduled match times to create player density | HIGH |
-| LAUNCH-06 | Implement referral program (invite friends, earn rewards) | MEDIUM |
-
-### Success Criteria
-
-- [ ] Landing page live at degendome.xyz with email capture
-- [ ] Referral link generates unique tracking code
-- [ ] Discord has: #announcements, #general, #feedback, #match-results channels
-- [ ] Twitter posting 3-5x/week (match highlights, tips, updates)
-- [ ] 50 users identified from: personal network, CT DMs, Discord outreach
-- [ ] Match times scheduled (e.g., daily at 12pm, 6pm, 10pm UTC)
-- [ ] Referral rewards tracked and claimable
-
-### Key Actions (Non-Code)
-
-- Create content calendar for Twitter
-- Draft Discord welcome message and rules
-- Compile list of 100 potential early users
-- Design social share cards
-- Plan first tournament/event
-
----
-
-## Phase 4: Monitoring & Ops
-
-**Goal:** Operate confidently when real money is on the line
-
-**Why Fourth:** Before going live, ensure you can see what's happening and respond to issues. "If you can't measure it, you can't fix it."
-
-**Plans:** (created by /gsd:plan-phase)
+### Phase 7: Backend Security
+**Goal**: Verify backend correctly uses on-chain guarantees
+**Depends on**: Phase 6 (contract invariants documented)
+**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04
+**Success Criteria** (what must be TRUE):
+  1. All API parameters and WebSocket events validated against schema
+  2. Wallet signature verification confirmed on all sensitive operations
+  3. No TOCTOU race conditions in balance checking (verifyAndLockBalance pattern verified)
+  4. Error handling reviewed: no sensitive data exposed, partial failures handled consistently
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD - Planned via /gsd:plan-phase 4
+- [ ] 07-01-PLAN.md — Input validation (SEC-01) and auth/session security (SEC-02)
+- [ ] 07-02-PLAN.md — Race conditions (SEC-03) and error handling (SEC-04)
 
-### Requirements
+### Phase 8: Code Quality
+**Goal**: Clean, readable codebase with tight types (informed by audit findings)
+**Depends on**: Phase 7 (security audit complete informs what to clean)
+**Requirements**: CQ-01, CQ-02, CQ-03, CQ-04
+**Success Criteria** (what must be TRUE):
+  1. Zero dead/unused code (functions, exports, dependencies, files removed)
+  2. No copy-paste patterns or DRY violations in business logic
+  3. Variable/function names are clear and self-documenting
+  4. Zero `any` types in application code (library boundaries excepted)
+**Plans**: TBD
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| OPS-01 | Replace console.log with structured logging (with log levels) | HIGH |
-| OPS-02 | Set up error alerting (critical errors notify team) | HIGH |
-| OPS-03 | Create basic metrics dashboard (active users, matches, volume) | MEDIUM |
-| OPS-04 | Document incident response runbook | MEDIUM |
-| OPS-05 | Test mainnet deployment scripts | HIGH |
-| OPS-06 | Document backup and recovery procedures | MEDIUM |
+Plans:
+- [ ] 08-01: TBD (dead code removal and redundancy consolidation)
+- [ ] 08-02: TBD (naming improvements and type safety)
 
-### Success Criteria
+### Phase 9: Integration
+**Goal**: Verify cross-cutting concerns and economic model correctness
+**Depends on**: Phase 8 (clean codebase makes integration testing reliable)
+**Requirements**: INT-01, INT-02, INT-03
+**Success Criteria** (what must be TRUE):
+  1. On-chain/off-chain state consistency verified under failure scenarios
+  2. Authority key security assessed with multi-sig plan documented
+  3. Economic model verified: solvency invariants hold (total_payouts + fees <= total_pool)
+**Plans**: TBD
 
-- [ ] Logging uses structured format (JSON) with DEBUG/INFO/WARN/ERROR levels
-- [ ] Critical errors (settlement failures, balance mismatches) trigger Slack/Discord alert
-- [ ] Dashboard shows: DAU, matches/day, total volume, error rate
-- [ ] Runbook covers: pause procedure, rollback steps, escalation contacts
-- [ ] Mainnet deployment tested on devnet fork
-- [ ] Backup procedure documented for: database, program state, configs
+Plans:
+- [ ] 09-01: TBD (on-chain/off-chain sync verification)
+- [ ] 09-02: TBD (authority security and economic model verification)
 
-### Key Files
+## Progress
 
-- `backend/src/index.ts` - Server entry, logging setup
-- `backend/src/services/` - All services need structured logging
-- Deployment scripts (to be created)
+**Execution Order:**
+Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9
 
----
-
-## Phase Dependencies
-
-```
-Phase 1 (Security) ──┐
-                     ├──► Phase 3 (Launch) ──► MAINNET
-Phase 2 (UX) ────────┘           │
-                                 │
-Phase 4 (Ops) ───────────────────┘
-```
-
-- **Phase 1 & 2** can run in parallel (different focus areas)
-- **Phase 3** depends on 1 & 2 (need secure, polished product before users)
-- **Phase 4** can run parallel to Phase 3 (ops setup while prepping launch)
-
----
-
-## Post-v1 (Deferred)
-
-After successful mainnet launch with initial users:
-
-| Item | Trigger |
-|------|---------|
-| Professional Security Audit | After 30+ days stable operation, before scaling |
-| Token/Airdrop | After product-market fit validated |
-| Influencer Partnerships | After organic growth mechanics proven |
-| New Game Modes | After core modes have retention |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Security Hardening | v1.0 | 4/4 | Complete | 2026-01-22 |
+| 2. UX Polish | v1.0 | 5/5 | Complete | 2026-01-22 |
+| 3. Scheduled Matches | v1.0 | 3/3 | Complete | 2026-01-22 |
+| 4. Operations | v1.0 | 6/6 | Complete | 2026-01-22 |
+| 5. Automated Analysis | v1.1 | 2/2 | Complete | 2026-01-22 |
+| 6. Smart Contract Audit | v1.1 | 2/2 | Complete | 2026-01-22 |
+| 7. Backend Security | v1.1 | 0/2 | Not started | - |
+| 8. Code Quality | v1.1 | 0/2 | Not started | - |
+| 9. Integration | v1.1 | 0/2 | Not started | - |
 
 ---
 
-## Progress Tracking
-
-| Phase | Status | Plans | Completion |
-|-------|--------|-------|------------|
-| 1: Security | ✅ Complete | 7/7 plans | 100% |
-| 2: UX | ○ Pending | 0/? | 0% |
-| 3: Launch | ○ Pending | 0/? | 0% |
-| 4: Ops | ○ Pending | 0/? | 0% |
-
----
-*Roadmap created: 2026-01-21*
-*Last updated: 2026-01-21 - Phase 1 Security Hardening COMPLETE*
+*Roadmap created: 2026-01-22*
+*v1.1 phases: 5-9 (5 phases, ~10 plans estimated)*
