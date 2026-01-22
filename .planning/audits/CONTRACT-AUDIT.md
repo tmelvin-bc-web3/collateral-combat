@@ -230,3 +230,174 @@ If somehow winning_pool is 0 but user won (shouldn't happen mathematically):
 - Position is still marked claimed (prevents double claim)
 
 ---
+
+## Oracle Security Audit
+
+### Pyth Integration Overview
+
+The contract uses Pyth Network for tamper-proof on-chain price data. Both lock paths use identical security patterns.
+
+### Pyth Integration Comparison Table
+
+| Security Check | lock_round | lock_round_fallback | Status |
+|----------------|------------|---------------------|--------|
+| `load_price_feed_from_account_info` | Line 152 | Line 198 | PASS |
+| Feed ID validation | Lines 156-159 | Lines 202-205 | PASS |
+| Staleness check (60s) | Lines 162-164 | Lines 209-211 | PASS |
+| Clock-based time | Line 162 (`clock.unix_timestamp`) | Line 209 (`clock.unix_timestamp`) | PASS |
+| Positive price check | Line 167 | Line 214 | PASS |
+
+### Detailed Security Analysis
+
+**1. Price Feed Loading (Pyth SDK)**
+
+Both paths use `load_price_feed_from_account_info`:
+```rust
+// lock_round (line 152)
+let price_feed = load_price_feed_from_account_info(price_account)
+    .map_err(|_| SessionBettingError::InvalidPriceFeed)?;
+
+// lock_round_fallback (line 198)
+let price_feed = load_price_feed_from_account_info(price_account)
+    .map_err(|_| SessionBettingError::InvalidPriceFeed)?;
+```
+
+This validates:
+- Account is owned by Pyth program
+- Account data is properly formatted price feed
+- Price feed is active and valid
+
+**2. Feed ID Validation (CRITICAL)**
+
+Both paths verify the price feed ID matches the configured feed:
+```rust
+// lock_round (lines 156-159)
+require!(
+    price_feed.id.to_bytes() == game_state.price_feed_id,
+    SessionBettingError::PriceFeedMismatch
+);
+
+// lock_round_fallback (lines 202-205)
+require!(
+    price_feed.id.to_bytes() == game_state.price_feed_id,
+    SessionBettingError::PriceFeedMismatch
+);
+```
+
+**Why this matters:** Without feed ID validation, an attacker could substitute a different price feed (e.g., a low-cap token with manipulable price) to influence settlement.
+
+**3. Staleness Check (CRITICAL)**
+
+Both paths use `get_price_no_older_than`:
+```rust
+// lock_round (lines 162-164)
+let current_time = clock.unix_timestamp;
+let price = price_feed.get_price_no_older_than(current_time, MAX_PRICE_AGE_SECONDS)
+    .ok_or(SessionBettingError::PriceTooStale)?;
+
+// lock_round_fallback (lines 209-211)
+let current_time = clock.unix_timestamp;
+let price = price_feed.get_price_no_older_than(current_time, MAX_PRICE_AGE_SECONDS)
+    .ok_or(SessionBettingError::PriceTooStale)?;
+```
+
+**Why this matters:** Without staleness checks, an attacker could wait for a favorable historical price to settle a round.
+
+**4. Time Source Validation**
+
+Both paths derive `current_time` from `Clock::get()`:
+- lock_round: `Clock::get()` at line 143
+- lock_round_fallback: `Clock::get()` at line 189
+
+This is Solana's on-chain clock, not client-provided. Prevents clock manipulation attacks.
+
+### Price Manipulation Resistance
+
+| Manipulation Vector | Mitigated? | Evidence |
+|---------------------|------------|----------|
+| Arbitrary price input | YES | No instruction accepts user-provided price for lock/settle |
+| Substitute different feed | YES | Feed ID validation in both paths |
+| Use stale price | YES | 60-second staleness check |
+| Manipulate clock | YES | Uses on-chain Clock::get() |
+| MEV front-running | PARTIAL | Oracle price is on-chain, not user-submitted |
+
+**Important Note on start_round:**
+
+`start_round` DOES accept `start_price` as a parameter (line 81):
+```rust
+pub fn start_round(ctx: Context<StartRound>, start_price: u64) -> Result<()>
+```
+
+However, this is:
+1. Authority-only (line 87-90)
+2. Used for record-keeping (what price the round started at)
+3. Winner is determined by `end_price` (from Pyth) vs `start_price`
+
+**Risk assessment:** LOW - Authority sets start_price, but if authority is malicious, they control the game anyway. The critical security is that `end_price` (used for settlement) comes from Pyth oracle.
+
+### Staleness Configuration Analysis
+
+**Research Question #5: Pyth Update Frequency**
+
+| Parameter | Value | Assessment |
+|-----------|-------|------------|
+| MAX_PRICE_AGE_SECONDS | 60 | Contract constant (line 36) |
+| Pyth mainnet update frequency | ~400ms | Very frequent |
+| Threshold margin | 150x safety margin | Conservative |
+
+**Analysis:** 60 seconds is very conservative for Pyth which typically updates every ~400ms on mainnet. This provides ample margin for:
+- Network congestion
+- Temporary oracle downtime
+- Validator propagation delays
+
+**Recommendation:** 60 seconds is safe. Could potentially tighten to 30 seconds for production, but current setting is acceptable.
+
+### Mainnet Configuration
+
+**Default Feed ID (lines 45-50):**
+```rust
+pub const DEFAULT_PRICE_FEED_ID: [u8; 32] = [
+    0xe6, 0x2d, 0xf6, 0xc8, 0xb4, 0xa8, 0x5f, 0xe1,
+    0xa6, 0x7d, 0xb4, 0x4d, 0xc1, 0x2d, 0xe5, 0xdb,
+    0x33, 0x0f, 0x7a, 0xc6, 0x6b, 0x72, 0xdc, 0x65,
+    0x8a, 0xfe, 0xdf, 0x0f, 0x4a, 0x41, 0x5b, 0x43,
+];
+```
+
+This is the **BTC/USD** Pyth mainnet feed ID.
+
+**Feed change authority (lines 333-344):**
+```rust
+pub fn set_price_feed(ctx: Context<SetPriceFeed>, price_feed_id: [u8; 32]) -> Result<()> {
+    require!(
+        ctx.accounts.authority.key() == game_state.authority,
+        SessionBettingError::Unauthorized
+    );
+    game_state.price_feed_id = price_feed_id;
+    Ok(())
+}
+```
+
+**Status:** Authority-only (PASS)
+
+**Pre-mainnet Recommendation:**
+1. Verify correct SOL/USD feed ID is set before mainnet deploy
+2. Document feed ID in deployment checklist
+3. Test feed ID validation with wrong feed ID (should fail with PriceFeedMismatch)
+
+### Summary
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| Pyth SDK usage | SECURE | Both paths use official SDK |
+| Feed ID validation | SECURE | Verified in both lock paths |
+| Staleness check | SECURE | 60s threshold, very conservative |
+| Clock source | SECURE | Uses on-chain Clock::get() |
+| Arbitrary price input | SECURE | No user-provided price accepted |
+| Feed change authority | SECURE | Authority-only |
+
+**Oracle Security Assessment: PASS**
+
+All critical Pyth security controls are in place. Both lock paths (authority and permissionless fallback) use identical security patterns. No path exists to manipulate settlement prices.
+
+---
