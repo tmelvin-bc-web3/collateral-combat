@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Current focus:** Phase 7 - Backend Security
+**Current focus:** Phase 7 - Backend Security (COMPLETE)
 
 ## Current Position
 
 Phase: 7 of 9 (Backend Security)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-01-22 - Completed 07-01-PLAN.md (SEC-01, SEC-02 audit)
+Plan: 2 of 2 in current phase (COMPLETE)
+Status: Phase complete
+Last activity: 2026-01-22 - Completed 07-02-PLAN.md (SEC-03, SEC-04 audit)
 
-Progress: [#######################...] 88% (v1.0 complete, Phase 5: 2/2, Phase 6: 2/2, Phase 7: 1/2)
+Progress: [########################..] 92% (v1.0 complete, Phase 5: 2/2, Phase 6: 2/2, Phase 7: 2/2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23 (18 v1.0 + 2 Phase 5 + 2 Phase 6 + 1 Phase 7)
-- Average duration: ~35 min (updated with Phase 6-7 data)
-- Total execution time: ~14.1 hours
+- Total plans completed: 24 (18 v1.0 + 2 Phase 5 + 2 Phase 6 + 2 Phase 7)
+- Average duration: ~35 min (updated with Phase 7 data)
+- Total execution time: ~14.5 hours
 
 **By Phase:**
 
@@ -33,9 +33,9 @@ Progress: [#######################...] 88% (v1.0 complete, Phase 5: 2/2, Phase 6
 | 4. Operations (v1.0) | 6 | ~4.5h | 45 min |
 | 5. Automated Analysis | 2 | ~17min | 8.5 min |
 | 6. Contract Audit | 2 | ~25min | 12.5 min |
-| 7. Backend Security | 1 | ~15min | 15 min |
+| 7. Backend Security | 2 | ~40min | 20 min |
 
-**v1.1 remaining:** 3 plans across 2 phases (Phase 7: 1, Phase 8: 2)
+**v1.1 remaining:** 2 plans across 1 phase (Phase 8: 2)
 
 ## Accumulated Context
 
@@ -63,7 +63,9 @@ Recent decisions affecting current work:
 - [Phase 6.1]: 15 contract invariants documented for backend consumption
 - [Phase 7.1]: Input validation at handler level - TypeScript types don't validate at runtime
 - [Phase 7.1]: Replay cache Redis support verified already implemented correctly
-- [Phase 7.1]: predictionService race condition deferred to Phase 8 (on-chain service is correct)
+- [Phase 7.2]: All 8 TOCTOU race conditions fixed via verifyAndLockBalance atomic pattern
+- [Phase 7.2]: Error handling safe - no stack traces or SQL errors exposed to clients
+- [Phase 7.2]: Partial failure handling verified - rollback/recovery implemented
 
 ### Pending Todos
 
@@ -80,16 +82,17 @@ None yet.
 - [Phase 5.2]: WIP features need decision - complete integration or remove? (LDS, Token Wars, Draft, Referrals, Oracle on-chain)
 - [Phase 5.2]: Unused exports remain (95 web, 116 backend) - should be cleaned up when features are completed/removed
 - [Phase 5.2]: Backend type coverage at 90.67% needs improvement to 95%+ before Phase 8 (100% goal)
-- [Phase 7.1]: SEC-02-01 HIGH - predictionService.ts race condition needs migration in Phase 8
-- [Phase 7.1]: Redis deployment - Production must have REDIS_URL set for replay protection
-- [Phase 7.1]: Battle config validation deferred to Phase 8 for Zod schema
+- [Phase 7.2]: Redis deployment - Production must have REDIS_URL set for replay protection
+- [Phase 7.2]: Battle config validation deferred to Phase 8 for Zod schema
+- [Phase 7.2]: Error sanitization (toApiError) adoption deferred to Phase 8
+- [Phase 7.2]: Typed error adoption deferred to Phase 8
 
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 07-01-PLAN.md
+Stopped at: Completed 07-02-PLAN.md (Phase 7 complete)
 Resume file: None
-Next: Execute 07-02-PLAN.md (SEC-03, SEC-04)
+Next: Phase 8 - Backend Cleanup
 
 ---
 *State updated: 2026-01-22*

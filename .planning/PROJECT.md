@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A PvP skill-based crypto betting platform on Solana where traders compete against each other predicting price movements — no house edge, pure player vs player. Think poker for crypto traders: your winnings come from other players, not the house.
+A production-ready PvP skill-based crypto betting platform on Solana where traders compete against each other predicting price movements — no house edge, pure player vs player. Fully security-hardened, mobile-responsive, with operational monitoring ready for mainnet.
 
 ## Core Value
 
@@ -12,7 +12,7 @@ Players can confidently bet against each other on price predictions with fair, t
 
 ### Validated
 
-<!-- Shipped and confirmed valuable. Inferred from existing codebase. -->
+<!-- Shipped and confirmed in v1.0 -->
 
 - ✓ **Oracle Predictions** — Real-time price betting using Pyth oracles (v0-devnet)
 - ✓ **1v1 Battles** — Head-to-head prediction competitions (v0-devnet)
@@ -22,15 +22,26 @@ Players can confidently bet against each other on price predictions with fair, t
 - ✓ **Wallet Authentication** — Solana wallet signature verification (v0-devnet)
 - ✓ **Session Keys** — Frictionless betting without constant signing (v0-devnet)
 - ✓ **Real-time Updates** — WebSocket-based live state sync (v0-devnet)
+- ✓ **Security Hardening** — Atomic operations, replay protection, checked arithmetic (v1.0)
+- ✓ **UX Polish** — Error boundaries, loading states, mobile responsiveness (v1.0)
+- ✓ **Scheduled Matches** — Cron-based match creation for player density (v1.0)
+- ✓ **Operational Monitoring** — Discord alerts, health checks, backups (v1.0)
+- ✓ **Deployment Automation** — Scripts and runbooks for mainnet (v1.0)
 
 ### Active
 
-<!-- Current scope. Building toward mainnet launch. -->
+<!-- v1.1 Code & Security Audit -->
 
-- [ ] Security hardening — Address critical vulnerabilities before mainnet
-- [ ] UX polish — Remove friction, improve onboarding flow
-- [ ] Launch strategy — Define go-to-market, initial user acquisition
-- [ ] Monitoring & ops — Observability, alerting, incident response
+- [ ] Code quality audit — Dead code removal, redundancy consolidation, naming/readability, type safety
+- [ ] Security audit — Input validation, auth/session, race conditions
+- [ ] Smart contract audit — Full code quality + security + verification patterns
+- [ ] All issues documented and fixed
+
+### Future
+
+- [ ] Mainnet deployment — Deploy to Solana mainnet-beta
+- [ ] User acquisition — First 100 real users
+- [ ] Iteration based on feedback — Address issues found in production
 
 ### Out of Scope
 
@@ -41,25 +52,38 @@ Players can confidently bet against each other on price predictions with fair, t
 - Mobile app — Web-first for v1, mobile later
 - Fiat on-ramp integration — Users bring their own SOL for now
 - KYC/AML compliance — Assess regulatory requirements post-launch
+- Professional security audit — Deferred until 30+ days stable operation
+
+## Current Milestone: v1.1 Code & Security Audit
+
+**Goal:** Comprehensive audit of codebase and smart contract for code quality and security before mainnet deployment.
+
+**Target deliverables:**
+- Clean, readable codebase with no dead code or redundancies
+- Tight TypeScript types throughout
+- All inputs validated, auth hardened, race conditions eliminated
+- Smart contract fully audited with verification patterns
+- All issues documented and fixed
 
 ## Context
 
-**Current state:** Fully functional on devnet. Smart contracts deployed, backend running, frontend complete. Never been live on mainnet.
+**Current state:** v1.0 shipped. Starting v1.1 audit cycle before mainnet.
+
+**Codebase:**
+- ~62 files, ~9,500 lines TypeScript/Rust changed in v1.0
+- Frontend: Next.js 16, React, TailwindCSS, Socket.IO
+- Backend: Express, Socket.IO, SQLite, TypeScript
+- Smart contracts: Rust/Anchor on Solana
+- Deployment: Vercel (frontend), Render (backend)
 
 **Architecture:** Hybrid on-chain/off-chain. Core betting logic (escrow, settlement) on-chain via Anchor. Game orchestration, matchmaking, real-time updates handled by Express backend with Socket.IO.
 
-**Tech stack:** TypeScript/Next.js frontend, Express backend, Rust/Anchor smart contracts, PostgreSQL + SQLite databases, Pyth oracles for price feeds.
+**Known tech debt:**
+- Logger adoption partial (some services still use console.log)
+- Error boundary coverage limited to predict/battle pages
+- Error rate metric not explicitly in dashboard
 
-**Known issues from codebase mapping:**
-- Silent error handling (25+ instances returning null on error)
-- Signature replay race condition in auth middleware
-- PDA balance verification gap (balance checked but not atomically locked)
-- 576+ uncontrolled console.log statements (need structured logging)
-- Missing audit trail for regulatory defensibility
-
-**Market positioning:** "The poker of crypto trading" — skill-based, no house edge, player vs player. Target audience: crypto degens and gamblers who want fair competition.
-
-**Launch blocker:** Fear of launching to zero users. Has waitlist with 2 signups (1 is self). No existing audience or distribution channel.
+**Market positioning:** "The poker of crypto trading" — skill-based, no house edge, player vs player.
 
 ## Constraints
 
@@ -70,14 +94,20 @@ Players can confidently bet against each other on price predictions with fair, t
 
 ## Key Decisions
 
-<!-- Decisions that constrain future work. Add throughout project lifecycle. -->
+<!-- Decisions that constrain future work -->
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| PvP-only, no house edge | Core differentiator, regulatory simplicity | — Pending |
+| PvP-only, no house edge | Core differentiator, regulatory simplicity | ✓ Good |
 | Hybrid on-chain/off-chain | Faster UX, lower costs, on-chain settlement | ✓ Good |
 | Session keys for betting | Removes signing friction | ✓ Good |
 | Pyth oracles for prices | Reliable, low-latency, Solana-native | ✓ Good |
+| Discord webhook alerting | Simple, team uses Discord, no infra needed | ✓ Good |
+| Atomic Redis SET NX EX | Eliminates TOCTOU in replay protection | ✓ Good |
+| verifyAndLockBalance pattern | Single instruction prevents balance race | ✓ Good |
+| better-sqlite3 backup API | Safe during writes, no corruption risk | ✓ Good |
+| Kubernetes health endpoints | Standard probes, easy container deployment | ✓ Good |
+| 7-day backup retention | Balance storage cost vs recovery window | ✓ Good |
 
 ---
-*Last updated: 2026-01-21 after project initialization*
+*Last updated: 2026-01-22 after v1.1 milestone start*
