@@ -561,3 +561,420 @@ pub fn set_price_feed(ctx: Context<SetPriceFeed>, price_feed_id: [u8; 32]) -> Re
 All critical Pyth security controls are in place. Both lock paths (authority and permissionless fallback) use identical security patterns. No path exists to manipulate settlement prices.
 
 ---
+
+## Access Control Audit
+
+### Authority Key Usage
+
+All instructions that require authority signature have been verified.
+
+| Instruction | Authority Required | Verified | Line | Purpose |
+|-------------|-------------------|----------|------|---------|
+| `initialize_game` | YES (deployer) | PASS | 1040 | Sets initial authority |
+| `start_round` | YES | PASS | 87-90 | Start new betting round |
+| `lock_round` | YES | PASS | 134-138 | Lock round with price |
+| `close_round` | YES | PASS | 280-284 | Close round after grace |
+| `set_paused` | YES | PASS | 313-317 | Emergency pause |
+| `set_price_feed` | YES | PASS | 336-340 | Change oracle feed |
+| `propose_authority_transfer` | YES | PASS | 355-359 | Initiate authority change |
+| `cancel_authority_transfer` | YES | PASS | 407-411 | Cancel pending transfer |
+| `withdraw_fees` | YES | PASS | 432-436 | Withdraw platform fees |
+| `transfer_to_global_vault` | YES | PASS | 491-495 | Lock user funds for game |
+| `credit_winnings` | YES | PASS | 550-554 | Pay out winners |
+| `fund_global_vault` | YES | PASS | 607-611 | Add funds for payouts |
+
+**All authority checks use the pattern:**
+```rust
+require!(
+    ctx.accounts.authority.key() == game_state.authority,
+    SessionBettingError::Unauthorized
+);
+```
+
+### Authority Transfer Security
+
+Two-step authority transfer prevents accidental lockout.
+
+| Security Check | Status | Evidence |
+|----------------|--------|----------|
+| Two-step transfer | PASS | `propose_authority_transfer` + `accept_authority_transfer` |
+| Zero address check | PASS | Line 362-365: `require!(new_authority != Pubkey::default(), InvalidAuthority)` |
+| Accept validation | PASS | Line 385-389: `ctx.accounts.new_authority.key() == pending` |
+| Cancel requires current authority | PASS | Line 407-411: Standard authority check |
+
+**Transfer Flow:**
+```
+1. propose_authority_transfer(new_authority)
+   - Current authority proposes new authority
+   - Sets game_state.pending_authority = Some(new_authority)
+
+2. accept_authority_transfer()
+   - New authority must sign
+   - Validates signer == pending_authority
+   - Sets game_state.authority = pending
+   - Clears pending_authority
+
+3. cancel_authority_transfer() [optional]
+   - Current authority can cancel pending transfer
+   - Clears pending_authority
+```
+
+### Session Key Isolation
+
+**CRITICAL SECURITY: Session keys can bet but CANNOT withdraw or transfer authority.**
+
+#### Session Key Acceptance Analysis
+
+| Instruction | Accepts Session | Should Accept | Status | Evidence |
+|-------------|-----------------|---------------|--------|----------|
+| `place_bet` | YES | YES | PASS | Line 1396-1402: `session_token: Option<Account<SessionToken>>` |
+| `claim_winnings` | YES | YES | PASS | Line 1446-1451: `session_token: Option<Account<SessionToken>>` |
+| `withdraw` | NO | NO | **PASS** | Line 1334-1356: No session_token field in Withdraw struct |
+| `deposit` | NO | NO | PASS | Line 1303-1332: No session_token field |
+| `propose_authority_transfer` | NO | NO | **PASS** | Line 1204-1215: No session_token field |
+| `accept_authority_transfer` | NO | NO | **PASS** | Line 1217-1229: No session_token field |
+| `cancel_authority_transfer` | NO | NO | **PASS** | Line 1231-1242: No session_token field |
+| `transfer_to_global_vault` | NO | NO | PASS | Line 1462-1500: Authority-only |
+| `credit_winnings` | NO | NO | PASS | Line 1502-1541: Authority-only |
+
+**Key Finding:** The `Withdraw` struct (lines 1334-1356) does NOT include a `session_token` field:
+```rust
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(
+        mut,
+        seeds = [b"balance", user.key().as_ref()],
+        bump = user_balance.bump,
+        constraint = user_balance.owner == user.key() @ SessionBettingError::NotBalanceOwner
+    )]
+    pub user_balance: Account<'info, UserBalance>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", user.key().as_ref()],
+        bump
+    )]
+    pub vault: SystemAccount<'info>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,  // <-- MUST be wallet, not session
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+**Contrast with PlaceBet struct (lines 1358-1408):**
+```rust
+#[derive(Accounts)]
+pub struct PlaceBet<'info> {
+    // ... other accounts ...
+
+    /// Session token for session key authentication (optional)
+    /// If provided, allows session_signer to act on behalf of authority
+    #[account(
+        seeds = [b"session", user_balance.owner.as_ref(), signer.key().as_ref()],
+        bump = session_token.bump,
+    )]
+    pub session_token: Option<Account<'info, SessionToken>>,  // <-- Session accepted
+
+    #[account(mut)]
+    pub signer: Signer<'info>,  // <-- Can be wallet OR session signer
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+### verify_session_or_authority Analysis (Lines 928-968)
+
+The helper function correctly validates session tokens:
+
+```rust
+fn verify_session_or_authority(
+    session_token: &Option<Account<SessionToken>>,
+    signer: &Signer,
+    expected_authority: &Pubkey,
+) -> Result<()> {
+    // Direct wallet signature: always allowed
+    if signer.key() == *expected_authority {
+        return Ok(());
+    }
+
+    // Session token validation
+    match session_token {
+        Some(session) => {
+            // SECURITY: Session must be for this authority
+            require!(
+                session.authority == *expected_authority,
+                SessionBettingError::SessionAuthorityMismatch
+            );
+
+            // SECURITY: Signer must be the session signer
+            require!(
+                session.session_signer == signer.key(),
+                SessionBettingError::InvalidSessionSigner
+            );
+
+            // SECURITY: Session must not be expired
+            let clock = Clock::get()?;
+            require!(
+                clock.unix_timestamp < session.valid_until,
+                SessionBettingError::SessionExpired
+            );
+
+            Ok(())
+        }
+        None => {
+            // No session and not authority - unauthorized
+            Err(SessionBettingError::Unauthorized.into())
+        }
+    }
+}
+```
+
+**Validation Checklist:**
+| Check | Status | Line |
+|-------|--------|------|
+| Authority match | PASS | 943-946 |
+| Signer match | PASS | 948-952 |
+| Expiry validation | PASS | 954-959 |
+| Uses Clock::get() | PASS | 955 |
+| Rejects if no session and not authority | PASS | 963-965 |
+
+### Session Creation/Revocation
+
+| Operation | Signature Required | Status | Evidence |
+|-----------|-------------------|--------|----------|
+| `create_session` | Wallet | PASS | Line 1279: `authority: Signer<'info>` |
+| `revoke_session` | Wallet | PASS | Line 1299: `authority: Signer<'info>` + constraint |
+
+**Session Duration Limit:**
+```rust
+// Line 33
+pub const MAX_SESSION_DURATION_SECONDS: i64 = 7 * 24 * 60 * 60; // 7 days
+
+// Lines 634-641
+let duration = valid_until.checked_sub(clock.unix_timestamp)
+    .ok_or(SessionBettingError::InvalidSessionDuration)?;
+require!(duration > 0, SessionBettingError::InvalidSessionDuration);
+require!(
+    duration <= MAX_SESSION_DURATION_SECONDS,
+    SessionBettingError::SessionTooLong
+);
+```
+
+### Session Key Isolation Test Plan
+
+For backend team to verify session keys cannot withdraw:
+
+```typescript
+// Test: Session key CANNOT withdraw
+describe('Session Key Isolation', () => {
+  it('should reject withdraw with session key', async () => {
+    // 1. Create user with balance
+    const user = Keypair.generate();
+    await deposit(user, 1_000_000_000); // 1 SOL
+
+    // 2. Create session key
+    const sessionKey = Keypair.generate();
+    await createSession(user, sessionKey, Date.now() + 3600000); // 1 hour
+
+    // 3. Attempt withdraw with session key - SHOULD FAIL
+    try {
+      await withdraw(sessionKey, 500_000_000); // 0.5 SOL
+      throw new Error('Should have failed');
+    } catch (e) {
+      expect(e.message).to.include('signature verification failed');
+      // Session key cannot satisfy Withdraw instruction because:
+      // - Withdraw.user must be Signer
+      // - PDA seeds use user.key()
+      // - Session key != user wallet
+    }
+
+    // 4. Verify wallet can still withdraw
+    await withdraw(user, 500_000_000);
+  });
+
+  it('should reject authority transfer with session key', async () => {
+    // Similar pattern - session key cannot propose or accept authority transfer
+  });
+});
+```
+
+---
+
+## Access Control Summary
+
+| Category | Status | Notes |
+|----------|--------|-------|
+| Authority checks | PASS | All 12 authority instructions verified |
+| Two-step transfer | PASS | Prevents accidental lockout |
+| Session key isolation | **PASS** | Withdraw and authority transfer do NOT accept session |
+| Session validation | PASS | `verify_session_or_authority` correctly implemented |
+| Session duration limit | PASS | Max 7 days enforced |
+
+**Access Control Assessment: PASS**
+
+Session keys are correctly isolated from privileged operations. The `withdraw` instruction requires a direct wallet signature and does not accept session tokens. Authority transfer instructions similarly require direct wallet signatures.
+
+---
+
+## Contract Invariants (Backend Consumption)
+
+This section documents contract invariants that the backend must respect for correct operation.
+
+### Balance Invariants
+
+| ID | Invariant | Enforcement | Lines |
+|----|-----------|-------------|-------|
+| INV-01 | `user_balance.balance = vault.lamports (modulo rent)` | All deposit/withdraw operations maintain sync | 677-687, 720-726 |
+| INV-02 | `user_balance.total_deposited >= user_balance.total_withdrawn` | Checked arithmetic prevents underflow | 685-687, 724-726 |
+| INV-03 | `global_vault.lamports >= sum of all pending payouts` | Backend must track liabilities | 559-562 (InsufficientVaultBalance check) |
+| INV-04 | User cannot withdraw funds locked in active bets | Balance debited immediately on bet placement | 803-806 |
+| INV-05 | Balance updates occur BEFORE transfers (reentrancy protection) | State-before-transfer pattern | 453-456, 504-507, 720-723, 803-806 |
+
+**INV-01 Detail:**
+```
+On deposit: vault.lamports += amount, user_balance.balance += amount
+On withdraw: vault.lamports -= amount, user_balance.balance -= amount
+On place_bet: user_balance.balance -= amount (funds stay in vault until settlement)
+```
+
+**INV-03 Backend Responsibility:**
+The contract checks `global_vault.lamports() >= amount` before payouts (line 559-562), but backend must ensure the vault is sufficiently funded before calling `credit_winnings`.
+
+### Round Lifecycle Invariants
+
+| ID | Invariant | Enforcement | Lines |
+|----|-----------|-------------|-------|
+| INV-06 | Round status transitions: Open -> Locked -> Settled (no skipping) | Each transition requires previous state | 141, 187, 232, 288 |
+| INV-07 | Cannot place bets after `lock_time` | `clock.unix_timestamp < round.lock_time` | 787-791 |
+| INV-08 | Cannot settle before `end_time` | `clock.unix_timestamp >= round.end_time` | 237-240 |
+| INV-09 | Cannot close before grace period ends | `clock.unix_timestamp >= end_time + CLAIM_GRACE_PERIOD_SECONDS` | 294-301 |
+| INV-10 | Round can only be closed once | `close` constraint closes account, preventing reuse | 1163-1164 |
+
+**Round Timeline:**
+```
+T+0s     : Round starts (Open)
+T+25s    : lock_time reached (authority can lock)
+T+30s    : end_time reached (can settle after lock)
+T+85s    : lock_time_fallback (permissionless lock)
+T+3630s  : grace period ends (can close, 1 hour after end)
+```
+
+### Session Constraints
+
+| ID | Invariant | Enforcement | Lines |
+|----|-----------|-------------|-------|
+| INV-11 | `session.valid_until > Clock::get().unix_timestamp` | Checked at each use | 954-959 |
+| INV-12 | `session.authority == user_balance.owner` | Session must match balance owner | 943-946 |
+| INV-13 | `session.session_signer == signer.key()` | Instruction signer must match session signer | 948-952 |
+| INV-14 | Session duration <= 7 days | Enforced at creation | 638-641 |
+| INV-15 | Session cannot perform withdraw or authority transfer | Withdraw/authority structs do not accept session_token | 1334-1356, 1204-1242 |
+
+### Constants Reference
+
+| Constant | Value | Usage | Line |
+|----------|-------|-------|------|
+| MIN_BET | 10,000,000 lamports (0.01 SOL) | Minimum wager amount | 12 |
+| MAX_BET | 100,000,000,000 lamports (100 SOL) | Maximum wager amount | 15 |
+| PLATFORM_FEE_BPS | 500 (5%) | Fee on winnings | 18 |
+| BPS_DENOMINATOR | 10,000 | Basis points denominator | 21 |
+| ROUND_DURATION_SECONDS | 30 | Total round length | 24 |
+| LOCK_BUFFER_SECONDS | 5 | Time before end when betting stops | 27 |
+| FALLBACK_LOCK_DELAY_SECONDS | 60 | Permissionless lock delay | 30 |
+| MAX_SESSION_DURATION_SECONDS | 604,800 (7 days) | Maximum session validity | 33 |
+| MAX_PRICE_AGE_SECONDS | 60 | Maximum Pyth price staleness | 36 |
+| CLAIM_GRACE_PERIOD_SECONDS | 3,600 (1 hour) | Time to claim before close | 41 |
+
+### Arithmetic Bounds
+
+| Calculation | Method | Overflow Protection |
+|-------------|--------|---------------------|
+| Fee calculation | `winnings * 500 / 10000` | u64 max ~18 quintillion lamports, safe for any realistic wager |
+| Winnings calculation | u128 intermediate | Lines 999-1007: Uses u128 for `bet_amount * losing_pool / winning_pool` |
+| Balance operations | `checked_*` methods | All operations return `MathOverflow` on failure |
+
+**Maximum Safe Pool Sizes:**
+- With u128 intermediate: Can handle pools up to 2^128 lamports
+- Practical limit: Total Solana supply ~550M SOL = 550 * 10^17 lamports
+- Contract is safe for any realistic pool size
+
+### Backend Integration Checklist
+
+**Before Mainnet Deployment:**
+- [ ] Use `verifyAndLockBalance` pattern, NOT just `hasSufficientBalance`
+- [ ] Check `canPayoutFromGameMode` before calling `creditWinnings`
+- [ ] Track pending transactions to prevent double-spend
+- [ ] Ensure global vault is funded before crediting any winnings
+- [ ] Implement round lifecycle management (start -> lock -> settle -> close)
+- [ ] Handle permissionless fallback gracefully (round may be locked by others)
+- [ ] Set correct SOL/USD Pyth feed ID before deployment
+
+**Fund Locking Pattern (CRITICAL):**
+```typescript
+// CORRECT: Verify AND lock in single on-chain call
+async function placeBet(wallet: PublicKey, amount: number, roundId: number) {
+  // 1. Call transferToGlobalVault to lock funds on-chain
+  await program.methods
+    .transferToGlobalVault(new BN(amount))
+    .accounts({
+      owner: wallet,
+      // ... other accounts
+    })
+    .rpc();
+
+  // 2. Record bet in backend (funds already locked)
+  await recordBet(wallet, roundId, amount);
+}
+
+// INCORRECT: Check balance then record (TOCTOU vulnerability)
+async function placeBetUnsafe(wallet: PublicKey, amount: number) {
+  // Race condition: user could withdraw between check and bet
+  const balance = await getOnChainBalance(wallet);
+  if (balance >= amount) {
+    await recordBet(wallet, amount); // Funds not locked!
+  }
+}
+```
+
+**Winnings Credit Pattern:**
+```typescript
+async function creditWinnings(wallet: PublicKey, amount: number, gameId: Uint8Array) {
+  // 1. Verify global vault has sufficient balance
+  const vaultBalance = await getGlobalVaultBalance();
+  if (vaultBalance < amount) {
+    throw new Error('Insufficient vault balance - fund vault first');
+  }
+
+  // 2. Credit via on-chain instruction
+  await program.methods
+    .creditWinnings(new BN(amount), { oracle: {} }, gameId)
+    .accounts({
+      owner: wallet,
+      // ... other accounts
+    })
+    .rpc();
+}
+```
+
+**Pending Transaction Tracking:**
+```typescript
+// Track pending transactions to prevent double-spend
+interface PendingTransaction {
+  wallet: PublicKey;
+  amount: number;
+  type: 'lock' | 'credit';
+  txSignature: string;
+  createdAt: number;
+}
+
+// Before new bet: Check for pending transactions
+async function canPlaceBet(wallet: PublicKey, amount: number): Promise<boolean> {
+  const pending = await getPendingTransactions(wallet);
+  const lockedAmount = pending.reduce((sum, tx) => sum + tx.amount, 0);
+  const balance = await getOnChainBalance(wallet);
+  return balance - lockedAmount >= amount;
+}
+```
+
+---
