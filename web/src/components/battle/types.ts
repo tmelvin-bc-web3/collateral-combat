@@ -44,10 +44,12 @@ export interface BattleHeaderProps {
 }
 
 export interface PnLComparisonBarProps {
-  userPnL: number;
-  opponentPnL: number;
+  userPnL: number;       // Percentage (-100 to +100)
+  opponentPnL: number;   // Percentage
   userPnLDollar: number;
   opponentPnLDollar: number;
+  userWallet?: string;   // For display
+  opponentWallet?: string;
 }
 
 export interface OpponentActivityFeedProps {
