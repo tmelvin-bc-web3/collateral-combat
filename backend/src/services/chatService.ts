@@ -15,6 +15,7 @@ import {
   ChatEventData,
   ChatServiceListener,
   SenderRole,
+  ReactionEventData,
 } from '../types/chat';
 
 // ===================
@@ -25,7 +26,22 @@ const MAX_MESSAGES_PER_ROOM = 100;
 const MAX_MESSAGE_LENGTH = 280;
 const MUTE_DURATION_MS = 60_000; // 1 minute auto-mute
 const WARNING_THRESHOLD = 3; // Warnings before auto-mute
-const DUPLICATE_WINDOW_MS = 5_000; // Window to check duplicate messages
+const DUPLICATE_WINDOW_MS = 3_000; // Rate limit: 1 message per 3 seconds
+const MAX_UNIQUE_EMOJIS_PER_MESSAGE = 8;
+const MAX_REACTORS_PER_EMOJI = 20;
+const REACTION_RATE_LIMIT_MS = 1_000; // 1 reaction per second per user
+
+// Allowed emoji set (Unicode)
+const ALLOWED_EMOJIS = new Set([
+  '\u{1F525}', // fire
+  '\u{1F480}', // skull
+  '\u{1F680}', // rocket
+  '\u{1F4B0}', // money
+  '\u{1F921}', // clown
+  '\u{1F4AF}', // 100
+  '\u{1F62D}', // cry
+  '\u{1F602}', // laugh
+]);
 
 // Link patterns to filter
 const LINK_PATTERNS = [
@@ -54,6 +70,7 @@ class ChatService {
   private rooms: Map<string, ChatRoom> = new Map();
   private userStates: Map<string, UserChatState> = new Map();
   private listeners: ChatServiceListener[] = [];
+  private lastReactionTime: Map<string, number> = new Map(); // wallet -> last reaction timestamp
 
   constructor() {
     // Clean up old user states periodically (every 5 minutes)
@@ -222,6 +239,7 @@ class ChatService {
       wasFiltered,
       timestamp: Date.now(),
       type: 'user',
+      reactions: {},
     };
 
     // Add to room and trim if needed
@@ -263,6 +281,7 @@ class ChatService {
       wasFiltered: false,
       timestamp: Date.now(),
       type: 'system',
+      reactions: {},
     };
 
     room.messages.push(message);
@@ -388,6 +407,11 @@ class ChatService {
     const stateKey = `${battleId}:${wallet}`;
     const state = this.userStates.get(stateKey);
 
+    // Check 3-second rate limit
+    if (state && Date.now() - state.lastMessageTime < DUPLICATE_WINDOW_MS) {
+      return { allowed: false, shouldMute: false, reason: 'Please wait 3 seconds between messages' };
+    }
+
     // Check for repeated characters (AAAAAAA)
     if (/(.)\1{5,}/.test(message)) {
       return { allowed: false, shouldMute: false, reason: 'Too many repeated characters' };
@@ -469,6 +493,123 @@ class ChatService {
       return wallet;
     }
     return `${wallet.slice(0, 4)}...${wallet.slice(-4)}`;
+  }
+
+  // ===================
+  // Reactions
+  // ===================
+
+  /**
+   * Add a reaction to a message
+   * Returns true on success, false on failure
+   */
+  addReaction(battleId: string, messageId: string, emoji: string, wallet: string): boolean {
+    // Validate emoji is in allowed set
+    if (!ALLOWED_EMOJIS.has(emoji)) {
+      console.log(`[ChatService] Invalid emoji: ${emoji}`);
+      return false;
+    }
+
+    // Check reaction rate limit (1 per second per user)
+    const lastReaction = this.lastReactionTime.get(wallet);
+    if (lastReaction && Date.now() - lastReaction < REACTION_RATE_LIMIT_MS) {
+      console.log(`[ChatService] Reaction rate limited for ${this.shortenWallet(wallet)}`);
+      return false;
+    }
+
+    const room = this.rooms.get(battleId);
+    if (!room) {
+      return false;
+    }
+
+    // Find the message
+    const message = room.messages.find((m) => m.id === messageId);
+    if (!message) {
+      return false;
+    }
+
+    // Initialize reactions if not present
+    if (!message.reactions) {
+      message.reactions = {};
+    }
+
+    // Check max unique emojis per message
+    const uniqueEmojis = Object.keys(message.reactions);
+    if (!message.reactions[emoji] && uniqueEmojis.length >= MAX_UNIQUE_EMOJIS_PER_MESSAGE) {
+      console.log(`[ChatService] Max unique emojis reached for message ${messageId}`);
+      return false;
+    }
+
+    // Initialize emoji array if not present
+    if (!message.reactions[emoji]) {
+      message.reactions[emoji] = [];
+    }
+
+    // Prevent duplicate reactions from same wallet
+    if (message.reactions[emoji].includes(wallet)) {
+      return false;
+    }
+
+    // Check max reactors per emoji
+    if (message.reactions[emoji].length >= MAX_REACTORS_PER_EMOJI) {
+      console.log(`[ChatService] Max reactors reached for emoji ${emoji} on message ${messageId}`);
+      return false;
+    }
+
+    // Add reaction
+    message.reactions[emoji].push(wallet);
+
+    // Update last reaction time
+    this.lastReactionTime.set(wallet, Date.now());
+
+    // Notify listeners
+    this.notifyListeners('reaction_added', {
+      type: 'reaction_added',
+      battleId,
+    } as ChatEventData);
+
+    console.log(`[ChatService] ${this.shortenWallet(wallet)} reacted with ${emoji} on message ${messageId}`);
+    return true;
+  }
+
+  /**
+   * Remove a reaction from a message
+   * Returns true on success, false on failure
+   */
+  removeReaction(battleId: string, messageId: string, emoji: string, wallet: string): boolean {
+    const room = this.rooms.get(battleId);
+    if (!room) {
+      return false;
+    }
+
+    // Find the message
+    const message = room.messages.find((m) => m.id === messageId);
+    if (!message || !message.reactions || !message.reactions[emoji]) {
+      return false;
+    }
+
+    // Find wallet index
+    const index = message.reactions[emoji].indexOf(wallet);
+    if (index === -1) {
+      return false;
+    }
+
+    // Remove wallet from reactions
+    message.reactions[emoji].splice(index, 1);
+
+    // Clean up empty emoji array
+    if (message.reactions[emoji].length === 0) {
+      delete message.reactions[emoji];
+    }
+
+    // Notify listeners
+    this.notifyListeners('reaction_removed', {
+      type: 'reaction_removed',
+      battleId,
+    } as ChatEventData);
+
+    console.log(`[ChatService] ${this.shortenWallet(wallet)} removed ${emoji} reaction from message ${messageId}`);
+    return true;
   }
 
   // ===================

@@ -18,6 +18,7 @@ export interface ChatMessage {
   wasFiltered: boolean;
   timestamp: number;
   type: ChatMessageType;
+  reactions: Record<string, string[]>; // emoji -> array of wallet addresses
 }
 
 export interface ChatRoom {
@@ -45,7 +46,16 @@ export interface UserChatState {
 }
 
 // Events emitted by ChatService
-export type ChatEventType = 'message' | 'system' | 'room_created' | 'room_closed';
+export type ChatEventType = 'message' | 'system' | 'room_created' | 'room_closed' | 'reaction_added' | 'reaction_removed';
+
+// Reaction event data
+export interface ReactionEventData {
+  battleId: string;
+  messageId: string;
+  emoji: string;
+  wallet: string;
+  action: 'add' | 'remove';
+}
 
 export interface ChatEventData {
   type: ChatEventType;
