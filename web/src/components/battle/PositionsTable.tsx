@@ -2,6 +2,7 @@
 
 import { PerpPosition } from '@/types';
 import { AssetIcon } from '../AssetIcon';
+import { LiquidationIndicator } from './LiquidationIndicator';
 
 interface PositionsTableProps {
   positions: PerpPosition[];
@@ -88,9 +89,12 @@ export function PositionsTable({ positions, onClosePosition }: PositionsTablePro
                   </div>
                 </td>
 
-                {/* Liq. Price */}
-                <td className="py-2.5 px-3 text-right font-mono text-sm text-warning">
-                  ${position.liquidationPrice.toFixed(2)}
+                {/* Liq. Distance */}
+                <td className="py-2.5 px-3">
+                  <LiquidationIndicator
+                    distance={position.liquidationDistance}
+                    side={position.side}
+                  />
                 </td>
 
                 {/* Action */}
