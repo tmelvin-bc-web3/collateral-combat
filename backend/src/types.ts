@@ -348,6 +348,9 @@ export interface ClientToServerEvents {
   // Challenge notification events
   subscribe_challenge_notifications: (walletAddress: string) => void;
   unsubscribe_challenge_notifications: (walletAddress: string) => void;
+  // Open challenges subscription events (challenge board)
+  subscribe_challenges: () => void;
+  unsubscribe_challenges: () => void;
   // Spectator events
   subscribe_live_battles: () => void;
   unsubscribe_live_battles: () => void;

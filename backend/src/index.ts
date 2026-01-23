@@ -2414,6 +2414,33 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Subscribe to open challenges updates (challenge board)
+  socket.on('subscribe_challenges', () => {
+    // Rate limit subscriptions - use socket.id as identifier since no wallet needed
+    const rateCheck = checkSocketRateLimit(socket.id, socket.id, 'subscribe_challenges', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+
+    socket.join('challenges');
+    challengeLogger.debug('User subscribed to open challenges', { socketId: socket.id });
+
+    // Send current open challenges
+    try {
+      const openChallenges = challengesDb.getOpenChallenges();
+      socket.emit('challenges_list' as any, { challenges: openChallenges });
+    } catch (error) {
+      challengeLogger.error('Error sending open challenges on subscribe', { error: String(error) });
+    }
+  });
+
+  // Unsubscribe from open challenges updates
+  socket.on('unsubscribe_challenges', () => {
+    socket.leave('challenges');
+    challengeLogger.debug('User unsubscribed from open challenges', { socketId: socket.id });
+  });
+
   // ===================
   // LDS (Last Degen Standing) Socket Handlers
   // ===================
