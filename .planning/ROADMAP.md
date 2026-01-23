@@ -41,7 +41,7 @@
 - [x] **Phase 5: Automated Analysis** - Quick wins with zero-config tools ✓
 - [x] **Phase 6: Smart Contract Audit** - On-chain security and correctness ✓
 - [x] **Phase 7: Backend Security** - Off-chain security hardening ✓
-- [ ] **Phase 8: Code Quality** - Cleanup informed by audit findings
+- [x] **Phase 8: Code Quality** - Cleanup informed by audit findings ✓
 - [ ] **Phase 9: Integration** - Cross-cutting concerns and economic model
 
 ## Phase Details
@@ -101,11 +101,11 @@ Plans:
   2. No copy-paste patterns or DRY violations in business logic
   3. Variable/function names are clear and self-documenting
   4. Zero `any` types in application code (library boundaries excepted)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: TBD (dead code removal and redundancy consolidation)
-- [ ] 08-02: TBD (naming improvements and type safety)
+- [x] 08-01-PLAN.md — Dead code removal and fee constant consolidation (CQ-01, CQ-02)
+- [x] 08-02-PLAN.md — Type safety improvements and Zod validation (CQ-03, CQ-04)
 
 ### Phase 9: Integration
 **Goal**: Verify cross-cutting concerns and economic model correctness
@@ -115,11 +115,11 @@ Plans:
   1. On-chain/off-chain state consistency verified under failure scenarios
   2. Authority key security assessed with multi-sig plan documented
   3. Economic model verified: solvency invariants hold (total_payouts + fees <= total_pool)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD (on-chain/off-chain sync verification)
-- [ ] 09-02: TBD (authority security and economic model verification)
+- [ ] 09-01-PLAN.md — Failure scenarios and economic model verification (INT-01, INT-03)
+- [ ] 09-02-PLAN.md — Multi-sig implementation and security audit report (INT-02)
 
 ## Progress
 
@@ -135,10 +135,10 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9
 | 5. Automated Analysis | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 6. Smart Contract Audit | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 7. Backend Security | v1.1 | 2/2 | Complete | 2026-01-22 |
-| 8. Code Quality | v1.1 | 0/2 | Not started | - |
-| 9. Integration | v1.1 | 0/2 | Not started | - |
+| 8. Code Quality | v1.1 | 2/2 | Complete | 2026-01-22 |
+| 9. Integration | v1.1 | 0/2 | Ready to execute | - |
 
 ---
 
 *Roadmap created: 2026-01-22*
-*v1.1 phases: 5-9 (5 phases, ~10 plans estimated)*
+*v1.1 phases: 5-9 (5 phases, 10 plans total)*
