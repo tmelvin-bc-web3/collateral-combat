@@ -714,10 +714,118 @@ class BalanceService {
   canPayout(gameType: GameMode, amountLamports: number): boolean {
     return canPayoutFromGameMode(gameType, amountLamports);
   }
+
+  // ============================================
+  // Global Vault Solvency Verification
+  // ============================================
+
+  /**
+   * Verify global vault solvency against all game mode liabilities.
+   * This is the critical reconciliation function that ensures:
+   *   vault_balance >= sum(locked - paidOut) for all game modes
+   *
+   * USAGE:
+   * - Periodic health check (e.g., every 5 minutes)
+   * - Before large payouts
+   * - Admin dashboard monitoring
+   * - Post-incident investigation
+   *
+   * @returns SolvencyResult with breakdown by game mode
+   */
+  async verifyGlobalVaultSolvency(): Promise<{
+    solvent: boolean;
+    vaultBalance: number;
+    totalLiabilities: number;
+    surplus: number;
+    breakdown: Record<GameMode, {
+      locked: number;
+      paidOut: number;
+      available: number;
+    }>;
+    timestamp: number;
+  }> {
+    // 1. Get actual on-chain global vault balance
+    const vaultBalance = await this.getGlobalVaultBalance();
+
+    // 2. Get all game mode balances from database
+    const gameModeBalances = getAllGameModeBalances();
+
+    // 3. Calculate total liabilities (sum of locked - paidOut for each mode)
+    let totalLiabilities = 0;
+    const breakdown: Record<GameMode, { locked: number; paidOut: number; available: number }> = {
+      oracle: { locked: 0, paidOut: 0, available: 0 },
+      battle: { locked: 0, paidOut: 0, available: 0 },
+      draft: { locked: 0, paidOut: 0, available: 0 },
+      spectator: { locked: 0, paidOut: 0, available: 0 },
+      lds: { locked: 0, paidOut: 0, available: 0 },
+      token_wars: { locked: 0, paidOut: 0, available: 0 },
+    };
+
+    const gameModes: GameMode[] = ['oracle', 'battle', 'draft', 'spectator', 'lds', 'token_wars'];
+
+    for (const mode of gameModes) {
+      const balance = gameModeBalances[mode];
+      const available = Math.max(0, balance.totalLocked - balance.totalPaidOut);
+      totalLiabilities += available;
+
+      breakdown[mode] = {
+        locked: balance.totalLocked,
+        paidOut: balance.totalPaidOut,
+        available: available,
+      };
+    }
+
+    // 4. Check solvency: vault must be >= liabilities
+    const solvent = vaultBalance >= totalLiabilities;
+    const surplus = vaultBalance - totalLiabilities;
+
+    // 5. Log warning if not solvent
+    if (!solvent) {
+      console.error('[BalanceService] SOLVENCY CHECK FAILED!');
+      console.error(`  Vault balance: ${vaultBalance} lamports`);
+      console.error(`  Total liabilities: ${totalLiabilities} lamports`);
+      console.error(`  Deficit: ${Math.abs(surplus)} lamports`);
+      console.error('  Breakdown by game mode:', breakdown);
+
+      await alertService.sendCriticalAlert(
+        'Global Vault Solvency Check Failed',
+        `Vault balance (${vaultBalance}) < Total liabilities (${totalLiabilities}). Deficit: ${Math.abs(surplus)} lamports`,
+        'GLOBAL_VAULT_INSOLVENCY',
+        {
+          vaultBalance,
+          totalLiabilities,
+          deficit: Math.abs(surplus),
+        }
+      );
+    }
+
+    return {
+      solvent,
+      vaultBalance,
+      totalLiabilities,
+      surplus,
+      breakdown,
+      timestamp: Date.now(),
+    };
+  }
 }
 
 // Export singleton instance
 export const balanceService = new BalanceService();
+
+// Solvency result type for verifyGlobalVaultSolvency
+export interface SolvencyResult {
+  solvent: boolean;
+  vaultBalance: number;
+  totalLiabilities: number;
+  surplus: number;
+  breakdown: Record<GameMode, {
+    locked: number;
+    paidOut: number;
+    available: number;
+  }>;
+  timestamp: number;
+}
 
 // Export types
 export { GameMode, PendingTransaction, GameModeBalance };
