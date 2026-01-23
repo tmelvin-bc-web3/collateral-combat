@@ -782,14 +782,30 @@ class BattleManager {
 
     // Sort by P&L and assign ranks (skip if ranks already set by liquidation)
     const hasPresetRanks = battle.players.some(p => p.rank !== undefined);
+    let isTie = false;
+
     if (!hasPresetRanks) {
       const sorted = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
-      sorted.forEach((player, index) => {
-        player.rank = index + 1;
-      });
 
-      // Winner is rank 1
-      battle.winnerId = sorted[0]?.walletAddress;
+      // Check for tie (both players have same PnL, or difference < 0.01%)
+      const player1Pnl = sorted[0]?.finalPnl || 0;
+      const player2Pnl = sorted[1]?.finalPnl || 0;
+      isTie = sorted.length >= 2 && Math.abs(player1Pnl - player2Pnl) < 0.01;
+
+      if (isTie) {
+        // Tie handling: no winner, both get same rank
+        battle.winnerId = undefined;
+        sorted.forEach((player) => {
+          player.rank = 1; // Both tied for first
+        });
+        console.log(`[Battle] ${battleId} ended in a TIE! Both players at ~${player1Pnl.toFixed(2)}%`);
+      } else {
+        sorted.forEach((player, index) => {
+          player.rank = index + 1;
+        });
+        // Winner is rank 1
+        battle.winnerId = sorted[0]?.walletAddress;
+      }
     }
 
     // Clear player battle mappings
@@ -804,20 +820,45 @@ class BattleManager {
       this.battleTimers.delete(battleId);
     }
 
-    console.log(`Battle ${battleId} ended! Winner: ${battle.winnerId}`);
+    console.log(`Battle ${battleId} ended! ${isTie ? 'TIE' : `Winner: ${battle.winnerId}`}`);
 
     // Send battle end system message and close chat room
-    const winner = battle.players.find(p => p.walletAddress === battle.winnerId);
-    const winnerName = winner?.walletAddress ? `${winner.walletAddress.slice(0, 4)}...${winner.walletAddress.slice(-4)}` : 'Unknown';
-    chatService.sendSystemMessage(battleId, `Battle ended! ${winnerName} wins!`);
+    if (isTie) {
+      chatService.sendSystemMessage(battleId, `Battle ended in a TIE! Both players refunded.`);
+    } else {
+      const winner = battle.players.find(p => p.walletAddress === battle.winnerId);
+      const winnerName = winner?.walletAddress ? `${winner.walletAddress.slice(0, 4)}...${winner.walletAddress.slice(-4)}` : 'Unknown';
+      chatService.sendSystemMessage(battleId, `Battle ended! ${winnerName} wins!`);
+    }
     // Close chat room after a short delay so final message is received
     setTimeout(() => {
       chatService.closeRoom(battleId);
     }, 3000);
 
-    // Credit winner with prize pool (minus rake)
+    // Handle payouts based on tie or winner
     const prizeAfterRake = battle.prizePool * (1 - PLATFORM_FEE_PERCENT / 100);
-    if (battle.winnerId && battle.prizePool > 0) {
+    const entryFee = battle.config.entryFee;
+
+    if (isTie) {
+      // Tie handling: refund both players their entry fee
+      for (const player of battle.players) {
+        if (!player.isFreeBet) {
+          const refundLamports = Math.floor(entryFee * LAMPORTS_PER_SOL);
+          try {
+            await balanceService.creditWinnings(
+              player.walletAddress,
+              refundLamports,
+              'battle',
+              battleId
+            );
+            console.log(`[Battle] Tie refund ${refundLamports / LAMPORTS_PER_SOL} SOL to ${player.walletAddress}`);
+          } catch (error) {
+            console.error(`[Battle] Failed to refund tie to ${player.walletAddress}:`, error);
+          }
+        }
+      }
+    } else if (battle.winnerId && battle.prizePool > 0) {
+      // Credit winner with prize pool (minus rake)
       const prizeLamports = Math.floor(prizeAfterRake * LAMPORTS_PER_SOL);
       try {
         const tx = await balanceService.creditWinnings(
@@ -836,15 +877,26 @@ class BattleManager {
     // Record battle results to user_wagers for win verification
     battle.players.forEach(player => {
       const isWinner = player.walletAddress === battle.winnerId;
-      const entryFee = battle.config.entryFee;
-      const profitLoss = isWinner ? (prizeAfterRake - entryFee) : -entryFee;
+      let outcome: 'won' | 'lost' | 'push';
+      let profitLoss: number;
+
+      if (isTie) {
+        outcome = 'push';
+        profitLoss = 0; // No profit/loss on tie
+      } else if (isWinner) {
+        outcome = 'won';
+        profitLoss = prizeAfterRake - entryFee;
+      } else {
+        outcome = 'lost';
+        profitLoss = -entryFee;
+      }
 
       try {
         userStatsDb.recordWager(
           player.walletAddress,
           'battle',
           entryFee,
-          isWinner ? 'won' : 'lost',
+          outcome,
           profitLoss,
           battleId
         );
@@ -852,6 +904,29 @@ class BattleManager {
         console.error(`[Battle] Failed to record wager for ${player.walletAddress}:`, error);
       }
     });
+
+    // Save battle history for 1v1 battles
+    if (battle.players.length === 2 && battle.startedAt) {
+      try {
+        battleHistoryDb.saveBattleResult({
+          battleId: battle.id,
+          player1Wallet: battle.players[0].walletAddress,
+          player2Wallet: battle.players[1].walletAddress,
+          winnerWallet: battle.winnerId || null,
+          player1PnlPercent: battle.players[0].finalPnl || 0,
+          player2PnlPercent: battle.players[1].finalPnl || 0,
+          entryFee: battle.config.entryFee,
+          prizePool: battle.prizePool,
+          duration: battle.config.duration,
+          isTie,
+          startedAt: battle.startedAt,
+          endedAt: battle.endedAt || Date.now(),
+        });
+        console.log(`[Battle] History saved for ${battle.id}`);
+      } catch (error) {
+        console.error(`[Battle] Failed to save history:`, error);
+      }
+    }
 
     this.notifyListeners(battle);
 
