@@ -2996,6 +2996,33 @@ app.get('/api/challenges/stats', standardLimiter, async (req: Request, res: Resp
   }
 });
 
+// GET /api/challenges - List open challenges (public, with optional filtering)
+app.get('/api/challenges', standardLimiter, (req: Request, res: Response) => {
+  try {
+    const { minFee, maxFee, wallet } = req.query;
+    const challenges = challengesDb.getOpenChallenges({
+      minFee: minFee ? parseFloat(minFee as string) : undefined,
+      maxFee: maxFee ? parseFloat(maxFee as string) : undefined,
+      excludeWallet: wallet as string | undefined,
+    });
+    res.json({ challenges });
+  } catch (error: any) {
+    challengeLogger.error('Error fetching open challenges', { error: String(error) });
+    res.status(500).json({ error: 'Failed to fetch challenges' });
+  }
+});
+
+// GET /api/challenges/direct/:wallet - Get challenges targeting a specific wallet
+app.get('/api/challenges/direct/:wallet', standardLimiter, (req: Request, res: Response) => {
+  try {
+    const challenges = challengesDb.getDirectChallengesFor(req.params.wallet);
+    res.json({ challenges });
+  } catch (error: any) {
+    challengeLogger.error('Error fetching direct challenges', { error: String(error) });
+    res.status(500).json({ error: 'Failed to fetch direct challenges' });
+  }
+});
+
 // Create a new battle challenge
 app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: Request, res: Response) => {
   try {
@@ -3004,7 +3031,17 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { entryFee, leverage, duration } = req.body;
+    const { entryFee, leverage, duration, targetWallet } = req.body;
+
+    // Validate targetWallet if provided (optional - for direct challenges)
+    if (targetWallet !== undefined && targetWallet !== null) {
+      if (typeof targetWallet !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(targetWallet)) {
+        return res.status(400).json({ error: 'Invalid target wallet address format' });
+      }
+      if (targetWallet === walletAddress) {
+        return res.status(400).json({ error: 'Cannot create a challenge targeting yourself' });
+      }
+    }
 
     // Validate entry fee
     if (typeof entryFee !== 'number' ||
@@ -3048,6 +3085,7 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
       entryFee,
       leverage,
       duration,
+      targetWallet: targetWallet || undefined,
     });
 
     // Register challenge for notification when accepted
@@ -3058,6 +3096,40 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
       entryFee,
       duration
     );
+
+    // Notify target player of direct challenge via WebSocket
+    if (targetWallet) {
+      const targetSocketId = battleManager.getSocketIdForWallet(targetWallet);
+      if (targetSocketId) {
+        io.to(targetSocketId).emit('direct_challenge_received' as any, {
+          challenge: {
+            id: challenge.id,
+            code: challenge.challengeCode,
+            challengerWallet: challenge.challengerWallet,
+            challengerUsername: challenge.challengerUsername,
+            entryFee: challenge.entryFee,
+            leverage: challenge.leverage,
+            duration: challenge.duration,
+            expiresAt: challenge.expiresAt,
+          }
+        });
+        challengeLogger.info('Direct challenge notification sent', { targetWallet, challengeCode: challenge.challengeCode });
+      }
+    } else {
+      // Broadcast open challenge to subscribed users
+      io.to('challenges').emit('challenge_created' as any, {
+        challenge: {
+          id: challenge.id,
+          code: challenge.challengeCode,
+          challengerWallet: challenge.challengerWallet,
+          challengerUsername: challenge.challengerUsername,
+          entryFee: challenge.entryFee,
+          leverage: challenge.leverage,
+          duration: challenge.duration,
+          expiresAt: challenge.expiresAt,
+        }
+      });
+    }
 
     // Generate share URLs
     const shareUrl = `https://degendome.xyz/fight/${challenge.challengeCode}`;
