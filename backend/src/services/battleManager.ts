@@ -30,6 +30,8 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 import { toApiError } from '../utils/errors';
+import * as eloDatabase from '../db/eloDatabase';
+import * as eloService from './eloService';
 
 // Lamports per SOL for entry fee conversion
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -69,6 +71,9 @@ class BattleManager {
   // Map of signature -> expiry timestamp for cleanup
   private usedTradeSignatures: Map<string, number> = new Map();
   private readonly SIGNATURE_EXPIRY_MS = 120000; // 2 minutes (60s window + buffer)
+
+  // Instant loss event listeners
+  private instantLossListeners: Set<(battleId: string, loserWallet: string, winnerWallet: string) => void> = new Set();
 
   constructor() {
     // Start matchmaking loop
@@ -728,6 +733,9 @@ class BattleManager {
     battle.winnerId = battle.players.find(p => p.walletAddress !== loserWallet)?.walletAddress;
     battle.endReason = 'liquidation';
 
+    // Emit instant loss event before calling endBattle (for WebSocket notifications)
+    this.emitInstantLossEvent(battleId, loserWallet, battle.winnerId || '');
+
     // Use existing endBattle logic for settlement
     await this.endBattle(battleId);
 
@@ -885,15 +893,15 @@ class BattleManager {
     });
   }
 
-  // Queue for matchmaking
-  queueForMatchmaking(config: BattleConfig, walletAddress: string): void {
+  // Queue for matchmaking (async to support ELO-based tier lookup)
+  async queueForMatchmaking(config: BattleConfig, walletAddress: string): Promise<void> {
     // Prevent re-queueing if already in a ready check
     if (this.walletsInReadyCheck.has(walletAddress)) {
       console.log(`[Matchmaking] ${walletAddress.slice(0, 8)}... already in ready check, cannot queue`);
       return;
     }
 
-    const key = this.getMatchmakingKey(config);
+    const key = await this.getMatchmakingKey(config, walletAddress);
     const queue = this.matchmakingQueue.get(key) || [];
 
     if (queue.some(q => q.walletAddress === walletAddress)) {
@@ -951,8 +959,31 @@ class BattleManager {
     });
   }
 
-  private getMatchmakingKey(config: BattleConfig): string {
-    return `${config.entryFee}-${config.duration}-${config.mode}`;
+  /**
+   * Generate matchmaking key including ELO tier for skill-based matching
+   *
+   * CRITICAL for MATCH-05 compliance:
+   * - Protected players get queue key ending in `-protected`
+   * - Non-protected players get queue key ending in their ELO tier (bronze/silver/etc.)
+   * - Matchmaking only pairs players with IDENTICAL queue keys
+   * - Therefore protected players can NEVER be matched with non-protected players
+   */
+  private async getMatchmakingKey(config: BattleConfig, walletAddress: string): Promise<string> {
+    try {
+      const battleCount = await eloDatabase.getBattleCount(walletAddress);
+      if (eloService.shouldProtectPlayer(battleCount)) {
+        // CRITICAL: Protected players get their own queue key
+        // This ensures they ONLY match with other protected players
+        return `${config.entryFee}-${config.duration}-${config.mode}-protected`;
+      }
+      const elo = await eloDatabase.getElo(walletAddress);
+      const tier = eloService.getEloTier(elo);
+      return `${config.entryFee}-${config.duration}-${config.mode}-${tier}`;
+    } catch (error) {
+      // Fallback to tier-less key if ELO lookup fails (backward compatible)
+      console.error(`[Matchmaking] Failed to get ELO tier for ${walletAddress.slice(0, 8)}..., using fallback key`, error);
+      return `${config.entryFee}-${config.duration}-${config.mode}`;
+    }
   }
 
   // Get battle by ID
@@ -1078,6 +1109,17 @@ class BattleManager {
     data: ReadyCheckEventData[T]
   ): void {
     this.readyCheckListeners.forEach(listener => listener(event, data));
+  }
+
+  // Subscribe to instant loss events
+  subscribeToInstantLoss(listener: (battleId: string, loserWallet: string, winnerWallet: string) => void): () => void {
+    this.instantLossListeners.add(listener);
+    return () => this.instantLossListeners.delete(listener);
+  }
+
+  // Emit instant loss event to all listeners
+  private emitInstantLossEvent(battleId: string, loserWallet: string, winnerWallet: string): void {
+    this.instantLossListeners.forEach(listener => listener(battleId, loserWallet, winnerWallet));
   }
 
   // Check if wallet is in a ready check

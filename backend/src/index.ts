@@ -2888,6 +2888,18 @@ battleManager.subscribeToReadyCheckEvents((event, data) => {
   }
 });
 
+// Subscribe to instant loss events and broadcast to battle room
+battleManager.subscribeToInstantLoss((battleId, loserWallet, winnerWallet) => {
+  io.to(`battle:${battleId}`).emit('instant_loss' as any, {
+    battleId,
+    loserWallet,
+    winnerWallet,
+    reason: 'liquidation',
+    message: `${loserWallet.slice(0, 4)}...${loserWallet.slice(-4)} was liquidated!`
+  });
+  battleLogger.info('Instant loss event', { battleId, loserWallet, winnerWallet });
+});
+
 // Subscribe to prediction service events and broadcast
 predictionService.subscribe((event, data) => {
   switch (event) {
