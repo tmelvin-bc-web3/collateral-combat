@@ -4,6 +4,7 @@ import {
   BattleConfig,
   BattlePlayer,
   BattleStatus,
+  BattleEndReason,
   PlayerAccount,
   PerpPosition,
   TradeRecord,
@@ -23,6 +24,7 @@ import { balanceService } from './balanceService';
 import { chatService } from './chatService';
 import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
+import * as battleHistoryDb from '../db/battleHistoryDatabase';
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -565,9 +567,28 @@ class BattleManager {
     return battle?.signedTrades || [];
   }
 
+  // Check if player has zero capital (total liquidation)
+  private checkInstantLoss(battle: Battle, player: BattlePlayer): boolean {
+    // Calculate total account value (balance + margin in positions + unrealized PnL)
+    const marginInPositions = player.account.positions.reduce(
+      (sum, p) => sum + (p.size / p.leverage),
+      0
+    );
+    const unrealizedPnl = player.account.positions.reduce(
+      (sum, p) => sum + p.unrealizedPnl,
+      0
+    );
+    const totalValue = player.account.balance + marginInPositions + unrealizedPnl;
+
+    // If total account value is <= 0, player has been liquidated out
+    return totalValue <= 0;
+  }
+
   // Update account value with current prices
-  private updateAccountValue(player: BattlePlayer): void {
+  // Returns true if a liquidation happened (for instant loss check)
+  private updateAccountValue(player: BattlePlayer): boolean {
     let totalUnrealizedPnl = 0;
+    let hadLiquidation = false;
 
     player.account.positions.forEach(position => {
       const currentPrice = priceService.getPrice(position.asset);
@@ -584,8 +605,10 @@ class BattleManager {
       // Check for liquidation
       if (position.side === 'long' && currentPrice <= position.liquidationPrice) {
         this.liquidatePosition(player, position);
+        hadLiquidation = true;
       } else if (position.side === 'short' && currentPrice >= position.liquidationPrice) {
         this.liquidatePosition(player, position);
+        hadLiquidation = true;
       }
     });
 
@@ -596,6 +619,9 @@ class BattleManager {
     );
     const totalValue = player.account.balance + marginInPositions + totalUnrealizedPnl;
     player.account.totalPnlPercent = ((totalValue - player.account.startingBalance) / player.account.startingBalance) * 100;
+
+    // Return whether a liquidation happened for instant loss check
+    return hadLiquidation;
   }
 
   // Liquidate a position
@@ -630,14 +656,83 @@ class BattleManager {
 
   // Update all accounts in active battles (called on price updates)
   updateAllAccounts(): void {
-    this.battles.forEach(battle => {
+    this.battles.forEach((battle, battleId) => {
       if (battle.status === 'active') {
+        let instantLossPlayer: string | null = null;
+
         battle.players.forEach(player => {
-          this.updateAccountValue(player);
+          const hadLiquidation = this.updateAccountValue(player);
+
+          // After liquidation, check if player has zero capital
+          if (hadLiquidation && this.checkInstantLoss(battle, player)) {
+            instantLossPlayer = player.walletAddress;
+          }
         });
-        this.notifyListeners(battle);
+
+        // If any player hit instant loss, end battle immediately
+        if (instantLossPlayer) {
+          console.log(`[Battle] INSTANT LOSS: ${instantLossPlayer} has zero capital!`);
+          this.endBattleByLiquidation(battleId, instantLossPlayer);
+        } else {
+          this.notifyListeners(battle);
+        }
       }
     });
+  }
+
+  // Close all positions for a player and calculate final PnL
+  private closeAllPositionsForPlayer(player: BattlePlayer): void {
+    const positionsToClose = [...player.account.positions];
+    positionsToClose.forEach(position => {
+      const currentPrice = priceService.getPrice(position.asset);
+      const priceChange = (currentPrice - position.entryPrice) / position.entryPrice;
+      const pnlPercent = position.side === 'long' ? priceChange : -priceChange;
+      const pnl = position.size * pnlPercent * position.leverage;
+      const margin = position.size / position.leverage;
+
+      player.account.balance += margin + pnl;
+      player.account.closedPnl += pnl;
+    });
+    player.account.positions = [];
+    this.updateAccountValue(player);  // Return value intentionally ignored here
+    player.finalPnl = player.account.totalPnlPercent;
+  }
+
+  // End battle immediately due to total liquidation (instant loss)
+  private async endBattleByLiquidation(battleId: string, loserWallet: string): Promise<void> {
+    const battle = this.battles.get(battleId);
+    if (!battle || battle.status !== 'active') return;
+
+    console.log(`[Battle] Ending battle ${battleId} due to liquidation of ${loserWallet}`);
+
+    // Clear the normal battle timer
+    const timer = this.battleTimers.get(battleId);
+    if (timer) {
+      clearTimeout(timer);
+      this.battleTimers.delete(battleId);
+    }
+
+    // Set the loser's final PnL to -100% (total loss)
+    battle.players.forEach(player => {
+      if (player.walletAddress === loserWallet) {
+        player.finalPnl = -100;
+        player.rank = 2;
+      } else {
+        // Winner gets their current P&L (close all positions at current price)
+        this.closeAllPositionsForPlayer(player);
+        player.rank = 1;
+      }
+    });
+
+    // Winner is the other player
+    battle.winnerId = battle.players.find(p => p.walletAddress !== loserWallet)?.walletAddress;
+    battle.endReason = 'liquidation';
+
+    // Use existing endBattle logic for settlement
+    await this.endBattle(battleId);
+
+    // Send liquidation-specific chat message
+    chatService.sendSystemMessage(battleId, `LIQUIDATION! ${loserWallet.slice(0, 4)}...${loserWallet.slice(-4)} wiped out!`);
   }
 
   // End a battle
@@ -648,8 +743,16 @@ class BattleManager {
     battle.status = 'completed';
     battle.endedAt = Date.now();
 
-    // Close all open positions at current prices
+    // If endReason not set, this is a normal time-based end
+    if (!battle.endReason) {
+      battle.endReason = 'time';
+    }
+
+    // Close all open positions at current prices (skip if already set by liquidation)
     battle.players.forEach(player => {
+      // Skip if finalPnl already set (e.g., by liquidation)
+      if (player.finalPnl !== undefined) return;
+
       // Close each position
       const positionsToClose = [...player.account.positions];
       positionsToClose.forEach(position => {
@@ -669,14 +772,17 @@ class BattleManager {
       player.finalPnl = player.account.totalPnlPercent;
     });
 
-    // Sort by P&L and assign ranks
-    const sorted = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
-    sorted.forEach((player, index) => {
-      player.rank = index + 1;
-    });
+    // Sort by P&L and assign ranks (skip if ranks already set by liquidation)
+    const hasPresetRanks = battle.players.some(p => p.rank !== undefined);
+    if (!hasPresetRanks) {
+      const sorted = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
+      sorted.forEach((player, index) => {
+        player.rank = index + 1;
+      });
 
-    // Winner is rank 1
-    battle.winnerId = sorted[0]?.walletAddress;
+      // Winner is rank 1
+      battle.winnerId = sorted[0]?.walletAddress;
+    }
 
     // Clear player battle mappings
     battle.players.forEach(player => {

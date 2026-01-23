@@ -73,6 +73,7 @@ export interface SignedTrade extends TradeRecord {
 
 export type BattleStatus = 'waiting' | 'ready_check' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
+export type BattleEndReason = 'time' | 'liquidation' | 'forfeit';
 export type BattleDuration = 1800 | 3600; // 30min, 1hr in seconds
 
 // Ready Check Types
@@ -153,6 +154,8 @@ export interface Battle {
   onChainSettled?: boolean;  // Whether settle_battle has been called
   // Signed trades for trustless settlement
   signedTrades?: SignedTrade[];
+  // Battle end reason
+  endReason?: BattleEndReason;
 }
 
 // Spectator Betting Types
@@ -873,4 +876,31 @@ export interface ScheduledMatchEvent {
         'match_started' | 'match_cancelled';
   matchId: string;
   data?: any;
+}
+
+// ===================
+// ELO Rating System Types
+// ===================
+
+/**
+ * ELO tier for matchmaking
+ * - protected: New players with <10 battles (isolated matchmaking)
+ * - bronze: ELO < 1000
+ * - silver: ELO 1000-1499
+ * - gold: ELO 1500-1999
+ * - platinum: ELO 2000-2499
+ * - diamond: ELO 2500+
+ */
+export type EloTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'protected';
+
+/**
+ * User ELO data for API responses
+ */
+export interface UserElo {
+  wallet: string;
+  elo: number;
+  battleCount: number;
+  wins: number;
+  losses: number;
+  tier: EloTier;
 }
