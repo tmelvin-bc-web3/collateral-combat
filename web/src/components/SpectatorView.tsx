@@ -264,47 +264,22 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
             </div>
           </Card>
 
-          {/* Live Positions */}
+          {/* Fighter Position Cards with Liquidation Indicators */}
           <div className="grid md:grid-cols-2 gap-4">
-            {/* Player 1 Positions */}
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${player1Leading ? 'bg-success' : 'bg-text-tertiary'}`} />
-                  <h3 className="font-semibold">Player 1 Positions</h3>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-bg-tertiary text-text-secondary">
-                  {player1?.account.positions.length || 0} open
-                </span>
-              </div>
-              <div className="space-y-2">
-                {player1?.account.positions.length ? (
-                  player1.account.positions.map(renderPosition)
-                ) : (
-                  <div className="text-center py-6 text-text-tertiary text-sm">No open positions</div>
-                )}
-              </div>
-            </Card>
-
-            {/* Player 2 Positions */}
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${player2Leading ? 'bg-success' : 'bg-text-tertiary'}`} />
-                  <h3 className="font-semibold">Player 2 Positions</h3>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-bg-tertiary text-text-secondary">
-                  {player2?.account.positions.length || 0} open
-                </span>
-              </div>
-              <div className="space-y-2">
-                {player2?.account.positions.length ? (
-                  player2.account.positions.map(renderPosition)
-                ) : (
-                  <div className="text-center py-6 text-text-tertiary text-sm">No open positions</div>
-                )}
-              </div>
-            </Card>
+            {player1 && (
+              <FighterPositionCard
+                fighter={player1}
+                label="Fighter 1"
+                isLeading={player1Leading}
+              />
+            )}
+            {player2 && (
+              <FighterPositionCard
+                fighter={player2}
+                label="Fighter 2"
+                isLeading={player2Leading}
+              />
+            )}
           </div>
         </div>
 
