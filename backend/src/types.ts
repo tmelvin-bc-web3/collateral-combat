@@ -75,7 +75,10 @@ export interface SignedTrade extends TradeRecord {
 export type BattleStatus = 'waiting' | 'ready_check' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
 export type BattleEndReason = 'time' | 'liquidation' | 'forfeit';
-export type BattleDuration = 1800 | 3600; // 30min, 1hr in seconds
+// Battle durations in seconds
+// Standard: 1800 (30min), 3600 (1hr)
+// Challenge: 60 (1min), 120 (2min), 180 (3min), 300 (5min)
+export type BattleDuration = 60 | 120 | 180 | 300 | 1800 | 3600;
 
 // Ready Check Types
 export interface ReadyCheckState {

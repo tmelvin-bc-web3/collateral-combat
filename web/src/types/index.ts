@@ -66,7 +66,10 @@ export interface SignedTradePayload {
 
 export type BattleStatus = 'waiting' | 'ready_check' | 'active' | 'completed' | 'cancelled';
 export type BattleMode = 'paper' | 'real';
-export type BattleDuration = 1800 | 3600;
+// Battle durations in seconds
+// Standard: 1800 (30min), 3600 (1hr)
+// Challenge: 60 (1min), 120 (2min), 180 (3min), 300 (5min)
+export type BattleDuration = 60 | 120 | 180 | 300 | 1800 | 3600;
 
 export interface BattleConfig {
   entryFee: number;

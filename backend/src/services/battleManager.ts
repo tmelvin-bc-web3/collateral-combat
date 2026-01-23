@@ -1601,6 +1601,62 @@ class BattleManager {
   getReadyCheck(battleId: string): ReadyCheckState | undefined {
     return this.readyChecks.get(battleId);
   }
+
+  /**
+   * Create a battle from an accepted challenge.
+   * Initializes a ready check between challenger and acceptor.
+   * @param challengeId - The unique challenge ID
+   * @param challengerWallet - The wallet that created the challenge
+   * @param acceptorWallet - The wallet accepting the challenge
+   * @param config - Battle configuration from the challenge (entryFee, duration, leverage)
+   * @returns The created battle with ready check state, or null if creation failed
+   */
+  async createBattleFromChallenge(
+    challengeId: string,
+    challengerWallet: string,
+    acceptorWallet: string,
+    config: BattleConfig
+  ): Promise<Battle | null> {
+    console.log(`[BattleManager] Creating battle from challenge ${challengeId}`);
+    console.log(`[BattleManager] Challenger: ${challengerWallet.slice(0, 8)}...`);
+    console.log(`[BattleManager] Acceptor: ${acceptorWallet.slice(0, 8)}...`);
+    console.log(`[BattleManager] Config: ${config.entryFee} SOL, ${config.duration}s`);
+
+    // Prevent duplicate battle creation
+    if (this.walletsInReadyCheck.has(challengerWallet)) {
+      console.log(`[BattleManager] Challenger already in ready check`);
+      return null;
+    }
+    if (this.walletsInReadyCheck.has(acceptorWallet)) {
+      console.log(`[BattleManager] Acceptor already in ready check`);
+      return null;
+    }
+
+    try {
+      // Create ready check between challenger and acceptor
+      // This handles fund locking, notifications, and battle creation
+      await this.createReadyCheck(challengerWallet, acceptorWallet, config);
+
+      // Find the battle that was created by the ready check
+      // Ready check creates a battle with both players already added
+      for (const [_, battle] of this.battles) {
+        if (
+          battle.status === 'ready_check' &&
+          battle.players.some(p => p.walletAddress === challengerWallet) &&
+          battle.players.some(p => p.walletAddress === acceptorWallet)
+        ) {
+          console.log(`[BattleManager] Challenge battle created: ${battle.id}`);
+          return battle;
+        }
+      }
+
+      console.log(`[BattleManager] Ready check initiated but battle not found yet`);
+      return null;
+    } catch (error) {
+      console.error(`[BattleManager] Failed to create battle from challenge:`, error);
+      return null;
+    }
+  }
 }
 
 // Singleton instance

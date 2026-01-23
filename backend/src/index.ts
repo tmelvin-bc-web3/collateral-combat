@@ -50,7 +50,7 @@ import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, req
 import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
 import { checkAndMarkSignature } from './utils/replayCache';
 import { TRADABLE_ASSETS } from './tokens';
-import { BattleConfig, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
+import { BattleConfig, BattleDuration, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { validateBattleConfig } from './validation';
@@ -2520,6 +2520,123 @@ io.on('connection', (socket) => {
   socket.on('unsubscribe_challenges', () => {
     socket.leave('challenges');
     challengeLogger.debug('User unsubscribed from open challenges', { socketId: socket.id });
+  });
+
+  // Accept a challenge via WebSocket (creates battle with ready check)
+  socket.on('accept_challenge' as any, async (data: { code: string; walletAddress: string }) => {
+    try {
+      const { code, walletAddress: clientWallet } = data;
+
+      // SECURITY: Use authenticated wallet, not client-provided
+      const authenticatedWallet = getAuthenticatedWallet(socket, clientWallet);
+
+      // Rate limit challenge acceptances
+      const rateCheck = checkSocketRateLimit(socket.id, authenticatedWallet, 'accept_challenge', GAME_JOIN_LIMIT);
+      if (!rateCheck.allowed) {
+        socket.emit('challenge_error' as any, { error: rateCheck.error || 'Rate limit exceeded' });
+        return;
+      }
+
+      // Validate challenge code format
+      const codePattern = new RegExp(`^${challengesDb.CHALLENGE_CONFIG.codePrefix}[A-HJ-NP-Z2-9]{${challengesDb.CHALLENGE_CONFIG.codeLength}}$`, 'i');
+      if (!codePattern.test(code)) {
+        socket.emit('challenge_error' as any, { error: 'Invalid challenge code format' });
+        return;
+      }
+
+      // Get challenge from database
+      const challenge = challengesDb.getChallengeByCode(code);
+      if (!challenge) {
+        socket.emit('challenge_error' as any, { error: 'Challenge not found' });
+        return;
+      }
+
+      // Validate challenge state
+      if (challenge.status !== 'pending') {
+        socket.emit('challenge_error' as any, { error: 'Challenge no longer available' });
+        return;
+      }
+
+      if (Date.now() > challenge.expiresAt) {
+        socket.emit('challenge_error' as any, { error: 'Challenge expired' });
+        return;
+      }
+
+      if (authenticatedWallet === challenge.challengerWallet) {
+        socket.emit('challenge_error' as any, { error: 'Cannot accept your own challenge' });
+        return;
+      }
+
+      // Check if target wallet matches (for direct challenges)
+      if (challenge.targetWallet && challenge.targetWallet !== authenticatedWallet) {
+        socket.emit('challenge_error' as any, { error: 'This challenge is for a specific player' });
+        return;
+      }
+
+      // Create battle config from challenge
+      // Cast duration since challenge durations (60, 120, 180, 300) are valid BattleDurations
+      const battleConfig: BattleConfig = {
+        entryFee: challenge.entryFee,
+        duration: challenge.duration as BattleDuration,
+        mode: 'paper' as const,  // Challenge battles are paper mode
+        maxPlayers: 2,
+      };
+
+      // Create battle using battleManager
+      const battle = await battleManager.createBattleFromChallenge(
+        challenge.id,
+        challenge.challengerWallet,
+        authenticatedWallet,
+        battleConfig
+      );
+
+      if (!battle) {
+        socket.emit('challenge_error' as any, { error: 'Failed to create battle. Players may already be in a match.' });
+        return;
+      }
+
+      // Update challenge status in database
+      const updatedChallenge = challengesDb.acceptChallenge(code, authenticatedWallet, battle.id);
+      if (!updatedChallenge) {
+        socket.emit('challenge_error' as any, { error: 'Failed to update challenge status' });
+        return;
+      }
+
+      // Notify challenger that their challenge was accepted
+      const notificationTarget = challengeNotificationService.getNotificationTarget(challenge.id);
+      if (notificationTarget) {
+        notificationTarget.notification.acceptedBy = authenticatedWallet;
+        notificationTarget.notification.battleId = battle.id;
+        io.to(notificationTarget.socketId).emit('challenge_accepted', notificationTarget.notification);
+        challengeNotificationService.markChallengeAccepted(challenge.id);
+      }
+
+      // Join the acceptor to the battle room
+      socket.join(battle.id);
+
+      // Emit success to acceptor (matches ChallengeAcceptedNotification interface)
+      socket.emit('challenge_accepted', {
+        challengeId: challenge.id,
+        challengeCode: challenge.challengeCode,
+        acceptedBy: authenticatedWallet,
+        battleId: battle.id,
+        entryFee: challenge.entryFee,
+        duration: challenge.duration,
+      });
+
+      // Broadcast to challenge board that this challenge was accepted
+      io.to('challenges').emit('challenge_accepted_board' as any, { challengeCode: code });
+
+      challengeLogger.info('Challenge accepted via socket', {
+        code,
+        challenger: challenge.challengerWallet.slice(0, 8),
+        acceptor: authenticatedWallet.slice(0, 8),
+        battleId: battle.id,
+      });
+    } catch (error: any) {
+      challengeLogger.error('Error accepting challenge via socket', { error: String(error) });
+      socket.emit('challenge_error' as any, { error: 'Authentication required' });
+    }
   });
 
   // ===================
