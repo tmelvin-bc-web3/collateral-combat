@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LiveBattle, PerpPosition } from '@/types';
+import { LiveBattle } from '@/types';
 import { BettingPanel } from './BettingPanel';
 import { TradingViewChart } from './TradingViewChart';
 import { Card } from './ui/Card';
+import { SpectatorPnLBar } from '@/components/spectate/SpectatorPnLBar';
+import { FighterPositionCard } from '@/components/spectate/FighterPositionCard';
 
 interface SpectatorViewProps {
   battle: LiveBattle;
@@ -65,37 +67,6 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
   const progressPercent = battle.startedAt
     ? Math.min(100, ((Date.now() - battle.startedAt) / (battle.config.duration * 1000)) * 100)
     : 0;
-
-  const renderPosition = (pos: PerpPosition) => (
-    <div
-      key={pos.id}
-      className={`p-3 rounded-lg border transition-all ${
-        pos.unrealizedPnl >= 0
-          ? 'bg-success/5 border-success/20'
-          : 'bg-danger/5 border-danger/20'
-      }`}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-            pos.side === 'long' ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'
-          }`}>
-            {pos.side.toUpperCase()}
-          </span>
-          <span className="font-semibold">{pos.asset}</span>
-          <span className="text-text-tertiary text-sm">{pos.leverage}x</span>
-        </div>
-        <div className={`font-mono font-bold ${pos.unrealizedPnl >= 0 ? 'text-success' : 'text-danger'}`}>
-          {pos.unrealizedPnl >= 0 ? '+' : ''}{pos.unrealizedPnlPercent.toFixed(2)}%
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-text-tertiary">
-        <span>Entry: ${pos.entryPrice.toFixed(2)}</span>
-        <span>Size: ${pos.size.toFixed(0)}</span>
-        <span>PnL: ${pos.unrealizedPnl.toFixed(2)}</span>
-      </div>
-    </div>
-  );
 
   return (
     <div className="max-w-7xl mx-auto animate-fadeIn">
@@ -249,6 +220,22 @@ export function SpectatorView({ battle, onBack, walletAddress }: SpectatorViewPr
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Tug-of-War PnL Bar */}
+      <div className="mb-6">
+        <SpectatorPnLBar
+          fighter1={{
+            pnl: player1Pnl,
+            pnlDollar: (player1?.account.closedPnl || 0) + (player1?.account.positions.reduce((sum, p) => sum + p.unrealizedPnl, 0) || 0),
+            wallet: player1?.walletAddress || '',
+          }}
+          fighter2={{
+            pnl: player2Pnl,
+            pnlDollar: (player2?.account.closedPnl || 0) + (player2?.account.positions.reduce((sum, p) => sum + p.unrealizedPnl, 0) || 0),
+            wallet: player2?.walletAddress || '',
+          }}
+        />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
