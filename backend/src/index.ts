@@ -40,6 +40,8 @@ import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
+import * as eloDb from './db/eloDatabase';
+import * as eloService from './services/eloService';
 import { ensureTokenVersion } from './db/authDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter, waitlistLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
@@ -497,6 +499,47 @@ app.get('/api/profiles', async (req, res) => {
 app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
   const deleted = await deleteProfile(req.params.wallet);
   res.json({ deleted });
+});
+
+// ===================
+// ELO Rating Endpoints
+// ===================
+
+/**
+ * GET /api/elo/:wallet
+ * Get ELO rating data for a wallet
+ *
+ * Returns:
+ * - wallet: Wallet address
+ * - elo: Current ELO rating (default 1200)
+ * - battleCount: Total battles played
+ * - tier: Current tier (protected/bronze/silver/gold/platinum/diamond)
+ * - wins: Total wins
+ * - losses: Total losses
+ */
+app.get('/api/elo/:wallet', standardLimiter, async (req: Request, res: Response) => {
+  const wallet = req.params.wallet;
+
+  try {
+    const elo = await eloDb.getElo(wallet);
+    const battleCount = await eloDb.getBattleCount(wallet);
+    const wins = await eloDb.getWins(wallet);
+    const losses = await eloDb.getLosses(wallet);
+    const isProtected = eloService.shouldProtectPlayer(battleCount);
+    const tier = isProtected ? 'protected' : eloService.getEloTier(elo);
+
+    res.json({
+      wallet,
+      elo,
+      battleCount,
+      tier,
+      wins,
+      losses,
+    });
+  } catch (error) {
+    apiLogger.error('Failed to fetch ELO', { wallet, error });
+    res.status(500).json({ error: 'Failed to fetch ELO data' });
+  }
 });
 
 // ===================
