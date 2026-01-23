@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
 import { getCachedProfile, setCachedProfile } from '@/lib/profileStorage';
 import { PageLoading } from '@/components/ui/skeleton';
+import { ProfileShareButton } from '@/components/ProfileShareButton';
 import { UserProfile, UserProgression, UserStreak, RakeRebate, RebateSummary } from '@/types';
 import Link from 'next/link';
 import { BACKEND_URL } from '@/config/api';
@@ -193,6 +194,8 @@ export default function ProfilePage() {
   const [streak, setStreak] = useState<UserStreak | null>(null);
   const [rebateHistory, setRebateHistory] = useState<RakeRebate[]>([]);
   const [rebateSummary, setRebateSummary] = useState<RebateSummary | null>(null);
+  const [battleStats, setBattleStats] = useState<{ wins: number; losses: number; elo: number; tier: string } | null>(null);
+  const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -212,7 +215,7 @@ export default function ProfilePage() {
         }
 
         // Fetch all data in parallel
-        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes] = await Promise.all([
+        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes] = await Promise.all([
           fetch(`${BACKEND_URL}/api/profile/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/stats/${walletAddress}`),
@@ -221,6 +224,7 @@ export default function ProfilePage() {
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates/summary`),
+          fetch(`${BACKEND_URL}/api/battles/stats/${walletAddress}`),
         ]);
 
         // Process profile
@@ -271,6 +275,29 @@ export default function ProfilePage() {
           const summaryData = await rebateSummaryRes.json();
           setRebateSummary(summaryData);
         }
+
+        // Process battle stats for share button
+        if (battleStatsRes.ok) {
+          const battleStatsData = await battleStatsRes.json();
+          setBattleStats({
+            wins: battleStatsData.wins || 0,
+            losses: battleStatsData.losses || 0,
+            elo: battleStatsData.elo || 1000,
+            tier: battleStatsData.tier || 'bronze',
+          });
+        } else {
+          // Default battle stats
+          setBattleStats({
+            wins: 0,
+            losses: 0,
+            elo: 1000,
+            tier: 'bronze',
+          });
+        }
+
+        // Generate referral code from wallet address
+        const suffix = walletAddress.slice(-4).toUpperCase();
+        setReferralCode(`DEGEN${suffix}`);
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
         setError('Failed to load profile data');
@@ -408,6 +435,17 @@ export default function ProfilePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </Link>
+                )}
+                {battleStats && (
+                  <ProfileShareButton
+                    wallet={walletAddress}
+                    displayName={profile?.username || formatWallet(walletAddress)}
+                    wins={battleStats.wins}
+                    losses={battleStats.losses}
+                    elo={battleStats.elo}
+                    tier={battleStats.tier}
+                    referralCode={isOwnProfile ? referralCode : undefined}
+                  />
                 )}
               </div>
             </div>
