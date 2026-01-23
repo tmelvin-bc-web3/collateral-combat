@@ -857,6 +857,42 @@ class BattleManager {
 
     // Award XP to participants
     this.awardBattleXp(battle);
+
+    // Update ELO ratings for both players
+    this.updateBattleElo(battle);
+  }
+
+  // Update ELO ratings after a 1v1 battle
+  private async updateBattleElo(battle: Battle): Promise<void> {
+    // Only update ELO for 1v1 battles with a winner
+    if (battle.players.length !== 2 || !battle.winnerId) {
+      return;
+    }
+
+    const winner = battle.players.find(p => p.walletAddress === battle.winnerId);
+    const loser = battle.players.find(p => p.walletAddress !== battle.winnerId);
+
+    if (!winner || !loser) {
+      console.error(`[Battle] Cannot update ELO - winner or loser not found in battle ${battle.id}`);
+      return;
+    }
+
+    try {
+      const winnerElo = await eloDatabase.getElo(winner.walletAddress);
+      const loserElo = await eloDatabase.getElo(loser.walletAddress);
+      const winnerBattleCount = await eloDatabase.getBattleCount(winner.walletAddress);
+
+      const { winnerGain, loserLoss } = eloService.calculateEloChange(winnerElo, loserElo, winnerBattleCount);
+
+      // Update both players' ELO ratings
+      await eloDatabase.updateElo(winner.walletAddress, winnerElo + winnerGain, true);
+      await eloDatabase.updateElo(loser.walletAddress, Math.max(0, loserElo - loserLoss), false);
+
+      console.log(`[Battle] ELO updated - ${winner.walletAddress.slice(0, 8)}...: ${winnerElo} -> ${winnerElo + winnerGain} (+${winnerGain}), ${loser.walletAddress.slice(0, 8)}...: ${loserElo} -> ${loserElo - loserLoss} (-${loserLoss})`);
+    } catch (error) {
+      console.error(`[Battle] Failed to update ELO for battle ${battle.id}:`, error);
+      // Continue - ELO update failure shouldn't break battle completion
+    }
   }
 
   // Award XP based on battle results
@@ -1013,12 +1049,21 @@ class BattleManager {
   }
 
   // Get matchmaking queue status
+  // Note: Returns aggregate count across all ELO tiers for this config
   getQueueStatus(config: BattleConfig): { position: number; playersInQueue: number } {
-    const key = this.getMatchmakingKey(config);
-    const queue = this.matchmakingQueue.get(key) || [];
+    // Count players across all tier variants of this config
+    const baseKey = `${config.entryFee}-${config.duration}-${config.mode}`;
+    let totalPlayers = 0;
+
+    this.matchmakingQueue.forEach((queue, key) => {
+      if (key.startsWith(baseKey)) {
+        totalPlayers += queue.length;
+      }
+    });
+
     return {
-      position: queue.length,
-      playersInQueue: queue.length,
+      position: totalPlayers,
+      playersInQueue: totalPlayers,
     };
   }
 
