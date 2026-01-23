@@ -578,10 +578,13 @@ export function BattleArena({ battle }: BattleArenaProps) {
             <BattleChat
               messages={chatMessages}
               onSend={sendMessage}
+              onAddReaction={addReaction}
+              onRemoveReaction={removeReaction}
               error={chatError}
               currentWallet={walletAddress}
               battle={battle}
               isConnected={chatConnected}
+              canChat={canChat}
             />
           )}
         </div>
