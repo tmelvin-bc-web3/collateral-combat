@@ -43,6 +43,7 @@ const createPlayer1 = (): BattlePlayer => ({
         entryPrice: 97500,
         currentPrice: 98200,
         liquidationPrice: 87750,
+        liquidationDistance: 10.0, // 10% distance to liquidation
         unrealizedPnl: 10.77,
         unrealizedPnlPercent: 7.18,
         openedAt: Date.now() - 300000,
@@ -71,6 +72,7 @@ const createPlayer2 = (): BattlePlayer => ({
         entryPrice: 3450,
         currentPrice: 3420,
         liquidationPrice: 3622,
+        liquidationDistance: 5.0, // 5% distance to liquidation
         unrealizedPnl: 26.09,
         unrealizedPnlPercent: 17.39,
         openedAt: Date.now() - 420000,
@@ -276,6 +278,7 @@ export default function BattleDemoPage() {
       entryPrice: price,
       currentPrice: price,
       liquidationPrice,
+      liquidationDistance: 100 / leverage, // Starts at max distance based on leverage
       unrealizedPnl: 0,
       unrealizedPnlPercent: 0,
       openedAt: Date.now(),
