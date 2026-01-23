@@ -3,7 +3,8 @@
 ## Milestones
 
 - [x] **v1.0 Mainnet Launch** - Phases 1-4 (shipped 2026-01-22)
-- [ ] **v1.1 Code & Security Audit** - Phases 5-9 (in progress)
+- [x] **v1.1 Code & Security Audit** - Phases 5-9 (shipped 2026-01-23)
+- [ ] **v2.0 Battles System** - Phases 10-14 (in progress)
 
 ## Phases
 
@@ -30,101 +31,164 @@
 
 </details>
 
-## v1.1 Code & Security Audit (In Progress)
-
-**Milestone Goal:** Comprehensive audit of codebase and smart contract for code quality and security before mainnet deployment.
-
-**Phase Numbering:**
-- Integer phases (5, 6, 7, 8, 9): Planned milestone work
-- Decimal phases (e.g., 6.1): Urgent insertions if needed
-
-- [x] **Phase 5: Automated Analysis** - Quick wins with zero-config tools ✓
-- [x] **Phase 6: Smart Contract Audit** - On-chain security and correctness ✓
-- [x] **Phase 7: Backend Security** - Off-chain security hardening ✓
-- [x] **Phase 8: Code Quality** - Cleanup informed by audit findings ✓
-- [ ] **Phase 9: Integration** - Cross-cutting concerns and economic model
-
-## Phase Details
+<details>
+<summary>v1.1 Code & Security Audit (Phases 5-9) - SHIPPED 2026-01-23</summary>
 
 ### Phase 5: Automated Analysis
 **Goal**: Surface immediate issues using automated tools before manual review
-**Depends on**: Phase 4 (v1.0 complete)
-**Requirements**: AUTO-01, AUTO-02, AUTO-03, AUTO-04
-**Success Criteria** (what must be TRUE):
-  1. All npm/pnpm/cargo audit findings documented with fix or explicit accept
-  2. Secret scanning reports zero exposed secrets in repository history
-  3. Dead code detection (Knip) reports zero unused exports/files/dependencies
-  4. TypeScript type coverage measured with baseline established
-**Plans**: 2 plans
-
-Plans:
-- [x] 05-01-PLAN.md — Dependency audits and secret scanning (AUTO-01, AUTO-02)
-- [x] 05-02-PLAN.md — Dead code detection and type coverage (AUTO-03, AUTO-04)
+**Plans**: 2 plans (complete)
 
 ### Phase 6: Smart Contract Audit
 **Goal**: Document contract invariants and verify on-chain security
-**Depends on**: Phase 5
-**Requirements**: SC-01, SC-02, SC-03, SC-04
-**Success Criteria** (what must be TRUE):
-  1. All Sealevel attacks checked (signer, owner, reinitialization, overflow, PDA validation) with no vulnerabilities
-  2. Round state machine verified: no invalid transitions, no double claims, correct payouts
-  3. Pyth oracle integration verified: staleness checks exist, feed IDs validated, price manipulation resistant
-  4. Authority/session key permissions documented: session keys verified CANNOT withdraw
-  5. Contract invariants documented for backend consumption
-**Plans**: 2 plans
-
-Plans:
-- [x] 06-01-PLAN.md — Sealevel attacks and access control audit (SC-01, SC-04)
-- [x] 06-02-PLAN.md — Betting logic and oracle security audit (SC-02, SC-03)
+**Plans**: 2 plans (complete)
 
 ### Phase 7: Backend Security
 **Goal**: Verify backend correctly uses on-chain guarantees
-**Depends on**: Phase 6 (contract invariants documented)
-**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04
-**Success Criteria** (what must be TRUE):
-  1. All API parameters and WebSocket events validated against schema
-  2. Wallet signature verification confirmed on all sensitive operations
-  3. No TOCTOU race conditions in balance checking (verifyAndLockBalance pattern verified)
-  4. Error handling reviewed: no sensitive data exposed, partial failures handled consistently
-**Plans**: 2 plans
-
-Plans:
-- [x] 07-01-PLAN.md — Input validation (SEC-01) and auth/session security (SEC-02)
-- [x] 07-02-PLAN.md — Race conditions (SEC-03) and error handling (SEC-04)
+**Plans**: 2 plans (complete)
 
 ### Phase 8: Code Quality
 **Goal**: Clean, readable codebase with tight types (informed by audit findings)
-**Depends on**: Phase 7 (security audit complete informs what to clean)
-**Requirements**: CQ-01, CQ-02, CQ-03, CQ-04
-**Success Criteria** (what must be TRUE):
-  1. Zero dead/unused code (functions, exports, dependencies, files removed)
-  2. No copy-paste patterns or DRY violations in business logic
-  3. Variable/function names are clear and self-documenting
-  4. Zero `any` types in application code (library boundaries excepted)
-**Plans**: 2 plans
-
-Plans:
-- [x] 08-01-PLAN.md — Dead code removal and fee constant consolidation (CQ-01, CQ-02)
-- [x] 08-02-PLAN.md — Type safety improvements and Zod validation (CQ-03, CQ-04)
+**Plans**: 2 plans (complete)
 
 ### Phase 9: Integration
 **Goal**: Verify cross-cutting concerns and economic model correctness
-**Depends on**: Phase 8 (clean codebase makes integration testing reliable)
-**Requirements**: INT-01, INT-02, INT-03
-**Success Criteria** (what must be TRUE):
-  1. On-chain/off-chain state consistency verified under failure scenarios
-  2. Authority key security assessed with multi-sig plan documented
-  3. Economic model verified: solvency invariants hold (total_payouts + fees <= total_pool)
-**Plans**: 2 plans
+**Plans**: 2 plans (complete)
 
-Plans:
-- [ ] 09-01-PLAN.md — Failure scenarios and economic model verification (INT-01, INT-03)
-- [ ] 09-02-PLAN.md — Multi-sig implementation and security audit report (INT-02)
+**Total v1.1:** 10 plans across 5 phases
+
+</details>
+
+---
+
+## v2.0 Battles System (In Progress)
+
+**Milestone Goal:** Build the UFC of Crypto Trading - live 1v1 leveraged battles with spectator betting, social features, and tournament modes.
+
+**Approach:** Audit existing code first, improve/extend where possible, only build from scratch if nothing exists.
+
+**Phase Numbering:**
+- Integer phases (10, 11, 12, 13, 14): Planned milestone work
+- Decimal phases (e.g., 10.1): Urgent insertions if needed
+
+- [ ] **Phase 10: Battle Core** - Matchmaking, execution, and settlement engine
+- [ ] **Phase 11: Spectator Experience** - Live viewer and betting system
+- [ ] **Phase 12: Social & Engagement** - Chat and sharing for virality
+- [ ] **Phase 13: Fighter Identity** - Profiles and statistics
+- [ ] **Phase 14: Events & Competitions** - Fight cards and tournaments
+
+---
+
+## Phase Details
+
+### Phase 10: Battle Core
+**Goal**: Users can find opponents, execute leveraged trades, and receive instant payouts
+**Depends on**: Phase 9 (v1.1 complete - clean, audited codebase)
+**Requirements**: MATCH-01, MATCH-02, MATCH-03, MATCH-04, MATCH-05, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06, SETTLE-01, SETTLE-02, SETTLE-03, SETTLE-04
+
+**Success Criteria** (what must be TRUE):
+1. User can join matchmaking queue and get matched with similarly-skilled opponent within 60 seconds
+2. User can create open challenge or direct challenge a specific wallet
+3. Real-time PnL updates every price tick with liquidation distance indicator visible
+4. Winner is automatically determined at battle end with instant on-chain payout (no claim step)
+5. Battle history is logged and accessible for profiles/stats
+
+**Audit First:**
+- Check existing `battleManager.ts` for matchmaking patterns
+- Check existing `balanceService.ts` for settlement patterns
+- Check existing WebSocket events for real-time update infrastructure
+
+**Plans**: TBD (phase planning)
+
+---
+
+### Phase 11: Spectator Experience
+**Goal**: Spectators can watch live battles and bet on outcomes with instant payouts
+**Depends on**: Phase 10 (battles must exist to spectate)
+**Requirements**: VIEW-01, VIEW-02, VIEW-03, VIEW-04, VIEW-05, BET-01, BET-02, BET-03, BET-04, BET-05, BET-06
+
+**Success Criteria** (what must be TRUE):
+1. Spectator sees both fighters' positions with real-time PnL delta visualization (tug-of-war)
+2. Spectator can pick a fighter to back with one-tap betting from quick bet strip
+3. Live odds update in real-time during battle showing pool split (A vs B)
+4. Spectator receives instant payout when battle ends (no claim step)
+5. Battle viewer is mobile-responsive and shows price chart overlay
+
+**Audit First:**
+- Check existing `spectatorService.ts` for betting infrastructure
+- Check existing WebSocket events for odds updates
+- Check existing viewer components in `/web/src/app/spectate/`
+
+**Plans**: TBD (phase planning)
+
+---
+
+### Phase 12: Social & Engagement
+**Goal**: Users can engage with battles through chat and share results for virality
+**Depends on**: Phase 11 (spectator features provide engagement context)
+**Requirements**: CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, SHARE-01, SHARE-02, SHARE-03, SHARE-04
+
+**Success Criteria** (what must be TRUE):
+1. Spectators can chat in battle-specific rooms with emoji reactions
+2. Chat is wallet-gated with rate limiting and basic moderation (mute/ban)
+3. User can one-click share battle results to Twitter/X
+4. Auto-generated battle result graphics and fighter profile cards are shareable
+5. Battle clip/highlight generation available for key moments
+
+**Audit First:**
+- Check if any chat infrastructure exists in backend
+- Check existing share functionality in frontend
+- Check for image generation capabilities
+
+**Plans**: TBD (phase planning)
+
+---
+
+### Phase 13: Fighter Identity
+**Goal**: Fighters have rich profiles that showcase their trading reputation
+**Depends on**: Phase 10 (battles generate stats), Phase 12 (share cards reference profiles)
+**Requirements**: PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, PROF-06, PROF-07, PROF-08
+
+**Success Criteria** (what must be TRUE):
+1. Fighter profile displays win/loss record with ELO ranking and tier badge
+2. Win streak, best streak, and recent form (last 5 battles) visible
+3. ROI percentage and trading style stats (aggression, avg leverage) calculated
+4. Favorite asset tracking shows fighter's preferred markets
+5. Two fighters can be compared side-by-side in profile comparison view
+
+**Audit First:**
+- Check existing `progressionService.ts` for stats infrastructure
+- Check existing profile pages in `/web/src/app/profile/`
+- Check database schema for battle history
+
+**Plans**: TBD (phase planning)
+
+---
+
+### Phase 14: Events & Competitions
+**Goal**: Fighters can participate in scheduled events and tournaments
+**Depends on**: Phase 13 (profiles needed for tournament display), Phase 10 (battle system for tournament rounds)
+**Requirements**: EVENT-01, EVENT-02, EVENT-03, EVENT-04, EVENT-05, TOUR-01, TOUR-02, TOUR-03, TOUR-04, TOUR-05, TOUR-06
+
+**Success Criteria** (what must be TRUE):
+1. Main card structure with featured battles visible, with countdown timers for upcoming events
+2. Users receive notifications when events they follow are starting
+3. Single elimination bracket system supports 8-16 player tournaments
+4. Prize pool calculated from entries with bracket visualization showing progression
+5. Tournament leaderboard shows rankings across events
+
+**Audit First:**
+- Check existing scheduled match system from v1.0
+- Check existing draft tournament bracket code in `draftTournamentManager.ts`
+- Check notification infrastructure
+
+**Plans**: TBD (phase planning)
+
+---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9
+Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -136,9 +200,16 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9
 | 6. Smart Contract Audit | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 7. Backend Security | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 8. Code Quality | v1.1 | 2/2 | Complete | 2026-01-22 |
-| 9. Integration | v1.1 | 0/2 | Ready to execute | - |
+| 9. Integration | v1.1 | 2/2 | Complete | 2026-01-23 |
+| 10. Battle Core | v2.0 | 0/? | Pending | — |
+| 11. Spectator Experience | v2.0 | 0/? | Pending | — |
+| 12. Social & Engagement | v2.0 | 0/? | Pending | — |
+| 13. Fighter Identity | v2.0 | 0/? | Pending | — |
+| 14. Events & Competitions | v2.0 | 0/? | Pending | — |
 
 ---
 
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
+*v2.0 phases: 10-14 (5 phases, requirements mapped, plans TBD)*
+*Last updated: 2026-01-23 after v2.0 roadmap creation*

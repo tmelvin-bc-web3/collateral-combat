@@ -27,15 +27,25 @@ Players can confidently bet against each other on price predictions with fair, t
 - ✓ **Scheduled Matches** — Cron-based match creation for player density (v1.0)
 - ✓ **Operational Monitoring** — Discord alerts, health checks, backups (v1.0)
 - ✓ **Deployment Automation** — Scripts and runbooks for mainnet (v1.0)
+- ✓ **Code Quality Audit** — Dead code removal, type safety, fee consolidation (v1.1)
+- ✓ **Security Audit** — Input validation, auth hardening, race condition fixes (v1.1)
+- ✓ **Smart Contract Audit** — Sealevel attacks, betting logic, oracle security verified (v1.1)
+- ✓ **Multi-sig Plan** — Squads Protocol setup documented, scripts ready (v1.1)
 
 ### Active
 
-<!-- v1.1 Code & Security Audit -->
+<!-- v2.0 Battles System -->
 
-- [ ] Code quality audit — Dead code removal, redundancy consolidation, naming/readability, type safety
-- [ ] Security audit — Input validation, auth/session, race conditions
-- [ ] Smart contract audit — Full code quality + security + verification patterns
-- [ ] All issues documented and fixed
+- [ ] Battle matchmaking — Queue system, challenges, tier/balance matching
+- [ ] Battle execution — Real-time PnL tracking, leverage calc, liquidation logic
+- [ ] Settlement system — Auto winner determination, instant payouts, history
+- [ ] Spectator viewer — Live battle display, positions, price chart
+- [ ] Spectator betting — Pick fighter, live odds, instant payout
+- [ ] Live chat — Battle chat, reactions, spam protection
+- [ ] Social sharing — One-click share, auto-generated graphics
+- [ ] Fighter profiles — W/L record, rankings, streaks
+- [ ] Fight cards — Scheduled events, countdowns, notifications
+- [ ] Tournament mode — Brackets, elimination, prize pools
 
 ### Future
 
@@ -54,16 +64,28 @@ Players can confidently bet against each other on price predictions with fair, t
 - KYC/AML compliance — Assess regulatory requirements post-launch
 - Professional security audit — Deferred until 30+ days stable operation
 
-## Current Milestone: v1.1 Code & Security Audit
+## Current Milestone: v2.0 Battles System
 
-**Goal:** Comprehensive audit of codebase and smart contract for code quality and security before mainnet deployment.
+**Goal:** Build the UFC of Crypto Trading — live 1v1 leveraged battles with spectator betting, social features, and tournament modes.
 
-**Target deliverables:**
-- Clean, readable codebase with no dead code or redundancies
-- Tight TypeScript types throughout
-- All inputs validated, auth hardened, race conditions eliminated
-- Smart contract fully audited with verification patterns
-- All issues documented and fixed
+**Approach:** Audit first, build second. Improve existing code where possible, only build from scratch if nothing exists.
+
+**Target features:**
+- Battle matchmaking (queue, challenges, tier matching)
+- Battle execution engine (real-time PnL, leverage, liquidation)
+- Settlement system (auto winner, instant payouts)
+- Spectator viewer (live battle display, both fighters, price chart)
+- Spectator betting (pick fighter, live odds, instant payout)
+- Live chat (battle chat, reactions, spam protection)
+- Social sharing (one-click share, auto-generated graphics)
+- Fighter profiles (W/L record, rankings, streaks)
+- Fight cards (scheduled events, countdowns, notifications)
+- Tournament mode (brackets, elimination, prize pools)
+
+**Success metrics:**
+- Battles being watched by 10+ spectators
+- Spectator bets on every battle
+- Battle clips shared on Twitter daily
 
 ## Context
 
@@ -110,4 +132,4 @@ Players can confidently bet against each other on price predictions with fair, t
 | 7-day backup retention | Balance storage cost vs recovery window | ✓ Good |
 
 ---
-*Last updated: 2026-01-22 after v1.1 milestone start*
+*Last updated: 2026-01-23 after v2.0 milestone start*
