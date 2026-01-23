@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 10 - Battle Core
-Plan: Not started (awaiting phase planning)
-Status: Roadmap complete, ready for phase planning
-Last activity: 2026-01-23 - v2.0 roadmap created
+Plan: 04 of 7 (Instant Loss Detection)
+Status: In progress
+Last activity: 2026-01-23 - Completed 10-04-PLAN.md
 
-Progress: [----------] Phase 10 not started
+Progress: [====------] Phase 10: 4/7 plans complete
 
 ## v2.0 Milestone Overview
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | Pending |
+| 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | In Progress |
 | 11 | Spectator Experience | 11 (VIEW, BET) | Pending |
 | 12 | Social & Engagement | 9 (CHAT, SHARE) | Pending |
 | 13 | Fighter Identity | 8 (PROF) | Pending |
@@ -31,9 +31,9 @@ Progress: [----------] Phase 10 not started
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28 (18 v1.0 + 10 v1.1)
-- Average duration: ~32 min
-- Total execution time: ~14.9 hours
+- Total plans completed: 31 (18 v1.0 + 10 v1.1 + 3 v2.0)
+- Average duration: ~30 min
+- Total execution time: ~15.4 hours
 
 **By Phase:**
 
@@ -48,6 +48,7 @@ Progress: [----------] Phase 10 not started
 | 7. Backend Security | 2 | ~40min | 20 min |
 | 8. Code Quality | 2 | ~11min | 5.5 min |
 | 9. Integration | 2 | ~10min | 5 min |
+| 10. Battle Core | 3 | ~38min | 13 min |
 
 **v1.1 complete:** All 10 plans across 5 phases executed
 
@@ -88,10 +89,21 @@ Recent decisions affecting current work:
 - [Phase 9.2]: Multi-sig: 2-of-3 threshold using Squads Protocol v4
 - [Phase 9.2]: Immutable configAuthority (configAuthority=null) for maximum security
 - [Phase 9.2]: Security audit: CONDITIONAL PASS - 0 unresolved critical/high
+- [Phase 10.2]: Direct challenges via targetWallet field - simple schema extension
+- [Phase 10.2]: Challenges room for WebSocket broadcasts (socket.io rooms pattern)
+- [Phase 10.4]: Total capital = balance + margin in positions + unrealized PnL
+- [Phase 10.4]: Instant loss triggers when total capital <= 0 after liquidation
+- [Phase 10.4]: endBattle respects pre-set finalPnl/ranks from liquidation handler
+- [Phase 10.1]: ELO K-factors: K=32 new (<30 battles), K=16 established
+- [Phase 10.1]: Protected tier threshold: 10 battles for matchmaking isolation
+- [Phase 10.1]: ELO tiers: bronze<1000, silver<1500, gold<2000, platinum<2500, diamond>=2500
+- [Phase 10.3]: Tie threshold < 0.01% PnL difference - prevents micro-differences from determining winner
+- [Phase 10.3]: Tie payout refunds entry fee - fair to both, no platform rake on ties
+- [Phase 10.3]: Battle history in separate SQLite database - follows progressionDatabase pattern
 
 ### Pending Todos
 
-None - v1.1 complete. Phase 10 planning next.
+- Complete Phase 10 plans 03-07
 
 ### Blockers/Concerns
 
@@ -142,12 +154,24 @@ None - v1.1 complete. Phase 10 planning next.
 - `draftTournamentManager.ts` - Tournament bracket patterns exist
 - Profile pages exist at `/web/src/app/profile/`
 
+## Phase 10 Progress
+
+| Plan | Name | Status |
+|------|------|--------|
+| 10-01 | ELO Rating System | Complete |
+| 10-02 | Challenge Board API | Complete |
+| 10-03 | Battle History | Complete |
+| 10-04 | Instant Loss Detection | Complete |
+| 10-05 | Battle Settlement | Pending |
+| 10-06 | Spectator Updates | Pending |
+| 10-07 | E2E Testing | Pending |
+
 ## Session Continuity
 
-Last session: 2026-01-23
-Stopped at: v2.0 roadmap created
+Last session: 2026-01-23 12:33 UTC
+Stopped at: Completed 10-03-PLAN.md (Battle History Database)
 Resume file: None
-Next: `/gsd:plan-phase 10` to create Phase 10 plans
+Next: Execute 10-05-PLAN.md (Battle Settlement) or continue Phase 10
 
 ---
-*State updated: 2026-01-23 after v2.0 roadmap creation*
+*State updated: 2026-01-23 after completing 10-03-PLAN.md*
