@@ -29,6 +29,7 @@ import { chatService } from './services/chatService';
 import { scheduledMatchManager } from './services/scheduledMatchManager';
 import { startBackupScheduler } from './services/backupService';
 import adminRoutes from './routes/admin';
+import { shareRouter } from './routes/share';
 import { setActiveConnections } from './services/adminService';
 import * as adminService from './services/adminService';
 import { alertService } from './services/alertService';
@@ -2942,6 +2943,62 @@ io.on('connection', (socket) => {
     // No auth required to load history (spectators can view)
     const messages = chatService.getHistory(battleId, 50);
     socket.emit('chat_history', messages);
+  });
+
+  // Add reaction to chat message
+  socket.on('add_reaction', async (data: { battleId: string; messageId: string; emoji: string }) => {
+    try {
+      // SECURITY: Use authenticated wallet
+      const authenticatedWallet = getAuthenticatedWallet(socket, undefined);
+
+      // Check if user is in the battle room
+      const rooms = Array.from(socket.rooms);
+      if (!rooms.includes(data.battleId)) {
+        socket.emit('chat_error', { code: 'not_in_battle', message: 'Join the battle to react' });
+        return;
+      }
+
+      const success = await chatService.addReaction(data.battleId, data.messageId, data.emoji, authenticatedWallet);
+      if (success) {
+        io.to(data.battleId).emit('reaction_update', {
+          battleId: data.battleId,
+          messageId: data.messageId,
+          emoji: data.emoji,
+          wallet: authenticatedWallet,
+          action: 'add'
+        });
+      }
+    } catch (error: any) {
+      socket.emit('chat_error', { code: 'auth_required', message: 'Authentication required to react' });
+    }
+  });
+
+  // Remove reaction from chat message
+  socket.on('remove_reaction', async (data: { battleId: string; messageId: string; emoji: string }) => {
+    try {
+      // SECURITY: Use authenticated wallet
+      const authenticatedWallet = getAuthenticatedWallet(socket, undefined);
+
+      // Check if user is in the battle room
+      const rooms = Array.from(socket.rooms);
+      if (!rooms.includes(data.battleId)) {
+        socket.emit('chat_error', { code: 'not_in_battle', message: 'Join the battle to remove reaction' });
+        return;
+      }
+
+      const success = await chatService.removeReaction(data.battleId, data.messageId, data.emoji, authenticatedWallet);
+      if (success) {
+        io.to(data.battleId).emit('reaction_update', {
+          battleId: data.battleId,
+          messageId: data.messageId,
+          emoji: data.emoji,
+          wallet: authenticatedWallet,
+          action: 'remove'
+        });
+      }
+    } catch (error: any) {
+      socket.emit('chat_error', { code: 'auth_required', message: 'Authentication required to remove reaction' });
+    }
   });
 
   socket.on('disconnect', () => {
