@@ -17,6 +17,7 @@ import {
   SenderRole,
   ReactionEventData,
 } from '../types/chat';
+import { balanceService } from './balanceService';
 
 // ===================
 // Configuration
@@ -175,6 +176,16 @@ class ChatService {
     displayName?: string,
     level: number = 1
   ): Promise<ChatSendResult> {
+    // WALLET-GATING: Check PDA balance before allowing message
+    const balance = await balanceService.getOnChainBalance(wallet);
+    if (balance <= 0) {
+      return {
+        success: false,
+        code: 'insufficient_balance',
+        error: 'Must have PDA balance > 0 to chat',
+      };
+    }
+
     const room = this.rooms.get(battleId);
     if (!room) {
       return {
@@ -503,7 +514,14 @@ class ChatService {
    * Add a reaction to a message
    * Returns true on success, false on failure
    */
-  addReaction(battleId: string, messageId: string, emoji: string, wallet: string): boolean {
+  async addReaction(battleId: string, messageId: string, emoji: string, wallet: string): Promise<boolean> {
+    // WALLET-GATING: Check PDA balance before allowing reaction
+    const balance = await balanceService.getOnChainBalance(wallet);
+    if (balance <= 0) {
+      console.log(`[ChatService] Insufficient balance for reaction from ${this.shortenWallet(wallet)}`);
+      return false;
+    }
+
     // Validate emoji is in allowed set
     if (!ALLOWED_EMOJIS.has(emoji)) {
       console.log(`[ChatService] Invalid emoji: ${emoji}`);
