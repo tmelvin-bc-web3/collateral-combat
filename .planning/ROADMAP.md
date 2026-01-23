@@ -71,7 +71,7 @@
 - Decimal phases (e.g., 10.1): Urgent insertions if needed
 
 - [x] **Phase 10: Battle Core** - Matchmaking, execution, and settlement engine
-- [ ] **Phase 11: Spectator Experience** - Live viewer and betting system
+- [x] **Phase 11: Spectator Experience** - Live viewer and betting system
 - [ ] **Phase 12: Social & Engagement** - Chat and sharing for virality
 - [ ] **Phase 13: Fighter Identity** - Profiles and statistics
 - [ ] **Phase 14: Events & Competitions** - Fight cards and tournaments
@@ -108,7 +108,7 @@ Plans:
 **Goal**: Spectators can watch live battles and bet on outcomes with instant payouts
 **Depends on**: Phase 10 (battles must exist to spectate)
 **Requirements**: VIEW-01, VIEW-02, VIEW-03, VIEW-04, VIEW-05, BET-01, BET-02, BET-03, BET-04, BET-05, BET-06
-**Plans**: 4 plans
+**Plans**: 4 plans (complete)
 
 **Success Criteria** (what must be TRUE):
 1. Spectator sees both fighters' positions with real-time PnL delta visualization (tug-of-war)
@@ -123,10 +123,10 @@ Plans:
 - BET-06: Instant payout via `settleBets()` -> `creditWinnings()`
 
 Plans:
-- [ ] 11-01-PLAN.md — Fighter position cards with liquidation indicators (VIEW-01, VIEW-03)
-- [ ] 11-02-PLAN.md — Spectator tug-of-war PnL bar (VIEW-02)
-- [ ] 11-03-PLAN.md — Mobile-responsive layout with collapsible chart (VIEW-04, VIEW-05)
-- [ ] 11-04-PLAN.md — Quick bet strip, auto-accept odds, pool visualization (BET-03, BET-04, BET-05)
+- [x] 11-01-PLAN.md — Fighter position cards with liquidation indicators (VIEW-01, VIEW-03)
+- [x] 11-02-PLAN.md — Spectator tug-of-war PnL bar (VIEW-02)
+- [x] 11-03-PLAN.md — Mobile-responsive layout with collapsible chart (VIEW-04, VIEW-05)
+- [x] 11-04-PLAN.md — Quick bet strip, auto-accept odds, pool visualization (BET-03, BET-04, BET-05)
 
 ---
 
@@ -134,6 +134,7 @@ Plans:
 **Goal**: Users can engage with battles through chat and share results for virality
 **Depends on**: Phase 11 (spectator features provide engagement context)
 **Requirements**: CHAT-01, CHAT-02, CHAT-03, CHAT-04, CHAT-05, SHARE-01, SHARE-02, SHARE-03, SHARE-04
+**Plans**: 5 plans
 
 **Success Criteria** (what must be TRUE):
 1. Spectators can chat in battle-specific rooms with emoji reactions
@@ -142,12 +143,26 @@ Plans:
 4. Auto-generated battle result graphics and fighter profile cards are shareable
 5. Battle clip/highlight generation available for key moments
 
-**Audit First:**
-- Check if any chat infrastructure exists in backend
-- Check existing share functionality in frontend
-- Check for image generation capabilities
+**Existing Infrastructure (from research):**
+- CHAT-01: chatService.ts exists with battle-specific rooms
+- CHAT-03: Rate limiting and spam detection already implemented
+- CHAT-05: Mute/ban functionality exists
+- SHARE-01: Twitter share URL generation exists (text only)
+- Referral service exists for share links
 
-**Plans**: TBD (phase planning)
+**Needs Extension:**
+- CHAT-02: Emoji reactions on messages (add reactions map)
+- CHAT-04: Wallet-gating with PDA balance check (not just connection)
+- SHARE-02: Server-side image generation (Satori + Sharp)
+- SHARE-03: Battle clips (deferred - per research recommendation)
+- SHARE-04: Fighter profile cards
+
+Plans:
+- [ ] 12-01-PLAN.md — Chat emoji reactions and wallet-gating (CHAT-02, CHAT-04)
+- [ ] 12-02-PLAN.md — Battle chat UI component with reactions
+- [ ] 12-03-PLAN.md — Server-side battle result graphics (SHARE-02)
+- [ ] 12-04-PLAN.md — Twitter Card integration with og:image (SHARE-01)
+- [ ] 12-05-PLAN.md — Fighter profile share cards (SHARE-04)
 
 ---
 
@@ -210,8 +225,8 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 | 8. Code Quality | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 9. Integration | v1.1 | 2/2 | Complete | 2026-01-23 |
 | 10. Battle Core | v2.0 | 7/7 | Complete | 2026-01-23 |
-| 11. Spectator Experience | v2.0 | 0/4 | Ready | — |
-| 12. Social & Engagement | v2.0 | 0/? | Pending | — |
+| 11. Spectator Experience | v2.0 | 4/4 | Complete | 2026-01-23 |
+| 12. Social & Engagement | v2.0 | 0/5 | Planned | — |
 | 13. Fighter Identity | v2.0 | 0/? | Pending | — |
 | 14. Events & Competitions | v2.0 | 0/? | Pending | — |
 
@@ -220,4 +235,4 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
 *v2.0 phases: 10-14 (5 phases, requirements mapped)*
-*Last updated: 2026-01-23 after Phase 11 planning*
+*Last updated: 2026-01-23 after Phase 12 planning*
