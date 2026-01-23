@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 10 - Battle Core
-Plan: 04 of 7 (Instant Loss Detection)
-Status: In progress
-Last activity: 2026-01-23 - Completed 10-04-PLAN.md
+Plan: 07 of 7 (Challenge Board UI)
+Status: Complete
+Last activity: 2026-01-23 - Completed 10-07-PLAN.md (Challenge Board UI)
 
-Progress: [====------] Phase 10: 4/7 plans complete
+Progress: [==========] Phase 10: 7/7 plans complete
 
 ## v2.0 Milestone Overview
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | In Progress |
+| 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | Complete |
 | 11 | Spectator Experience | 11 (VIEW, BET) | Pending |
 | 12 | Social & Engagement | 9 (CHAT, SHARE) | Pending |
 | 13 | Fighter Identity | 8 (PROF) | Pending |
@@ -31,7 +31,7 @@ Progress: [====------] Phase 10: 4/7 plans complete
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31 (18 v1.0 + 10 v1.1 + 3 v2.0)
+- Total plans completed: 35 (18 v1.0 + 10 v1.1 + 7 v2.0)
 - Average duration: ~30 min
 - Total execution time: ~15.4 hours
 
@@ -48,7 +48,7 @@ Progress: [====------] Phase 10: 4/7 plans complete
 | 7. Backend Security | 2 | ~40min | 20 min |
 | 8. Code Quality | 2 | ~11min | 5.5 min |
 | 9. Integration | 2 | ~10min | 5 min |
-| 10. Battle Core | 3 | ~38min | 13 min |
+| 10. Battle Core | 7 | ~65min | 9 min |
 
 **v1.1 complete:** All 10 plans across 5 phases executed
 
@@ -100,10 +100,19 @@ Recent decisions affecting current work:
 - [Phase 10.3]: Tie threshold < 0.01% PnL difference - prevents micro-differences from determining winner
 - [Phase 10.3]: Tie payout refunds entry fee - fair to both, no platform rake on ties
 - [Phase 10.3]: Battle history in separate SQLite database - follows progressionDatabase pattern
+- [Phase 10.5]: Rope position = 50% + (delta * 2), clamped to prevent off-screen
+- [Phase 10.5]: Danger zones at 20% (opponent losing) and 80% (user losing) positions
+- [Phase 10.5]: Spring animation via cubic-bezier(0.34, 1.56, 0.64, 1) for natural rope feel
+- [Phase 10.6]: Liquidation distance color thresholds: < 2% critical, 2-5% warning, 5-10% caution, > 10% safe
+- [Phase 10.6]: Inverse progress bar fills as liquidation approaches (more danger = more filled)
+- [Phase 10.7]: Challenge acceptance via WebSocket `accept_challenge` event with battle creation
+- [Phase 10.7]: useChallenges hook provides fetchChallenges, createChallenge, acceptChallenge
+- [Phase 10.7]: /battle?challenge=CODE URL param triggers challenge acceptance flow
+- [Phase 10.7]: createBattleFromChallenge method composes existing addPlayerToBattle logic
 
 ### Pending Todos
 
-- Complete Phase 10 plans 03-07
+- Start Phase 11 (Spectator Experience)
 
 ### Blockers/Concerns
 
@@ -162,16 +171,16 @@ Recent decisions affecting current work:
 | 10-02 | Challenge Board API | Complete |
 | 10-03 | Battle History | Complete |
 | 10-04 | Instant Loss Detection | Complete |
-| 10-05 | Battle Settlement | Pending |
-| 10-06 | Spectator Updates | Pending |
-| 10-07 | E2E Testing | Pending |
+| 10-05 | PnL Comparison Bar Tug-of-War | Complete |
+| 10-06 | Liquidation Distance Indicator | Complete |
+| 10-07 | Challenge Board UI | Complete |
 
 ## Session Continuity
 
-Last session: 2026-01-23 12:33 UTC
-Stopped at: Completed 10-03-PLAN.md (Battle History Database)
+Last session: 2026-01-23 22:15 UTC
+Stopped at: Completed Phase 10 - Battle Core (all 7 plans)
 Resume file: None
-Next: Execute 10-05-PLAN.md (Battle Settlement) or continue Phase 10
+Next: Plan and execute Phase 11 (Spectator Experience)
 
 ---
-*State updated: 2026-01-23 after completing 10-03-PLAN.md*
+*State updated: 2026-01-23 after completing Phase 10*
