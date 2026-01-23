@@ -60,10 +60,22 @@ export function BattleConfigPanel({
     }
   }, [isLoading]);
 
+  /**
+   * Matchmaking wiring chain (MATCH-05 compliant):
+   * 1. User selects entryFee from UI (selectedFee state)
+   * 2. handleFindMatch creates config with selected entryFee
+   * 3. onFindMatch -> BattleLobby.handleFindMatch -> BattleContext.queueMatchmaking
+   * 4. queueMatchmaking emits socket.emit('queue_matchmaking', config, wallet)
+   * 5. Backend socket handler calls battleManager.queueForMatchmaking(config, wallet)
+   * 6. queueForMatchmaking calls async getMatchmakingKey(config, wallet)
+   * 7. getMatchmakingKey uses eloService.shouldProtectPlayer() and eloService.getEloTier()
+   * 8. Returns tier-aware key like `0.1-1800-paper-protected` or `0.1-1800-paper-gold`
+   * 9. Players with identical keys get matched (same fee + duration + mode + ELO tier)
+   */
   const handleFindMatch = () => {
     setActionInProgress('match');
     const config: BattleConfig = {
-      entryFee: selectedFee,
+      entryFee: selectedFee,  // User-selected stake amount flows through entire chain
       duration: selectedDuration,
       mode: 'paper',
       maxPlayers: 2,
