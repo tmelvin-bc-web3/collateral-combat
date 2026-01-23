@@ -84,6 +84,7 @@
 **Goal**: Users can find opponents, execute leveraged trades, and receive instant payouts
 **Depends on**: Phase 9 (v1.1 complete - clean, audited codebase)
 **Requirements**: MATCH-01, MATCH-02, MATCH-03, MATCH-04, MATCH-05, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06, SETTLE-01, SETTLE-02, SETTLE-03, SETTLE-04
+**Plans**: 7 plans
 
 **Success Criteria** (what must be TRUE):
 1. User can join matchmaking queue and get matched with similarly-skilled opponent within 60 seconds
@@ -92,12 +93,14 @@
 4. Winner is automatically determined at battle end with instant on-chain payout (no claim step)
 5. Battle history is logged and accessible for profiles/stats
 
-**Audit First:**
-- Check existing `battleManager.ts` for matchmaking patterns
-- Check existing `balanceService.ts` for settlement patterns
-- Check existing WebSocket events for real-time update infrastructure
-
-**Plans**: TBD (phase planning)
+Plans:
+- [ ] 10-01-PLAN.md — ELO rating system for skill-based matchmaking
+- [ ] 10-02-PLAN.md — Open challenges listing and direct wallet challenges
+- [ ] 10-03-PLAN.md — Battle history database and tie handling
+- [ ] 10-04-PLAN.md — Instant battle loss on total liquidation
+- [ ] 10-05-PLAN.md — Tug-of-war PnL visualization
+- [ ] 10-06-PLAN.md — Liquidation distance indicator
+- [ ] 10-07-PLAN.md — Challenge board UI
 
 ---
 
@@ -201,7 +204,7 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 | 7. Backend Security | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 8. Code Quality | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 9. Integration | v1.1 | 2/2 | Complete | 2026-01-23 |
-| 10. Battle Core | v2.0 | 0/? | Pending | — |
+| 10. Battle Core | v2.0 | 0/7 | Ready | — |
 | 11. Spectator Experience | v2.0 | 0/? | Pending | — |
 | 12. Social & Engagement | v2.0 | 0/? | Pending | — |
 | 13. Fighter Identity | v2.0 | 0/? | Pending | — |
@@ -211,5 +214,5 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
-*v2.0 phases: 10-14 (5 phases, requirements mapped, plans TBD)*
-*Last updated: 2026-01-23 after v2.0 roadmap creation*
+*v2.0 phases: 10-14 (5 phases, requirements mapped)*
+*Last updated: 2026-01-23 after Phase 10 planning*
