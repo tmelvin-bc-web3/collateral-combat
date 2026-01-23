@@ -40,6 +40,7 @@ import * as progressionDb from './db/progressionDatabase';
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
+import * as battleHistoryDb from './db/battleHistoryDatabase';
 import * as eloDb from './db/eloDatabase';
 import * as eloService from './services/eloService';
 import { ensureTokenVersion } from './db/authDatabase';
@@ -350,7 +351,44 @@ app.get('/api/battles/recent', (req, res) => {
   res.json(battleManager.getRecentBattles(limit));
 });
 
-// Get specific battle
+// GET /api/battles/history/:wallet - Get player's battle history (must be before :id route)
+app.get('/api/battles/history/:wallet', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 20;
+    const history = battleHistoryDb.getBattleHistory(req.params.wallet, Math.min(limit, 100));
+    res.json({ history });
+  } catch (error) {
+    console.error('[API] Error fetching battle history:', error);
+    res.status(500).json({ error: 'Failed to fetch battle history' });
+  }
+});
+
+// GET /api/battles/stats/:wallet - Get player's battle stats (must be before :id route)
+app.get('/api/battles/stats/:wallet', (req, res) => {
+  try {
+    const stats = battleHistoryDb.getPlayerStats(req.params.wallet);
+    res.json(stats);
+  } catch (error) {
+    console.error('[API] Error fetching battle stats:', error);
+    res.status(500).json({ error: 'Failed to fetch battle stats' });
+  }
+});
+
+// GET /api/battles/record/:battleId - Get specific battle record from history (must be before :id route)
+app.get('/api/battles/record/:battleId', (req, res) => {
+  try {
+    const record = battleHistoryDb.getBattleById(req.params.battleId);
+    if (!record) {
+      return res.status(404).json({ error: 'Battle not found' });
+    }
+    res.json({ record });
+  } catch (error) {
+    console.error('[API] Error fetching battle record:', error);
+    res.status(500).json({ error: 'Failed to fetch battle record' });
+  }
+});
+
+// Get specific battle (must be after more specific routes like /history, /stats, /record)
 app.get('/api/battles/:id', (req, res) => {
   const battle = battleManager.getBattle(req.params.id);
   if (!battle) {
