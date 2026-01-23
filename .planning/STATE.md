@@ -9,20 +9,20 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 
 ## Current Position
 
-Phase: 10 - Battle Core
-Plan: 07 of 7 (Challenge Board UI)
-Status: Complete
-Last activity: 2026-01-23 - Completed 10-07-PLAN.md (Challenge Board UI)
+Phase: 12 - Social & Engagement
+Plan: 05 of 5
+Status: Phase complete
+Last activity: 2026-01-23 - Completed 12-04-PLAN.md (Battle Result Sharing)
 
-Progress: [==========] Phase 10: 7/7 plans complete
+Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5
 
 ## v2.0 Milestone Overview
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | Complete |
-| 11 | Spectator Experience | 11 (VIEW, BET) | Pending |
-| 12 | Social & Engagement | 9 (CHAT, SHARE) | Pending |
+| 11 | Spectator Experience | 11 (VIEW, BET) | Complete |
+| 12 | Social & Engagement | 9 (CHAT, SHARE) | Complete |
 | 13 | Fighter Identity | 8 (PROF) | Pending |
 | 14 | Events & Competitions | 11 (EVENT, TOUR) | Pending |
 
@@ -31,9 +31,9 @@ Progress: [==========] Phase 10: 7/7 plans complete
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35 (18 v1.0 + 10 v1.1 + 7 v2.0)
-- Average duration: ~30 min
-- Total execution time: ~15.4 hours
+- Total plans completed: 40 (18 v1.0 + 10 v1.1 + 12 v2.0)
+- Average duration: ~25 min
+- Total execution time: ~15.5 hours
 
 **By Phase:**
 
@@ -49,6 +49,7 @@ Progress: [==========] Phase 10: 7/7 plans complete
 | 8. Code Quality | 2 | ~11min | 5.5 min |
 | 9. Integration | 2 | ~10min | 5 min |
 | 10. Battle Core | 7 | ~65min | 9 min |
+| 11. Spectator Exp | 4 | ~10min | 2.5 min |
 
 **v1.1 complete:** All 10 plans across 5 phases executed
 
@@ -109,10 +110,38 @@ Recent decisions affecting current work:
 - [Phase 10.7]: useChallenges hook provides fetchChallenges, createChallenge, acceptChallenge
 - [Phase 10.7]: /battle?challenge=CODE URL param triggers challenge acceptance flow
 - [Phase 10.7]: createBattleFromChallenge method composes existing addPlayerToBattle logic
+- [Phase 11.2]: Fighter 1/Fighter 2 labels for spectator neutrality (not You/Opponent)
+- [Phase 11.2]: Spectator PnL bar uses same rope physics as participant view
+- [Phase 11.1]: FighterPositionCard reuses LiquidationIndicator from Phase 10
+- [Phase 11.1]: Compact mode prop for mobile optimization in position cards
+- [Phase 11.3]: Chart collapsed by default on mobile, always visible on desktop (lg:)
+- [Phase 11.3]: Safe-area padding (pb-20 lg:pb-0) reserves space for quick bet strip
+- [Phase 11.3]: Mobile-first with flex-col lg:grid pattern for responsive layouts
+- [Phase 11.4]: QuickBetStrip receives odds via props, not direct WebSocket subscription
+- [Phase 11.4]: 5% threshold for auto-accept odds - smaller changes don't interrupt user
+- [Phase 11.4]: lg:hidden for QuickBetStrip - only visible on mobile viewports
+- [Phase 12.1]: Wallet-gating: Users must have PDA balance > 0 to chat or react
+- [Phase 12.1]: 8 allowed emojis for reactions: fire, skull, rocket, money, clown, 100, cry, laugh
+- [Phase 12.1]: Rate limits: 1 message per 3 seconds, 1 reaction per second
+- [Phase 12.1]: Reaction limits: max 8 unique emojis per message, max 20 reactors per emoji
+- [Phase 12.3]: Satori + Sharp for server-side image generation (no Canvas/Puppeteer)
+- [Phase 12.3]: Inter font family for image typography
+- [Phase 12.3]: 24h cache for battle images, 1h for profile images
+- [Phase 12.5]: ProfileShareButton shows referral code only for own profile
+- [Phase 12.5]: Next.js opengraph-image convention for automatic og:image generation
+- [Phase 12.5]: Layout.tsx for metadata generation when page is client component
+- [Phase 12.5]: Referral code generated as DEGEN + last 4 wallet chars
+- [Phase 12.2]: ChatMessage component with hover-reveal emoji picker
+- [Phase 12.2]: Client-side 3s rate limiting matches backend for immediate feedback
+- [Phase 12.2]: canChat state tracks wallet-gating for disabled input display
+- [Phase 12.4]: Next.js opengraph-image.tsx convention for Twitter Card og:image
+- [Phase 12.4]: Edge runtime for fast og:image generation
+- [Phase 12.4]: Referral code in share URL via ?ref=CODE query param
+- [Phase 12.4]: Download fetches from backend /api/share/battle/:id/image
 
 ### Pending Todos
 
-- Start Phase 11 (Spectator Experience)
+- Phase 12 complete - Begin Phase 13 (Fighter Identity)
 
 ### Blockers/Concerns
 
@@ -175,12 +204,31 @@ Recent decisions affecting current work:
 | 10-06 | Liquidation Distance Indicator | Complete |
 | 10-07 | Challenge Board UI | Complete |
 
+## Phase 11 Progress
+
+| Plan | Name | Status |
+|------|------|--------|
+| 11-01 | Fighter Position Cards | Complete |
+| 11-02 | Spectator PnL Bar | Complete |
+| 11-03 | Mobile Responsiveness & Chart | Complete |
+| 11-04 | Quick Bet Strip | Complete |
+
+## Phase 12 Progress
+
+| Plan | Name | Status |
+|------|------|--------|
+| 12-01 | Chat Reactions & Wallet-Gating | Complete |
+| 12-02 | Battle Chat Panel | Complete |
+| 12-03 | Server-Side Image Generation | Complete |
+| 12-04 | Battle Result Sharing | Complete |
+| 12-05 | Profile Sharing | Complete |
+
 ## Session Continuity
 
-Last session: 2026-01-23 22:15 UTC
-Stopped at: Completed Phase 10 - Battle Core (all 7 plans)
+Last session: 2026-01-23
+Stopped at: Completed 12-04-PLAN.md (Battle Result Sharing)
 Resume file: None
-Next: Plan and execute Phase 11 (Spectator Experience)
+Next: Begin Phase 13 (Fighter Identity)
 
 ---
-*State updated: 2026-01-23 after completing Phase 10*
+*State updated: 2026-01-23 after completing 12-04-PLAN.md - Phase 12 complete*
