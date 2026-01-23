@@ -7,6 +7,7 @@ import { LiveBattle } from '@/types';
 import { SpectatorView } from '@/components/SpectatorView';
 import { PageLoading } from '@/components/ui/skeleton';
 import { BACKEND_URL } from '@/config/api';
+import { QuickBetStrip } from '@/components/spectate/QuickBetStrip';
 import {
   StandsHero,
   StandsTabs,
@@ -320,11 +321,18 @@ export default function SpectatePage() {
 
   if (selectedBattle) {
     return (
-      <SpectatorView
-        battle={selectedBattle}
-        onBack={handleBackToList}
-        walletAddress={walletAddress}
-      />
+      <>
+        <SpectatorView
+          battle={selectedBattle}
+          onBack={handleBackToList}
+          walletAddress={walletAddress}
+        />
+        <QuickBetStrip
+          battle={selectedBattle}
+          odds={selectedBattle.odds || null}
+          walletAddress={walletAddress}
+        />
+      </>
     );
   }
 
