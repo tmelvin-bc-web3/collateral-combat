@@ -50,6 +50,10 @@ export interface BattleChallenge {
   createdAt: number;
   expiresAt: number;
   viewCount: number;
+
+  // Direct challenge support
+  targetWallet?: string;  // For direct challenges - if set, only this wallet can accept
+  isOpen: boolean;        // true if no target wallet (open to anyone)
 }
 
 // Initialize database schema
@@ -78,6 +82,21 @@ export function initializeChallengesDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_challenges_status ON battle_challenges(status);
   `);
 
+  // Add target_wallet column for direct challenges (migration)
+  try {
+    db.exec(`ALTER TABLE battle_challenges ADD COLUMN target_wallet TEXT`);
+    console.log('[ChallengesDB] Added target_wallet column');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add index for target_wallet for efficient direct challenge queries
+  try {
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_challenges_target ON battle_challenges(target_wallet)`);
+  } catch (e) {
+    // Index may already exist, ignore
+  }
+
   console.log('[ChallengesDB] Database initialized');
 }
 
@@ -98,6 +117,7 @@ export function createChallenge(params: {
   entryFee: number;
   leverage: number;
   duration: number;
+  targetWallet?: string;  // Optional: for direct challenges to a specific wallet
 }): BattleChallenge {
   // Generate unique code
   let challengeCode = generateChallengeCode();
@@ -115,9 +135,9 @@ export function createChallenge(params: {
     INSERT INTO battle_challenges (
       id, challenge_code, challenger_wallet, challenger_username,
       entry_fee, leverage, duration, status,
-      created_at, expires_at, view_count
+      created_at, expires_at, view_count, target_wallet
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 0, ?)
   `);
 
   stmt.run(
@@ -129,7 +149,8 @@ export function createChallenge(params: {
     params.leverage,
     params.duration,
     now,
-    expiresAt
+    expiresAt,
+    params.targetWallet || null
   );
 
   return {
@@ -144,6 +165,8 @@ export function createChallenge(params: {
     createdAt: now,
     expiresAt,
     viewCount: 0,
+    targetWallet: params.targetWallet,
+    isOpen: !params.targetWallet,
   };
 }
 
@@ -315,7 +338,56 @@ function mapRowToChallenge(row: any): BattleChallenge {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     viewCount: row.view_count,
+    targetWallet: row.target_wallet || undefined,
+    isOpen: !row.target_wallet,
   };
+}
+
+// Get open challenges (no target wallet, available for anyone to accept)
+export function getOpenChallenges(filters?: {
+  minFee?: number;
+  maxFee?: number;
+  excludeWallet?: string;  // Don't show user's own challenges
+}): BattleChallenge[] {
+  let sql = `
+    SELECT * FROM battle_challenges
+    WHERE status = 'pending'
+      AND expires_at > ?
+      AND target_wallet IS NULL
+  `;
+  const params: any[] = [Date.now()];
+
+  if (filters?.excludeWallet) {
+    sql += ' AND challenger_wallet != ?';
+    params.push(filters.excludeWallet);
+  }
+  if (filters?.minFee !== undefined) {
+    sql += ' AND entry_fee >= ?';
+    params.push(filters.minFee);
+  }
+  if (filters?.maxFee !== undefined) {
+    sql += ' AND entry_fee <= ?';
+    params.push(filters.maxFee);
+  }
+
+  sql += ' ORDER BY created_at DESC LIMIT 50';
+
+  const stmt = db.prepare(sql);
+  const rows = stmt.all(...params) as any[];
+  return rows.map(mapRowToChallenge);
+}
+
+// Get challenges directed at a specific wallet (direct challenges)
+export function getDirectChallengesFor(walletAddress: string): BattleChallenge[] {
+  const stmt = db.prepare(`
+    SELECT * FROM battle_challenges
+    WHERE status = 'pending'
+      AND expires_at > ?
+      AND target_wallet = ?
+    ORDER BY created_at DESC
+  `);
+  const rows = stmt.all(Date.now(), walletAddress) as any[];
+  return rows.map(mapRowToChallenge);
 }
 
 // Get challenge stats
