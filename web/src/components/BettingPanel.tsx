@@ -13,6 +13,7 @@ interface BettingPanelProps {
 }
 
 const BET_AMOUNTS = [0.1, 0.25, 0.5, 1];
+const AUTO_ACCEPT_THRESHOLD = 0.05; // 5%
 
 interface OddsLock {
   lockId: string;
@@ -33,6 +34,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
   const [error, setError] = useState<string | null>(null);
   const [recentBets, setRecentBets] = useState<SpectatorBet[]>([]);
   const [odds, setOdds] = useState<BattleOdds | null>(battle.odds || null);
+  const [lastKnownOdds, setLastKnownOdds] = useState<number | null>(null);
 
   // Odds lock state for on-chain betting
   const [oddsLock, setOddsLock] = useState<OddsLock | null>(null);
@@ -47,6 +49,20 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
 
     socket.on('odds_update', (newOdds) => {
       if (newOdds.battleId === battle.id) {
+        // Check for auto-accept threshold
+        if (selectedPlayer && lastKnownOdds !== null) {
+          const newPlayerOdds = newOdds.player1.wallet === selectedPlayer
+            ? newOdds.player1.odds
+            : newOdds.player2.odds;
+          const oddsChange = Math.abs((newPlayerOdds - lastKnownOdds) / lastKnownOdds);
+
+          if (oddsChange > AUTO_ACCEPT_THRESHOLD) {
+            // Significant odds change - could show toast/notification
+            // For now just log it (could integrate toast library later)
+            console.log(`Odds changed by ${(oddsChange * 100).toFixed(1)}%`);
+          }
+          // Otherwise auto-accept - no interruption to user
+        }
         setOdds(newOdds);
       }
     });
@@ -248,7 +264,10 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
         <div className="space-y-3">
           {player1 && (
             <button
-              onClick={() => setSelectedPlayer(player1.walletAddress)}
+              onClick={() => {
+                setSelectedPlayer(player1.walletAddress);
+                setLastKnownOdds(getOddsForPlayer(player1.walletAddress));
+              }}
               className={`relative w-full p-4 rounded-xl border-2 transition-all ${
                 selectedPlayer === player1.walletAddress
                   ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(0,212,170,0.15)]'
@@ -297,7 +316,10 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
 
           {player2 && (
             <button
-              onClick={() => setSelectedPlayer(player2.walletAddress)}
+              onClick={() => {
+                setSelectedPlayer(player2.walletAddress);
+                setLastKnownOdds(getOddsForPlayer(player2.walletAddress));
+              }}
               className={`relative w-full p-4 rounded-xl border-2 transition-all ${
                 selectedPlayer === player2.walletAddress
                   ? 'border-accent bg-accent/5 shadow-[0_0_20px_rgba(0,212,170,0.15)]'
@@ -434,22 +456,43 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
         </div>
       </button>
 
-      {/* Wager Pool Info */}
+      {/* Pool Visualization Bar */}
       {odds && odds.totalPool > 0 && (
         <div className="mt-5 pt-5 border-t border-border-primary">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-text-secondary">Total Wager Pool</span>
-            <span className="font-mono font-bold text-lg">{odds.totalPool.toFixed(2)} SOL</span>
+          <div className="flex justify-between text-xs text-text-tertiary mb-2">
+            <span>Spectator Pool</span>
+            <span className="font-mono font-bold text-accent">{odds.totalPool.toFixed(2)} SOL</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-bg-tertiary text-center">
-              <div className="text-xs text-text-tertiary mb-1">Backing P1</div>
-              <div className="font-mono font-semibold">{odds.player1.totalBacked.toFixed(2)} SOL</div>
-            </div>
-            <div className="p-3 rounded-xl bg-bg-tertiary text-center">
-              <div className="text-xs text-text-tertiary mb-1">Backing P2</div>
-              <div className="font-mono font-semibold">{odds.player2.totalBacked.toFixed(2)} SOL</div>
-            </div>
+
+          {/* A vs B Split Bar */}
+          <div className="flex h-8 rounded-lg overflow-hidden border border-border-primary">
+            {(() => {
+              const total = odds.player1.totalBacked + odds.player2.totalBacked;
+              const p1Percent = total > 0 ? (odds.player1.totalBacked / total) * 100 : 50;
+              const p2Percent = total > 0 ? (odds.player2.totalBacked / total) * 100 : 50;
+              return (
+                <>
+                  <div
+                    className="bg-success/30 flex items-center justify-center text-xs font-bold text-success transition-all duration-500"
+                    style={{ width: `${p1Percent}%` }}
+                  >
+                    {p1Percent >= 20 && `${p1Percent.toFixed(0)}%`}
+                  </div>
+                  <div
+                    className="bg-danger/30 flex items-center justify-center text-xs font-bold text-danger transition-all duration-500"
+                    style={{ width: `${p2Percent}%` }}
+                  >
+                    {p2Percent >= 20 && `${p2Percent.toFixed(0)}%`}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Labels below bar */}
+          <div className="flex justify-between mt-2 text-xs">
+            <span className="text-success font-mono">{odds.player1.totalBacked.toFixed(2)} SOL</span>
+            <span className="text-danger font-mono">{odds.player2.totalBacked.toFixed(2)} SOL</span>
           </div>
         </div>
       )}
