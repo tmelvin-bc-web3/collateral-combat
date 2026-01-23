@@ -76,6 +76,7 @@ interface ServerToClientEvents {
   chat_history: (messages: ChatMessage[]) => void;
   chat_error: (error: { code: string; message: string }) => void;
   chat_system: (message: { battleId: string; content: string }) => void;
+  reaction_update: (data: { battleId: string; messageId: string; emoji: string; wallet: string; action: 'add' | 'remove' }) => void;
   // Scheduled Matches events
   scheduled_matches_list: (matches: ScheduledMatch[]) => void;
   scheduled_match_updated: (match: ScheduledMatch) => void;
@@ -143,6 +144,8 @@ interface ClientToServerEvents {
   // Battle Chat events
   send_chat_message: (data: { battleId: string; content: string }) => void;
   load_chat_history: (battleId: string) => void;
+  add_reaction: (data: { battleId: string; messageId: string; emoji: string }) => void;
+  remove_reaction: (data: { battleId: string; messageId: string; emoji: string }) => void;
   // Scheduled Matches events
   subscribe_scheduled_matches: (gameMode: string) => void;
   unsubscribe_scheduled_matches: (gameMode: string) => void;

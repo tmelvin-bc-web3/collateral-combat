@@ -554,4 +554,5 @@ export interface ChatMessage {
   wasFiltered: boolean;
   timestamp: number;
   type: ChatMessageType;
+  reactions: Record<string, string[]>; // emoji -> array of wallet addresses
 }

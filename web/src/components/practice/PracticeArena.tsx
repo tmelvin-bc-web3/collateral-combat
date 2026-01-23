@@ -32,7 +32,7 @@ export function PracticeArena({ battle, onReset }: PracticeArenaProps) {
   const { prices } = usePrices();
 
   // Battle chat
-  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected } = useBattleChat(battle.id);
+  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected, addReaction, removeReaction, canChat } = useBattleChat({ battleId: battle.id });
 
   const [sessionStartTime] = useState(Date.now());
   const [sessionTime, setSessionTime] = useState(0);

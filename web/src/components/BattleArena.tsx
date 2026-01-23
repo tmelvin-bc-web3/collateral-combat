@@ -47,7 +47,7 @@ export function BattleArena({ battle }: BattleArenaProps) {
   const [lastReadTimestamp, setLastReadTimestamp] = useState(Date.now());
 
   // Battle chat hook
-  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected } = useBattleChat(battle.id);
+  const { messages: chatMessages, sendMessage, error: chatError, isConnected: chatConnected, addReaction, removeReaction, canChat } = useBattleChat({ battleId: battle.id });
 
   // Order state
   const [leverage, setLeverage] = useState<Leverage>(5);
