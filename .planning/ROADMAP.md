@@ -70,7 +70,7 @@
 - Integer phases (10, 11, 12, 13, 14): Planned milestone work
 - Decimal phases (e.g., 10.1): Urgent insertions if needed
 
-- [ ] **Phase 10: Battle Core** - Matchmaking, execution, and settlement engine
+- [x] **Phase 10: Battle Core** - Matchmaking, execution, and settlement engine
 - [ ] **Phase 11: Spectator Experience** - Live viewer and betting system
 - [ ] **Phase 12: Social & Engagement** - Chat and sharing for virality
 - [ ] **Phase 13: Fighter Identity** - Profiles and statistics
@@ -84,7 +84,7 @@
 **Goal**: Users can find opponents, execute leveraged trades, and receive instant payouts
 **Depends on**: Phase 9 (v1.1 complete - clean, audited codebase)
 **Requirements**: MATCH-01, MATCH-02, MATCH-03, MATCH-04, MATCH-05, EXEC-01, EXEC-02, EXEC-03, EXEC-04, EXEC-05, EXEC-06, SETTLE-01, SETTLE-02, SETTLE-03, SETTLE-04
-**Plans**: 7 plans
+**Plans**: 7 plans (complete)
 
 **Success Criteria** (what must be TRUE):
 1. User can join matchmaking queue and get matched with similarly-skilled opponent within 60 seconds
@@ -94,13 +94,13 @@
 5. Battle history is logged and accessible for profiles/stats
 
 Plans:
-- [ ] 10-01-PLAN.md — ELO rating system for skill-based matchmaking
-- [ ] 10-02-PLAN.md — Open challenges listing and direct wallet challenges
-- [ ] 10-03-PLAN.md — Battle history database and tie handling
-- [ ] 10-04-PLAN.md — Instant battle loss on total liquidation
-- [ ] 10-05-PLAN.md — Tug-of-war PnL visualization
-- [ ] 10-06-PLAN.md — Liquidation distance indicator
-- [ ] 10-07-PLAN.md — Challenge board UI
+- [x] 10-01-PLAN.md — ELO rating system for skill-based matchmaking
+- [x] 10-02-PLAN.md — Open challenges listing and direct wallet challenges
+- [x] 10-03-PLAN.md — Battle history database and tie handling
+- [x] 10-04-PLAN.md — Instant battle loss on total liquidation
+- [x] 10-05-PLAN.md — Tug-of-war PnL visualization
+- [x] 10-06-PLAN.md — Liquidation distance indicator
+- [x] 10-07-PLAN.md — Challenge board UI
 
 ---
 
@@ -108,6 +108,7 @@ Plans:
 **Goal**: Spectators can watch live battles and bet on outcomes with instant payouts
 **Depends on**: Phase 10 (battles must exist to spectate)
 **Requirements**: VIEW-01, VIEW-02, VIEW-03, VIEW-04, VIEW-05, BET-01, BET-02, BET-03, BET-04, BET-05, BET-06
+**Plans**: 4 plans
 
 **Success Criteria** (what must be TRUE):
 1. Spectator sees both fighters' positions with real-time PnL delta visualization (tug-of-war)
@@ -116,12 +117,16 @@ Plans:
 4. Spectator receives instant payout when battle ends (no claim step)
 5. Battle viewer is mobile-responsive and shows price chart overlay
 
-**Audit First:**
-- Check existing `spectatorService.ts` for betting infrastructure
-- Check existing WebSocket events for odds updates
-- Check existing viewer components in `/web/src/app/spectate/`
+**Already Implemented (from research):**
+- BET-01: Fighter selection in BettingPanel
+- BET-02: Live odds via `odds_update` WebSocket event
+- BET-06: Instant payout via `settleBets()` -> `creditWinnings()`
 
-**Plans**: TBD (phase planning)
+Plans:
+- [ ] 11-01-PLAN.md — Fighter position cards with liquidation indicators (VIEW-01, VIEW-03)
+- [ ] 11-02-PLAN.md — Spectator tug-of-war PnL bar (VIEW-02)
+- [ ] 11-03-PLAN.md — Mobile-responsive layout with collapsible chart (VIEW-04, VIEW-05)
+- [ ] 11-04-PLAN.md — Quick bet strip, auto-accept odds, pool visualization (BET-03, BET-04, BET-05)
 
 ---
 
@@ -204,8 +209,8 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 | 7. Backend Security | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 8. Code Quality | v1.1 | 2/2 | Complete | 2026-01-22 |
 | 9. Integration | v1.1 | 2/2 | Complete | 2026-01-23 |
-| 10. Battle Core | v2.0 | 0/7 | Ready | — |
-| 11. Spectator Experience | v2.0 | 0/? | Pending | — |
+| 10. Battle Core | v2.0 | 7/7 | Complete | 2026-01-23 |
+| 11. Spectator Experience | v2.0 | 0/4 | Ready | — |
 | 12. Social & Engagement | v2.0 | 0/? | Pending | — |
 | 13. Fighter Identity | v2.0 | 0/? | Pending | — |
 | 14. Events & Competitions | v2.0 | 0/? | Pending | — |
@@ -215,4 +220,4 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
 *v2.0 phases: 10-14 (5 phases, requirements mapped)*
-*Last updated: 2026-01-23 after Phase 10 planning*
+*Last updated: 2026-01-23 after Phase 11 planning*
