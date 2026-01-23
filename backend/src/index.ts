@@ -989,6 +989,9 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
 // Admin dashboard routes
 app.use('/api/admin', adminRoutes);
 
+// Share image routes (for social sharing)
+app.use('/api/share', shareRouter);
+
 // Admin: Get all waitlist entries (rate limited even for admins)
 app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (req: Request, res: Response) => {
   try {
