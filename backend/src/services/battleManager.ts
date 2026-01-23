@@ -310,6 +310,13 @@ class BattleManager {
       ? currentPrice * (1 - (1 / leverage) + MAINTENANCE_MARGIN)
       : currentPrice * (1 + (1 / leverage) - MAINTENANCE_MARGIN);
 
+    // Calculate initial liquidation distance
+    // For long: distance = (current - liq) / current * 100
+    // For short: distance = (liq - current) / current * 100
+    const liquidationDistance = side === 'long'
+      ? ((currentPrice - liquidationPrice) / currentPrice) * 100
+      : ((liquidationPrice - currentPrice) / currentPrice) * 100;
+
     const position: PerpPosition = {
       id: uuidv4(),
       asset,
@@ -322,6 +329,7 @@ class BattleManager {
       unrealizedPnl: 0,
       unrealizedPnlPercent: 0,
       openedAt: Date.now(),
+      liquidationDistance,
     };
 
     // Deduct margin from balance
@@ -604,6 +612,13 @@ class BattleManager {
       const pnlPercent = position.side === 'long' ? priceChange : -priceChange;
       position.unrealizedPnlPercent = pnlPercent * position.leverage * 100;
       position.unrealizedPnl = position.size * pnlPercent * position.leverage;
+
+      // Calculate liquidation distance (percentage from current price to liquidation)
+      // For long: distance = (current - liq) / current * 100
+      // For short: distance = (liq - current) / current * 100
+      position.liquidationDistance = position.side === 'long'
+        ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
+        : ((position.liquidationPrice - currentPrice) / currentPrice) * 100;
 
       totalUnrealizedPnl += position.unrealizedPnl;
 

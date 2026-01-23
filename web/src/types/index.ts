@@ -20,6 +20,7 @@ export interface PerpPosition {
   unrealizedPnl: number;
   unrealizedPnlPercent: number;
   openedAt: number;
+  liquidationDistance: number; // Percentage distance to liquidation (e.g., 5.2 = 5.2% away)
 }
 
 export interface PlayerAccount {
