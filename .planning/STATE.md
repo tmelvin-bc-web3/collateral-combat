@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 13 - Fighter Identity
-Plan: 02 of 5
+Plan: 04 of 5
 Status: In progress
-Last activity: 2026-01-24 - Completed 13-02-PLAN.md (Visual Profile Components)
+Last activity: 2026-01-24 - Completed 13-04-PLAN.md (Profile Comparison View)
 
-Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 2/5
+Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 4/5
 
 ## v2.0 Milestone Overview
 
@@ -138,13 +138,21 @@ Recent decisions affecting current work:
 - [Phase 12.4]: Edge runtime for fast og:image generation
 - [Phase 12.4]: Referral code in share URL via ?ref=CODE query param
 - [Phase 12.4]: Download fetches from backend /api/share/battle/:id/image
+- [Phase 13.1]: Trading style derived from battle outcomes (aggression, leverage estimation)
+- [Phase 13.1]: Default favorite assets SOL/ETH/BTC for new fighters
+- [Phase 13.1]: Streak tracking: positive = win streak, negative = loss streak
+- [Phase 13.1]: ROI calculation includes all battles with 2 decimal precision
 - [Phase 13.2]: Tier colors match opengraph-image.tsx for visual consistency
 - [Phase 13.2]: Protected tier shows 'NEW' label for new fighters
 - [Phase 13.2]: RecentFormIndicator pads with empty slots when less than maxItems
+- [Phase 13.4]: ComparisonStat rows highlight winner with green color and + indicator
+- [Phase 13.4]: Fighter headers use accent (fighter1) and fire (fighter2) color schemes
+- [Phase 13.4]: Compare button only visible when logged in viewing another's profile
+- [Phase 13.4]: higherIsBetter parameter for flexible stat comparison
 
 ### Pending Todos
 
-- Continue Phase 13 (Fighter Identity) - 3 plans remaining
+- Continue Phase 13 (Fighter Identity) - 1 plan remaining (13-05 Fighter Leaderboard)
 
 ### Blockers/Concerns
 
@@ -232,16 +240,16 @@ Recent decisions affecting current work:
 |------|------|--------|
 | 13-01 | Fighter Stats API | Complete |
 | 13-02 | Visual Profile Components | Complete |
-| 13-03 | Profile Page Integration | Pending |
-| 13-04 | Achievements System | Pending |
+| 13-03 | Profile Page Integration | Complete |
+| 13-04 | Profile Comparison View | Complete |
 | 13-05 | Fighter Leaderboard | Pending |
 
 ## Session Continuity
 
 Last session: 2026-01-24
-Stopped at: Completed 13-02-PLAN.md (Visual Profile Components)
+Stopped at: Completed 13-04-PLAN.md (Profile Comparison View)
 Resume file: None
-Next: Continue Phase 13 (13-03 Profile Page Integration)
+Next: Continue Phase 13 (13-05 Fighter Leaderboard)
 
 ---
-*State updated: 2026-01-24 after completing 13-02-PLAN.md*
+*State updated: 2026-01-24 after completing 13-04-PLAN.md*
