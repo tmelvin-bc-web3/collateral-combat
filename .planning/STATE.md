@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 
 ## Current Position
 
-Phase: 13 - Fighter Identity
-Plan: 04 of 5
+Phase: 14 - Events & Competitions
+Plan: 02 of 5
 Status: In progress
-Last activity: 2026-01-24 - Completed 13-04-PLAN.md (Profile Comparison View)
+Last activity: 2026-01-24 - Completed 14-02-PLAN.md (Events Calendar & Countdown)
 
-Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 4/5
+Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 5/5 | Phase 14: 2/5
 
 ## v2.0 Milestone Overview
 
@@ -23,8 +23,8 @@ Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13:
 | 10 | Battle Core | 15 (MATCH, EXEC, SETTLE) | Complete |
 | 11 | Spectator Experience | 11 (VIEW, BET) | Complete |
 | 12 | Social & Engagement | 9 (CHAT, SHARE) | Complete |
-| 13 | Fighter Identity | 8 (PROF) | In Progress (2/5) |
-| 14 | Events & Competitions | 11 (EVENT, TOUR) | Pending |
+| 13 | Fighter Identity | 8 (PROF) | Complete |
+| 14 | Events & Competitions | 11 (EVENT, TOUR) | In Progress |
 
 **Total:** 54 requirements across 5 phases
 
@@ -152,10 +152,19 @@ Recent decisions affecting current work:
 - [Phase 13.4]: Fighter headers use accent (fighter1) and fire (fighter2) color schemes
 - [Phase 13.4]: Compare button only visible when logged in viewing another's profile
 - [Phase 13.4]: higherIsBetter parameter for flexible stat comparison
+- [Phase 13.5]: Violet-500 color scheme for Trading Style card (matches battle theme)
+- [Phase 13.5]: Amber-500 color scheme for Favorite Assets card (star/highlight theme)
+- [Phase 13.5]: Cards only render when data is available (tradingStyle.totalPositions > 0, favoriteAssets.length > 0)
+- [Phase 14.1]: Registration opens 24h before event, closes 30min before start
+- [Phase 14.1]: Event start notifications sent 5 minutes before event
+- [Phase 14.1]: EventManager ticker runs every 60 seconds for state checks
+- [Phase 14.2]: Countdown timer uses absolute UTC timestamps, client calculates remaining time
+- [Phase 14.2]: Socket events cast as 'any' for new event_update type (types not yet updated)
+- [Phase 14.2]: Events grouped by date with locale-aware formatting
 
 ### Pending Todos
 
-- Continue Phase 13 (Fighter Identity) - 1 plan remaining (13-05 Fighter Leaderboard)
+- Continue Phase 14 (Events & Competitions) - Plan 03 next
 
 ### Blockers/Concerns
 
@@ -245,14 +254,24 @@ Recent decisions affecting current work:
 | 13-02 | Visual Profile Components | Complete |
 | 13-03 | Profile Page Integration | Complete |
 | 13-04 | Profile Comparison View | Complete |
-| 13-05 | Fighter Leaderboard | Pending |
+| 13-05 | Trading Style & Favorite Assets UI | Complete |
+
+## Phase 14 Progress
+
+| Plan | Name | Status |
+|------|------|--------|
+| 14-01 | Events API & Database | Complete |
+| 14-02 | Events Calendar & Countdown | Complete |
+| 14-03 | Tournament Bracket Backend | Pending |
+| 14-04 | Tournament Bracket UI | Pending |
+| 14-05 | Notifications & Subscriptions | Pending |
 
 ## Session Continuity
 
 Last session: 2026-01-24
-Stopped at: Completed 13-04-PLAN.md (Profile Comparison View)
+Stopped at: Completed 14-02-PLAN.md (Events Calendar & Countdown)
 Resume file: None
-Next: Continue Phase 13 (13-05 Fighter Leaderboard)
+Next: Continue Phase 14 (14-03 Tournament Bracket Backend)
 
 ---
-*State updated: 2026-01-24 after completing 13-04-PLAN.md*
+*State updated: 2026-01-24 after completing 14-02-PLAN.md*
