@@ -24,6 +24,7 @@ import {
   CreateEventInput,
   AddEventBattleInput,
 } from '../db/eventDatabase';
+import { notifyEventStarting } from '../db/notificationDatabase';
 import {
   EventStatus,
   EventBattleStatus,
@@ -46,6 +47,42 @@ class EventManager {
   private listeners: Set<EventManagerListener> = new Set();
   private tickerTimer: NodeJS.Timeout | null = null;
   private initialized = false;
+
+  // Socket.IO integration for targeted notifications
+  private io: any = null;
+  private walletSocketMap: Map<string, string> = new Map(); // wallet -> socket.id
+
+  /**
+   * Set Socket.IO instance for WebSocket notifications
+   */
+  setSocketIO(io: any): void {
+    this.io = io;
+    logger.info('EventManager connected to Socket.IO');
+  }
+
+  /**
+   * Register a wallet to a socket for targeted notifications
+   */
+  registerWalletSocket(wallet: string, socketId: string): void {
+    this.walletSocketMap.set(wallet, socketId);
+  }
+
+  /**
+   * Unregister a wallet from socket notifications
+   */
+  unregisterWalletSocket(wallet: string): void {
+    this.walletSocketMap.delete(wallet);
+  }
+
+  /**
+   * Emit to a specific wallet's connected socket
+   */
+  private emitToWallet(wallet: string, event: string, data: any): void {
+    const socketId = this.walletSocketMap.get(wallet);
+    if (socketId && this.io) {
+      this.io.to(socketId).emit(event, data);
+    }
+  }
 
   /**
    * Initialize the event manager
@@ -177,32 +214,46 @@ class EventManager {
 
     // Emit notifications for each event
     for (const [eventId, subs] of eventGroups) {
-      if (subs.length > 0) {
-        const eventName = subs[0].eventName;
-        const startTime = subs[0].scheduledStartTime;
-        const minutesUntilStart = Math.floor((startTime - now) / 60000);
+      if (subs.length === 0) continue;
 
-        logger.info('Sending event start notifications', {
-          eventId,
-          eventName,
-          subscriberCount: subs.length,
-          minutesUntilStart,
-        });
+      const eventName = subs[0].eventName;
+      const startTime = subs[0].scheduledStartTime;
+      const minutesUntilStart = Math.ceil((startTime - now) / 60000);
 
-        // Mark as notified
-        markNotified(eventId);
+      logger.info('Sending event start notifications', {
+        eventId,
+        eventName,
+        subscriberCount: subs.length,
+        minutesUntilStart,
+      });
 
-        // Emit event_starting event
-        this.emit({
+      // Create persistent notification for each subscriber and send WebSocket notification
+      for (const sub of subs) {
+        // Create persistent notification in database
+        notifyEventStarting(sub.walletAddress, eventName, eventId, minutesUntilStart);
+
+        // Emit targeted WebSocket notification to subscriber
+        this.emitToWallet(sub.walletAddress, 'notification', {
           type: 'event_starting',
           eventId,
-          data: {
-            eventName,
-            minutesUntilStart,
-            subscribers: subs.map(s => s.walletAddress),
-          },
+          eventName,
+          startsIn: minutesUntilStart * 60 * 1000,
         });
       }
+
+      // Mark all subscribers as notified to prevent spam
+      markNotified(eventId);
+
+      // Emit event_starting event to listeners (for room broadcasts)
+      this.emit({
+        type: 'event_starting',
+        eventId,
+        data: {
+          eventName,
+          minutesUntilStart,
+          subscribers: subs.map(s => s.walletAddress),
+        },
+      });
     }
   }
 
