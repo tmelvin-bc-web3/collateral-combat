@@ -509,6 +509,18 @@ export default function ProfilePage() {
                     referralCode={isOwnProfile ? referralCode : undefined}
                   />
                 )}
+                {/* Compare button - only show on other users' profiles when logged in */}
+                {!isOwnProfile && connected && publicKey && (
+                  <Link
+                    href={`/profile/${walletAddress}/compare/${publicKey.toBase58()}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-fire/30 bg-fire/10 text-fire hover:bg-fire/20 transition-colors text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Compare
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -592,6 +604,102 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Battle Stats Section */}
+      {battleStats && (battleStats.wins > 0 || battleStats.losses > 0) && (
+        <div className="mt-6">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Battle Stats
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {/* Battle Record */}
+            <div className="card border border-danger/20 p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-danger/20 flex items-center justify-center border border-danger/30">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Battle Record</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-black">
+                <span className="text-success">{battleStats.wins}</span>
+                <span className="text-text-tertiary mx-1">-</span>
+                <span className="text-danger">{battleStats.losses}</span>
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-tertiary mt-1">
+                {battleStats.wins + battleStats.losses > 0
+                  ? ((battleStats.wins / (battleStats.wins + battleStats.losses)) * 100).toFixed(0)
+                  : 0}% win rate
+              </div>
+            </div>
+
+            {/* Win Streak */}
+            <div className="card border border-fire/20 p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-fire/20 flex items-center justify-center border border-fire/30">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fire" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Win Streak</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-fire">
+                {battleStreaks?.currentStreak || 0}
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-tertiary mt-1">
+                Best: {battleStreaks?.bestStreak || 0}
+              </div>
+            </div>
+
+            {/* ROI */}
+            <div className={cn(
+              'card border p-3 sm:p-4',
+              (roi?.roi || 0) >= 0 ? 'border-success/20' : 'border-danger/20'
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className={cn(
+                  'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center border',
+                  (roi?.roi || 0) >= 0 ? 'bg-success/20 border-success/30' : 'bg-danger/20 border-danger/30'
+                )}>
+                  <svg className={cn('w-3.5 h-3.5 sm:w-4 sm:h-4', (roi?.roi || 0) >= 0 ? 'text-success' : 'text-danger')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Battle ROI</span>
+              </div>
+              <div className={cn('text-xl sm:text-2xl font-black', (roi?.roi || 0) >= 0 ? 'text-success' : 'text-danger')}>
+                {(roi?.roi || 0) >= 0 ? '+' : ''}{(roi?.roi || 0).toFixed(1)}%
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-tertiary mt-1">
+                from battles
+              </div>
+            </div>
+
+            {/* Recent Form */}
+            <div className="card border border-accent/20 p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/20 flex items-center justify-center border border-accent/30">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider">Recent Form</span>
+              </div>
+              <div className="mt-1">
+                <RecentFormIndicator form={recentForm} maxItems={5} size="md" />
+              </div>
+              <div className="text-[10px] sm:text-xs text-text-tertiary mt-2">
+                Last 5 battles
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bet History */}
       <div className="card mt-6 border border-rust/30">
