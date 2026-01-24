@@ -2495,6 +2495,8 @@ io.on('connection', (socket) => {
       const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
       walletAddress = authenticatedWallet;
       battleManager.registerWalletSocket(authenticatedWallet, socket.id);
+      // Register for event notifications
+      eventManager.registerWalletSocket(authenticatedWallet, socket.id);
     } catch (error: any) {
       // SECURITY: No fallback - require authentication for wallet registration
       socket.emit('error', 'Authentication required to register wallet');
@@ -2979,6 +2981,48 @@ io.on('connection', (socket) => {
   });
 
   // ===================
+  // Event Socket Handlers
+  // ===================
+
+  // Subscribe to all events list updates
+  socket.on('subscribe_events' as any, () => {
+    const rateCheck = checkSocketRateLimit(socket.id, '', 'subscribe_events', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    socket.join('events');
+    const events = eventManager.getUpcomingEvents();
+    socket.emit('events_list' as any, { events });
+  });
+
+  socket.on('unsubscribe_events' as any, () => {
+    socket.leave('events');
+  });
+
+  // Join a specific event room for real-time updates
+  socket.on('join_event_room' as any, (eventId: string) => {
+    const rateCheck = checkSocketRateLimit(socket.id, '', 'join_event_room', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    socket.join(`event:${eventId}`);
+    socketLogger.debug('Socket joined event room', { socketId: socket.id, eventId });
+
+    // Send current event state
+    const result = eventManager.getEvent(eventId);
+    if (result) {
+      socket.emit('event_state' as any, result);
+    }
+  });
+
+  socket.on('leave_event_room' as any, (eventId: string) => {
+    socket.leave(`event:${eventId}`);
+    socketLogger.debug('Socket left event room', { socketId: socket.id, eventId });
+  });
+
+  // ===================
   // Battle Chat Socket Handlers
   // ===================
 
@@ -3106,6 +3150,7 @@ io.on('connection', (socket) => {
     if (walletAddress) {
       battleManager.leaveMatchmaking(walletAddress);
       battleManager.unregisterWalletSocket(walletAddress);
+      eventManager.unregisterWalletSocket(walletAddress);
       // Keep challenge notification subscription active for grace period (don't unsubscribe on disconnect)
     }
   });
