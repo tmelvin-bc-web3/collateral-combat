@@ -51,6 +51,7 @@ export type NotificationType =
   | 'leaderboard_rank_change'
   | 'achievement_unlocked'
   | 'tournament_match_ready'
+  | 'event_starting'
   | 'system';
 
 export interface Notification {
@@ -340,5 +341,20 @@ export function notifyTournamentMatchReady(
     title: 'Tournament Match Ready!',
     message: `Your ${roundName} match in ${tournamentName} is ready. Time to battle!`,
     data: { tournamentName, opponentWallet, round, roundName },
+  });
+}
+
+export function notifyEventStarting(
+  walletAddress: string,
+  eventName: string,
+  eventId: string,
+  startsInMinutes: number
+): Notification {
+  return createNotification({
+    walletAddress,
+    type: 'event_starting',
+    title: 'Event Starting Soon!',
+    message: `${eventName} begins in ${startsInMinutes} minute${startsInMinutes !== 1 ? 's' : ''}!`,
+    data: { eventId, eventName, startsInMinutes },
   });
 }
