@@ -1,9 +1,11 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import Link from 'next/link';
 import { NAV_TABS, NavTab } from '@/types/navigation';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
 /**
  * Icon component for bottom navigation tabs
@@ -95,21 +97,61 @@ const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
  * Bottom tab navigation for mobile viewport
  * Fixed to bottom, hidden on desktop (md:hidden)
  * Implements 44px minimum touch targets per accessibility guidelines (NAV-02)
+ * Supports horizontal swipe gestures for tab navigation (NAV-04)
  */
 export function BottomNavBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58();
 
   /**
    * Construct the href for a tab, replacing wallet placeholder if needed
    */
-  const getTabHref = (tab: NavTab): string => {
-    if (tab.id === 'profile') {
-      return walletAddress ? `/profile/${walletAddress}` : '/profile';
+  const getTabHref = useCallback(
+    (tab: NavTab): string => {
+      if (tab.id === 'profile') {
+        return walletAddress ? `/profile/${walletAddress}` : '/profile';
+      }
+      return tab.href;
+    },
+    [walletAddress]
+  );
+
+  /**
+   * Get current tab index based on pathname
+   */
+  const currentTabIndex = useMemo(() => {
+    const index = NAV_TABS.findIndex((tab) => tab.isActive(pathname));
+    return index >= 0 ? index : 0;
+  }, [pathname]);
+
+  /**
+   * Navigate to adjacent tab on swipe
+   */
+  const handleSwipeLeft = useCallback(() => {
+    // Swipe left = go to next tab
+    if (currentTabIndex < NAV_TABS.length - 1) {
+      const nextTab = NAV_TABS[currentTabIndex + 1];
+      router.push(getTabHref(nextTab));
     }
-    return tab.href;
-  };
+  }, [currentTabIndex, router, getTabHref]);
+
+  const handleSwipeRight = useCallback(() => {
+    // Swipe right = go to previous tab
+    if (currentTabIndex > 0) {
+      const prevTab = NAV_TABS[currentTabIndex - 1];
+      router.push(getTabHref(prevTab));
+    }
+  }, [currentTabIndex, router, getTabHref]);
+
+  // Attach swipe gesture handler
+  const swipeRef = useSwipeNavigation({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+    threshold: 50,
+    maxVerticalDeviation: 100,
+  });
 
   return (
     <nav
@@ -120,7 +162,8 @@ export function BottomNavBar() {
       {/* Rust accent line at top */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rust to-transparent opacity-60" />
 
-      <div className="grid grid-cols-4">
+      {/* Swipeable container wrapping the tabs */}
+      <div ref={swipeRef} className="grid grid-cols-4">
         {NAV_TABS.map((tab) => {
           const isActive = tab.isActive(pathname);
           const href = getTabHref(tab);
