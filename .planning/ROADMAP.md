@@ -158,6 +158,7 @@ Plans:
 **Goal**: Fighters have rich profiles that showcase their trading reputation
 **Depends on**: Phase 10 (battles generate stats), Phase 12 (share cards reference profiles)
 **Requirements**: PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, PROF-06, PROF-07, PROF-08
+**Plans**: 4 plans
 
 **Success Criteria** (what must be TRUE):
 1. Fighter profile displays win/loss record with ELO ranking and tier badge
@@ -166,12 +167,11 @@ Plans:
 4. Favorite asset tracking shows fighter's preferred markets
 5. Two fighters can be compared side-by-side in profile comparison view
 
-**Audit First:**
-- Check existing `progressionService.ts` for stats infrastructure
-- Check existing profile pages in `/web/src/app/profile/`
-- Check database schema for battle history
-
-**Plans**: TBD (phase planning)
+Plans:
+- [ ] 13-01-PLAN.md — Backend fighter stats service and API endpoints
+- [ ] 13-02-PLAN.md — EloTierBadge and RecentFormIndicator components
+- [ ] 13-03-PLAN.md — Extended profile page with battle stats
+- [ ] 13-04-PLAN.md — Profile comparison view
 
 ---
 
@@ -215,7 +215,7 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 | 10. Battle Core | v2.0 | 7/7 | Complete | 2026-01-23 |
 | 11. Spectator Experience | v2.0 | 4/4 | Complete | 2026-01-23 |
 | 12. Social & Engagement | v2.0 | 5/5 | Complete | 2026-01-23 |
-| 13. Fighter Identity | v2.0 | 0/? | Pending | — |
+| 13. Fighter Identity | v2.0 | 0/4 | Pending | — |
 | 14. Events & Competitions | v2.0 | 0/? | Pending | — |
 
 ---
@@ -223,4 +223,4 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
 *v2.0 phases: 10-14 (5 phases, requirements mapped)*
-*Last updated: 2026-01-23 after Phase 12 complete*
+*Last updated: 2026-01-23 after Phase 13 planning*
