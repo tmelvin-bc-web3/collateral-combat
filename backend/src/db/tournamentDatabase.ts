@@ -74,6 +74,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tournaments_start ON tournaments(scheduled_start_time);
   CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id);
   CREATE INDEX IF NOT EXISTS idx_matches_status ON tournament_matches(status);
+
+  -- Tournament leaderboard (aggregated stats)
+  CREATE TABLE IF NOT EXISTS tournament_leaderboard (
+    wallet_address TEXT PRIMARY KEY,
+    tournaments_entered INTEGER DEFAULT 0,
+    tournaments_won INTEGER DEFAULT 0,
+    total_matches_played INTEGER DEFAULT 0,
+    total_matches_won INTEGER DEFAULT 0,
+    total_earnings_lamports INTEGER DEFAULT 0,
+    best_finish INTEGER,
+    last_tournament_at INTEGER,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_leaderboard_earnings ON tournament_leaderboard(total_earnings_lamports DESC);
+  CREATE INDEX IF NOT EXISTS idx_leaderboard_wins ON tournament_leaderboard(tournaments_won DESC);
 `);
 
 // Types
@@ -113,6 +129,18 @@ export interface TournamentMatch {
   battleId: string | null;
   scheduledTime: number | null;
   status: TournamentMatchStatus;
+}
+
+export interface TournamentLeaderboardEntry {
+  rank: number;
+  walletAddress: string;
+  tournamentsEntered: number;
+  tournamentsWon: number;
+  totalMatchesPlayed: number;
+  totalMatchesWon: number;
+  totalEarningsLamports: number;
+  bestFinish: number | null;
+  lastTournamentAt: number | null;
 }
 
 // Prepared statements
@@ -169,6 +197,48 @@ const setMatchPlayersStmt = db.prepare(`
 `);
 const updatePlayer1Stmt = db.prepare(`UPDATE tournament_matches SET player1_wallet = ? WHERE id = ?`);
 const updatePlayer2Stmt = db.prepare(`UPDATE tournament_matches SET player2_wallet = ? WHERE id = ?`);
+
+// Leaderboard prepared statements
+const getLeaderboardStmt = db.prepare(`
+  SELECT * FROM tournament_leaderboard
+  ORDER BY total_earnings_lamports DESC
+  LIMIT ? OFFSET ?
+`);
+
+const getLeaderboardByWinsStmt = db.prepare(`
+  SELECT * FROM tournament_leaderboard
+  ORDER BY tournaments_won DESC, total_earnings_lamports DESC
+  LIMIT ? OFFSET ?
+`);
+
+const getPlayerStatsStmt = db.prepare(`
+  SELECT * FROM tournament_leaderboard WHERE wallet_address = ?
+`);
+
+const upsertLeaderboardStmt = db.prepare(`
+  INSERT INTO tournament_leaderboard (
+    wallet_address, tournaments_entered, tournaments_won,
+    total_matches_played, total_matches_won, total_earnings_lamports,
+    best_finish, last_tournament_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(wallet_address) DO UPDATE SET
+    tournaments_entered = tournaments_entered + excluded.tournaments_entered,
+    tournaments_won = tournaments_won + excluded.tournaments_won,
+    total_matches_played = total_matches_played + excluded.total_matches_played,
+    total_matches_won = total_matches_won + excluded.total_matches_won,
+    total_earnings_lamports = total_earnings_lamports + excluded.total_earnings_lamports,
+    best_finish = CASE
+      WHEN excluded.best_finish IS NOT NULL AND (best_finish IS NULL OR excluded.best_finish < best_finish)
+      THEN excluded.best_finish
+      ELSE best_finish
+    END,
+    last_tournament_at = excluded.last_tournament_at,
+    updated_at = excluded.updated_at
+`);
+
+const getLeaderboardCountStmt = db.prepare(`
+  SELECT COUNT(*) as count FROM tournament_leaderboard
+`);
 
 // Functions
 export function createTournament(
@@ -318,6 +388,73 @@ export function advanceWinner(matchId: string, winnerWallet: string): Tournament
   });
 
   return advanceTransaction(matchId, winnerWallet);
+}
+
+// Leaderboard functions
+export function getLeaderboard(
+  limit: number = 50,
+  offset: number = 0,
+  sortBy: 'earnings' | 'wins' = 'earnings'
+): TournamentLeaderboardEntry[] {
+  const stmt = sortBy === 'wins' ? getLeaderboardByWinsStmt : getLeaderboardStmt;
+  const rows = stmt.all(limit, offset) as any[];
+
+  return rows.map((row, index) => ({
+    rank: offset + index + 1,
+    walletAddress: row.wallet_address,
+    tournamentsEntered: row.tournaments_entered,
+    tournamentsWon: row.tournaments_won,
+    totalMatchesPlayed: row.total_matches_played,
+    totalMatchesWon: row.total_matches_won,
+    totalEarningsLamports: row.total_earnings_lamports,
+    bestFinish: row.best_finish,
+    lastTournamentAt: row.last_tournament_at
+  }));
+}
+
+export function getPlayerTournamentStats(walletAddress: string): TournamentLeaderboardEntry | null {
+  const row = getPlayerStatsStmt.get(walletAddress) as any;
+  if (!row) return null;
+
+  return {
+    rank: 0, // Would need separate query to determine rank
+    walletAddress: row.wallet_address,
+    tournamentsEntered: row.tournaments_entered,
+    tournamentsWon: row.tournaments_won,
+    totalMatchesPlayed: row.total_matches_played,
+    totalMatchesWon: row.total_matches_won,
+    totalEarningsLamports: row.total_earnings_lamports,
+    bestFinish: row.best_finish,
+    lastTournamentAt: row.last_tournament_at
+  };
+}
+
+export function updateLeaderboardEntry(
+  walletAddress: string,
+  tournamentsEntered: number,
+  tournamentsWon: number,
+  matchesPlayed: number,
+  matchesWon: number,
+  earnings: number,
+  finish: number | null
+): void {
+  const now = Date.now();
+  upsertLeaderboardStmt.run(
+    walletAddress,
+    tournamentsEntered,
+    tournamentsWon,
+    matchesPlayed,
+    matchesWon,
+    earnings,
+    finish,
+    now,
+    now
+  );
+}
+
+export function getLeaderboardCount(): number {
+  const row = getLeaderboardCountStmt.get() as any;
+  return row?.count || 0;
 }
 
 function mapTournamentRow(row: any): Tournament {
