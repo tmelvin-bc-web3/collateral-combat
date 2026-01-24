@@ -239,5 +239,111 @@ export function getPlayerStats(walletAddress: string): PlayerBattleStats {
   };
 }
 
+// ===================
+// Streak Calculations
+// ===================
+
+export interface BattleStreaks {
+  currentStreak: number;  // Positive = win streak, negative = loss streak
+  bestStreak: number;     // Best win streak ever
+}
+
+/**
+ * Get battle streaks for a wallet.
+ * Calculates current win/loss streak and best win streak ever.
+ */
+export function getBattleStreaks(walletAddress: string): BattleStreaks {
+  // Get all battles ordered by time (most recent first)
+  const history = getBattleHistory(walletAddress, 100);
+
+  if (history.length === 0) {
+    return { currentStreak: 0, bestStreak: 0 };
+  }
+
+  // Calculate current streak (from most recent battles)
+  let currentStreak = 0;
+  let currentStreakType: 'win' | 'loss' | null = null;
+
+  for (const battle of history) {
+    if (battle.result === 'tie') {
+      // Ties break the streak
+      break;
+    }
+
+    if (currentStreakType === null) {
+      // First non-tie result sets the streak type
+      currentStreakType = battle.result === 'win' ? 'win' : 'loss';
+      currentStreak = battle.result === 'win' ? 1 : -1;
+    } else if (
+      (currentStreakType === 'win' && battle.result === 'win') ||
+      (currentStreakType === 'loss' && battle.result === 'loss')
+    ) {
+      // Continue the streak
+      currentStreak += battle.result === 'win' ? 1 : -1;
+    } else {
+      // Streak broken by opposite result
+      break;
+    }
+  }
+
+  // Calculate best win streak ever (scan all battles chronologically)
+  const reversedHistory = [...history].reverse();  // Oldest first
+  let bestStreak = 0;
+  let tempStreak = 0;
+
+  for (const battle of reversedHistory) {
+    if (battle.result === 'win') {
+      tempStreak++;
+      bestStreak = Math.max(bestStreak, tempStreak);
+    } else {
+      tempStreak = 0;
+    }
+  }
+
+  return { currentStreak, bestStreak };
+}
+
+// ===================
+// ROI Calculations
+// ===================
+
+export interface BattleROI {
+  roi: number;           // Return on investment as percentage
+  totalWagered: number;  // Total SOL wagered
+  totalPayout: number;   // Total SOL received back
+}
+
+/**
+ * Get ROI statistics for a wallet.
+ * Calculates return on investment from all battles.
+ */
+export function getBattleROI(walletAddress: string): BattleROI {
+  // Get all battles
+  const history = getBattleHistory(walletAddress, 1000);
+
+  if (history.length === 0) {
+    return { roi: 0, totalWagered: 0, totalPayout: 0 };
+  }
+
+  let totalWagered = 0;
+  let totalPayout = 0;
+
+  for (const battle of history) {
+    totalWagered += battle.entryFee;
+    totalPayout += battle.payout;
+  }
+
+  // ROI = ((totalPayout - totalWagered) / totalWagered) * 100
+  const roi = totalWagered > 0
+    ? ((totalPayout - totalWagered) / totalWagered) * 100
+    : 0;
+
+  return {
+    roi: Math.round(roi * 100) / 100,  // Round to 2 decimal places
+    totalWagered: Math.round(totalWagered * 1000) / 1000,
+    totalPayout: Math.round(totalPayout * 1000) / 1000,
+  };
+}
+
 // Initialize on module load
 initializeBattleHistoryDatabase();

@@ -44,6 +44,7 @@ import * as challengesDb from './db/challengesDatabase';
 import * as battleHistoryDb from './db/battleHistoryDatabase';
 import * as eloDb from './db/eloDatabase';
 import * as eloService from './services/eloService';
+import * as fighterStatsService from './services/fighterStatsService';
 import { ensureTokenVersion } from './db/authDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter, waitlistLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
@@ -389,7 +390,59 @@ app.get('/api/battles/record/:battleId', (req, res) => {
   }
 });
 
-// Get specific battle (must be after more specific routes like /history, /stats, /record)
+// ===================
+// Fighter Stats API (Fighter Identity Feature)
+// ===================
+
+// GET /api/battles/style/:wallet - Get fighter's trading style
+app.get('/api/battles/style/:wallet', async (req, res) => {
+  try {
+    const style = await fighterStatsService.getTradingStyle(req.params.wallet);
+    res.json(style);
+  } catch (error) {
+    console.error('[API] Error fetching trading style:', error);
+    res.status(500).json({ error: 'Failed to fetch trading style' });
+  }
+});
+
+// GET /api/battles/favorites/:wallet - Get fighter's favorite assets
+app.get('/api/battles/favorites/:wallet', (req, res) => {
+  try {
+    const favorites = fighterStatsService.getFavoriteAssets(req.params.wallet);
+    res.json({ favorites });
+  } catch (error) {
+    console.error('[API] Error fetching favorite assets:', error);
+    res.status(500).json({ error: 'Failed to fetch favorite assets' });
+  }
+});
+
+// GET /api/battles/form/:wallet - Get fighter's recent form
+app.get('/api/battles/form/:wallet', (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 5, 20);
+    const form = fighterStatsService.getRecentForm(req.params.wallet, limit);
+    res.json({ form });
+  } catch (error) {
+    console.error('[API] Error fetching recent form:', error);
+    res.status(500).json({ error: 'Failed to fetch recent form' });
+  }
+});
+
+// GET /api/battles/compare/:wallet1/:wallet2 - Compare two fighters
+app.get('/api/battles/compare/:wallet1/:wallet2', async (req, res) => {
+  try {
+    const comparison = await fighterStatsService.getComparison(
+      req.params.wallet1,
+      req.params.wallet2
+    );
+    res.json(comparison);
+  } catch (error) {
+    console.error('[API] Error comparing fighters:', error);
+    res.status(500).json({ error: 'Failed to compare fighters' });
+  }
+});
+
+// Get specific battle (must be after more specific routes like /history, /stats, /record, /style, /favorites, /form, /compare)
 app.get('/api/battles/:id', (req, res) => {
   const battle = battleManager.getBattle(req.params.id);
   if (!battle) {
