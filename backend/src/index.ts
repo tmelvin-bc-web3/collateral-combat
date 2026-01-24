@@ -28,6 +28,7 @@ import { pythVerificationService } from './services/pythVerificationService';
 import { chatService } from './services/chatService';
 import { scheduledMatchManager } from './services/scheduledMatchManager';
 import { eventManager } from './services/eventManager';
+import { tournamentManager } from './services/tournamentManager';
 import { startBackupScheduler } from './services/backupService';
 import adminRoutes from './routes/admin';
 import { shareRouter } from './routes/share';
@@ -53,7 +54,7 @@ import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, req
 import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
 import { checkAndMarkSignature } from './utils/replayCache';
 import { TRADABLE_ASSETS } from './tokens';
-import { BattleConfig, BattleDuration, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType, EventManagerEvent } from './types';
+import { BattleConfig, BattleDuration, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType, EventManagerEvent, TournamentEvent } from './types';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { validateBattleConfig } from './validation';
@@ -2937,6 +2938,46 @@ io.on('connection', (socket) => {
   });
 
   // ===================
+  // Tournament Socket Handlers
+  // ===================
+
+  // Subscribe to all tournaments list
+  socket.on('subscribe_tournaments' as any, () => {
+    const rateCheck = checkSocketRateLimit(socket.id, '', 'subscribe_tournaments', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    socket.join('tournaments');
+    const upcoming = tournamentManager.getUpcomingTournaments();
+    const active = tournamentManager.getActiveTournaments();
+    socket.emit('tournaments_list' as any, { upcoming, active });
+  });
+
+  socket.on('unsubscribe_tournaments' as any, () => {
+    socket.leave('tournaments');
+  });
+
+  // Subscribe to specific tournament updates
+  socket.on('subscribe_tournament' as any, (tournamentId: string) => {
+    const rateCheck = checkSocketRateLimit(socket.id, '', 'subscribe_tournament', SUBSCRIPTION_LIMIT);
+    if (!rateCheck.allowed) {
+      socket.emit('error', rateCheck.error || 'Rate limit exceeded');
+      return;
+    }
+    socket.join(`tournament:${tournamentId}`);
+    const tournament = tournamentManager.getTournament(tournamentId);
+    if (tournament) {
+      const matches = tournamentManager.getTournamentMatches(tournamentId);
+      socket.emit('tournament_state' as any, { tournament, matches });
+    }
+  });
+
+  socket.on('unsubscribe_tournament' as any, (tournamentId: string) => {
+    socket.leave(`tournament:${tournamentId}`);
+  });
+
+  // ===================
   // Battle Chat Socket Handlers
   // ===================
 
@@ -3902,6 +3943,40 @@ app.get('/api/events/:id/subscribed', requireAuth(), standardLimiter, (req: Requ
   res.json({ subscribed: isSubscribed });
 });
 
+// ===================
+// Tournament (Bracket) Endpoints
+// ===================
+
+// Get upcoming/active tournaments
+app.get('/api/tournaments', (req: Request, res: Response) => {
+  const upcoming = tournamentManager.getUpcomingTournaments();
+  const active = tournamentManager.getActiveTournaments();
+  res.json({ upcoming, active });
+});
+
+// Get tournament details by ID
+app.get('/api/tournaments/:id', (req: Request, res: Response) => {
+  const tournament = tournamentManager.getTournament(req.params.id);
+  if (!tournament) {
+    res.status(404).json({ error: 'Tournament not found' });
+    return;
+  }
+  const matches = tournamentManager.getTournamentMatches(req.params.id);
+  const players = tournamentManager.getRegisteredPlayers(req.params.id);
+  res.json({ tournament, matches, players });
+});
+
+// Register for tournament (authenticated)
+app.post('/api/tournaments/:id/register', requireAuth(), writeLimiter, async (req: Request, res: Response) => {
+  try {
+    await tournamentManager.registerPlayer(req.params.id, req.authenticatedWallet!);
+    res.status(201).json({ success: true, message: 'Registered for tournament' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to register';
+    res.status(400).json({ error: message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
@@ -3991,6 +4066,22 @@ async function start() {
   // Initialize Event Manager (Fight Cards)
   eventManager.initialize();
   logger.info('Event manager started');
+
+  // Initialize Tournament Manager (Bracket Tournaments)
+  tournamentManager.initialize();
+  tournamentManager.setSocketIO(io);
+  logger.info('Tournament manager started');
+
+  // Subscribe to Tournament Manager events for WebSocket notifications
+  tournamentManager.subscribe((event: TournamentEvent) => {
+    // Broadcast to all connected clients in the tournament room
+    io.to(`tournament:${event.tournamentId}`).emit('tournament_update' as any, event);
+
+    // Also broadcast to general tournaments room for list updates
+    if (['tournament_created', 'tournament_completed'].includes(event.type)) {
+      io.to('tournaments').emit('tournaments_list_update' as any, event);
+    }
+  });
 
   // Subscribe to Event Manager events for WebSocket notifications
   eventManager.subscribe((event: EventManagerEvent) => {
