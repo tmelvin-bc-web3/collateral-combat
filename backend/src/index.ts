@@ -27,6 +27,7 @@ import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
 import { pythVerificationService } from './services/pythVerificationService';
 import { chatService } from './services/chatService';
 import { scheduledMatchManager } from './services/scheduledMatchManager';
+import { eventManager } from './services/eventManager';
 import { startBackupScheduler } from './services/backupService';
 import adminRoutes from './routes/admin';
 import { shareRouter } from './routes/share';
@@ -52,7 +53,7 @@ import { requireAuth, requireOwnWallet, requireAdmin, requireEntryOwnership, req
 import { createToken, verifyToken, verifyTokenSync } from './utils/jwt';
 import { checkAndMarkSignature } from './utils/replayCache';
 import { TRADABLE_ASSETS } from './tokens';
-import { BattleConfig, BattleDuration, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType } from './types';
+import { BattleConfig, BattleDuration, ServerToClientEvents, ClientToServerEvents, PredictionSide, DraftTournamentTier, WagerType, EventManagerEvent } from './types';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { validateBattleConfig } from './validation';
@@ -3800,6 +3801,107 @@ app.get('/api/token-wars/upcoming', (req: Request, res: Response) => {
   res.json(upcoming);
 });
 
+// ===================
+// Event (Fight Card) Routes
+// ===================
+
+// Get upcoming events (public)
+app.get('/api/events', (req: Request, res: Response) => {
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+  const events = eventManager.getUpcomingEvents(limit);
+  res.json({ events });
+});
+
+// Get single event with battles (public)
+app.get('/api/events/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = eventManager.getEvent(id);
+
+  if (!result) {
+    res.status(404).json({ error: 'Event not found' });
+    return;
+  }
+
+  res.json(result);
+});
+
+// Create event (admin-only)
+app.post('/api/events', requireAuth(), requireAdmin(), writeLimiter, (req: Request, res: Response) => {
+  try {
+    const { name, description, scheduledStartTime, entryFeeLamports, maxParticipants } = req.body;
+
+    // Validate required fields
+    if (!name || !scheduledStartTime || !entryFeeLamports || !maxParticipants) {
+      res.status(400).json({ error: 'Missing required fields: name, scheduledStartTime, entryFeeLamports, maxParticipants' });
+      return;
+    }
+
+    const event = eventManager.createEvent({
+      name,
+      description,
+      scheduledStartTime,
+      entryFeeLamports,
+      maxParticipants,
+      createdBy: req.authenticatedWallet!,
+    });
+
+    res.status(201).json({ event });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create event';
+    res.status(400).json({ error: message });
+  }
+});
+
+// Add battle to event card (admin-only)
+app.post('/api/events/:id/battles', requireAuth(), requireAdmin(), writeLimiter, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { player1Wallet, player2Wallet, isMainEvent } = req.body;
+
+    if (!player1Wallet || !player2Wallet) {
+      res.status(400).json({ error: 'Missing required fields: player1Wallet, player2Wallet' });
+      return;
+    }
+
+    const battle = eventManager.addBattleToCard(id, player1Wallet, player2Wallet, isMainEvent || false);
+    res.status(201).json({ battle });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add battle';
+    res.status(400).json({ error: message });
+  }
+});
+
+// Subscribe to event notifications (authenticated)
+app.post('/api/events/:id/subscribe', requireAuth(), standardLimiter, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    eventManager.subscribeUserToEvent(id, req.authenticatedWallet!);
+    res.json({ success: true, message: 'Subscribed to event' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to subscribe';
+    res.status(400).json({ error: message });
+  }
+});
+
+// Unsubscribe from event notifications (authenticated)
+app.delete('/api/events/:id/subscribe', requireAuth(), standardLimiter, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const success = eventManager.unsubscribeUserFromEvent(id, req.authenticatedWallet!);
+    res.json({ success, message: success ? 'Unsubscribed from event' : 'Was not subscribed' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to unsubscribe';
+    res.status(400).json({ error: message });
+  }
+});
+
+// Check if user is subscribed to event (authenticated)
+app.get('/api/events/:id/subscribed', requireAuth(), standardLimiter, (req: Request, res: Response) => {
+  const { id } = req.params;
+  const isSubscribed = eventManager.isUserSubscribed(id, req.authenticatedWallet!);
+  res.json({ subscribed: isSubscribed });
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
@@ -3885,6 +3987,35 @@ async function start() {
   // Initialize scheduled match system
   scheduledMatchManager.initialize();
   logger.info('Scheduled match system started');
+
+  // Initialize Event Manager (Fight Cards)
+  eventManager.initialize();
+  logger.info('Event manager started');
+
+  // Subscribe to Event Manager events for WebSocket notifications
+  eventManager.subscribe((event: EventManagerEvent) => {
+    // Broadcast to all connected clients in the event room
+    io.to(`event:${event.eventId}`).emit('event_update' as any, event);
+
+    // Also broadcast to general events room for event list updates
+    if (['event_created', 'event_cancelled', 'event_completed'].includes(event.type)) {
+      io.to('events').emit('events_list_update' as any, event);
+    }
+
+    // For event starting notifications, send to individual subscribers
+    if (event.type === 'event_starting' && event.data?.subscribers) {
+      event.data.subscribers.forEach((wallet: string) => {
+        const socketId = battleManager.getSocketIdForWallet(wallet);
+        if (socketId) {
+          io.to(socketId).emit('event_starting_notification' as any, {
+            eventId: event.eventId,
+            eventName: event.data.eventName,
+            minutesUntilStart: event.data.minutesUntilStart,
+          });
+        }
+      });
+    }
+  });
 
   // Subscribe to scheduled match events for WebSocket notifications
   scheduledMatchManager.subscribe((event) => {
