@@ -4,7 +4,7 @@
 
 - [x] **v1.0 Mainnet Launch** - Phases 1-4 (shipped 2026-01-22)
 - [x] **v1.1 Code & Security Audit** - Phases 5-9 (shipped 2026-01-23)
-- [ ] **v2.0 Battles System** - Phases 10-14 (in progress)
+- [x] **v2.0 Battles System** - Phases 10-14 (shipped 2026-01-24)
 
 ## Phases
 
@@ -73,8 +73,8 @@
 - [x] **Phase 10: Battle Core** - Matchmaking, execution, and settlement engine
 - [x] **Phase 11: Spectator Experience** - Live viewer and betting system
 - [x] **Phase 12: Social & Engagement** - Chat and sharing for virality
-- [ ] **Phase 13: Fighter Identity** - Profiles and statistics
-- [ ] **Phase 14: Events & Competitions** - Fight cards and tournaments
+- [x] **Phase 13: Fighter Identity** - Profiles and statistics
+- [x] **Phase 14: Events & Competitions** - Fight cards and tournaments
 
 ---
 
@@ -196,12 +196,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Event database and manager service (EVENT-01, EVENT-04)
-- [ ] 14-02-PLAN.md — Events calendar and countdown UI (EVENT-02, EVENT-05)
-- [ ] 14-03-PLAN.md — Event notifications (EVENT-03)
-- [ ] 14-04-PLAN.md — Tournament database and manager (TOUR-01, TOUR-02, TOUR-03, TOUR-06)
-- [ ] 14-05-PLAN.md — Tournament bracket visualization (TOUR-04)
-- [ ] 14-06-PLAN.md — Tournament leaderboard (TOUR-05)
+- [x] 14-01-PLAN.md — Event database and manager service (EVENT-01, EVENT-04)
+- [x] 14-02-PLAN.md — Events calendar and countdown UI (EVENT-02, EVENT-05)
+- [x] 14-03-PLAN.md — Event notifications (EVENT-03)
+- [x] 14-04-PLAN.md — Tournament database and manager (TOUR-01, TOUR-02, TOUR-03, TOUR-06)
+- [x] 14-05-PLAN.md — Tournament bracket visualization (TOUR-04)
+- [x] 14-06-PLAN.md — Tournament leaderboard (TOUR-05)
 
 ---
 
@@ -225,11 +225,11 @@ Phases execute in numeric order: 10 -> 11 -> 12 -> 13 -> 14
 | 11. Spectator Experience | v2.0 | 4/4 | Complete | 2026-01-23 |
 | 12. Social & Engagement | v2.0 | 5/5 | Complete | 2026-01-23 |
 | 13. Fighter Identity | v2.0 | 5/5 | Complete | 2026-01-24 |
-| 14. Events & Competitions | v2.0 | 0/6 | Pending | — |
+| 14. Events & Competitions | v2.0 | 6/6 | Complete | 2026-01-24 |
 
 ---
 
 *Roadmap created: 2026-01-22*
 *v1.1 phases: 5-9 (5 phases, 10 plans total)*
 *v2.0 phases: 10-14 (5 phases, requirements mapped)*
-*Last updated: 2026-01-24 after Phase 13 gap closure execution complete*
+*Last updated: 2026-01-24 after Phase 14 execution complete — v2.0 milestone shipped*

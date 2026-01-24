@@ -2,17 +2,38 @@
 
 ## What This Is
 
-A production-ready PvP skill-based crypto betting platform on Solana where traders compete against each other predicting price movements — no house edge, pure player vs player. Fully security-hardened, mobile-responsive, with operational monitoring ready for mainnet.
+A production-ready PvP skill-based crypto betting platform on Solana where traders compete against each other predicting price movements — no house edge, pure player vs player. Features 1v1 leveraged battles with spectator betting, social features, fighter profiles, and tournament infrastructure.
 
 ## Core Value
 
 Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
 
+## Current State (v2.0)
+
+**Shipped:** 2026-01-24
+
+v2.0 Battles System delivered:
+- ELO-based matchmaking with 5 tiers and challenge boards
+- Real-time tug-of-war PnL visualization
+- Spectator betting with quick bet strip and live odds
+- Battle chat with emoji reactions
+- Twitter share cards with server-side image generation
+- Fighter profiles with stats, comparison, and trading style
+- Events calendar with notifications
+- Single elimination tournament brackets
+
+**Codebase:**
+- ~100+ files across frontend/backend/contracts
+- Frontend: Next.js 16, React, TailwindCSS, Socket.IO
+- Backend: Express, Socket.IO, SQLite, TypeScript
+- Smart contracts: Rust/Anchor on Solana
+- Deployment: Vercel (frontend), Render (backend)
+
 ## Requirements
 
 ### Validated
 
-<!-- Shipped and confirmed in v1.0 -->
+<!-- Shipped and confirmed -->
 
 - ✓ **Oracle Predictions** — Real-time price betting using Pyth oracles (v0-devnet)
 - ✓ **1v1 Battles** — Head-to-head prediction competitions (v0-devnet)
@@ -31,81 +52,54 @@ Players can confidently bet against each other on price predictions with fair, t
 - ✓ **Security Audit** — Input validation, auth hardening, race condition fixes (v1.1)
 - ✓ **Smart Contract Audit** — Sealevel attacks, betting logic, oracle security verified (v1.1)
 - ✓ **Multi-sig Plan** — Squads Protocol setup documented, scripts ready (v1.1)
+- ✓ **Battle Matchmaking** — Queue system, challenges, ELO tier matching (v2.0)
+- ✓ **Battle Execution** — Real-time PnL tracking, leverage calc, liquidation logic (v2.0)
+- ✓ **Settlement System** — Auto winner determination, instant payouts, history (v2.0)
+- ✓ **Spectator Viewer** — Live battle display, positions, price chart (v2.0)
+- ✓ **Spectator Betting UX** — Quick bet strip, live odds, instant payout (v2.0)
+- ✓ **Live Chat** — Battle chat, reactions, wallet-gating, rate limiting (v2.0)
+- ✓ **Social Sharing** — One-click share, auto-generated graphics (v2.0)
+- ✓ **Fighter Profiles** — W/L record, ELO rankings, streaks, comparison (v2.0)
+- ✓ **Fight Cards** — Scheduled events, countdowns, notifications (v2.0)
+- ✓ **Tournament Mode** — Brackets, elimination, prize pools, leaderboard (v2.0)
 
 ### Active
 
-<!-- v2.0 Battles System -->
-
-- [ ] Battle matchmaking — Queue system, challenges, tier/balance matching
-- [ ] Battle execution — Real-time PnL tracking, leverage calc, liquidation logic
-- [ ] Settlement system — Auto winner determination, instant payouts, history
-- [ ] Spectator viewer — Live battle display, positions, price chart
-- [ ] Spectator betting — Pick fighter, live odds, instant payout
-- [ ] Live chat — Battle chat, reactions, spam protection
-- [ ] Social sharing — One-click share, auto-generated graphics
-- [ ] Fighter profiles — W/L record, rankings, streaks
-- [ ] Fight cards — Scheduled events, countdowns, notifications
-- [ ] Tournament mode — Brackets, elimination, prize pools
-
-### Future
+<!-- Next milestone -->
 
 - [ ] Mainnet deployment — Deploy to Solana mainnet-beta
 - [ ] User acquisition — First 100 real users
 - [ ] Iteration based on feedback — Address issues found in production
+
+### Future
+
+- [ ] Battle clip/highlight generation — Video sharing for virality
+- [ ] Double elimination tournaments
+- [ ] Copy betting (follow successful bettors)
+- [ ] Clan/team competitions
+- [ ] Seasonal championships
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
 - House betting / liquidity pools — Undermines core PvP value prop
-- Social features beyond spectating — Focus on core betting first
-- Mobile app — Web-first for v1, mobile later
-- Fiat on-ramp integration — Users bring their own SOL for now
+- Mobile app — Web-first for now, mobile responsive is sufficient
+- Fiat on-ramp integration — Users bring their own SOL
 - KYC/AML compliance — Assess regulatory requirements post-launch
 - Professional security audit — Deferred until 30+ days stable operation
 
-## Current Milestone: v2.0 Battles System
-
-**Goal:** Build the UFC of Crypto Trading — live 1v1 leveraged battles with spectator betting, social features, and tournament modes.
-
-**Approach:** Audit first, build second. Improve existing code where possible, only build from scratch if nothing exists.
-
-**Target features:**
-- Battle matchmaking (queue, challenges, tier matching)
-- Battle execution engine (real-time PnL, leverage, liquidation)
-- Settlement system (auto winner, instant payouts)
-- Spectator viewer (live battle display, both fighters, price chart)
-- Spectator betting (pick fighter, live odds, instant payout)
-- Live chat (battle chat, reactions, spam protection)
-- Social sharing (one-click share, auto-generated graphics)
-- Fighter profiles (W/L record, rankings, streaks)
-- Fight cards (scheduled events, countdowns, notifications)
-- Tournament mode (brackets, elimination, prize pools)
-
-**Success metrics:**
-- Battles being watched by 10+ spectators
-- Spectator bets on every battle
-- Battle clips shared on Twitter daily
-
 ## Context
-
-**Current state:** v1.0 shipped. Starting v1.1 audit cycle before mainnet.
-
-**Codebase:**
-- ~62 files, ~9,500 lines TypeScript/Rust changed in v1.0
-- Frontend: Next.js 16, React, TailwindCSS, Socket.IO
-- Backend: Express, Socket.IO, SQLite, TypeScript
-- Smart contracts: Rust/Anchor on Solana
-- Deployment: Vercel (frontend), Render (backend)
 
 **Architecture:** Hybrid on-chain/off-chain. Core betting logic (escrow, settlement) on-chain via Anchor. Game orchestration, matchmaking, real-time updates handled by Express backend with Socket.IO.
 
 **Known tech debt:**
 - Logger adoption partial (some services still use console.log)
 - Error boundary coverage limited to predict/battle pages
-- Error rate metric not explicitly in dashboard
+- Phase 14 socket events cast as 'any' (types not yet updated)
+- Placeholder favorite assets data for new fighters
 
-**Market positioning:** "The poker of crypto trading" — skill-based, no house edge, player vs player.
+**Market positioning:** "The UFC of Crypto Trading" — skill-based, no house edge, player vs player.
 
 ## Constraints
 
@@ -130,6 +124,10 @@ Players can confidently bet against each other on price predictions with fair, t
 | better-sqlite3 backup API | Safe during writes, no corruption risk | ✓ Good |
 | Kubernetes health endpoints | Standard probes, easy container deployment | ✓ Good |
 | 7-day backup retention | Balance storage cost vs recovery window | ✓ Good |
+| ELO K=32 new, K=16 established | Faster initial rating convergence | ✓ Good |
+| Wallet-gating for chat | Prevents spam, requires skin in game | ✓ Good |
+| Satori + Sharp for images | No Canvas/Puppeteer, edge-compatible | ✓ Good |
+| Single elimination tournaments | Simple, proven format for v2.0 | ✓ Good |
 
 ---
-*Last updated: 2026-01-23 after v2.0 milestone start*
+*Last updated: 2026-01-24 after v2.0 milestone*
