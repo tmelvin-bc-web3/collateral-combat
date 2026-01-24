@@ -411,9 +411,19 @@ export default function ProfilePage() {
                 <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
                   {profile?.username || formatWallet(walletAddress)}
                 </h1>
-                {progression && (
-                  <LevelBadge level={progression.currentLevel} size="lg" showTitle title={tierInfo.title} />
-                )}
+                <div className="flex items-center gap-2">
+                  {progression && (
+                    <LevelBadge level={progression.currentLevel} size="lg" showTitle title={tierInfo.title} />
+                  )}
+                  {battleStats && (
+                    <EloTierBadge
+                      tier={battleStats.tier as EloTier}
+                      elo={battleStats.elo}
+                      size="lg"
+                      showElo
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-center sm:justify-start gap-2 text-text-secondary mb-3">
