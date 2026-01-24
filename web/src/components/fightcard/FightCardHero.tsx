@@ -1,12 +1,11 @@
 'use client';
 
 import { Zap } from 'lucide-react';
-import { BattleCard } from './BattleCard';
 import { EmptyState } from './EmptyState';
-import type { Battle } from '@/types/fightcard';
+import type { FightCardBattle } from '@/types/fightcard';
 
 interface FightCardHeroProps {
-  mainEvent: Battle | null;
+  mainEvent: FightCardBattle | null;
   onWatchLive?: () => void;
   onBetNow?: () => void;
 }
@@ -67,13 +66,7 @@ export function FightCardHero({
     return (
       <div className={`flex flex-col items-center ${side === 'left' ? 'text-left' : 'text-right'}`}>
         {/* Avatar */}
-        <div
-          className="w-24 h-24 md:w-32 md:h-32 rounded-full
-            bg-gradient-to-br from-warning/40 to-fire/40
-            border-4 border-warning/50 shadow-lg shadow-warning/20
-            flex items-center justify-center mb-3
-            transition-transform hover:scale-105"
-        >
+        <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-warning/40 to-fire/40 border-4 border-warning/50 shadow-lg shadow-warning/20 flex items-center justify-center mb-3 transition-transform hover:scale-105">
           {fighter.avatarUrl ? (
             <img
               src={fighter.avatarUrl}
@@ -206,11 +199,7 @@ export function FightCardHero({
         <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4 px-6 pb-8">
           <button
             onClick={onWatchLive}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl
-              bg-gradient-to-r from-warning to-fire text-black
-              font-bold text-lg
-              hover:opacity-90 hover:scale-[1.02]
-              transition-all"
+            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-warning to-fire text-black font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all"
           >
             {status === 'live' ? 'Watch Live' : 'View Battle'}
           </button>
@@ -218,11 +207,7 @@ export function FightCardHero({
           {status === 'live' && (
             <button
               onClick={onBetNow}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl
-                bg-white/10 border border-white/20 text-white
-                font-bold text-lg
-                hover:bg-white/20
-                transition-colors"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-colors"
             >
               Bet Now
             </button>

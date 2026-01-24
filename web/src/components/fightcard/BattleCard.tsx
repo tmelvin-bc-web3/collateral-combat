@@ -1,11 +1,11 @@
 'use client';
 
-import { Eye, Zap, Users } from 'lucide-react';
+import { Eye, Zap } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
-import type { Battle } from '@/types/fightcard';
+import type { FightCardBattle } from '@/types/fightcard';
 
 interface BattleCardProps {
-  battle: Battle;
+  battle: FightCardBattle;
   variant?: 'compact' | 'featured' | 'hero';
   onClick?: () => void;
 }
@@ -52,7 +52,7 @@ export function BattleCard({
   };
 
   // Fighter avatar component
-  const FighterAvatar = ({ fighter, side }: { fighter: typeof fighter1 | null; side: 'left' | 'right' }) => {
+  const FighterAvatar = ({ fighter }: { fighter: typeof fighter1 | null }) => {
     if (!fighter) {
       return (
         <div className={`${avatarSizes[variant]} rounded-full bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center`}>
@@ -61,17 +61,12 @@ export function BattleCard({
       );
     }
 
+    const avatarBaseClasses = `${avatarSizes[variant]} rounded-full bg-gradient-to-br from-warning/30 to-fire/30 border-2 border-warning/40 flex items-center justify-center`;
+    const avatarHeroClasses = variant === 'hero' ? 'shadow-lg shadow-warning/20' : '';
+
     return (
       <div className="flex flex-col items-center gap-1">
-        <div
-          className={`
-            ${avatarSizes[variant]} rounded-full
-            bg-gradient-to-br from-warning/30 to-fire/30
-            border-2 border-warning/40
-            flex items-center justify-center
-            ${variant === 'hero' ? 'shadow-lg shadow-warning/20' : ''}
-          `}
-        >
+        <div className={`${avatarBaseClasses} ${avatarHeroClasses}`}>
           {fighter.avatarUrl ? (
             <img
               src={fighter.avatarUrl}
@@ -129,17 +124,23 @@ export function BattleCard({
     );
   };
 
+  // Build main container classes
+  const containerBaseClasses = `relative rounded-xl overflow-hidden cursor-pointer bg-black/40 backdrop-blur border border-white/10 hover:border-rust/40 hover:scale-[1.02] transition-all duration-200 ${variantClasses[variant]}`;
+  const containerHeroClasses = variant === 'hero' ? 'bg-gradient-to-br from-black/60 via-black/40 to-warning/5' : '';
+
+  // Build button classes
+  const watchBtnClasses = variant === 'hero'
+    ? 'flex-1 py-3 text-lg rounded-lg font-bold text-center bg-gradient-to-r from-warning to-fire text-black hover:opacity-90 transition-opacity'
+    : 'flex-1 py-2.5 text-sm rounded-lg font-bold text-center bg-gradient-to-r from-warning to-fire text-black hover:opacity-90 transition-opacity';
+
+  const betBtnClasses = variant === 'hero'
+    ? 'flex-1 py-3 text-lg rounded-lg font-bold text-center bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors'
+    : 'flex-1 py-2.5 text-sm rounded-lg font-bold text-center bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors';
+
   return (
     <div
       onClick={onClick}
-      className={`
-        relative rounded-xl overflow-hidden cursor-pointer
-        bg-black/40 backdrop-blur border border-white/10
-        hover:border-rust/40 hover:scale-[1.02]
-        transition-all duration-200
-        ${variantClasses[variant]}
-        ${variant === 'hero' ? 'bg-gradient-to-br from-black/60 via-black/40 to-warning/5' : ''}
-      `}
+      className={`${containerBaseClasses} ${containerHeroClasses}`}
     >
       {/* Featured badge */}
       {battle.isFeatured && variant !== 'hero' && (
@@ -150,7 +151,7 @@ export function BattleCard({
 
       {/* Fighter face-off */}
       <div className={`flex items-center justify-center gap-4 ${variant === 'hero' ? 'gap-8 md:gap-12' : ''}`}>
-        <FighterAvatar fighter={fighter1} side="left" />
+        <FighterAvatar fighter={fighter1} />
 
         {/* VS Section */}
         <div className="flex flex-col items-center gap-1">
@@ -170,7 +171,7 @@ export function BattleCard({
           )}
         </div>
 
-        <FighterAvatar fighter={fighter2} side="right" />
+        <FighterAvatar fighter={fighter2} />
       </div>
 
       {/* Stakes and leverage */}
@@ -207,28 +208,16 @@ export function BattleCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Navigate to spectate - handled by parent onClick
             }}
-            className={`
-              flex-1 py-2.5 rounded-lg font-bold text-center
-              bg-gradient-to-r from-warning to-fire text-black
-              hover:opacity-90 transition-opacity
-              ${variant === 'hero' ? 'py-3 text-lg' : 'text-sm'}
-            `}
+            className={watchBtnClasses}
           >
             Watch Live
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Navigate to bet - handled by parent onClick with ?bet=true
             }}
-            className={`
-              flex-1 py-2.5 rounded-lg font-bold text-center
-              bg-white/10 border border-white/20 text-white
-              hover:bg-white/20 transition-colors
-              ${variant === 'hero' ? 'py-3 text-lg' : 'text-sm'}
-            `}
+            className={betBtnClasses}
           >
             Bet Now
           </button>

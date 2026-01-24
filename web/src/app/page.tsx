@@ -1,312 +1,315 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PageLoading } from '@/components/ui/skeleton';
 import {
-  HeroSection,
-  FeaturedGame,
-  GameGrid,
-  LiveActivityFeed,
-  SocialProof,
-  HowItWorks,
-  HomepageData,
-  ActivityItem,
-} from '@/components/home';
-import { getSocket } from '@/lib/socket';
-import { getTokenLogo } from '@/config/tokenLogos';
+  FightCardHero,
+  LiveBattlesStrip,
+  MainCardSection,
+  UndercardGrid,
+  BetweenFightsSection,
+} from '@/components/fightcard';
+import type { FightCardBattle, SideGame } from '@/types/fightcard';
 
-// Mock data for demonstration - replace with real API/WebSocket data
-const MOCK_DATA: HomepageData = {
-  liveStats: {
-    playersOnline: 147,
-    liveGames: 23,
-    wonToday: 1234,
-    biggestWinToday: 12.5,
-  },
-  oracle: {
-    currentRound: {
-      timeRemaining: 18,
-      upPool: 12.4,
-      downPool: 8.7,
-      currentPrice: 144.23,
+// Mock battle data for development
+const MOCK_BATTLES: FightCardBattle[] = [
+  {
+    id: 'battle-main-1',
+    status: 'live',
+    fighter1: {
+      walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'DegenKing',
+      elo: 1850,
+      record: { wins: 47, losses: 12 },
     },
-    playersInGame: 47,
+    fighter2: {
+      walletAddress: '3yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'SolWhale.sol',
+      elo: 1780,
+      record: { wins: 38, losses: 15 },
+    },
+    stakes: 5,
+    leverage: 10,
+    asset: 'SOL/USD',
+    startTime: Date.now() - 120000, // Started 2 mins ago
+    spectatorCount: 23,
+    isFeatured: true,
   },
-  arena: {
-    openBattles: 5,
-    totalInPools: 34.5,
+  {
+    id: 'battle-live-1',
+    status: 'live',
+    fighter1: {
+      walletAddress: '9xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'CryptoApe',
+      elo: 1620,
+      record: { wins: 25, losses: 8 },
+    },
+    fighter2: {
+      walletAddress: '4yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'MoonBoi',
+      elo: 1590,
+      record: { wins: 22, losses: 10 },
+    },
+    stakes: 2,
+    leverage: 5,
+    asset: 'ETH/USD',
+    startTime: Date.now() - 60000,
+    spectatorCount: 12,
+  },
+  {
+    id: 'battle-live-2',
+    status: 'live',
+    fighter1: {
+      walletAddress: '1xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'DiamondHands',
+      elo: 1480,
+      record: { wins: 15, losses: 5 },
+    },
+    fighter2: {
+      walletAddress: '5yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'Rekt420',
+      elo: 1520,
+      record: { wins: 18, losses: 9 },
+    },
+    stakes: 1,
+    leverage: 20,
+    asset: 'BTC/USD',
+    startTime: Date.now() - 180000,
+    spectatorCount: 8,
+  },
+  {
+    id: 'battle-upcoming-1',
+    status: 'upcoming',
+    fighter1: {
+      walletAddress: '2xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'WAGMI_Chad',
+      elo: 1750,
+      record: { wins: 32, losses: 11 },
+    },
+    fighter2: {
+      walletAddress: '6yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'PumpItUp',
+      elo: 1720,
+      record: { wins: 29, losses: 13 },
+    },
+    stakes: 3,
+    leverage: 10,
+    asset: 'SOL/USD',
+    startTime: Date.now() + 300000, // 5 mins from now
+    spectatorCount: 0,
+    isFeatured: true,
+  },
+  {
+    id: 'battle-upcoming-2',
+    status: 'upcoming',
+    fighter1: {
+      walletAddress: '8xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'AlphaTrader',
+      elo: 1680,
+      record: { wins: 28, losses: 7 },
+    },
+    fighter2: null, // Waiting for opponent
+    stakes: 2,
+    leverage: 5,
+    asset: 'ETH/USD',
+    startTime: Date.now() + 600000, // 10 mins from now
+    spectatorCount: 0,
+  },
+  {
+    id: 'battle-upcoming-3',
+    status: 'upcoming',
+    fighter1: {
+      walletAddress: '3xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'BullRunner',
+      elo: 1550,
+      record: { wins: 19, losses: 8 },
+    },
+    fighter2: {
+      walletAddress: '7yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'ShorterPro',
+      elo: 1580,
+      record: { wins: 21, losses: 10 },
+    },
+    stakes: 0.5,
+    leverage: 2,
+    asset: 'WIF/USD',
+    startTime: Date.now() + 900000, // 15 mins from now
+    spectatorCount: 0,
+  },
+  {
+    id: 'battle-upcoming-4',
+    status: 'upcoming',
+    fighter1: {
+      walletAddress: '4xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'NightOwl',
+      elo: 1420,
+      record: { wins: 12, losses: 6 },
+    },
+    fighter2: {
+      walletAddress: '8yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'DayTrader',
+      elo: 1450,
+      record: { wins: 14, losses: 8 },
+    },
+    stakes: 1,
+    leverage: 5,
+    asset: 'BONK/USD',
+    startTime: Date.now() + 1200000, // 20 mins from now
+    spectatorCount: 0,
+  },
+  {
+    id: 'battle-upcoming-5',
+    status: 'upcoming',
+    fighter1: {
+      walletAddress: '5xLMtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      displayName: 'FastFingers',
+      elo: 1380,
+      record: { wins: 10, losses: 4 },
+    },
+    fighter2: {
+      walletAddress: '9yQRoXZS6nVKz1Mj9dN8GPPhqvxFk3W2tV4PZR8HuGwQ',
+      displayName: 'SlowAndSteady',
+      elo: 1360,
+      record: { wins: 9, losses: 5 },
+    },
+    stakes: 0.5,
+    leverage: 2,
+    asset: 'JUP/USD',
+    startTime: Date.now() + 1500000, // 25 mins from now
+    spectatorCount: 0,
+  },
+];
+
+// Default side games
+const SIDE_GAMES: SideGame[] = [
+  {
+    id: 'oracle',
+    name: 'Oracle',
+    icon: 'target',
+    href: '/predict',
+    description: '30-second price predictions',
+    playersActive: 47,
+  },
+  {
+    id: 'draft',
+    name: 'Draft',
+    icon: 'trophy',
+    href: '/draft',
+    description: 'Weekly memecoin tournaments',
+    playersActive: 89,
+  },
+  {
+    id: 'lds',
+    name: 'Last Degen Standing',
+    icon: 'skull',
+    href: '/lds',
+    description: 'Battle royale elimination',
     playersActive: 23,
   },
-  lds: {
-    currentLobby: {
-      playerCount: 18,
-      maxPlayers: 50,
-      prizePool: 1.71,
-      timeToStart: 272,
-    },
+  {
+    id: 'token-wars',
+    name: 'Token Wars',
+    icon: 'swords',
+    href: '/token-wars',
+    description: 'Head-to-head token battles',
+    playersActive: 34,
+    currentPool: 8.5,
   },
-  tokenWars: {
-    currentBattle: {
-      tokenA: { symbol: 'BONK', image: '/tokens/bonk.png', change: 2.3 },
-      tokenB: { symbol: 'WIF', image: '/tokens/wif.png', change: -0.8 },
-      timeRemaining: 154,
-      totalPool: 8.5,
-    },
-  },
-  warParty: {
-    activeParties: 89,
-    currentLeader: {
-      username: 'CryptoApe',
-      return: 47.3,
-    },
-  },
-  stands: {
-    liveBattles: 3,
-    watchersCount: 12,
-    featuredBattle: {
-      player1: 'DegenKing',
-      player2: 'SolWhale',
-      pool: 4.2,
-    },
-  },
-  recentActivity: [],
-  platformStats: {
-    totalGames: 12453,
-    totalVolume: 89234,
-    uniquePlayers: 3421,
-    biggestWin: {
-      amount: 47.3,
-      winner: 'CryptoApe',
-      game: 'LDS',
-    },
-    todayStats: {
-      games: 234,
-      volume: 1234,
-      players: 89,
-    },
-  },
-};
-
-// Generate mock activity feed
-function generateMockActivity(): ActivityItem[] {
-  const names = ['SolWhale.sol', 'DegenKing', 'CryptoApe', 'MoonBoi', 'DiamondHands', 'Rekt420', 'WAGMI_Chad', 'PumpItUp'];
-  const games = ['Oracle', 'Arena', 'LDS', 'Token Wars', 'War Party'];
-  const types: ActivityItem['type'][] = ['win', 'big_win', 'join', 'elimination', 'streak', 'victory'];
-
-  const activities: ActivityItem[] = [];
-  const now = Date.now();
-
-  for (let i = 0; i < 20; i++) {
-    const type = types[Math.floor(Math.random() * types.length)];
-    const game = games[Math.floor(Math.random() * games.length)];
-    const user = names[Math.floor(Math.random() * names.length)];
-
-    activities.push({
-      id: `activity-${i}`,
-      type,
-      user: { username: user },
-      amount: type === 'join' || type === 'elimination' ? undefined :
-              type === 'big_win' ? parseFloat((Math.random() * 10 + 2).toFixed(2)) :
-              parseFloat((Math.random() * 3 + 0.1).toFixed(2)),
-      game,
-      context: type === 'streak' ? `${Math.floor(Math.random() * 7 + 3)} WIN STREAK` :
-               type === 'elimination' ? `${Math.floor(Math.random() * 40 + 5)}th place` : undefined,
-      timestamp: now - (i * 15000) - Math.random() * 30000,
-    });
-  }
-
-  return activities.sort((a, b) => b.timestamp - a.timestamp);
-}
+];
 
 export default function Home() {
   const router = useRouter();
   const { publicKey } = useWallet();
   const [mounted, setMounted] = useState(false);
-  const [homepageData, setHomepageData] = useState<HomepageData>(MOCK_DATA);
-  const mockInitializedRef = useRef(false);
+  const [battles] = useState<FightCardBattle[]>(MOCK_BATTLES);
 
   useEffect(() => {
     setMounted(true);
-
-    // Initialize mock activity data once
-    if (!mockInitializedRef.current) {
-      mockInitializedRef.current = true;
-      setHomepageData(prev => ({
-        ...prev,
-        recentActivity: generateMockActivity(),
-      }));
-    }
   }, []);
 
-  // Simulate live updates
-  useEffect(() => {
-    if (!mounted) return;
-
-    const interval = setInterval(() => {
-      setHomepageData(prev => ({
-        ...prev,
-        // Update Oracle timer
-        oracle: {
-          ...prev.oracle,
-          currentRound: {
-            ...prev.oracle.currentRound,
-            timeRemaining: prev.oracle.currentRound.timeRemaining > 0
-              ? prev.oracle.currentRound.timeRemaining - 1
-              : 30,
-            // Slight price fluctuation
-            currentPrice: prev.oracle.currentRound.currentPrice + (Math.random() - 0.5) * 0.5,
-          },
-        },
-        // Update LDS timer
-        lds: {
-          currentLobby: {
-            ...prev.lds.currentLobby,
-            timeToStart: prev.lds.currentLobby.timeToStart > 0
-              ? prev.lds.currentLobby.timeToStart - 1
-              : 300,
-          },
-        },
-        // Update Token Wars timer
-        tokenWars: {
-          currentBattle: {
-            ...prev.tokenWars.currentBattle,
-            timeRemaining: prev.tokenWars.currentBattle.timeRemaining > 0
-              ? prev.tokenWars.currentBattle.timeRemaining - 1
-              : 300,
-          },
-        },
-        // Random player count updates
-        liveStats: {
-          ...prev.liveStats,
-          playersOnline: prev.liveStats.playersOnline + Math.floor((Math.random() - 0.4) * 3),
-        },
-      }));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [mounted]);
-
-  // Add new activity periodically
-  useEffect(() => {
-    if (!mounted) return;
-
-    const interval = setInterval(() => {
-      const newActivity = generateMockActivity().slice(0, 1)[0];
-      newActivity.id = `activity-${Date.now()}`;
-      newActivity.timestamp = Date.now();
-
-      setHomepageData(prev => ({
-        ...prev,
-        recentActivity: [newActivity, ...prev.recentActivity.slice(0, 19)],
-      }));
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, [mounted]);
-
-  // Connect to Token Wars socket for real-time battle data
-  useEffect(() => {
-    if (!mounted) return;
-
-    const socket = getSocket();
-
-    // Subscribe to Token Wars updates
-    socket.emit('subscribe_token_wars');
-
-    // Listen for Token Wars battle state updates
-    const handleTokenWarsBattleState = (state: {
-      battle?: {
-        id: string;
-        tokenA: string;
-        tokenB: string;
-        status: string;
-        poolA: number;
-        poolB: number;
-      };
-      phase?: string;
-      timeRemaining?: number;
-    }) => {
-      if (!state?.battle) return;
-
-      const { battle, timeRemaining: tr } = state;
-
-      setHomepageData(prev => ({
-        ...prev,
-        tokenWars: {
-          currentBattle: {
-            tokenA: {
-              symbol: battle.tokenA,
-              image: getTokenLogo(battle.tokenA),
-              change: 0,
-            },
-            tokenB: {
-              symbol: battle.tokenB,
-              image: getTokenLogo(battle.tokenB),
-              change: 0,
-            },
-            timeRemaining: tr || 300,
-            totalPool: ((battle.poolA || 0) + (battle.poolB || 0)) / 1_000_000_000, // Convert from lamports
-          },
-        },
-      }));
-    };
-
-    socket.on('token_wars_battle_state', handleTokenWarsBattleState);
-
-    return () => {
-      socket.emit('unsubscribe_token_wars');
-      socket.off('token_wars_battle_state', handleTokenWarsBattleState);
-    };
-  }, [mounted]);
+  // TODO: Wire up socket connections to get real battle data
+  // For now, using mock data for development
 
   if (!mounted) {
     return <PageLoading message="Welcome to DegenDome..." />;
   }
 
-  // Get recent wins for the hero ticker (filter to only wins)
-  const recentWins = homepageData.recentActivity
-    .filter(a => a.type === 'win' || a.type === 'big_win' || a.type === 'victory')
-    .slice(0, 10);
+  // Separate battles by status
+  const liveBattles = battles.filter(b => b.status === 'live');
+  const upcomingBattles = battles.filter(b => b.status === 'upcoming');
 
-  const handleStartPlaying = () => {
-    router.push('/predict');
+  // Main event: first live featured, or first live, or first upcoming
+  const mainEvent = liveBattles.find(b => b.isFeatured) ||
+    liveBattles[0] ||
+    upcomingBattles.find(b => b.isFeatured) ||
+    upcomingBattles[0] ||
+    null;
+
+  // Live battles strip (excluding main event)
+  const liveBattlesForStrip = liveBattles.filter(b => b.id !== mainEvent?.id);
+
+  // Main card: next 3 featured/upcoming (excluding main event)
+  const mainCardBattles = upcomingBattles
+    .filter(b => b.id !== mainEvent?.id)
+    .slice(0, 3);
+
+  // Undercard: remaining upcoming battles
+  const undercardBattles = upcomingBattles
+    .filter(b => b.id !== mainEvent?.id)
+    .slice(3);
+
+  // Navigation handlers
+  const handleBattleClick = (battle: FightCardBattle) => {
+    router.push(`/spectate/${battle.id}`);
+  };
+
+  const handleWatchLive = () => {
+    if (mainEvent) {
+      router.push(`/spectate/${mainEvent.id}`);
+    }
+  };
+
+  const handleBetNow = () => {
+    if (mainEvent) {
+      router.push(`/spectate/${mainEvent.id}?bet=true`);
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto animate-fadeIn">
-      {/* Hero Section */}
-      <HeroSection
-        liveStats={homepageData.liveStats}
-        recentWins={recentWins}
-        walletConnected={!!publicKey}
-        onStartPlaying={handleStartPlaying}
+    <div className="max-w-6xl mx-auto animate-fadeIn px-4 py-6">
+      {/* Hero: Main Event */}
+      <FightCardHero
+        mainEvent={mainEvent}
+        onWatchLive={handleWatchLive}
+        onBetNow={handleBetNow}
       />
 
-      {/* Featured Game - Oracle */}
-      <FeaturedGame oracle={homepageData.oracle} />
+      {/* Live Now Strip */}
+      {liveBattlesForStrip.length > 0 && (
+        <LiveBattlesStrip
+          battles={liveBattlesForStrip}
+          onBattleClick={handleBattleClick}
+        />
+      )}
 
-      {/* Game Grid */}
-      <GameGrid
-        arena={homepageData.arena}
-        lds={homepageData.lds}
-        tokenWars={homepageData.tokenWars}
-        warParty={homepageData.warParty}
-        stands={homepageData.stands}
+      {/* Main Card */}
+      <MainCardSection
+        battles={mainCardBattles}
+        onBattleClick={handleBattleClick}
       />
 
-      {/* Live Activity Feed */}
-      <LiveActivityFeed
-        activities={homepageData.recentActivity}
-        eventsLastHour={234}
-      />
+      {/* Undercard */}
+      {undercardBattles.length > 0 && (
+        <UndercardGrid
+          battles={undercardBattles}
+          onBattleClick={handleBattleClick}
+        />
+      )}
 
-      {/* Social Proof / Stats */}
-      <SocialProof stats={homepageData.platformStats} />
-
-      {/* How It Works */}
-      <HowItWorks onStartPlaying={handleStartPlaying} />
+      {/* Between Fights - Side Games */}
+      <BetweenFightsSection games={SIDE_GAMES} />
     </div>
   );
 }

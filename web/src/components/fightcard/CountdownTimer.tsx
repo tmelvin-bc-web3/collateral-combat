@@ -78,14 +78,9 @@ export function CountdownTimer({
   const isCritical = timeRemaining > 0 && timeRemaining < 60 * 1000; // < 1 minute
 
   if (isComplete) {
+    const liveClasses = `inline-flex items-center gap-1.5 rounded-full font-mono bg-danger/20 text-danger border border-danger/30 ${sizeClasses[size]}`;
     return (
-      <span
-        className={`
-          inline-flex items-center gap-1.5 rounded-full font-mono
-          bg-danger/20 text-danger border border-danger/30
-          ${sizeClasses[size]}
-        `}
-      >
+      <span className={liveClasses}>
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
@@ -95,19 +90,18 @@ export function CountdownTimer({
     );
   }
 
+  // Determine color classes based on urgency
+  let colorClasses = 'bg-white/10 text-white/80 border border-white/10';
+  if (isCritical) {
+    colorClasses = 'bg-danger/20 text-danger border border-danger/30 animate-pulse';
+  } else if (isUrgent) {
+    colorClasses = 'bg-fire/20 text-fire border border-fire/30';
+  }
+
+  const timerClasses = `inline-flex items-center rounded font-mono ${sizeClasses[size]} ${colorClasses}`;
+
   return (
-    <span
-      className={`
-        inline-flex items-center rounded font-mono
-        ${sizeClasses[size]}
-        ${isCritical
-          ? 'bg-danger/20 text-danger border border-danger/30 animate-pulse'
-          : isUrgent
-          ? 'bg-fire/20 text-fire border border-fire/30'
-          : 'bg-white/10 text-white/80 border border-white/10'
-        }
-      `}
-    >
+    <span className={timerClasses}>
       {formatTime(timeRemaining)}
     </span>
   );

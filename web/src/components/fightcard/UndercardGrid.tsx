@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { Grid3X3, ChevronRight } from 'lucide-react';
 import { BattleCard } from './BattleCard';
-import type { Battle } from '@/types/fightcard';
+import type { FightCardBattle } from '@/types/fightcard';
 
 interface UndercardGridProps {
-  battles: Battle[];
-  onBattleClick?: (battle: Battle) => void;
+  battles: FightCardBattle[];
+  onBattleClick?: (battle: FightCardBattle) => void;
   showViewAll?: boolean;
 }
 

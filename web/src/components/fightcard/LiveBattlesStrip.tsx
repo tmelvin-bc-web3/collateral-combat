@@ -3,11 +3,11 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRef } from 'react';
 import { BattleCard } from './BattleCard';
-import type { Battle } from '@/types/fightcard';
+import type { FightCardBattle } from '@/types/fightcard';
 
 interface LiveBattlesStripProps {
-  battles: Battle[];
-  onBattleClick?: (battle: Battle) => void;
+  battles: FightCardBattle[];
+  onBattleClick?: (battle: FightCardBattle) => void;
 }
 
 export function LiveBattlesStrip({
@@ -54,14 +54,7 @@ export function LiveBattlesStrip({
         {/* Left arrow - desktop only */}
         <button
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10
-            hidden md:flex items-center justify-center
-            w-10 h-10 rounded-full
-            bg-black/80 border border-white/10
-            text-white/60 hover:text-white hover:border-white/30
-            opacity-0 group-hover:opacity-100
-            transition-all duration-200
-            -translate-x-1/2"
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-black/80 border border-white/10 text-white/60 hover:text-white hover:border-white/30 opacity-0 group-hover:opacity-100 transition-all duration-200"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -69,12 +62,7 @@ export function LiveBattlesStrip({
         {/* Scrollable battle cards */}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pb-2
-            snap-x snap-mandatory
-            scrollbar-hide
-            [-webkit-overflow-scrolling:touch]
-            [-ms-overflow-style:none]
-            [scrollbar-width:none]"
+          className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
           style={{
             WebkitOverflowScrolling: 'touch',
             msOverflowStyle: 'none',
@@ -95,14 +83,7 @@ export function LiveBattlesStrip({
         {/* Right arrow - desktop only */}
         <button
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10
-            hidden md:flex items-center justify-center
-            w-10 h-10 rounded-full
-            bg-black/80 border border-white/10
-            text-white/60 hover:text-white hover:border-white/30
-            opacity-0 group-hover:opacity-100
-            transition-all duration-200
-            translate-x-1/2"
+          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-black/80 border border-white/10 text-white/60 hover:text-white hover:border-white/30 opacity-0 group-hover:opacity-100 transition-all duration-200"
         >
           <ChevronRight className="w-5 h-5" />
         </button>

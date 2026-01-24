@@ -6,3 +6,4 @@ export { FightCardHero } from './FightCardHero';
 export { LiveBattlesStrip } from './LiveBattlesStrip';
 export { MainCardSection } from './MainCardSection';
 export { UndercardGrid } from './UndercardGrid';
+export { BetweenFightsSection } from './BetweenFightsSection';

@@ -8,7 +8,7 @@ export interface Fighter {
   record?: { wins: number; losses: number };
 }
 
-export interface Battle {
+export interface FightCardBattle {
   id: string;
   status: 'upcoming' | 'live' | 'completed';
   fighter1: Fighter;

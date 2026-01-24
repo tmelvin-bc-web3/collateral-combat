@@ -3,11 +3,11 @@
 import { Star } from 'lucide-react';
 import { BattleCard } from './BattleCard';
 import { EmptyState } from './EmptyState';
-import type { Battle } from '@/types/fightcard';
+import type { FightCardBattle } from '@/types/fightcard';
 
 interface MainCardSectionProps {
-  battles: Battle[];
-  onBattleClick?: (battle: Battle) => void;
+  battles: FightCardBattle[];
+  onBattleClick?: (battle: FightCardBattle) => void;
 }
 
 export function MainCardSection({
