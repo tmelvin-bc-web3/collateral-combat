@@ -47,6 +47,7 @@ import * as battleHistoryDb from './db/battleHistoryDatabase';
 import * as eloDb from './db/eloDatabase';
 import * as eloService from './services/eloService';
 import * as fighterStatsService from './services/fighterStatsService';
+import * as tournamentDb from './db/tournamentDatabase';
 import { ensureTokenVersion } from './db/authDatabase';
 import { globalLimiter, standardLimiter, strictLimiter, writeLimiter, burstLimiter, pythLimiter, waitlistLimiter } from './middleware/rateLimiter';
 import { checkSocketRateLimit, GAME_JOIN_LIMIT, BET_ACTION_LIMIT, SUBSCRIPTION_LIMIT, CHAT_MESSAGE_LIMIT } from './middleware/socketRateLimiter';
@@ -3977,6 +3978,35 @@ app.post('/api/tournaments/:id/register', requireAuth(), writeLimiter, async (re
   }
 });
 
+// Tournament leaderboard
+app.get('/api/tournaments/leaderboard', (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const sortBy = (req.query.sort as string) === 'wins' ? 'wins' : 'earnings';
+
+    const leaderboard = tournamentDb.getLeaderboard(limit, offset, sortBy);
+    res.json({ leaderboard });
+  } catch (err) {
+    logger.error('Error fetching tournament leaderboard', { error: String(err) });
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Player tournament stats
+app.get('/api/tournaments/stats/:wallet', (req: Request, res: Response) => {
+  try {
+    const stats = tournamentDb.getPlayerTournamentStats(req.params.wallet);
+    if (!stats) {
+      return res.json({ stats: null, message: 'No tournament history' });
+    }
+    res.json({ stats });
+  } catch (err) {
+    logger.error('Error fetching player tournament stats', { error: String(err) });
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 
@@ -4065,6 +4095,7 @@ async function start() {
 
   // Initialize Event Manager (Fight Cards)
   eventManager.initialize();
+  eventManager.setSocketIO(io);
   logger.info('Event manager started');
 
   // Initialize Tournament Manager (Bracket Tournaments)

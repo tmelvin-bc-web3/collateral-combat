@@ -299,18 +299,37 @@ class TournamentManager {
     const matches = db.getMatchesByTournament(tournamentId);
     const standings = this.calculateStandings(matches, tournament.size, champion);
 
-    // Distribute prizes
+    // Distribute prizes and update leaderboard
     for (const { place, wallet } of standings) {
+      if (!wallet) continue;
+
       const prizeInfo = distribution.find(d => d.place === place);
-      if (prizeInfo && wallet) {
-        const payout = Math.floor(netPool * prizeInfo.percent / 100);
-        if (payout > 0) {
-          try {
-            const tx = await balanceService.creditWinnings(wallet, payout, 'tournament', tournamentId);
-            logger.info('Tournament payout', { tournamentId, wallet: wallet.slice(0, 8), place, payout, tx });
-          } catch (err) {
-            logger.error('Failed to credit tournament winnings', { tournamentId, wallet: wallet.slice(0, 8), place, payout, error: String(err) });
-          }
+      const payout = prizeInfo ? Math.floor(netPool * prizeInfo.percent / 100) : 0;
+
+      // Count matches for this player
+      const playerMatches = matches.filter(m =>
+        m.player1Wallet === wallet || m.player2Wallet === wallet
+      );
+      const matchesWon = matches.filter(m => m.winnerWallet === wallet).length;
+
+      // Update leaderboard
+      db.updateLeaderboardEntry(
+        wallet,
+        1,                    // tournaments entered
+        place === 1 ? 1 : 0,  // tournaments won
+        playerMatches.length, // matches played
+        matchesWon,           // matches won
+        payout,               // earnings
+        place                 // finish position
+      );
+
+      // Pay out winnings
+      if (payout > 0) {
+        try {
+          const tx = await balanceService.creditWinnings(wallet, payout, 'tournament', tournamentId);
+          logger.info('Tournament payout', { tournamentId, wallet: wallet.slice(0, 8), place, payout, tx });
+        } catch (err) {
+          logger.error('Failed to credit tournament winnings', { tournamentId, wallet: wallet.slice(0, 8), place, payout, error: String(err) });
         }
       }
     }
