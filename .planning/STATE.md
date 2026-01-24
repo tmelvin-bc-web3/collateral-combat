@@ -145,6 +145,9 @@ Recent decisions affecting current work:
 - [Phase 13.2]: Tier colors match opengraph-image.tsx for visual consistency
 - [Phase 13.2]: Protected tier shows 'NEW' label for new fighters
 - [Phase 13.2]: RecentFormIndicator pads with empty slots when less than maxItems
+- [Phase 13.3]: Battle Stats section only displays when user has battles
+- [Phase 13.3]: Streak calculated client-side from form data
+- [Phase 13.3]: ROI display with green/red coloring for positive/negative
 - [Phase 13.4]: ComparisonStat rows highlight winner with green color and + indicator
 - [Phase 13.4]: Fighter headers use accent (fighter1) and fire (fighter2) color schemes
 - [Phase 13.4]: Compare button only visible when logged in viewing another's profile
