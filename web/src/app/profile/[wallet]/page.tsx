@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
 import { LevelBadge } from '@/components/progression/LevelBadge';
+import { EloTierBadge, RecentFormIndicator, EloTier } from '@/components/profile';
 import { getCachedProfile, setCachedProfile } from '@/lib/profileStorage';
 import { PageLoading } from '@/components/ui/skeleton';
 import { ProfileShareButton } from '@/components/ProfileShareButton';
@@ -195,6 +196,10 @@ export default function ProfilePage() {
   const [rebateHistory, setRebateHistory] = useState<RakeRebate[]>([]);
   const [rebateSummary, setRebateSummary] = useState<RebateSummary | null>(null);
   const [battleStats, setBattleStats] = useState<{ wins: number; losses: number; elo: number; tier: string } | null>(null);
+  const [recentForm, setRecentForm] = useState<Array<{ result: 'win' | 'loss' | 'tie'; pnlPercent: number; endedAt: number }>>([]);
+  const [battleStreaks, setBattleStreaks] = useState<{ currentStreak: number; bestStreak: number } | null>(null);
+  const [roi, setRoi] = useState<{ roi: number; totalWagered: number; totalPayout: number } | null>(null);
+  const [tradingStyle, setTradingStyle] = useState<{ totalPositions: number; avgLeverage: number; aggressionScore: number; longShortRatio: number } | null>(null);
   const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -215,7 +220,7 @@ export default function ProfilePage() {
         }
 
         // Fetch all data in parallel
-        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes] = await Promise.all([
+        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes, formRes, styleRes] = await Promise.all([
           fetch(`${BACKEND_URL}/api/profile/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/stats/${walletAddress}`),
@@ -225,6 +230,8 @@ export default function ProfilePage() {
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates/summary`),
           fetch(`${BACKEND_URL}/api/battles/stats/${walletAddress}`),
+          fetch(`${BACKEND_URL}/api/battles/form/${walletAddress}?limit=5`),
+          fetch(`${BACKEND_URL}/api/battles/style/${walletAddress}`),
         ]);
 
         // Process profile
@@ -285,6 +292,19 @@ export default function ProfilePage() {
             elo: battleStatsData.elo || 1000,
             tier: battleStatsData.tier || 'bronze',
           });
+
+          // Calculate ROI from battle stats
+          const totalBattles = (battleStatsData.wins || 0) + (battleStatsData.losses || 0);
+          if (totalBattles > 0 && battleStatsData.totalPayout !== undefined && battleStatsData.totalWagered !== undefined) {
+            const roiPercent = battleStatsData.totalWagered > 0
+              ? ((battleStatsData.totalPayout - battleStatsData.totalWagered) / battleStatsData.totalWagered) * 100
+              : 0;
+            setRoi({
+              roi: roiPercent,
+              totalWagered: battleStatsData.totalWagered,
+              totalPayout: battleStatsData.totalPayout,
+            });
+          }
         } else {
           // Default battle stats
           setBattleStats({
@@ -293,6 +313,38 @@ export default function ProfilePage() {
             elo: 1000,
             tier: 'bronze',
           });
+        }
+
+        // Process recent form
+        if (formRes.ok) {
+          const formData = await formRes.json();
+          const form = formData.form || [];
+          setRecentForm(form);
+
+          // Calculate current streak from form
+          let currentStreak = 0;
+          let bestStreak = 0;
+          let tempStreak = 0;
+          for (const battle of form) {
+            if (battle.result === 'win') {
+              tempStreak++;
+              if (tempStreak > bestStreak) bestStreak = tempStreak;
+            } else {
+              tempStreak = 0;
+            }
+          }
+          // Current streak is the consecutive wins from most recent
+          for (const battle of form) {
+            if (battle.result === 'win') currentStreak++;
+            else break;
+          }
+          setBattleStreaks({ currentStreak, bestStreak });
+        }
+
+        // Process trading style
+        if (styleRes.ok) {
+          const styleData = await styleRes.json();
+          setTradingStyle(styleData);
         }
 
         // Generate referral code from wallet address
