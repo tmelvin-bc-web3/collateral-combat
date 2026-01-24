@@ -914,3 +914,71 @@ export interface UserElo {
   losses: number;
   tier: EloTier;
 }
+
+// ===================
+// Event (Fight Card) Types
+// ===================
+
+export type EventStatus = 'upcoming' | 'registration_open' | 'in_progress' | 'completed' | 'cancelled';
+export type EventBattleStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface FightCardEvent {
+  id: string;
+  name: string;
+  description?: string;
+  scheduledStartTime: number;
+  registrationOpens: number;
+  registrationCloses: number;
+  status: EventStatus;
+  entryFeeLamports: number;
+  maxParticipants: number;
+  prizePoolLamports: number;
+  createdAt: number;
+  createdBy: string;
+}
+
+export interface EventBattle {
+  id: string;
+  eventId: string;
+  position: number;
+  player1Wallet: string;
+  player2Wallet: string;
+  battleId?: string;
+  isMainEvent: boolean;
+  status: EventBattleStatus;
+}
+
+export interface EventManagerEvent {
+  type: 'event_created' | 'event_updated' | 'registration_opened' | 'event_starting' | 'event_started' | 'event_completed' | 'event_cancelled' | 'battle_starting';
+  eventId: string;
+  data: any;
+}
+
+// ===================
+// Tournament (Bracket) Types
+// ===================
+
+export interface TournamentEvent {
+  type: 'tournament_created' | 'tournament_started' | 'registration_opened' |
+        'player_registered' | 'bracket_generated' | 'match_ready' |
+        'match_started' | 'match_completed' | 'tournament_completed';
+  tournamentId: string;
+  data: any;
+}
+
+// Prize distribution by tournament size
+export const TOURNAMENT_PRIZE_DISTRIBUTION = {
+  8: [
+    { place: 1, percent: 50 },
+    { place: 2, percent: 30 },
+    { place: 3, percent: 10 },  // Split among 2 semifinal losers = 5% each
+    { place: 4, percent: 10 },
+  ],
+  16: [
+    { place: 1, percent: 40 },
+    { place: 2, percent: 25 },
+    { place: 3, percent: 15 },
+    { place: 4, percent: 10 },
+    { place: 5, percent: 10 },  // Split among quarterfinalist losers
+  ],
+} as const;
