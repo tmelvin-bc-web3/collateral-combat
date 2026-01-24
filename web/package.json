@@ -18,7 +18,7 @@
     "type-coverage:detail": "type-coverage --detail"
   },
   "typeCoverage": {
-    "atLeast": 97.50,
+    "atLeast": 97.5,
     "strict": true,
     "cache": true,
     "ignoreFiles": [
@@ -41,6 +41,7 @@
   "license": "ISC",
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
+    "@g-loot/react-tournament-brackets": "^1.0.30",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tabs": "^1.1.13",
     "@solana/wallet-adapter-react": "^0.15.39",
@@ -56,6 +57,7 @@
     "react-dom": "^19.2.3",
     "react-error-boundary": "^6.1.0",
     "socket.io-client": "^4.8.1",
+    "styled-components": "^6.3.8",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "tweetnacl": "^1.0.3"
