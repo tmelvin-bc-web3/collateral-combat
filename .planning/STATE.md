@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 14 - Events & Competitions
-Plan: 04 of 5
+Plan: 06 of 6
 Status: In progress
-Last activity: 2026-01-24 - Completed 14-04-PLAN.md (Tournament System - Database & Manager)
+Last activity: 2026-01-24 - Completed 14-06-PLAN.md (Tournament Leaderboard)
 
-Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 5/5 | Phase 14: 4/5
+Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 5/5 | Phase 14: 5/6
 
 ## v2.0 Milestone Overview
 
@@ -168,6 +168,8 @@ Recent decisions affecting current work:
 - [Phase 14.3]: Persistent notifications via notifyEventStarting() for offline retrieval
 - [Phase 14.3]: Wallet-socket mapping in eventManager for targeted WebSocket delivery
 - [Phase 14.3]: Event socket handlers (subscribe_events, join_event_room) for room-based updates
+- [Phase 14.6]: Leaderboard UPSERT pattern for incremental stat updates after tournaments
+- [Phase 14.6]: Sorting by earnings default, wins optional for tournament leaderboard
 
 ### Pending Todos
 
@@ -272,14 +274,14 @@ Recent decisions affecting current work:
 | 14-03 | Event Notifications | Complete |
 | 14-04 | Tournament System (Database & Manager) | Complete |
 | 14-05 | Event Notification Enhancements | Pending |
-| 14-06 | TBD | Pending |
+| 14-06 | Tournament Leaderboard | Complete |
 
 ## Session Continuity
 
 Last session: 2026-01-24
-Stopped at: Completed 14-03-PLAN.md (Event Notifications)
+Stopped at: Completed 14-06-PLAN.md (Tournament Leaderboard)
 Resume file: None
 Next: Continue Phase 14 (14-05 Event Notification Enhancements)
 
 ---
-*State updated: 2026-01-24 after completing 14-03-PLAN.md*
+*State updated: 2026-01-24 after completing 14-06-PLAN.md*
