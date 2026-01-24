@@ -11,6 +11,7 @@ import { BalanceBar } from '@/components/BalanceBar';
 import { ProfileSetupWrapper } from '@/components/ProfileSetupWrapper';
 import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
 import { WhitelistLayoutWrapper } from '@/components/WhitelistLayoutWrapper';
+import { BottomNavBar } from '@/components/navigation';
 import { COMING_SOON_MODE } from '@/config/siteConfig';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -60,10 +61,11 @@ export default function RootLayout({
               <ProfileProvider>
                 <ProgressionProvider>
                   <Header />
-                  <main className="pt-24 pb-24 px-4 min-h-screen relative z-10">
+                  <main className="pt-24 pb-32 md:pb-24 px-4 min-h-screen relative z-10">
                     <div className="max-w-7xl mx-auto">{children}</div>
                   </main>
                   <Footer />
+                  <BottomNavBar />
                   <BalanceBar />
                   <ProfileSetupWrapper />
                   <OnboardingTourWrapper />
