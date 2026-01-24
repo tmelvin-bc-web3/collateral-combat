@@ -200,6 +200,7 @@ export default function ProfilePage() {
   const [battleStreaks, setBattleStreaks] = useState<{ currentStreak: number; bestStreak: number } | null>(null);
   const [roi, setRoi] = useState<{ roi: number; totalWagered: number; totalPayout: number } | null>(null);
   const [tradingStyle, setTradingStyle] = useState<{ totalPositions: number; avgLeverage: number; aggressionScore: number; longShortRatio: number } | null>(null);
+  const [favoriteAssets, setFavoriteAssets] = useState<Array<{ asset: string; count: number; winRate: number }>>([]);
   const [referralCode, setReferralCode] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -220,7 +221,7 @@ export default function ProfilePage() {
         }
 
         // Fetch all data in parallel
-        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes, formRes, styleRes] = await Promise.all([
+        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes, formRes, styleRes, favoritesRes] = await Promise.all([
           fetch(`${BACKEND_URL}/api/profile/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/stats/${walletAddress}`),
@@ -232,6 +233,7 @@ export default function ProfilePage() {
           fetch(`${BACKEND_URL}/api/battles/stats/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/battles/form/${walletAddress}?limit=5`),
           fetch(`${BACKEND_URL}/api/battles/style/${walletAddress}`),
+          fetch(`${BACKEND_URL}/api/battles/favorites/${walletAddress}`),
         ]);
 
         // Process profile
@@ -345,6 +347,12 @@ export default function ProfilePage() {
         if (styleRes.ok) {
           const styleData = await styleRes.json();
           setTradingStyle(styleData);
+        }
+
+        // Process favorite assets
+        if (favoritesRes.ok) {
+          const favoritesData = await favoritesRes.json();
+          setFavoriteAssets(favoritesData.favorites || []);
         }
 
         // Generate referral code from wallet address
