@@ -14,7 +14,7 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'lds' | 'token_wars';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'lds' | 'token_wars' | 'tournament';
 export type TransactionType = 'debit' | 'credit';
 export type TransactionStatus = 'pending' | 'confirmed' | 'cancelled';
 export type TransactionState = TransactionStatus | 'failed';
@@ -63,6 +63,7 @@ function createDefaultGameModeBalances(): Record<GameMode, GameModeBalance> {
     spectator: { ...DEFAULT_GAME_MODE_BALANCE },
     lds: { ...DEFAULT_GAME_MODE_BALANCE },
     token_wars: { ...DEFAULT_GAME_MODE_BALANCE },
+    tournament: { ...DEFAULT_GAME_MODE_BALANCE },
   };
 }
 
@@ -405,5 +406,6 @@ export function getAllGameModeBalances(): Record<GameMode, GameModeBalance> {
     spectator: { ...data.gameModeBalances.spectator },
     lds: { ...data.gameModeBalances.lds },
     token_wars: { ...data.gameModeBalances.token_wars },
+    tournament: { ...data.gameModeBalances.tournament || DEFAULT_GAME_MODE_BALANCE },
   };
 }

@@ -50,6 +50,7 @@ export type NotificationType =
   | 'free_wager_earned'
   | 'leaderboard_rank_change'
   | 'achievement_unlocked'
+  | 'tournament_match_ready'
   | 'system';
 
 export interface Notification {
@@ -323,5 +324,21 @@ export function notifyRankChange(
       ? `You moved up to #${newRank} on the ${leaderboardType} leaderboard!`
       : `Your ${leaderboardType} rank changed from #${previousRank} to #${newRank}`,
     data: { previousRank, newRank, leaderboardType, improved },
+  });
+}
+
+export function notifyTournamentMatchReady(
+  walletAddress: string,
+  tournamentName: string,
+  opponentWallet: string,
+  round: number,
+  roundName: string
+): Notification {
+  return createNotification({
+    walletAddress,
+    type: 'tournament_match_ready',
+    title: 'Tournament Match Ready!',
+    message: `Your ${roundName} match in ${tournamentName} is ready. Time to battle!`,
+    data: { tournamentName, opponentWallet, round, roundName },
   });
 }

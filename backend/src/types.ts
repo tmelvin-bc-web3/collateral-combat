@@ -625,7 +625,7 @@ export interface UserStreak {
 
 // Free Bet types
 export type FreeBetTransactionType = 'earned' | 'used';
-export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
+export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'tournament';
 
 export interface FreeBetBalance {
   walletAddress: string;

@@ -42,6 +42,7 @@ enum GameType {
   Spectator = 3,
   LDS = 4,
   TokenWars = 5,
+  Tournament = 6,
 }
 
 const GAME_MODE_TO_TYPE: Record<GameMode, GameType> = {
@@ -51,6 +52,7 @@ const GAME_MODE_TO_TYPE: Record<GameMode, GameType> = {
   spectator: GameType.Spectator,
   lds: GameType.LDS,
   token_wars: GameType.TokenWars,
+  tournament: GameType.Tournament,
 };
 
 class BalanceService {
@@ -759,9 +761,10 @@ class BalanceService {
       spectator: { locked: 0, paidOut: 0, available: 0 },
       lds: { locked: 0, paidOut: 0, available: 0 },
       token_wars: { locked: 0, paidOut: 0, available: 0 },
+      tournament: { locked: 0, paidOut: 0, available: 0 },
     };
 
-    const gameModes: GameMode[] = ['oracle', 'battle', 'draft', 'spectator', 'lds', 'token_wars'];
+    const gameModes: GameMode[] = ['oracle', 'battle', 'draft', 'spectator', 'lds', 'token_wars', 'tournament'];
 
     for (const mode of gameModes) {
       const balance = gameModeBalances[mode];
