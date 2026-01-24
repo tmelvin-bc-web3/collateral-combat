@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 14 - Events & Competitions
-Plan: 02 of 5
+Plan: 04 of 5
 Status: In progress
-Last activity: 2026-01-24 - Completed 14-02-PLAN.md (Events Calendar & Countdown)
+Last activity: 2026-01-24 - Completed 14-04-PLAN.md (Tournament System - Database & Manager)
 
-Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 5/5 | Phase 14: 2/5
+Progress: [==========] Phase 10: 7/7 | Phase 11: 4/4 | Phase 12: 5/5 | Phase 13: 5/5 | Phase 14: 4/5
 
 ## v2.0 Milestone Overview
 
@@ -161,10 +161,17 @@ Recent decisions affecting current work:
 - [Phase 14.2]: Countdown timer uses absolute UTC timestamps, client calculates remaining time
 - [Phase 14.2]: Socket events cast as 'any' for new event_update type (types not yet updated)
 - [Phase 14.2]: Events grouped by date with locale-aware formatting
+- [Phase 14.4]: Separate tournaments.db SQLite file for tournament isolation
+- [Phase 14.4]: Standard bracket seeding (1v8, 4v5, 3v6, 2v7) for 8-player tournaments
+- [Phase 14.4]: Twice-daily tournament scheduling at 12:00 and 20:00 UTC via cron
+- [Phase 14.4]: Tournament GameMode added to balanceDatabase and balanceService
+- [Phase 14.3]: Persistent notifications via notifyEventStarting() for offline retrieval
+- [Phase 14.3]: Wallet-socket mapping in eventManager for targeted WebSocket delivery
+- [Phase 14.3]: Event socket handlers (subscribe_events, join_event_room) for room-based updates
 
 ### Pending Todos
 
-- Continue Phase 14 (Events & Competitions) - Plan 03 next
+- Continue Phase 14 (Events & Competitions) - Plan 05 next
 
 ### Blockers/Concerns
 
@@ -262,16 +269,17 @@ Recent decisions affecting current work:
 |------|------|--------|
 | 14-01 | Events API & Database | Complete |
 | 14-02 | Events Calendar & Countdown | Complete |
-| 14-03 | Tournament Bracket Backend | Pending |
-| 14-04 | Tournament Bracket UI | Pending |
-| 14-05 | Notifications & Subscriptions | Pending |
+| 14-03 | Event Notifications | Complete |
+| 14-04 | Tournament System (Database & Manager) | Complete |
+| 14-05 | Event Notification Enhancements | Pending |
+| 14-06 | TBD | Pending |
 
 ## Session Continuity
 
 Last session: 2026-01-24
-Stopped at: Completed 14-02-PLAN.md (Events Calendar & Countdown)
+Stopped at: Completed 14-03-PLAN.md (Event Notifications)
 Resume file: None
-Next: Continue Phase 14 (14-03 Tournament Bracket Backend)
+Next: Continue Phase 14 (14-05 Event Notification Enhancements)
 
 ---
-*State updated: 2026-01-24 after completing 14-02-PLAN.md*
+*State updated: 2026-01-24 after completing 14-03-PLAN.md*
