@@ -27,7 +27,8 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
 
   const validateUsername = (value: string): string | null => {
     if (!value) return null;
-    if (value.length > 20) return 'Max 20 characters';
+    if (value.length < 3) return 'Minimum 3 characters';
+    if (value.length > 20) return 'Maximum 20 characters';
     if (!/^[a-zA-Z0-9_]+$/.test(value)) return 'Letters, numbers, underscores only';
     return null;
   };
@@ -151,15 +152,16 @@ export function ProfileSetup({ onComplete }: ProfileSetupProps) {
       <div className="relative bg-bg-secondary border border-border-primary rounded-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
         <div className="p-6 text-center border-b border-border-primary">
-          <h2 className="text-2xl font-bold mb-2">Welcome to Collateral Combat</h2>
-          <p className="text-text-secondary">Set up your profile to get started</p>
+          <h2 className="text-2xl font-bold mb-2">Nice bet! Create your fighter identity</h2>
+          <p className="text-text-secondary">Stand out in the arena with a name and avatar</p>
         </div>
 
         {/* Username */}
         <div className="p-6 border-b border-border-primary">
-          <label className="block text-sm font-medium mb-2">
+          <label className="block text-sm font-medium mb-1">
             Username <span className="text-text-tertiary">(optional)</span>
           </label>
+          <p className="text-xs text-text-tertiary mb-2">Other fighters will see this</p>
           <input
             type="text"
             value={username}
