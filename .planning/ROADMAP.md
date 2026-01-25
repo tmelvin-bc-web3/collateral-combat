@@ -98,8 +98,8 @@
 - Integer phases (15, 16, 17, 18): Planned milestone work
 - Decimal phases (e.g., 15.1): Urgent insertions if needed
 
-- [ ] **Phase 15: Core Structure** - Fight card homepage and bottom navigation foundation
-- [ ] **Phase 16: Watch Experience** - Mobile-optimized battle viewing and betting
+- [x] **Phase 15: Core Structure** - Fight card homepage and bottom navigation foundation
+- [x] **Phase 16: Watch Experience** - Mobile-optimized battle viewing and betting
 - [ ] **Phase 17: Onboarding** - Frictionless wallet connect and guided first bet
 - [ ] **Phase 18: Polish** - Micro-interactions and win/loss feedback
 
@@ -120,8 +120,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Bottom navigation with 4 tabs, swipe gestures, 44px touch targets
-- [ ] 15-02-PLAN.md — Fight card homepage with hero, live strip, main/undercard, between fights
+- [x] 15-01-PLAN.md — Bottom navigation with 4 tabs, swipe gestures, 44px touch targets
+- [x] 15-02-PLAN.md — Fight card homepage with hero, live strip, main/undercard, between fights
 
 ---
 
@@ -135,11 +135,11 @@ Plans:
   3. User swipes vertically to navigate between live battles (TikTok-style)
   4. Chat overlay collapses without covering bet action buttons
   5. User pulls down to refresh battle lists
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: Mobile battle viewer optimization
-- [ ] 16-02: Quick bet strip and gestures
+- [x] 16-01-PLAN.md — TikTok-style battle feed with vertical swipe navigation and 40/60 layout
+- [x] 16-02-PLAN.md — Quick bet strip with swipe-to-bet and floating chat overlay
 
 ---
 
@@ -202,8 +202,8 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 | 12. Social & Engagement | v2.0 | 5/5 | Complete | 2026-01-23 |
 | 13. Fighter Identity | v2.0 | 5/5 | Complete | 2026-01-24 |
 | 14. Events & Competitions | v2.0 | 6/6 | Complete | 2026-01-24 |
-| 15. Core Structure | v2.1 | 0/2 | Planned | - |
-| 16. Watch Experience | v2.1 | 0/2 | Not started | - |
+| 15. Core Structure | v2.1 | 2/2 | Complete | 2026-01-24 |
+| 16. Watch Experience | v2.1 | 2/2 | Complete | 2026-01-25 |
 | 17. Onboarding | v2.1 | 0/3 | Not started | - |
 | 18. Polish | v2.1 | 0/3 | Not started | - |
 
@@ -214,4 +214,4 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 *v1.1: Phases 5-9 (10 plans)*
 *v2.0: Phases 10-14 (27 plans)*
 *v2.1: Phases 15-18 (10 plans estimated)*
-*Last updated: 2026-01-24 after Phase 15 planning*
+*Last updated: 2026-01-25 after Phase 16 execution complete*

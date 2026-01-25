@@ -89,9 +89,9 @@ Key v2.1 decisions (16-02):
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: Completed 16-02-PLAN.md
+Stopped at: Phase 16 verified (7/7 must-haves)
 Resume file: None
-Next: Plan Phase 17 (Onboarding)
+Next: `/gsd:discuss-phase 17` or `/gsd:plan-phase 17`
 
 ---
-*State updated: 2026-01-25 after 16-02-PLAN.md execution complete*
+*State updated: 2026-01-25 after Phase 16 execution and verification complete*
