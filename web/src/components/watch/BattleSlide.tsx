@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LiveBattle } from '@/types';
 import { TradingViewChart } from '@/components/TradingViewChart';
 import { SpectatorPnLBar } from '@/components/spectate/SpectatorPnLBar';
+import { UrgentTimer } from '@/components/animations';
 import { Eye } from 'lucide-react';
 
 interface BattleSlideProps {
@@ -38,6 +39,12 @@ export function BattleSlide({
   const player1Leading = player1Pnl > player2Pnl;
   const player2Leading = player2Pnl > player1Pnl;
 
+  // Calculate battle end time for UrgentTimer
+  const battleEndTime = battle.startedAt
+    ? battle.startedAt + battle.config.duration * 1000
+    : Date.now() + 300000; // 5 min default if not started
+
+  // Track timeRemaining for the "Final Minute" label
   useEffect(() => {
     if (!battle.startedAt) return;
 
@@ -51,15 +58,6 @@ export function BattleSlide({
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [battle.startedAt, battle.config.duration]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatWallet = (addr: string) =>
-    addr ? `${addr.slice(0, 4)}...${addr.slice(-4)}` : 'Waiting...';
 
   const isUrgent = timeRemaining <= 60 && timeRemaining > 0;
   const isWaiting = battle.status === 'waiting';
@@ -100,14 +98,15 @@ export function BattleSlide({
         {/* Bottom overlay: Timer + Prize Pool */}
         <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
           <div className="flex items-end justify-between">
-            {/* Timer */}
+            {/* Timer with progressive urgency */}
             <div>
               <div className={`text-xs uppercase tracking-wider mb-0.5 ${isUrgent ? 'text-danger font-bold' : 'text-white/50'}`}>
                 {isUrgent ? 'Final Minute' : 'Time Left'}
               </div>
-              <div className={`text-2xl font-black font-mono tabular-nums ${isUrgent ? 'text-danger animate-pulse' : 'text-white'}`}>
-                {formatTime(timeRemaining)}
-              </div>
+              <UrgentTimer
+                endTime={battleEndTime}
+                className="text-2xl font-black"
+              />
             </div>
 
             {/* Prize Pool */}

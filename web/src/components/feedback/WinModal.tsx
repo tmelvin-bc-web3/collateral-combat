@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useConfetti } from '@/components/Confetti';
 import { PayoutBreakdown, BetResult } from './PayoutBreakdown';
+import { CountingNumber } from '@/components/animations';
 import { cn } from '@/lib/utils';
 
 interface WinModalProps {
@@ -86,7 +87,13 @@ export function WinModal({ result, onDismiss }: WinModalProps) {
               You Won!
             </h2>
             <p className="text-4xl font-bold text-white">
-              <span className="text-success">{formatSol(netWinnings)}</span>
+              <CountingNumber
+                value={netWinnings}
+                decimals={2}
+                prefix="+"
+                suffix=""
+                className="text-success"
+              />
               <span className="text-white/60 text-lg ml-2">SOL</span>
             </p>
           </div>
