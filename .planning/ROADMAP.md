@@ -100,7 +100,7 @@
 
 - [x] **Phase 15: Core Structure** - Fight card homepage and bottom navigation foundation
 - [x] **Phase 16: Watch Experience** - Mobile-optimized battle viewing and betting
-- [ ] **Phase 17: Onboarding** - Frictionless wallet connect and guided first bet
+- [x] **Phase 17: Onboarding** - Frictionless wallet connect and guided first bet
 - [ ] **Phase 18: Polish** - Micro-interactions and win/loss feedback
 
 ---
@@ -156,9 +156,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — Anonymous spectating, floating connect pill, post-connect balance feedback
-- [ ] 17-02-PLAN.md — First bet detection, celebration animation, preset defaults
-- [ ] 17-03-PLAN.md — Profile setup trigger after first bet, updated messaging
+- [x] 17-01-PLAN.md — Anonymous spectating, floating connect pill, post-connect balance feedback
+- [x] 17-02-PLAN.md — First bet detection, celebration animation, preset defaults
+- [x] 17-03-PLAN.md — Profile setup trigger after first bet, updated messaging
 
 ---
 
@@ -167,17 +167,17 @@ Plans:
 **Depends on**: Phase 17
 **Requirements**: POL-01, POL-02, POL-03, POL-04, POL-05, POL-06, POL-07
 **Success Criteria** (what must be TRUE):
-  1. User sees full-screen celebration on bet win (unambiguous feedback)
+  1. User sees contained celebration on bet win (unambiguous feedback)
   2. User sees immediate balance update after bet settles (optimistic UI)
   3. User sees clear payout breakdown ("Bet: 0.5 | Won: 0.45 | New Balance: 2.95")
-  4. Buttons respond with micro-interactions (ripples, press animations)
+  4. Buttons respond with micro-interactions (scale press animations)
   5. Live data updates within 500ms (positions, odds, timer)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 18-01: Win/loss feedback screens
-- [ ] 18-02: Micro-interactions and animations
-- [ ] 18-03: Performance optimization
+- [ ] 18-01-PLAN.md — Win/loss feedback (WinModal, LossFlash, PayoutBreakdown) and useBetFeedback hook
+- [ ] 18-02-PLAN.md — Button micro-interactions (active:scale-95) and swipe animations
+- [ ] 18-03-PLAN.md — Live data animations (CountingNumber, DeltaBadge, UrgentTimer) with react-countup
 
 ---
 
@@ -204,8 +204,8 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 | 14. Events & Competitions | v2.0 | 6/6 | Complete | 2026-01-24 |
 | 15. Core Structure | v2.1 | 2/2 | Complete | 2026-01-24 |
 | 16. Watch Experience | v2.1 | 2/2 | Complete | 2026-01-25 |
-| 17. Onboarding | v2.1 | 0/3 | Not started | - |
-| 18. Polish | v2.1 | 0/3 | Not started | - |
+| 17. Onboarding | v2.1 | 3/3 | Complete | 2026-01-25 |
+| 18. Polish | v2.1 | 0/3 | Planned | - |
 
 ---
 
@@ -214,4 +214,4 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 *v1.1: Phases 5-9 (10 plans)*
 *v2.0: Phases 10-14 (27 plans)*
 *v2.1: Phases 15-18 (10 plans estimated)*
-*Last updated: 2026-01-25 after Phase 16 execution complete*
+*Last updated: 2026-01-25 after Phase 17 execution complete*
