@@ -149,16 +149,16 @@ Plans:
 **Requirements**: ONB-01, ONB-02, ONB-03, ONB-04, ONB-05, ONB-06, ONB-07, ONB-08
 **Success Criteria** (what must be TRUE):
   1. User watches live battles without connecting wallet
-  2. User connects wallet with one click (Phantom prominently featured)
-  3. User sees plain language explanation during wallet connect ("Connect to bet. You control funds.")
-  4. User completes first bet using guided flow with preset amounts
+  2. User connects wallet with one click (all wallets shown equally)
+  3. User sees plain language explanation during wallet connect ("Connect to bet. Your funds stay in your wallet until you wager.")
+  4. User completes first bet using guided flow with preset amounts (0.05 SOL default)
   5. User creates fighter identity (name) after placing first bet
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 17-01: Anonymous spectating and wallet connect
-- [ ] 17-02: Guided first bet flow
-- [ ] 17-03: Fighter identity creation
+- [ ] 17-01-PLAN.md — Anonymous spectating, floating connect pill, post-connect balance feedback
+- [ ] 17-02-PLAN.md — First bet detection, celebration animation, preset defaults
+- [ ] 17-03-PLAN.md — Profile setup trigger after first bet, updated messaging
 
 ---
 
