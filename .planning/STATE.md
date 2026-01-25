@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Current focus:** Phase 16: Watch Experience — Complete
+**Current focus:** Phase 18: Polish — In Progress
 
 ## Current Position
 
-Phase: 16 of 18 (Watch Experience)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-25 — Completed 16-02-PLAN.md
+Phase: 18 of 18 (Polish)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-01-25 — Completed 18-02-PLAN.md
 
-Progress: [████░░░░░░] v2.1: 40% | 4/10 plans
+Progress: [████████░░] v2.1: 80% | 8/10 plans
 
 ## Milestone Summary
 
@@ -25,7 +25,7 @@ Progress: [████░░░░░░] v2.1: 40% | 4/10 plans
 | v2.0 Battles System | 10-14 | 27 | Complete | 2026-01-24 |
 | v2.1 Arena Experience | 15-18 | 10 | In Progress | — |
 
-**Total:** 18 phases, 65 plans (59 shipped, 6 planned)
+**Total:** 18 phases, 65 plans (63 shipped, 2 planned)
 
 ## Accumulated Context
 
@@ -64,6 +64,27 @@ Key v2.1 decisions (16-02):
 - 8-second message fade in floating chat
 - State machine pattern for bet flow (idle -> amount_selected -> confirming -> placing -> success/error)
 
+Key v2.1 decisions (17-01):
+- FloatingConnectPill at z-30 (below QuickBetStrip z-40)
+- PostConnectFeedback at z-50 (above all UI for visibility)
+- Just-connected detection via useRef tracking previous state
+
+Key v2.1 decisions (17-02):
+- Per-wallet localStorage keys for first bet tracking (prefix + pubkey)
+- First-time users default to 0.05 SOL, returning users to 0.1 SOL
+- Confetti triggers on state transition to 'success' via useRef previous state tracking
+
+Key v2.1 decisions (17-03):
+- First-bet gating in ProfileSetupWrapper (not ProfileContext) due to provider nesting
+- 500ms delay after celebration dismisses for breathing room
+- Username validation: 3-20 characters (minimum added)
+
+Key v2.1 decisions (18-02):
+- Button press pattern: active:scale-95 with transition-transform duration-150
+- Changed active:bg-white/20 to hover:bg-white/20 (active used for scale)
+- buttonPress keyframe added for programmatic triggering
+- Non-active slides: opacity-80 scale-[0.98] for visual focus
+
 ### v2.1 Requirements Mapping
 
 | Phase | Requirements | Count |
@@ -89,9 +110,9 @@ Key v2.1 decisions (16-02):
 ## Session Continuity
 
 Last session: 2026-01-25
-Stopped at: Phase 16 verified (7/7 must-haves)
+Stopped at: Completed 18-02-PLAN.md (button press animations)
 Resume file: None
-Next: `/gsd:discuss-phase 17` or `/gsd:plan-phase 17`
+Next: `/gsd:execute-phase 18-03` or `/gsd:verify-phase 18`
 
 ---
-*State updated: 2026-01-25 after Phase 16 execution and verification complete*
+*State updated: 2026-01-25 after 18-02 execution complete*
