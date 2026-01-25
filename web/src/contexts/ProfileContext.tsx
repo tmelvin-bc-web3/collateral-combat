@@ -70,6 +70,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     ownProfile.updatedAt > 0
   );
 
+  // Profile setup eligibility check - used by ProfileSetupWrapper
+  // Note: First-bet gating is handled in ProfileSetupWrapper since it has access to FirstBetContext
   const needsSetup = !!(
     walletAddress &&
     !isLoading &&
