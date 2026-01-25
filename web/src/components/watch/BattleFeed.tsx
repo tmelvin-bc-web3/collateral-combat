@@ -5,6 +5,7 @@ import { LiveBattle } from '@/types';
 import { BattleSlide } from './BattleSlide';
 import { useVerticalSwipe } from '@/hooks/useVerticalSwipe';
 import { Loader2 } from 'lucide-react';
+import { FloatingConnectPill } from '@/components/onboarding';
 
 /**
  * Merge multiple refs into a single callback ref
@@ -220,6 +221,9 @@ export function BattleFeed({
           </div>
         </div>
       )}
+
+      {/* Floating connect pill for anonymous users (ONB-02, z-30 below QuickBetStrip z-40) */}
+      <FloatingConnectPill />
     </div>
   );
 }

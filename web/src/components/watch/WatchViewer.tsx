@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
 import { LiveBattle } from '@/types';
 import { BattleFeed } from './BattleFeed';
 import { BACKEND_URL } from '@/config/api';
 import { QuickBetStrip } from '@/components/spectate/QuickBetStrip';
+import { PostConnectFeedback } from '@/components/onboarding';
 
 interface WatchViewerProps {
   onSelectBattle?: (battle: LiveBattle) => void;
@@ -25,12 +26,25 @@ interface WatchViewerProps {
  * - Includes QuickBetStrip overlay
  */
 export function WatchViewer({ onSelectBattle }: WatchViewerProps) {
-  const { publicKey } = useWallet();
+  const { publicKey, connected } = useWallet();
   const walletAddress = publicKey?.toBase58();
 
   const [liveBattles, setLiveBattles] = useState<LiveBattle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeBattle, setActiveBattle] = useState<LiveBattle | null>(null);
+
+  // Track "just connected" state for PostConnectFeedback (ONB-08)
+  const [showPostConnect, setShowPostConnect] = useState(false);
+  const wasConnectedRef = useRef(connected);
+
+  // Detect wallet connection transition (false -> true)
+  useEffect(() => {
+    if (connected && !wasConnectedRef.current) {
+      // Just connected - show feedback
+      setShowPostConnect(true);
+    }
+    wasConnectedRef.current = connected;
+  }, [connected]);
 
   // Fetch live battles and subscribe to updates
   useEffect(() => {
@@ -121,6 +135,7 @@ export function WatchViewer({ onSelectBattle }: WatchViewerProps) {
 
   return (
     <div className="relative h-screen bg-bg-primary">
+      {/* BattleFeed includes FloatingConnectPill (ONB-02) */}
       <BattleFeed
         battles={liveBattles}
         onRefresh={handleRefresh}
@@ -128,7 +143,13 @@ export function WatchViewer({ onSelectBattle }: WatchViewerProps) {
         onBetPlaced={handleBetPlaced}
       />
 
-      {/* QuickBetStrip overlay at bottom */}
+      {/* Post-connect feedback toast (ONB-08, z-50 above everything) */}
+      <PostConnectFeedback
+        show={showPostConnect}
+        onDismiss={() => setShowPostConnect(false)}
+      />
+
+      {/* QuickBetStrip overlay at bottom (z-40) */}
       {activeBattle && (
         <div className="absolute bottom-0 left-0 right-0 z-40">
           <QuickBetStrip
