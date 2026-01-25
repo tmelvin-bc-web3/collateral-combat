@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** Players can confidently bet against each other on price predictions with fair, transparent, on-chain settlement.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 16: Watch Experience — Complete
 
 ## Current Position
 
-Phase: 14 of 14 (v2.0 complete)
-Plan: N/A
-Status: Milestone complete
-Last activity: 2026-01-24 — v2.0 Battles System shipped
+Phase: 16 of 18 (Watch Experience)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-01-25 — Completed 16-02-PLAN.md
 
-Progress: [==========] v1.0: 4 phases | v1.1: 5 phases | v2.0: 5 phases | TOTAL: 14 phases, 45 plans
+Progress: [████░░░░░░] v2.1: 40% | 4/10 plans
 
 ## Milestone Summary
 
@@ -23,8 +23,9 @@ Progress: [==========] v1.0: 4 phases | v1.1: 5 phases | v2.0: 5 phases | TOTAL:
 | v1.0 Mainnet Launch | 1-4 | 18 | Complete | 2026-01-22 |
 | v1.1 Code & Security | 5-9 | 10 | Complete | 2026-01-23 |
 | v2.0 Battles System | 10-14 | 27 | Complete | 2026-01-24 |
+| v2.1 Arena Experience | 15-18 | 10 | In Progress | — |
 
-**Total:** 14 phases, 45 plans across 3 milestones
+**Total:** 18 phases, 65 plans (59 shipped, 6 planned)
 
 ## Accumulated Context
 
@@ -38,31 +39,59 @@ Key v2.0 decisions:
 - Satori + Sharp for server-side image generation
 - Single elimination tournaments for v2.0
 
-### Pending Todos
+Key v2.1 decisions (15-01):
+- 4 tabs for bottom nav: Arena, Watch, Fight, Profile
+- 56px min-height touch targets (exceeds 44px accessibility requirement)
+- Swipe threshold 50px horizontal, 100px max vertical deviation
 
-- Start next milestone with `/gsd:new-milestone`
-- Deploy to mainnet when ready
-- Acquire first 100 users
+Key v2.1 decisions (15-02):
+- FightCardBattle type separate from existing Battle type (avoid conflicts)
+- UFC-style fight card hierarchy: hero, live strip, main card, undercard
+- Single-line className strings (Turbopack compatibility)
+- Mock data for development (socket integration deferred)
+
+Key v2.1 decisions (16-01):
+- react-swipeable for gesture detection
+- CSS scroll-snap for TikTok-style navigation
+- 40vh/60vh chart/betting split for portrait mobile
+- 60px pull threshold for refresh trigger
+- 3-second delay before auto-advance on battle end
+
+Key v2.1 decisions (16-02):
+- Preset bet amounts: [0.01, 0.05, 0.1, 0.5] SOL per MOB-07
+- Swipe direction: left = Fighter 1, right = Fighter 2
+- Default bet amount: 0.1 SOL (middle of range)
+- 8-second message fade in floating chat
+- State machine pattern for bet flow (idle -> amount_selected -> confirming -> placing -> success/error)
+
+### v2.1 Requirements Mapping
+
+| Phase | Requirements | Count |
+|-------|--------------|-------|
+| 15. Core Structure | NAV-01 to NAV-05, HOME-01 to HOME-11 | 16 |
+| 16. Watch Experience | MOB-01 to MOB-07 | 7 |
+| 17. Onboarding | ONB-01 to ONB-08 | 8 |
+| 18. Polish | POL-01 to POL-07 | 7 |
+
+**Coverage:** 38/38 requirements mapped
 
 ### Blockers/Concerns
 
-**For Mainnet Deployment:**
+**For Mainnet (deferred to v2.2):**
 - Multi-sig member keys needed — must be hardware wallets
-- Execute multi-sig setup and authority transfer scripts
-- Redis deployment — Production must have REDIS_URL set for replay protection
+- Redis deployment — Production must have REDIS_URL for replay protection
 
-**Technical Debt (Post-Mainnet):**
+**Technical Debt:**
 - Logger adoption partial (some console.log remains)
-- Error boundary coverage limited to predict/battle pages
 - Phase 14 socket events cast as 'any' (types not yet updated)
-- Placeholder favorite assets data for new fighters
+- Homepage socket integration pending (uses mock data currently)
 
 ## Session Continuity
 
-Last session: 2026-01-24
-Stopped at: v2.0 milestone complete and archived
+Last session: 2026-01-25
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
-Next: `/gsd:new-milestone` for next version planning
+Next: Plan Phase 17 (Onboarding)
 
 ---
-*State updated: 2026-01-24 after v2.0 milestone completion*
+*State updated: 2026-01-25 after 16-02-PLAN.md execution complete*
