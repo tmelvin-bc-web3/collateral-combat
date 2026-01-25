@@ -14,6 +14,7 @@ import { OnboardingTourWrapper } from '@/components/OnboardingTourWrapper';
 import { WhitelistLayoutWrapper } from '@/components/WhitelistLayoutWrapper';
 import { BottomNavBar } from '@/components/navigation';
 import { COMING_SOON_MODE } from '@/config/siteConfig';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -45,6 +46,19 @@ export default function RootLayout({
         {/* Animated background elements */}
         <DomeEmbers />
         <div className="dome-heat" aria-hidden="true" />
+
+        {/* Sonner Toaster - global toast notifications */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#0d0b09',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#e8dfd4',
+            },
+          }}
+        />
 
         {COMING_SOON_MODE ? (
           // Coming Soon Mode - whitelisted wallets get full layout
