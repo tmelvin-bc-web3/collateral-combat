@@ -6,6 +6,7 @@ import { LiveBattle, BattleOdds } from '@/types';
 import { useBetState } from '@/hooks/useBetState';
 import { useFirstBetContext } from '@/contexts/FirstBetContext';
 import { useBetFeedback } from '@/hooks/useBetFeedback';
+import { useSessionBetting } from '@/hooks/useSessionBetting';
 import { WinModal, LossFlash, BetResult } from '@/components/feedback';
 import { BetConfirmOverlay } from './BetConfirmOverlay';
 import { cn } from '@/lib/utils';
@@ -73,8 +74,8 @@ export function QuickBetStripV2({
   // Track previous state to detect transition to success
   const prevStateRef = useRef<string | null>(null);
 
-  // Mock balance for demo (in real app, get from context/API)
-  const [mockBalance, setMockBalance] = useState(1.0);
+  // Get real balance from session betting hook
+  const { balanceInSol, fetchBalance } = useSessionBetting();
 
   // Get player info
   const player1 = battle.players[0];
@@ -134,7 +135,7 @@ export function QuickBetStripV2({
       const grossPayout = betAmount * fighterOdds;
       const fees = grossPayout * 0.05; // 5% platform fee
       const netPayout = grossPayout - fees;
-      const newBalance = mockBalance - betAmount + netPayout;
+      const newBalance = balanceInSol - betAmount + netPayout;
 
       // Create bet result
       const result: BetResult = {
@@ -145,8 +146,8 @@ export function QuickBetStripV2({
         newBalance: newBalance,
       };
 
-      // Update mock balance (optimistic update)
-      setMockBalance(newBalance);
+      // Reconcile with on-chain state after bet settles
+      fetchBalance();
 
       // Trigger win feedback (WinModal handles confetti internally)
       triggerWin(result);
@@ -160,7 +161,8 @@ export function QuickBetStripV2({
     player1,
     player1Odds,
     player2Odds,
-    mockBalance,
+    balanceInSol,
+    fetchBalance,
     triggerWin,
   ]);
 
