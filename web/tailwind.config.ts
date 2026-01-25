@@ -143,12 +143,17 @@ const config: Config = {
           '0%': { opacity: '1' },
           '100%': { opacity: '0' },
         },
+        buttonPress: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(0.95)' },
+        },
       },
       animation: {
         slideUp: 'slideUp 0.2s ease-out',
         slideDown: 'slideDown 0.2s ease-out',
         fadeIn: 'fadeIn 0.3s ease-out',
         fadeOut: 'fadeOut 0.3s ease-out',
+        buttonPress: 'buttonPress 150ms ease-out',
       },
     },
   },

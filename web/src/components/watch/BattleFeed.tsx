@@ -6,6 +6,7 @@ import { BattleSlide } from './BattleSlide';
 import { useVerticalSwipe } from '@/hooks/useVerticalSwipe';
 import { Loader2 } from 'lucide-react';
 import { FloatingConnectPill } from '@/components/onboarding';
+import { cn } from '@/lib/utils';
 
 /**
  * Merge multiple refs into a single callback ref
@@ -184,7 +185,14 @@ export function BattleFeed({
         onMouseDown={handlers.onMouseDown}
       >
         {battles.map((battle, index) => (
-          <div key={battle.id} data-battle-id={battle.id}>
+          <div
+            key={battle.id}
+            data-battle-id={battle.id}
+            className={cn(
+              'snap-start snap-always transition-all duration-300',
+              index !== activeIndex && 'opacity-80 scale-[0.98]'
+            )}
+          >
             <BattleSlide
               battle={battle}
               isActive={index === activeIndex}
