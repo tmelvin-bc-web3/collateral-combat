@@ -18,6 +18,8 @@ export type BetFlowState = 'idle' | 'amount_selected' | 'confirming' | 'placing'
 interface UseBetStateOptions {
   battleId: string;
   walletAddress?: string;
+  /** Whether this is a first-time user (defaults to 0.05 SOL instead of 0.1) */
+  isFirstBetUser?: boolean;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -42,8 +44,10 @@ interface UseBetStateReturn {
   reset: () => void;
 }
 
-// Default amount in SOL (middle of preset range)
+// Default amount for returning users (middle of preset range)
 const DEFAULT_AMOUNT = 0.1;
+// Default amount for first-time users (ONB-04: 0.05 SOL)
+const FIRST_BET_DEFAULT_AMOUNT = 0.05;
 
 /**
  * State machine hook for managing bet flow in QuickBetStripV2
@@ -70,11 +74,14 @@ const DEFAULT_AMOUNT = 0.1;
 export function useBetState({
   battleId,
   walletAddress,
+  isFirstBetUser = false,
   onSuccess,
   onError,
 }: UseBetStateOptions): UseBetStateReturn {
+  // First-time users get 0.05 SOL default, returning users get 0.1 SOL
+  const initialAmount = isFirstBetUser ? FIRST_BET_DEFAULT_AMOUNT : DEFAULT_AMOUNT;
   const [state, setState] = useState<BetFlowState>('idle');
-  const [selectedAmount, setSelectedAmount] = useState<number>(DEFAULT_AMOUNT);
+  const [selectedAmount, setSelectedAmount] = useState<number>(initialAmount);
   const [pendingBet, setPendingBet] = useState<PendingBet | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
@@ -239,7 +246,7 @@ export function useBetState({
    */
   const reset = useCallback(() => {
     setState('idle');
-    setSelectedAmount(DEFAULT_AMOUNT);
+    setSelectedAmount(initialAmount);
     setPendingBet(null);
     setError(null);
 
@@ -247,7 +254,7 @@ export function useBetState({
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-  }, []);
+  }, [initialAmount]);
 
   return {
     state,

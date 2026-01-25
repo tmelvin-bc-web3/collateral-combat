@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import { LiveBattle, BattleOdds } from '@/types';
 import { useBetState } from '@/hooks/useBetState';
+import { useFirstBetContext } from '@/contexts/FirstBetContext';
+import { useConfetti } from '@/components/Confetti';
 import { BetConfirmOverlay } from './BetConfirmOverlay';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +51,21 @@ export function QuickBetStripV2({
   // Track swipe visual offset for feedback
   const [swipeOffset, setSwipeOffset] = useState(0);
 
+  // First bet tracking and celebration
+  const {
+    hasPlacedFirstBet,
+    isFirstBetUser,
+    recordFirstBet,
+    showCelebration,
+    dismissCelebration,
+  } = useFirstBetContext();
+
+  // Confetti for first bet celebration
+  const { triggerConfetti, ConfettiComponent } = useConfetti();
+
+  // Track previous state to detect transition to success
+  const prevStateRef = useRef<string | null>(null);
+
   // Get player info
   const player1 = battle.players[0];
   const player2 = battle.players[1];
@@ -78,6 +95,7 @@ export function QuickBetStripV2({
   } = useBetState({
     battleId: battle.id,
     walletAddress,
+    isFirstBetUser, // Pass first bet user flag for 0.05 SOL default
     onSuccess: () => {
       onBetPlaced?.();
     },
@@ -85,6 +103,30 @@ export function QuickBetStripV2({
       console.error('[QuickBetStripV2] Bet error:', err);
     },
   });
+
+  // Trigger celebration on first successful bet
+  useEffect(() => {
+    // Detect transition to 'success' state
+    if (state === 'success' && prevStateRef.current !== 'success') {
+      // Check if this was a first bet
+      if (!hasPlacedFirstBet) {
+        recordFirstBet();
+        triggerConfetti();
+      }
+    }
+    prevStateRef.current = state;
+  }, [state, hasPlacedFirstBet, recordFirstBet, triggerConfetti]);
+
+  // Dismiss celebration when confetti completes (handled by useConfetti onComplete)
+  useEffect(() => {
+    if (showCelebration) {
+      // Give time for confetti animation then dismiss
+      const timer = setTimeout(() => {
+        dismissCelebration();
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [showCelebration, dismissCelebration]);
 
   // Calculate potential payout based on selected amount and fighter odds
   const potentialPayout = useMemo(() => {
@@ -145,6 +187,9 @@ export function QuickBetStripV2({
 
   return (
     <>
+      {/* First bet celebration confetti */}
+      {ConfettiComponent}
+
       {/* Confirm overlay (renders above bet strip when visible) */}
       {showConfirmOverlay && pendingBet && (
         <BetConfirmOverlay
