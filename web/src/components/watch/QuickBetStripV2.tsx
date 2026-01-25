@@ -244,11 +244,12 @@ export function QuickBetStripV2({
                     disabled={state === 'placing'}
                     style={{ minHeight: MIN_TOUCH_HEIGHT }}
                     className={cn(
-                      'flex-1 max-w-[72px] py-2 rounded-lg text-sm font-bold transition-all touch-manipulation',
+                      'flex-1 max-w-[72px] py-2 rounded-lg text-sm font-bold touch-manipulation',
+                      'transition-transform duration-150 active:scale-95',
                       selectedAmount === amt && (state === 'amount_selected' || state === 'idle')
                         ? 'bg-warning text-black ring-2 ring-warning/50'
-                        : 'bg-white/10 text-white/70 active:bg-white/20',
-                      state === 'placing' && 'opacity-50 cursor-not-allowed'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20',
+                      state === 'placing' && 'opacity-50 cursor-not-allowed scale-100'
                     )}
                   >
                     {amt}
