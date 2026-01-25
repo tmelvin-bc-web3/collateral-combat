@@ -8,6 +8,7 @@ import { SpectatorView } from '@/components/SpectatorView';
 import { PageLoading } from '@/components/ui/skeleton';
 import { BACKEND_URL } from '@/config/api';
 import { QuickBetStrip } from '@/components/spectate/QuickBetStrip';
+import { WatchViewer } from '@/components/watch';
 import {
   StandsHero,
   StandsTabs,
@@ -337,95 +338,103 @@ export default function SpectatePage() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-fadeIn overflow-x-hidden">
-      {/* Hero Section */}
-      <StandsHero stats={stats} />
-
-      {/* Tabs */}
-      <StandsTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        liveBattlesCount={liveBattles.length}
-        upcomingCount={MOCK_UPCOMING.length}
-        activeBetsCount={activeBets.length}
-      />
-
-      {/* Filters (only show on Live tab) */}
-      {activeTab === 'live' && (
-        <FiltersBar
-          gameFilter={gameFilter}
-          tierFilter={tierFilter}
-          sortBy={sortBy}
-          onGameFilterChange={setGameFilter}
-          onTierFilterChange={setTierFilter}
-          onSortChange={setSortBy}
-        />
-      )}
-
-      {/* Content Area */}
-      <div className="min-h-[300px] sm:min-h-[400px]">
-        {activeTab === 'live' && (
-          <>
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-64 sm:h-80 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl animate-pulse" />
-                ))}
-              </div>
-            ) : filteredBattles.length === 0 ? (
-              <EmptyState
-                recentResults={recentResults}
-                upcomingBattles={MOCK_UPCOMING}
-                onViewResults={() => setActiveTab('results')}
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                {filteredBattles.map((battle) => (
-                  <BattleCard
-                    key={battle.id}
-                    battle={battle}
-                    onWatch={() => handleWatch(battle.id)}
-                    onBet={(side) => handleBet(battle.id, side)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'upcoming' && (
-          <UpcomingBattles
-            battles={MOCK_UPCOMING}
-            onSetReminder={handleSetReminder}
-          />
-        )}
-
-        {activeTab === 'mybets' && (
-          <MyBetsSection
-            activeBets={activeBets}
-            betHistory={betHistory}
-            stats={MOCK_USER_STATS}
-            isConnected={!!walletAddress}
-            onWatchBattle={handleWatch}
-            onViewLive={() => setActiveTab('live')}
-          />
-        )}
-
-        {activeTab === 'results' && (
-          <ResultsSection results={MOCK_RESULTS} />
-        )}
-
-        {activeTab === 'leaderboard' && (
-          <TopBettorsLeaderboard
-            topBettors={MOCK_TOP_BETTORS}
-            userPosition={undefined}
-            userStats={walletAddress ? MOCK_USER_STATS : undefined}
-          />
-        )}
+    <>
+      {/* Mobile: TikTok-style WatchViewer */}
+      <div className="lg:hidden">
+        <WatchViewer onSelectBattle={handleSelectBattle} />
       </div>
 
-      {/* How It Works */}
-      <HowItWorks />
-    </div>
+      {/* Desktop: Full spectate experience */}
+      <div className="hidden lg:block w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-fadeIn overflow-x-hidden">
+        {/* Hero Section */}
+        <StandsHero stats={stats} />
+
+        {/* Tabs */}
+        <StandsTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          liveBattlesCount={liveBattles.length}
+          upcomingCount={MOCK_UPCOMING.length}
+          activeBetsCount={activeBets.length}
+        />
+
+        {/* Filters (only show on Live tab) */}
+        {activeTab === 'live' && (
+          <FiltersBar
+            gameFilter={gameFilter}
+            tierFilter={tierFilter}
+            sortBy={sortBy}
+            onGameFilterChange={setGameFilter}
+            onTierFilterChange={setTierFilter}
+            onSortChange={setSortBy}
+          />
+        )}
+
+        {/* Content Area */}
+        <div className="min-h-[300px] sm:min-h-[400px]">
+          {activeTab === 'live' && (
+            <>
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-64 sm:h-80 bg-[#1a1a1a] border border-white/[0.06] rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              ) : filteredBattles.length === 0 ? (
+                <EmptyState
+                  recentResults={recentResults}
+                  upcomingBattles={MOCK_UPCOMING}
+                  onViewResults={() => setActiveTab('results')}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  {filteredBattles.map((battle) => (
+                    <BattleCard
+                      key={battle.id}
+                      battle={battle}
+                      onWatch={() => handleWatch(battle.id)}
+                      onBet={(side) => handleBet(battle.id, side)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'upcoming' && (
+            <UpcomingBattles
+              battles={MOCK_UPCOMING}
+              onSetReminder={handleSetReminder}
+            />
+          )}
+
+          {activeTab === 'mybets' && (
+            <MyBetsSection
+              activeBets={activeBets}
+              betHistory={betHistory}
+              stats={MOCK_USER_STATS}
+              isConnected={!!walletAddress}
+              onWatchBattle={handleWatch}
+              onViewLive={() => setActiveTab('live')}
+            />
+          )}
+
+          {activeTab === 'results' && (
+            <ResultsSection results={MOCK_RESULTS} />
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <TopBettorsLeaderboard
+              topBettors={MOCK_TOP_BETTORS}
+              userPosition={undefined}
+              userStats={walletAddress ? MOCK_USER_STATS : undefined}
+            />
+          )}
+        </div>
+
+        {/* How It Works */}
+        <HowItWorks />
+      </div>
+    </>
   );
 }
