@@ -172,12 +172,13 @@ Plans:
   3. User sees clear payout breakdown ("Bet: 0.5 | Won: 0.45 | New Balance: 2.95")
   4. Buttons respond with micro-interactions (scale press animations)
   5. Live data updates within 500ms (positions, odds, timer)
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — Win/loss feedback (WinModal, LossFlash, PayoutBreakdown) and useBetFeedback hook
-- [ ] 18-02-PLAN.md — Button micro-interactions (active:scale-95) and swipe animations
-- [ ] 18-03-PLAN.md — Live data animations (CountingNumber, DeltaBadge, UrgentTimer) with react-countup
+- [x] 18-01-PLAN.md — Win/loss feedback (WinModal, LossFlash, PayoutBreakdown) and useBetFeedback hook
+- [x] 18-02-PLAN.md — Button micro-interactions (active:scale-95) and swipe animations
+- [x] 18-03-PLAN.md — Live data animations (CountingNumber, DeltaBadge, UrgentTimer) with react-countup
+- [ ] 18-04-PLAN.md — Gap closure: Real balance integration replacing mock balance (POL-02)
 
 ---
 
@@ -205,7 +206,7 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 | 15. Core Structure | v2.1 | 2/2 | Complete | 2026-01-24 |
 | 16. Watch Experience | v2.1 | 2/2 | Complete | 2026-01-25 |
 | 17. Onboarding | v2.1 | 3/3 | Complete | 2026-01-25 |
-| 18. Polish | v2.1 | 0/3 | Planned | - |
+| 18. Polish | v2.1 | 3/4 | Gap Closure | - |
 
 ---
 
@@ -213,5 +214,5 @@ Phases execute in numeric order: 15 -> 16 -> 17 -> 18
 *v1.0: Phases 1-4 (18 plans)*
 *v1.1: Phases 5-9 (10 plans)*
 *v2.0: Phases 10-14 (27 plans)*
-*v2.1: Phases 15-18 (10 plans estimated)*
-*Last updated: 2026-01-25 after Phase 17 execution complete*
+*v2.1: Phases 15-18 (11 plans)*
+*Last updated: 2026-01-25 after gap closure plan created for Phase 18*
