@@ -96,7 +96,12 @@ export function BetConfirmOverlay({
               onClick={onCancel}
               disabled={isPlacing}
               style={{ minHeight: MIN_TOUCH_HEIGHT }}
-              className="flex-1 py-3 px-4 rounded-xl bg-white/10 text-white/80 font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+              className={cn(
+                'min-h-[44px] flex-1 py-3 px-4 rounded-xl font-semibold touch-manipulation',
+                'bg-white/10 text-white/80 hover:bg-white/20',
+                'transition-transform duration-150 active:scale-95',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100'
+              )}
             >
               Cancel
             </button>
@@ -104,7 +109,12 @@ export function BetConfirmOverlay({
               onClick={onConfirm}
               disabled={isPlacing}
               style={{ minHeight: MIN_TOUCH_HEIGHT }}
-              className="flex-1 py-3 px-4 rounded-xl bg-warning text-black font-bold transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed touch-manipulation flex items-center justify-center gap-2"
+              className={cn(
+                'min-h-[44px] flex-1 py-3 px-4 rounded-xl font-bold touch-manipulation flex items-center justify-center gap-2',
+                'bg-warning text-black hover:bg-warning/90',
+                'transition-transform duration-150 active:scale-95',
+                isPlacing && 'opacity-70 cursor-not-allowed scale-100'
+              )}
             >
               {isPlacing ? (
                 <>
