@@ -5,7 +5,8 @@ import { useSwipeable } from 'react-swipeable';
 import { LiveBattle, BattleOdds } from '@/types';
 import { useBetState } from '@/hooks/useBetState';
 import { useFirstBetContext } from '@/contexts/FirstBetContext';
-import { useConfetti } from '@/components/Confetti';
+import { useBetFeedback } from '@/hooks/useBetFeedback';
+import { WinModal, LossFlash, BetResult } from '@/components/feedback';
 import { BetConfirmOverlay } from './BetConfirmOverlay';
 import { cn } from '@/lib/utils';
 
@@ -56,15 +57,24 @@ export function QuickBetStripV2({
     hasPlacedFirstBet,
     isFirstBetUser,
     recordFirstBet,
-    showCelebration,
-    dismissCelebration,
   } = useFirstBetContext();
 
-  // Confetti for first bet celebration
-  const { triggerConfetti, ConfettiComponent } = useConfetti();
+  // Bet feedback (win modal, loss flash)
+  const {
+    showWinModal,
+    showLossFlash,
+    result: feedbackResult,
+    triggerWin,
+    triggerLoss,
+    dismissWin,
+    dismissLoss,
+  } = useBetFeedback();
 
   // Track previous state to detect transition to success
   const prevStateRef = useRef<string | null>(null);
+
+  // Mock balance for demo (in real app, get from context/API)
+  const [mockBalance, setMockBalance] = useState(1.0);
 
   // Get player info
   const player1 = battle.players[0];
@@ -104,29 +114,55 @@ export function QuickBetStripV2({
     },
   });
 
-  // Trigger celebration on first successful bet
+  // Trigger feedback on successful bet
   useEffect(() => {
     // Detect transition to 'success' state
-    if (state === 'success' && prevStateRef.current !== 'success') {
-      // Check if this was a first bet
+    if (state === 'success' && prevStateRef.current !== 'success' && pendingBet) {
+      // Record first bet if applicable
       if (!hasPlacedFirstBet) {
         recordFirstBet();
-        triggerConfetti();
       }
+
+      // Get the fighter odds for this bet
+      const fighterOdds = pendingBet.fighterWallet === player1?.walletAddress
+        ? player1Odds
+        : player2Odds;
+
+      // For demo purposes, assume bet always "wins"
+      // In real app, this would come from actual settlement
+      const betAmount = pendingBet.amount;
+      const grossPayout = betAmount * fighterOdds;
+      const fees = grossPayout * 0.05; // 5% platform fee
+      const netPayout = grossPayout - fees;
+      const newBalance = mockBalance - betAmount + netPayout;
+
+      // Create bet result
+      const result: BetResult = {
+        won: true, // Demo: always win
+        bet: betAmount,
+        payout: grossPayout,
+        fees: fees,
+        newBalance: newBalance,
+      };
+
+      // Update mock balance (optimistic update)
+      setMockBalance(newBalance);
+
+      // Trigger win feedback (WinModal handles confetti internally)
+      triggerWin(result);
     }
     prevStateRef.current = state;
-  }, [state, hasPlacedFirstBet, recordFirstBet, triggerConfetti]);
-
-  // Dismiss celebration when confetti completes (handled by useConfetti onComplete)
-  useEffect(() => {
-    if (showCelebration) {
-      // Give time for confetti animation then dismiss
-      const timer = setTimeout(() => {
-        dismissCelebration();
-      }, 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [showCelebration, dismissCelebration]);
+  }, [
+    state,
+    hasPlacedFirstBet,
+    recordFirstBet,
+    pendingBet,
+    player1,
+    player1Odds,
+    player2Odds,
+    mockBalance,
+    triggerWin,
+  ]);
 
   // Calculate potential payout based on selected amount and fighter odds
   const potentialPayout = useMemo(() => {
@@ -187,8 +223,13 @@ export function QuickBetStripV2({
 
   return (
     <>
-      {/* First bet celebration confetti */}
-      {ConfettiComponent}
+      {/* Win modal (z-50, above QuickBetStrip z-40) */}
+      {showWinModal && feedbackResult && (
+        <WinModal result={feedbackResult} onDismiss={dismissWin} />
+      )}
+
+      {/* Loss flash - triggers parent to apply flash styling to balance */}
+      <LossFlash isActive={showLossFlash} onComplete={dismissLoss} />
 
       {/* Confirm overlay (renders above bet strip when visible) */}
       {showConfirmOverlay && pendingBet && (
