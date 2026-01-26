@@ -138,7 +138,6 @@ export interface BattlePlayer {
   rank?: number;
   pendingDebitId?: string; // For PDA balance tracking
   lockTx?: string; // On-chain transaction that locked entry fee in global vault
-  isFreeBet?: boolean; // Whether this player used a free bet for entry
 }
 
 export interface Battle {
@@ -153,9 +152,6 @@ export interface Battle {
   prizePool: number;
   spectatorCount?: number;
   totalBetPool?: number;
-  // On-chain tracking
-  onChainBattleId?: string;  // Pubkey of on-chain battle account
-  onChainSettled?: boolean;  // Whether settle_battle has been called
   // Signed trades for trustless settlement
   signedTrades?: SignedTrade[];
   // Battle end reason
@@ -245,7 +241,6 @@ export interface PredictionBet {
   payout?: number;
   status: BetStatus;
   lockTx?: string; // On-chain transaction that locked funds in global vault
-  isFreeBet?: boolean; // Whether this bet was placed using a free bet credit
 }
 
 export interface PredictionStats {
@@ -300,15 +295,6 @@ export interface ServerToClientEvents {
   prediction_settled: (round: PredictionRound) => void;
   prediction_bet_placed: (bet: PredictionBet) => void;
   prediction_bet_result: (result: { success: boolean; error?: string; bet?: PredictionBet }) => void;
-  // Progression events
-  progression_update: (progression: UserProgression) => void;
-  xp_gained: (data: XpGainEvent) => void;
-  level_up: (data: LevelUpResult & { walletAddress: string }) => void;
-  perk_activated: (perk: UserPerk) => void;
-  perk_expired: (data: { perkId: number }) => void;
-  // Rebate events
-  rebate_received: (data: { walletAddress: string; roundId: number; rebateLamports: number; rebateSol: number; perkType?: string }) => void;
-  rebate_summary: (data: { totalRebates: number; totalRebateLamports: number; totalRebateSol: number; pendingRebateLamports: number; pendingRebateSol: number }) => void;
   // Notification events
   notification: (notification: Notification) => void;
   notification_count: (count: number) => void;
@@ -338,7 +324,7 @@ export interface ClientToServerEvents {
   join_battle: (battleId: string, walletAddress: string) => void;
   create_battle: (config: BattleConfig, walletAddress: string) => void;
   queue_matchmaking: (config: BattleConfig, walletAddress: string) => void;
-  start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
+  start_solo_practice: (data: { config: BattleConfig; wallet: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
   // Signed trade events for trustless settlement
@@ -383,15 +369,9 @@ export interface ClientToServerEvents {
   select_swap_coin: (entryId: string, pickId: string, newCoinId: string) => void;
   use_powerup_boost: (entryId: string, pickId: string) => void;
   use_powerup_freeze: (entryId: string, pickId: string) => void;
-  // Progression events
-  subscribe_progression: (walletAddress: string) => void;
-  unsubscribe_progression: (walletAddress: string) => void;
   // Notification events
   subscribe_notifications: (walletAddress: string) => void;
   unsubscribe_notifications: (walletAddress: string) => void;
-  // Rebate events
-  subscribe_rebates: (walletAddress: string) => void;
-  unsubscribe_rebates: (walletAddress: string) => void;
   // LDS (Last Degen Standing) events
   subscribe_lds: () => void;
   unsubscribe_lds: () => void;
@@ -485,7 +465,6 @@ export interface DraftEntry {
   finalScore?: number;
   finalRank?: number;
   payoutLamports?: number; // Changed from USD to lamports
-  isFreeBet?: boolean; // Whether this entry was made with a free bet
   createdAt: number;
 }
 
@@ -543,157 +522,7 @@ export interface DraftServerToClientEvents {
   draft_error: (message: string) => void;
 }
 
-// ===================
-// Progression System Types
-// ===================
-
-export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator' | 'share';
-export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
-export type CosmeticType = 'border' | 'pfp' | 'title';
-
-export interface UserProgression {
-  walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
-  xpToNextLevel: number;
-  xpProgress: number; // percentage 0-100
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface XpHistoryEntry {
-  id: number;
-  walletAddress: string;
-  xpAmount: number;
-  source: XpSource;
-  sourceId?: string;
-  description?: string;
-  createdAt: number;
-}
-
-export interface UserPerk {
-  id: number;
-  walletAddress: string;
-  perkType: ProgressionPerkType;
-  unlockLevel: number;
-  isUsed: boolean;
-  activatedAt?: number;
-  expiresAt?: number;
-  createdAt: number;
-}
-
-export interface UserCosmetic {
-  id: number;
-  walletAddress: string;
-  cosmeticType: CosmeticType;
-  cosmeticId: string;
-  unlockLevel: number;
-  createdAt: number;
-}
-
-export interface LevelUpResult {
-  previousLevel: number;
-  newLevel: number;
-  unlockedPerks: UserPerk[];
-  unlockedCosmetics: UserCosmetic[];
-  newTitle: string | null;
-  freeBetsEarned?: number;
-}
-
-export interface XpGainEvent {
-  walletAddress: string;
-  amount: number;
-  baseAmount?: number;
-  streakBonus?: number;
-  streakDays?: number;
-  source: XpSource;
-  sourceId?: string;
-  description: string;
-  newTotalXp: number;
-  levelUp?: LevelUpResult;
-}
-
-// Streak types
-export interface UserStreak {
-  walletAddress: string;
-  currentStreak: number;
-  longestStreak: number;
-  lastActivityDate: string | null;
-  updatedAt: number;
-}
-
-// Free Bet types
-export type FreeBetTransactionType = 'earned' | 'used';
 export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator' | 'tournament';
-
-export interface FreeBetBalance {
-  walletAddress: string;
-  balance: number;
-  lifetimeEarned: number;
-  lifetimeUsed: number;
-  updatedAt: number;
-}
-
-export interface FreeBetTransaction {
-  id: number;
-  walletAddress: string;
-  amount: number;
-  transactionType: FreeBetTransactionType;
-  gameMode?: GameMode;
-  description?: string;
-  createdAt: number;
-}
-
-// ===================
-// Free Bet Position Types (Escrow-based)
-// ===================
-
-export type FreeBetPositionStatus = 'pending' | 'placed' | 'won' | 'lost' | 'settled' | 'failed';
-
-export interface FreeBetPosition {
-  id: number;
-  walletAddress: string;
-  roundId: number;
-  side: 'long' | 'short';
-  amountLamports: number;
-  status: FreeBetPositionStatus;
-  payoutLamports?: number;
-  txSignatureBet?: string;
-  txSignatureClaim?: string;
-  txSignatureSettlement?: string;
-  createdAt: number;
-}
-
-// ===================
-// Rake Rebate Types
-// ===================
-
-export type RakeRebateStatus = 'pending' | 'processing' | 'sent' | 'failed';
-
-export interface RakeRebate {
-  id: number;
-  walletAddress: string;
-  roundId: number;
-  grossWinningsLamports: number;
-  effectiveFeeBps: number;
-  perkType?: string;
-  rebateLamports: number;
-  status: RakeRebateStatus;
-  claimTxSignature: string;
-  rebateTxSignature?: string;
-  createdAt: number;
-}
-
-// Progression WebSocket events
-export interface ProgressionServerToClientEvents {
-  xp_gained: (data: XpGainEvent) => void;
-  level_up: (data: LevelUpResult & { walletAddress: string }) => void;
-  perk_activated: (perk: UserPerk) => void;
-  perk_expired: (data: { perkId: number; walletAddress: string }) => void;
-  free_bet_earned: (data: { walletAddress: string; count: number; description?: string; newBalance: number }) => void;
-  free_bet_used: (data: { walletAddress: string; gameMode: GameMode; newBalance: number }) => void;
-}
 
 // ===================
 // User Stats Types
@@ -752,14 +581,7 @@ export type NotificationType =
   | 'wager_won'
   | 'wager_lost'
   | 'wager_push'
-  | 'level_up'
-  | 'perk_unlocked'
-  | 'perk_expiring'
-  | 'streak_bonus'
-  | 'streak_lost'
-  | 'free_wager_earned'
   | 'leaderboard_rank_change'
-  | 'achievement_unlocked'
   | 'system';
 
 export interface Notification {
@@ -778,47 +600,6 @@ export interface NotificationListResponse {
   unreadCount: number;
   limit: number;
   offset: number;
-}
-
-// ===================
-// Achievement Types
-// ===================
-
-export type AchievementCategory =
-  | 'wager'
-  | 'win'
-  | 'streak'
-  | 'level'
-  | 'social'
-  | 'special';
-
-export type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
-export interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  category: AchievementCategory;
-  iconUrl: string;
-  xpReward: number;
-  rarity: AchievementRarity;
-  requirement: number;
-  requirementType: string;
-  isHidden: boolean;
-  createdAt: number;
-}
-
-export interface AchievementProgress {
-  achievement: Achievement;
-  progress: number;
-  isUnlocked: boolean;
-  unlockedAt: number | null;
-}
-
-export interface AchievementListResponse {
-  achievements: AchievementProgress[];
-  totalUnlocked: number;
-  totalAchievements: number;
 }
 
 // ===================
@@ -845,7 +626,6 @@ export interface Referral {
 export interface ReferralStats {
   totalReferrals: number;
   activeReferrals: number;
-  totalXpEarned: number;
   totalRakeEarned: number;
   myCode: string;
   referrals: Referral[];
@@ -889,30 +669,71 @@ export interface ScheduledMatchEvent {
 }
 
 // ===================
-// ELO Rating System Types
+// DegenDome Rating (DR) System Types
 // ===================
 
 /**
- * ELO tier for matchmaking
- * - protected: New players with <10 battles (isolated matchmaking)
- * - bronze: ELO < 1000
- * - silver: ELO 1000-1499
- * - gold: ELO 1500-1999
- * - platinum: ELO 2000-2499
- * - diamond: ELO 2500+
+ * DR tier for matchmaking and display
+ * Standard tiers (each with 4 divisions: IV, III, II, I):
+ *   liquidated (0-499), paper_hands (500-799), retail (800-1099),
+ *   degen (1100-1399), whale (1400-1699), market_maker (1700-1999),
+ *   oracle (2000-2299)
+ * Apex tiers (no divisions):
+ *   apex_contender (2300+), apex_predator (top 200),
+ *   apex_elite (top 50), the_apex (#1, 2700+)
  */
-export type EloTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'protected';
+export type DrTier =
+  | 'liquidated'
+  | 'paper_hands'
+  | 'retail'
+  | 'degen'
+  | 'whale'
+  | 'market_maker'
+  | 'oracle'
+  | 'apex_contender'
+  | 'apex_predator'
+  | 'apex_elite'
+  | 'the_apex';
 
 /**
- * User ELO data for API responses
+ * User rating data for API responses
  */
-export interface UserElo {
+export interface UserRating {
   wallet: string;
-  elo: number;
-  battleCount: number;
+  dr: number;
+  tier: DrTier;
+  division: number;
+  matchesPlayed: number;
   wins: number;
   losses: number;
-  tier: EloTier;
+  isPlacement: boolean;
+  placementMatches: number;
+  divisionShield: number;
+  tierShield: number;
+  peakDr: number;
+  currentStreak: number;
+}
+
+/**
+ * Result of processing a single player's match
+ */
+export interface PlayerMatchResult {
+  wallet: string;
+  drBefore: number;
+  drAfter: number;
+  drChange: number;
+  tier: DrTier;
+  division: number;
+  isPlacement: boolean;
+  kFactor: number;
+}
+
+/**
+ * Result of processing a complete match
+ */
+export interface ProcessMatchResult {
+  winner: PlayerMatchResult;
+  loser: PlayerMatchResult;
 }
 
 // ===================

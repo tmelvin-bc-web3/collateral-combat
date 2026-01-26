@@ -1,15 +1,12 @@
 'use client';
 
-import { Swords, Gift, Info } from 'lucide-react';
+import { Swords, Info } from 'lucide-react';
 import { TWPhase, BET_AMOUNTS } from './types';
 
 interface BettingBarProps {
   phase: TWPhase;
   selectedAmount: number;
   onAmountChange: (amount: number) => void;
-  freeBetCount: number;
-  useFreeBet: boolean;
-  onFreeBetToggle: () => void;
   isPlacingBet: boolean;
   hasBet: boolean;
 }
@@ -18,9 +15,6 @@ export function BettingBar({
   phase,
   selectedAmount,
   onAmountChange,
-  freeBetCount,
-  useFreeBet,
-  onFreeBetToggle,
   isPlacingBet,
   hasBet,
 }: BettingBarProps) {
@@ -68,34 +62,18 @@ export function BettingBar({
               <button
                 key={amount}
                 onClick={() => onAmountChange(amount)}
-                disabled={isBettingDisabled || useFreeBet}
+                disabled={isBettingDisabled}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  selectedAmount === amount && !useFreeBet
+                  selectedAmount === amount
                     ? 'bg-warning text-black'
                     : 'bg-white/5 border border-white/[0.06] text-white/60 hover:border-white/10'
-                } ${useFreeBet ? 'opacity-50' : ''}`}
+                }`}
               >
                 {amount}
               </button>
             ))}
           </div>
         </div>
-
-        {/* Free Bet Toggle */}
-        <button
-          onClick={onFreeBetToggle}
-          disabled={freeBetCount === 0 || isBettingDisabled}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            freeBetCount === 0 || isBettingDisabled
-              ? 'bg-white/5 text-white/30 cursor-not-allowed'
-              : useFreeBet
-              ? 'bg-success/20 border border-success/50 text-success'
-              : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
-          }`}
-        >
-          <Gift className="w-4 h-4" />
-          {useFreeBet ? 'Using Free Bet (0.01 SOL)' : `Free Bet (${freeBetCount})`}
-        </button>
       </div>
 
       {/* Hint */}

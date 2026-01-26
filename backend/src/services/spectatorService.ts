@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Battle, LiveBattle, BattleOdds, SpectatorBet, BetStatus } from '../types';
 import { battleManager } from './battleManager';
-import { progressionService } from './progressionService';
 import { spectatorBetDatabase, SpectatorBetRecord, OddsLockRecord } from '../db/spectatorBetDatabase';
 import { balanceService } from './balanceService';
 import * as userStatsDb from '../db/userStatsDatabase';
@@ -181,19 +180,12 @@ class SpectatorService {
   }
 
   // Place a bet using PDA balance
-  // NOTE: Free bets are NOT allowed for spectator wagering
   async placeBet(
     battleId: string,
     backedPlayer: string,
     amount: number,
-    bettor: string,
-    isFreeBet: boolean = false
+    bettor: string
   ): Promise<SpectatorBet> {
-    // Free bets are not allowed for spectator wagering
-    if (isFreeBet) {
-      throw new Error('Free bets cannot be used for spectator wagering');
-    }
-
     const battle = battleManager.getBattle(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -286,7 +278,7 @@ class SpectatorService {
     spectatorBetDatabase.createBet({
       id: bet.id,
       battleId,
-      onChainBattleId: battle.onChainBattleId || null,
+      onChainBattleId: null,
       bettorWallet: bettor,
       backedPlayer: backedPlayerSide,
       amountLamports,
@@ -315,20 +307,13 @@ class SpectatorService {
   /**
    * Request an odds lock before placing on-chain bet
    * This prevents odds slippage during transaction signing
-   * NOTE: Free bets are NOT allowed for spectator wagering
    */
   requestOddsLock(
     battleId: string,
     backedPlayer: string,
     amount: number,
-    bettor: string,
-    isFreeBet: boolean = false
+    bettor: string
   ): OddsLockResponse {
-    // Free bets are not allowed for spectator wagering
-    if (isFreeBet) {
-      throw new Error('Free bets cannot be used for spectator wagering');
-    }
-
     const battle = battleManager.getBattle(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -431,7 +416,7 @@ class SpectatorService {
     spectatorBetDatabase.createBet({
       id: betId,
       battleId: lock.battleId,
-      onChainBattleId: battle?.onChainBattleId || null,
+      onChainBattleId: null,
       bettorWallet: bettor,
       backedPlayer: lock.backedPlayer,
       amountLamports: lock.amountLamports,
@@ -629,10 +614,6 @@ class SpectatorService {
       const amountSol = bet.amountLamports / LAMPORTS_PER_SOL;
       console.log(`[SpectatorService] Bet lost: ${bet.bettor.slice(0, 8)}... lost ${amountSol.toFixed(4)} SOL`);
 
-      // Award XP for participation
-      const xpAmount = 10 + Math.floor(amountSol * 0.02);
-      progressionService.awardXp(bet.bettor, xpAmount, 'spectator', battleId, 'Spectator bet');
-
       // Record wager
       try {
         userStatsDb.recordWager(bet.bettor, 'spectator', amountSol, 'lost', -amountSol, battleId);
@@ -673,10 +654,6 @@ class SpectatorService {
       } else {
         console.error(`[SpectatorService] Failed to credit winnings for bet ${bet.id}`);
       }
-
-      // Award XP for winning
-      const xpAmount = 30 + Math.floor(amountSol * 0.1);
-      progressionService.awardXp(bet.bettor, xpAmount, 'spectator', battleId, 'Won spectator bet');
 
       // Record wager
       try {

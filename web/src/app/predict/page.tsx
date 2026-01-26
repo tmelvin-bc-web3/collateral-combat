@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getSocket } from '@/lib/socket';
 import { BACKEND_URL } from '@/config/api';
-import { PredictionRound, PredictionSide, QuickBetAmount, FreeBetBalance, PredictionBet, FreeBetPosition } from '@/types';
+import { PredictionRound, PredictionSide, QuickBetAmount, PredictionBet } from '@/types';
 import { RealtimeChart } from '@/components/RealtimeChart';
 import { PageLoading } from '@/components/ui/skeleton';
 import { useWinShare } from '@/hooks/useWinShare';
@@ -128,8 +128,6 @@ function useAnimatedPrice(targetPrice: number, duration: number, enabled: boolea
 const BET_AMOUNTS_SOL = [0.01, 0.05, 0.1, 0.25, 0.5] as const;
 type BetAmountSol = typeof BET_AMOUNTS_SOL[number];
 
-// Free bet is always 0.05 SOL
-const FREE_BET_AMOUNT_SOL = 0.05;
 
 
 export default function PredictPage() {
@@ -173,13 +171,6 @@ export default function PredictPage() {
     !prefersReducedMotion
   );
 
-  // Free wager state
-  const [freeBetBalance, setFreeBetBalance] = useState<FreeBetBalance | null>(null);
-  const [useFreeBet, setUseFreeWager] = useState(false);
-  const [freeBetPositions, setFreeBetPositions] = useState<FreeBetPosition[]>([]);
-  const [isPlacingFreeBet, setIsPlacingFreeWager] = useState(false);
-  const [freeBetError, setFreeBetError] = useState<string | null>(null);
-
   // Mobile panel state
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none');
 
@@ -216,47 +207,6 @@ export default function PredictPage() {
   const [depositAmount, setDepositAmount] = useState('0.5');
 
   const asset = 'SOL';
-
-  // Fetch free wager balance
-  const fetchFreeBetBalance = useCallback(async () => {
-    if (!publicKey) {
-      setFreeBetBalance(null);
-      return;
-    }
-    try {
-      const walletAddress = publicKey.toBase58();
-      const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
-        headers: { 'X-Wallet-Address': walletAddress },
-      });
-      if (res.ok) {
-        const balance = await res.json();
-        setFreeBetBalance(balance);
-      }
-    } catch {
-      // Failed to fetch free wager balance
-    }
-  }, [publicKey]);
-
-  // Fetch free wager positions
-  const fetchFreeBetPositions = useCallback(async () => {
-    if (!publicKey) {
-      setFreeBetPositions([]);
-      return;
-    }
-    try {
-      const walletAddress = publicKey.toBase58();
-      const res = await fetch(`${BACKEND_URL}/api/prediction/${walletAddress}/free-bet-positions`, {
-        headers: { 'X-Wallet-Address': walletAddress },
-      });
-      if (res.ok) {
-        const positions = await res.json();
-        setFreeBetPositions(positions);
-      }
-    } catch {
-      // Failed to fetch free wager positions
-    }
-  }, [publicKey]);
-
 
   const fetchData = useCallback(async () => {
     try {
@@ -362,12 +312,6 @@ export default function PredictPage() {
     };
   }, [asset, fetchData]);
 
-  // Fetch free wager balance and positions when wallet connects
-  useEffect(() => {
-    fetchFreeBetBalance();
-    fetchFreeBetPositions();
-  }, [fetchFreeBetBalance, fetchFreeBetPositions]);
-
   useEffect(() => {
     if (!currentRound) return;
 
@@ -415,61 +359,6 @@ export default function PredictPage() {
     setIsPlacing(true);
     setError(null);
     setSuccessTx(null);
-
-    // Handle free bet usage via socket (0.05 SOL fixed amount)
-    if (useFreeBet && freeBetBalance && freeBetBalance.balance > 0) {
-      setIsPlacingFreeWager(true);
-      setFreeBetError(null);
-
-      try {
-        const walletAddress = publicKey.toBase58();
-        const socket = getSocket();
-
-        // Emit free bet via socket with useFreeBet flag
-        socket.emit('place_prediction_bet', {
-          asset,
-          side,
-          amount: FREE_BET_AMOUNT_SOL, // Fixed at 0.05 SOL
-          bettor: walletAddress,
-          useFreeBet: true,
-        });
-
-        // Wait for response
-        const response = await new Promise<{ success: boolean; error?: string }>((resolve) => {
-          const timeout = setTimeout(() => {
-            resolve({ success: false, error: 'Free bet placement timed out' });
-          }, 10000);
-
-          socket.once('prediction_bet_result', (result: { success: boolean; error?: string }) => {
-            clearTimeout(timeout);
-            resolve(result);
-          });
-
-          socket.once('error', (error: string) => {
-            clearTimeout(timeout);
-            resolve({ success: false, error });
-          });
-        });
-
-        if (response.success) {
-          setSuccessTx('free_bet');
-          setHasWagerThisRound(true);
-          setTimeout(() => setSuccessTx(null), 3000);
-          // Refresh free bet balance
-          fetchFreeBetBalance();
-        } else {
-          setFreeBetError(response.error || 'Failed to place free bet');
-          setError(response.error || 'Failed to place free bet');
-        }
-      } catch (err) {
-        setFreeBetError('Network error placing free bet');
-        setError('Network error placing free bet');
-      } finally {
-        setIsPlacingFreeWager(false);
-        setIsPlacing(false);
-      }
-      return;
-    }
 
     // Check session balance before placing bet
     if (balanceInSol < selectedAmountSol) {
@@ -945,7 +834,7 @@ export default function PredictPage() {
             {/* UP Button - min height 120px for mobile tap target */}
             <button
               onClick={() => handlePlaceWager('long')}
-              disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
+              disabled={!isBettingOpen || isPlacing || !publicKey}
               className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 min-h-[120px] touch-manipulation ${
                 isBettingOpen
                   ? 'bg-gradient-to-b from-success/20 to-success/5 border-2 border-success/50 shadow-[0_0_60px_rgba(34,197,94,0.4)] hover:shadow-[0_0_80px_rgba(34,197,94,0.6)] hover:border-success cursor-pointer active:scale-[0.98] active:bg-success/20'
@@ -981,13 +870,12 @@ export default function PredictPage() {
             {/* DOWN Button - min height 120px for mobile tap target */}
             <button
               onClick={() => handlePlaceWager('short')}
-              disabled={!isBettingOpen || isPlacing || isPlacingFreeBet || !publicKey}
+              disabled={!isBettingOpen || isPlacing || !publicKey}
               className={`group relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-150 min-h-[120px] touch-manipulation ${
                 isBettingOpen
                   ? 'bg-gradient-to-b from-danger/20 to-danger/5 border-2 border-danger/50 shadow-[0_0_60px_rgba(239,68,68,0.4)] hover:shadow-[0_0_80px_rgba(239,68,68,0.6)] hover:border-danger cursor-pointer active:scale-[0.98] active:bg-danger/20'
                   : 'bg-white/5 border-2 border-white/10 cursor-not-allowed'
-              }`}
-            >
+              }`}>
               <div className="absolute inset-0 bg-danger/0 group-active:bg-danger/20 transition-colors" />
               <div className={`relative flex flex-col items-center gap-1 sm:gap-2 ${isLocked ? 'opacity-20' : ''}`}>
                 <ArrowDown className={`w-8 h-8 sm:w-10 sm:h-10 mb-1 ${isBettingOpen ? 'text-danger' : 'text-white/30'}`} strokeWidth={3} />
@@ -1018,8 +906,7 @@ export default function PredictPage() {
           {/* Wager Selector - scrollable on mobile */}
           <div className="flex-shrink-0 flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
             <span className="text-white/30 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap flex-shrink-0">Wager:</span>
-            {/* Show amount buttons only when NOT using free wager */}
-            {!useFreeBet && BET_AMOUNTS_SOL.map((amount) => (
+            {BET_AMOUNTS_SOL.map((amount) => (
               <button
                 key={amount}
                 onClick={() => setSelectedAmountSol(amount)}
@@ -1032,95 +919,17 @@ export default function PredictPage() {
                 {amount}
               </button>
             ))}
-            {/* Show locked 0.05 SOL when using free bet */}
-            {useFreeBet && (
-              <div className="min-h-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold bg-warning/20 text-warning border border-warning/40 flex items-center gap-1.5">
-                <span>0.05</span>
-                <span className="text-[10px] text-warning/60">(fixed)</span>
-              </div>
-            )}
-            {/* FREE button - always visible when connected, disabled if no free bets */}
-            {publicKey && (
-              <button
-                onClick={() => {
-                  if (freeBetBalance && freeBetBalance.balance > 0) {
-                    setUseFreeWager(!useFreeBet);
-                  }
-                }}
-                disabled={!freeBetBalance || freeBetBalance.balance === 0}
-                title={!freeBetBalance || freeBetBalance.balance === 0 ? 'Earn free bets by leveling up!' : `You have ${freeBetBalance.balance} free bet${freeBetBalance.balance !== 1 ? 's' : ''}`}
-                className={`min-h-[44px] min-w-[44px] py-2 px-3 sm:py-1.5 sm:px-3 rounded-lg text-sm font-bold transition-all touch-manipulation flex-shrink-0 ${
-                  !freeBetBalance || freeBetBalance.balance === 0
-                    ? 'bg-white/10 text-white/30 border border-white/20 cursor-not-allowed'
-                    : useFreeBet
-                      ? 'bg-warning/30 text-warning border border-warning/50 active:scale-95'
-                      : 'bg-warning/10 text-warning/60 border border-transparent hover:bg-warning/20 active:bg-warning/25 active:scale-95'
-                }`}
-              >
-                {freeBetBalance && freeBetBalance.balance > 0
-                  ? (useFreeBet ? `FREE (${freeBetBalance.balance})` : 'FREE')
-                  : 'FREE (0)'
-                }
-              </button>
-            )}
           </div>
 
           {/* Success Message - compact */}
           {successTx && (
-            <div className={`p-2 rounded-lg text-center text-sm font-medium flex-shrink-0 ${
-              successTx === 'free_bet'
-                ? 'bg-warning/10 border border-warning/30 text-warning'
-                : 'bg-success/10 border border-success/30 text-success'
-            }`}>
+            <div className="p-2 rounded-lg text-center text-sm font-medium flex-shrink-0 bg-success/10 border border-success/30 text-success">
               <div className="flex items-center justify-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{successTx === 'free_bet' ? 'Free wager placed!' : 'Wager placed!'}</span>
+                <span>Wager placed!</span>
               </div>
-            </div>
-          )}
-
-          {/* Pending Free Wager Positions */}
-          {freeBetPositions.length > 0 && (
-            <div className="flex-shrink-0 space-y-1">
-              <div className="text-[10px] text-warning/60 uppercase tracking-wider font-medium">Free Wager Positions</div>
-              {freeBetPositions.filter(p => p.status === 'pending' || p.status === 'won').map((position) => (
-                <div
-                  key={position.id}
-                  className={`p-2 rounded-lg border ${
-                    position.status === 'won'
-                      ? 'bg-accent/10 border-accent/30'
-                      : position.side === 'long'
-                        ? 'bg-warning/10 border-warning/30'
-                        : 'bg-warning/10 border-warning/30'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-warning bg-warning/20 px-1.5 py-0.5 rounded uppercase font-bold">Free</span>
-                      <span className={`text-sm font-bold flex items-center gap-1 ${
-                        position.side === 'long' ? 'text-success' : 'text-danger'
-                      }`}>
-                        {position.side === 'long' ? <><ArrowUp className="w-4 h-4" /> UP</> : <><ArrowDown className="w-4 h-4" /> DOWN</>}
-                      </span>
-                      <span className="text-xs text-white/40">
-                        {(position.amountLamports / 1e9).toFixed(3)} SOL
-                      </span>
-                    </div>
-                    <div className={`text-xs font-medium ${
-                      position.status === 'won' ? 'text-accent' : 'text-warning/60'
-                    }`}>
-                      {position.status === 'won' ? 'Won!' : position.status === 'pending' ? 'Pending' : position.status}
-                    </div>
-                  </div>
-                  {position.status === 'won' && position.payoutLamports && (
-                    <div className="text-xs text-accent mt-1">
-                      Payout: {(position.payoutLamports / 1e9).toFixed(4)} SOL
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
           )}
 

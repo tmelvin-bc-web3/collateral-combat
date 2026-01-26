@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
-import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { usePrices } from '@/hooks/usePrices';
-import { Battle, PositionSide, Leverage, UserProfile, UserProgression, BattlePlayer } from '@/types';
+import { Battle, PositionSide, Leverage, UserProfile, BattlePlayer } from '@/types';
 import { ASSETS } from '@/lib/assets';
 import { AssetIcon } from './AssetIcon';
 import { TradingViewChart } from './TradingViewChart';
@@ -55,31 +54,23 @@ export function BattleArena({ battle }: BattleArenaProps) {
 
   // Opponent profile state
   const [opponentProfile, setOpponentProfile] = useState<UserProfile | null>(null);
-  const [opponentProgression, setOpponentProgression] = useState<UserProgression | null>(null);
 
   // Get opponent player
   const opponent = useMemo(() => {
     return battle.players.find(p => p.walletAddress !== walletAddress) || null;
   }, [battle.players, walletAddress]);
 
-  // Fetch opponent profile and progression
+  // Fetch opponent profile
   useEffect(() => {
     if (!opponent) return;
 
     const fetchOpponentData = async () => {
       try {
-        const [profileRes, progressionRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/profile/${opponent.walletAddress}`),
-          fetch(`${BACKEND_URL}/api/progression/${opponent.walletAddress}`),
-        ]);
+        const profileRes = await fetch(`${BACKEND_URL}/api/profile/${opponent.walletAddress}`);
 
         if (profileRes.ok) {
           const profile = await profileRes.json();
           setOpponentProfile(profile);
-        }
-        if (progressionRes.ok) {
-          const progression = await progressionRes.json();
-          setOpponentProgression(progression);
         }
       } catch (err) {
         console.error('Failed to fetch opponent data:', err);
@@ -235,8 +226,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
     walletAddress: walletAddress || '',
     username: walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : 'You',
     avatar: null, // TODO: fetch user's own profile
-    level: 1,
-    title: 'Rookie',
     pnlPercent: userPnL.percent,
     pnlDollar: userPnL.dollar,
     positions: positionsWithLivePnL.map(p => ({
@@ -254,8 +243,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
     walletAddress: opponent?.walletAddress || '',
     username: opponentProfile?.username || (opponent ? `${opponent.walletAddress.slice(0, 4)}...${opponent.walletAddress.slice(-4)}` : 'Opponent'),
     avatar: opponentProfile?.nftImageUrl || null,
-    level: opponentProgression?.currentLevel || 1,
-    title: opponentProgression?.title || 'Rookie',
     pnlPercent: opponentPnL.percent,
     pnlDollar: opponentPnL.dollar,
     positions: [],
@@ -594,11 +581,6 @@ export function BattleArena({ battle }: BattleArenaProps) {
 }
 
 function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddress: string | null }) {
-  const { settlementTx } = useBattleContext();
-  const { claimPlayerPrize, isLoading: isClaiming, error: claimError } = useBattleOnChain();
-  const [claimStatus, setClaimStatus] = useState<'idle' | 'claiming' | 'claimed' | 'error'>('idle');
-  const [claimTxSignature, setClaimTxSignature] = useState<string | null>(null);
-
   const {
     pendingWin,
     toastWin,
@@ -616,32 +598,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
   const sortedPlayers = [...battle.players].sort((a, b) => (b.finalPnl || 0) - (a.finalPnl || 0));
   const isWinner = battle.winnerId === walletAddress;
   const prize = battle.prizePool * 0.95;
-
-  const hasOnChainBattle = !!battle.onChainBattleId;
-  const isSettled = battle.onChainSettled || !!settlementTx;
-
-  const handleClaimPrize = async () => {
-    if (!battle.onChainBattleId) return;
-
-    setClaimStatus('claiming');
-    try {
-      const tx = await claimPlayerPrize(0);
-      if (tx) {
-        setClaimStatus('claimed');
-        setClaimTxSignature(tx);
-        showWinShare({
-          winAmount: prize,
-          gameMode: 'battle',
-          roundId: battle.id,
-        });
-      } else {
-        setClaimStatus('error');
-      }
-    } catch (error) {
-      console.error('[BattleResults] Claim error:', error);
-      setClaimStatus('error');
-    }
-  };
 
   return (
     <div className="max-w-xl mx-auto mt-16 px-4 animate-fadeIn">
@@ -680,79 +636,6 @@ function BattleResults({ battle, walletAddress }: { battle: Battle; walletAddres
                 'Better luck next time, champion'
               )}
             </p>
-
-            {isWinner && hasOnChainBattle && (
-              <div className="mb-6">
-                {claimStatus === 'claimed' ? (
-                  <div className="p-4 rounded-xl bg-success/10 border border-success/30">
-                    <div className="flex items-center justify-center gap-2 text-success font-semibold">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Prize Claimed!
-                    </div>
-                    {claimTxSignature && (
-                      <a
-                        href={`https://explorer.solana.com/tx/${claimTxSignature}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-white/40 hover:text-warning mt-2 block"
-                      >
-                        View transaction
-                      </a>
-                    )}
-                  </div>
-                ) : !isSettled ? (
-                  <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
-                    <div className="flex items-center justify-center gap-2 text-warning">
-                      <div className="w-4 h-4 border-2 border-warning border-t-transparent rounded-full animate-spin" />
-                      <span className="font-medium">Settling on-chain...</span>
-                    </div>
-                  </div>
-                ) : claimStatus === 'error' ? (
-                  <div className="p-4 rounded-xl bg-danger/10 border border-danger/30">
-                    <div className="flex items-center justify-center gap-2 text-danger font-medium">
-                      {claimError || 'Failed to claim prize'}
-                    </div>
-                    <button
-                      onClick={handleClaimPrize}
-                      className="mt-3 px-4 py-2 rounded-lg bg-danger/20 text-danger text-sm font-medium hover:bg-danger/30 transition-all"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleClaimPrize}
-                    disabled={isClaiming || claimStatus === 'claiming'}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-warning to-fire text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(255,85,0,0.4)] transition-all active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {isClaiming || claimStatus === 'claiming' ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Claiming...
-                      </div>
-                    ) : (
-                      `Claim ${prize.toFixed(2)} SOL`
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {settlementTx && (
-              <div className="mb-6 p-3 rounded-lg bg-white/5 border border-white/10">
-                <div className="text-xs text-white/40">Battle settled on-chain</div>
-                <a
-                  href={`https://explorer.solana.com/tx/${settlementTx}?cluster=devnet`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-warning hover:underline"
-                >
-                  View settlement transaction
-                </a>
-              </div>
-            )}
 
             <div className="space-y-3 mb-8">
               {sortedPlayers.map((player, index) => {

@@ -53,7 +53,6 @@ db.exec(`
     final_score REAL,
     final_rank INTEGER,
     payout_usd REAL,
-    is_free_bet INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL,
     FOREIGN KEY (tournament_id) REFERENCES draft_tournaments(id),
     UNIQUE(tournament_id, wallet_address)
@@ -229,8 +228,8 @@ function mapTournamentRow(row: any): DraftTournament {
 // ===================
 
 const insertEntry = db.prepare(`
-  INSERT INTO draft_entries (id, tournament_id, wallet_address, entry_fee_paid, draft_completed, is_free_bet, created_at)
-  VALUES (?, ?, ?, ?, 0, ?, ?)
+  INSERT INTO draft_entries (id, tournament_id, wallet_address, entry_fee_paid, draft_completed, created_at)
+  VALUES (?, ?, ?, ?, 0, ?)
 `);
 
 const getEntryById = db.prepare(`
@@ -261,11 +260,11 @@ const updateEntryRankAndPayout = db.prepare(`
   UPDATE draft_entries SET final_rank = ?, payout_usd = ? WHERE id = ?
 `);
 
-export function createEntry(tournamentId: string, walletAddress: string, entryFeePaidLamports: number, isFreeBet: boolean = false): DraftEntry {
+export function createEntry(tournamentId: string, walletAddress: string, entryFeePaidLamports: number): DraftEntry {
   const id = uuidv4();
   const now = Date.now();
 
-  insertEntry.run(id, tournamentId, walletAddress, entryFeePaidLamports, isFreeBet ? 1 : 0, now);
+  insertEntry.run(id, tournamentId, walletAddress, entryFeePaidLamports, now);
   // Note: We no longer auto-increment prize pool here - done separately via incrementPrizePool
 
   return {
@@ -276,7 +275,6 @@ export function createEntry(tournamentId: string, walletAddress: string, entryFe
     draftCompleted: false,
     picks: [],
     powerUpsUsed: [],
-    isFreeBet,
     createdAt: now,
   };
 }
@@ -333,7 +331,6 @@ function mapEntryRow(row: any): DraftEntry {
     finalScore: row.final_score ?? undefined,
     finalRank: row.final_rank ?? undefined,
     payoutLamports: row.payout_usd ?? undefined, // Map old column to new name
-    isFreeBet: row.is_free_bet === 1,
     createdAt: row.created_at,
   };
 }

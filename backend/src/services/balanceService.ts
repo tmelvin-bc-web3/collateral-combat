@@ -384,8 +384,17 @@ class BalanceService {
       const userVaultPDA = this.getVaultPDA(userPubkey);
       const globalVaultPDA = this.getGlobalVaultPDA();
 
+      // Map backend GameMode string to Anchor enum object for on-chain GameType
+      const gameTypeMap: Record<string, object> = {
+        oracle: { oracle: {} },
+        battle: { battle: {} },
+        draft: { draft: {} },
+        spectator: { spectator: {} },
+      };
+      const anchorGameType = gameTypeMap[gameType || 'oracle'] || { oracle: {} };
+
       const tx = await (this.program.methods as any)
-        .transferToGlobalVault(new BN(amountLamports))
+        .transferToGlobalVault(new BN(amountLamports), anchorGameType)
         .accounts({
           gameState: gameStatePDA,
           authority: this.authority.publicKey,

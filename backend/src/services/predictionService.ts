@@ -1,8 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PredictionRound, PredictionBet, PredictionSide, RoundStatus, PredictionStats } from '../types';
 import { priceService } from './priceService';
-import { progressionService } from './progressionService';
-import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { balanceService } from './balanceService';
 import { toApiError } from '../utils/errors';
@@ -15,9 +13,6 @@ const LAMPORTS_PER_SOL = 1_000_000_000;
 
 // Valid bet amounts in SOL
 const VALID_BET_AMOUNTS = [0.01, 0.05, 0.1, 0.25, 0.5];
-
-// Free bet amount (fixed at 0.05 SOL)
-const FREE_BET_AMOUNT = 0.05;
 
 class PredictionService {
   private rounds: Map<string, PredictionRound[]> = new Map(); // asset -> rounds
@@ -206,19 +201,9 @@ class PredictionService {
         bet.status = round.winner === 'push' ? 'push' : 'cancelled';
         bet.payout = bet.amount; // Refund
 
-        // For free bets, credit back a free bet instead of SOL
-        if (bet.isFreeBet) {
-          try {
-            await addFreeBetCredit(bet.bettor, 1, `Oracle round ${round.id} refund (${round.winner})`);
-            console.log(`[PredictionService] Credited free bet to ${bet.bettor.slice(0, 8)}... for ${round.winner} round ${round.id.slice(0, 8)}...`);
-          } catch (error) {
-            console.error(`[PredictionService] Failed to credit free bet refund:`, error);
-          }
-        } else {
-          // Credit refund to PDA balance for regular bets
-          const refundLamports = Math.round(bet.amount * LAMPORTS_PER_SOL);
-          await balanceService.creditWinnings(bet.bettor, refundLamports, 'oracle', round.id);
-        }
+        // Credit refund to PDA balance
+        const refundLamports = Math.round(bet.amount * LAMPORTS_PER_SOL);
+        await balanceService.creditWinnings(bet.bettor, refundLamports, 'oracle', round.id);
 
         // Record wager to database
         this.recordBetToDatabase(bet, round);
@@ -258,8 +243,6 @@ class PredictionService {
       this.recordBetToDatabase(bet, round);
     }
 
-    // Award XP to all participants
-    this.awardPredictionXp(round, winningBets, losingBets);
   }
 
   // Record a bet to the user stats database
@@ -279,41 +262,8 @@ class PredictionService {
     }
   }
 
-  // Award XP based on prediction results
-  private awardPredictionXp(
-    round: PredictionRound,
-    winningBets: PredictionBet[],
-    losingBets: PredictionBet[]
-  ): void {
-    // Award XP to winners
-    winningBets.forEach(bet => {
-      // Winner: 50 XP + (stake × 0.1)
-      const xpAmount = 50 + Math.floor(bet.amount * 0.1);
-      progressionService.awardXp(
-        bet.bettor,
-        xpAmount,
-        'prediction',
-        round.id,
-        `Correct ${bet.side} prediction on ${round.asset}`
-      );
-    });
-
-    // Award XP to losers
-    losingBets.forEach(bet => {
-      // Loser: 10 XP + (stake × 0.02)
-      const xpAmount = 10 + Math.floor(bet.amount * 0.02);
-      progressionService.awardXp(
-        bet.bettor,
-        xpAmount,
-        'prediction',
-        round.id,
-        `${bet.side} prediction on ${round.asset}`
-      );
-    });
-  }
-
-  // Place a bet using PDA balance or free bet credit
-  async placeBet(asset: string, side: PredictionSide, amount: number, bettor: string, isFreeBet: boolean = false): Promise<PredictionBet> {
+  // Place a bet using PDA balance
+  async placeBet(asset: string, side: PredictionSide, amount: number, bettor: string): Promise<PredictionBet> {
     const round = this.currentRounds.get(asset);
 
     if (!round) {
@@ -324,45 +274,30 @@ class PredictionService {
       throw new Error('Betting is closed for this round');
     }
 
-    // For free bets, force the amount to FREE_BET_AMOUNT (0.05 SOL)
-    const betAmount = isFreeBet ? FREE_BET_AMOUNT : amount;
-
-    // Validate bet amount (skip for free bets since they have a fixed amount)
-    if (!isFreeBet && !VALID_BET_AMOUNTS.includes(amount)) {
+    // Validate bet amount
+    if (!VALID_BET_AMOUNTS.includes(amount)) {
       throw new Error(`Invalid bet amount. Valid amounts: ${VALID_BET_AMOUNTS.join(', ')} SOL`);
     }
 
     // Calculate bet amount in lamports
-    const amountLamports = Math.round(betAmount * LAMPORTS_PER_SOL);
+    const amountLamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-    let lockTxId: string | null = null;
-
-    if (isFreeBet) {
-      // For free bets, check and deduct free bet credit
-      const freeBetResult = await progressionService.useFreeBetCredit(bettor, 'oracle', `Oracle prediction on ${asset}`);
-      if (!freeBetResult.success) {
-        throw new Error('No free bets available');
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    try {
+      await balanceService.verifyAndLockBalance(
+        bettor,
+        amountLamports,
+        'oracle',
+        round.id
+      );
+    } catch (error) {
+      const apiError = toApiError(error);
+      if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(bettor);
+        throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${amount} SOL`);
       }
-      console.log(`[PredictionService] Free bet deducted for ${bettor.slice(0, 8)}... (remaining: ${freeBetResult.balance.balance})`);
-    } else {
-      // SECURITY: Atomic balance verification and fund locking
-      // This prevents TOCTOU race conditions where user could withdraw between check and lock
-      try {
-        const lockResult = await balanceService.verifyAndLockBalance(
-          bettor,
-          amountLamports,
-          'oracle',
-          round.id
-        );
-        lockTxId = lockResult.txId;
-      } catch (error) {
-        const apiError = toApiError(error);
-        if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
-          const available = await balanceService.getAvailableBalance(bettor);
-          throw new Error(`Insufficient balance. Available: ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL, Need: ${betAmount} SOL`);
-        }
-        throw new Error('Failed to lock funds on-chain. Please try again.');
-      }
+      throw new Error('Failed to lock funds on-chain. Please try again.');
     }
 
     const bet: PredictionBet = {
@@ -370,19 +305,18 @@ class PredictionService {
       roundId: round.id,
       bettor,
       side,
-      amount: betAmount,
+      amount,
       placedAt: Date.now(),
       status: 'pending',
-      isFreeBet
     };
 
     // Add to round
     if (side === 'long') {
       round.longBets.push(bet);
-      round.longPool += betAmount;
+      round.longPool += amount;
     } else {
       round.shortBets.push(bet);
-      round.shortPool += betAmount;
+      round.shortPool += amount;
     }
     round.totalPool = round.longPool + round.shortPool;
 
@@ -393,8 +327,7 @@ class PredictionService {
 
     // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
-    const betType = isFreeBet ? 'FREE BET' : `${betAmount} SOL`;
-    console.log(`[PredictionService] ${bettor.slice(0, 8)}... bet ${betType} ${side.toUpperCase()} on ${asset}`);
+    console.log(`[PredictionService] ${bettor.slice(0, 8)}... bet ${amount} SOL ${side.toUpperCase()} on ${asset}`);
     this.notifyListeners('bet_placed', { round, bet });
 
     return bet;

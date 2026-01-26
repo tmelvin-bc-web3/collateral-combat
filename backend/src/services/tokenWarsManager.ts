@@ -28,7 +28,6 @@ import {
 } from '../db/tokenWarsDatabase';
 import { balanceService } from './balanceService';
 import { priceService } from './priceService';
-import { addFreeBetCredit } from '../db/progressionDatabase';
 import { pythVerificationService } from './pythVerificationService';
 import {
   addFailedPayout,
@@ -514,8 +513,7 @@ class TokenWarsManager {
         amountLamports,
         'payout',
         errorMsg,
-        retryCount,
-        false
+        retryCount
       );
       console.error(`[TokenWars] CRITICAL: Payout failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
@@ -524,39 +522,13 @@ class TokenWarsManager {
 
   /**
    * Retry a refund with exponential backoff
-   * For free bets, credits a free bet instead of refunding SOL
    */
   private async retryRefund(
     walletAddress: string,
     amountLamports: number,
     battleId: string,
-    isFreeBet: boolean = false,
     retryCount: number = 0
   ): Promise<string | null> {
-    // For free bets, credit a free bet instead of refunding SOL
-    if (isFreeBet) {
-      try {
-        addFreeBetCredit(walletAddress, 1, `Token Wars battle ${battleId} refund`);
-        console.log(`[TokenWars] Credited free bet to ${walletAddress.slice(0, 8)}... for cancelled/tied battle ${battleId}`);
-        return 'free_bet_credited';
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        addFailedPayout(
-          'token_wars',
-          battleId,
-          walletAddress,
-          amountLamports,
-          'refund',
-          `Free bet credit failed: ${errorMsg}`,
-          retryCount,
-          true
-        );
-        console.error(`[TokenWars] Failed to credit free bet to ${walletAddress.slice(0, 8)}... for battle ${battleId}. Persisted to recovery database.`);
-        return null;
-      }
-    }
-
-    // Regular SOL refund
     try {
       const tx = await balanceService.refundFromGlobalVault(
         walletAddress,
@@ -573,7 +545,7 @@ class TokenWarsManager {
         );
         console.log(`[TokenWars] Refund failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${PAYOUT_RETRY_CONFIG.maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return this.retryRefund(walletAddress, amountLamports, battleId, isFreeBet, retryCount + 1);
+        return this.retryRefund(walletAddress, amountLamports, battleId, retryCount + 1);
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -584,8 +556,7 @@ class TokenWarsManager {
         amountLamports,
         'refund',
         `Refund failed: ${errorMsg}`,
-        retryCount,
-        false
+        retryCount
       );
       console.error(`[TokenWars] CRITICAL: Refund failed after ${PAYOUT_RETRY_CONFIG.maxRetries} retries for ${walletAddress.slice(0, 8)}... Amount: ${amountLamports} lamports. Persisted to recovery database.`);
       return null;
@@ -676,14 +647,12 @@ class TokenWarsManager {
 
   /**
    * Process bet refund (for ties or cancelled battles)
-   * Free bet entries get a free bet credit instead of SOL refund
    */
   private async processBetRefund(bet: TWBetRecord, battleId: string): Promise<void> {
-    const tx = await this.retryRefund(bet.walletAddress, bet.amountLamports, battleId, bet.isFreeBet);
+    const tx = await this.retryRefund(bet.walletAddress, bet.amountLamports, battleId);
     if (tx) {
       settleBet(bet.id, 'refunded', bet.amountLamports);
-      const refundType = bet.isFreeBet ? 'free bet' : `${bet.amountLamports} lamports`;
-      console.log(`[TokenWars] Refunded ${refundType} to ${bet.walletAddress.slice(0, 8)}... TX: ${tx}`);
+      console.log(`[TokenWars] Refunded ${bet.amountLamports} lamports to ${bet.walletAddress.slice(0, 8)}... TX: ${tx}`);
     } else {
       // Mark as refunded with 0 payout so it's not stuck in pending
       // Recovery queue will handle actual refund
@@ -759,13 +728,11 @@ class TokenWarsManager {
    * @param walletAddress - The bettor's wallet address
    * @param side - Which side to bet on (token_a or token_b)
    * @param amountLamports - Amount to bet in lamports
-   * @param isFreeBet - Whether this is a free bet (default: false)
    */
   async placeBet(
     walletAddress: string,
     side: TWBetSide,
-    amountLamports: number,
-    isFreeBet: boolean = false
+    amountLamports: number
   ): Promise<{ success: boolean; error?: string; bet?: TWBetRecord }> {
     // Validate wallet address format
     if (!isValidSolanaAddress(walletAddress)) {
@@ -795,63 +762,54 @@ class TokenWarsManager {
       return { success: false, error: 'Cannot bet on opposite side of existing bet' };
     }
 
-    // For free bets, skip balance check and on-chain transfer (platform covers it)
-    if (!isFreeBet) {
-      // SECURITY: Atomic balance verification and fund locking
-      // This prevents TOCTOU race conditions where user could withdraw between check and lock
-      try {
-        await balanceService.verifyAndLockBalance(
-          walletAddress,
-          amountLamports,
-          'token_wars',
-          battle.id
-        );
-      } catch (error: any) {
-        // Check for insufficient balance error
-        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
-          const available = await balanceService.getAvailableBalance(walletAddress);
-          return {
-            success: false,
-            error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
-          };
-        }
-        return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    try {
+      await balanceService.verifyAndLockBalance(
+        walletAddress,
+        amountLamports,
+        'token_wars',
+        battle.id
+      );
+    } catch (error: any) {
+      // Check for insufficient balance error
+      if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        return {
+          success: false,
+          error: `Insufficient balance. Have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+        };
       }
-    } else {
-      console.log(`[TokenWars] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
+      return { success: false, error: 'Failed to lock bet on-chain. Please try again.' };
     }
 
-    // Place the bet with free bet flag
+    // Place the bet
     // SECURITY: Wrap in try/catch to refund if dbPlaceBet fails after funds are locked
     let bet: TWBetRecord;
     try {
-      bet = dbPlaceBet(battle.id, walletAddress, side, amountLamports, isFreeBet);
+      bet = dbPlaceBet(battle.id, walletAddress, side, amountLamports);
       // Note: verifyAndLockBalance already handles pending transaction tracking internally
     } catch (error) {
       // Critical error: bet couldn't be placed
       console.error(`[TokenWars] dbPlaceBet failed for ${walletAddress.slice(0, 8)}...`);
 
-      // Only attempt refund if this wasn't a free bet (which has no locked funds)
-      if (!isFreeBet) {
-        console.error(`[TokenWars] Attempting refund for locked funds...`);
-        try {
-          await balanceService.refundFromGlobalVault(walletAddress, amountLamports, 'token_wars', battle.id);
-          console.log(`[TokenWars] Successfully refunded ${walletAddress.slice(0, 8)}... after placeBet failure`);
-        } catch (refundError) {
-          // If refund also fails, log to failed payouts for manual recovery
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          addFailedPayout(
-            'token_wars',
-            battle.id,
-            walletAddress,
-            amountLamports,
-            'refund',
-            `Bet failed after lock, refund failed: ${errorMsg}`,
-            0,
-            isFreeBet
-          );
-          console.error(`[TokenWars] CRITICAL: Refund also failed for ${walletAddress.slice(0, 8)}... Added to recovery queue.`);
-        }
+      console.error(`[TokenWars] Attempting refund for locked funds...`);
+      try {
+        await balanceService.refundFromGlobalVault(walletAddress, amountLamports, 'token_wars', battle.id);
+        console.log(`[TokenWars] Successfully refunded ${walletAddress.slice(0, 8)}... after placeBet failure`);
+      } catch (refundError) {
+        // If refund also fails, log to failed payouts for manual recovery
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        addFailedPayout(
+          'token_wars',
+          battle.id,
+          walletAddress,
+          amountLamports,
+          'refund',
+          `Bet failed after lock, refund failed: ${errorMsg}`,
+          0
+        );
+        console.error(`[TokenWars] CRITICAL: Refund also failed for ${walletAddress.slice(0, 8)}... Added to recovery queue.`);
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Failed to place bet';

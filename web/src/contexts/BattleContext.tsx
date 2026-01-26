@@ -39,7 +39,7 @@ interface BattleContextType {
   createBattle: (config: BattleConfig) => void;
   joinBattle: (battleId: string) => void;
   queueMatchmaking: (config: BattleConfig) => void;
-  startSoloPractice: (config: BattleConfig, onChainBattleId?: string) => void;
+  startSoloPractice: (config: BattleConfig) => void;
   openPosition: (asset: string, side: PositionSide, leverage: Leverage, size: number) => Promise<void>;
   closePosition: (positionId: string) => Promise<void>;
   leaveBattle: () => void;
@@ -283,7 +283,7 @@ export function BattleProvider({
   );
 
   const startSoloPractice = useCallback(
-    (config: BattleConfig, onChainBattleId?: string) => {
+    (config: BattleConfig) => {
       if (!walletAddress) {
         setError('Wallet not connected');
         return;
@@ -298,9 +298,8 @@ export function BattleProvider({
         socket.emit('start_solo_practice', {
           config,
           wallet: walletAddress,
-          onChainBattleId,
         });
-        console.log('[Battle] Starting solo practice', onChainBattleId ? `(on-chain: ${onChainBattleId})` : '(off-chain)');
+        console.log('[Battle] Starting solo practice');
       };
 
       // If socket is connected, emit immediately. Otherwise wait for connection.

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="ngbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a0000"/>
+      <stop offset="100%" stop-color="#0a0000"/>
+    </radialGradient>
+    <filter id="ngglow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#ngbg)"/>
+  <!-- Red candle (bearish) -->
+  <rect x="88" y="60" width="24" height="100" fill="#cc2200" rx="2"/>
+  <!-- Candle wick -->
+  <line x1="100" y1="50" x2="100" y2="60" stroke="#cc2200" stroke-width="3"/>
+  <line x1="100" y1="160" x2="100" y2="175" stroke="#cc2200" stroke-width="3"/>
+  <!-- Red glow -->
+  <rect x="88" y="60" width="24" height="100" fill="#ff2200" opacity="0.2" rx="2" filter="url(#ngglow)"/>
+  <!-- Down arrow -->
+  <path d="M100 178 L92 168 L96 168 L96 170 L104 170 L104 168 L108 168 Z" fill="#ff3300" filter="url(#ngglow)"/>
+  <!-- Downtrend line -->
+  <path d="M20 30 L60 60 L80 50 L120 110 L160 150 L180 170" fill="none" stroke="#cc2200" stroke-width="2" opacity="0.3"/>
+  <!-- NGMI text -->
+  <text x="100" y="38" font-family="Impact, sans-serif" font-size="28" fill="#cc2200" text-anchor="middle" letter-spacing="4" filter="url(#ngglow)">NGMI</text>
+</svg>

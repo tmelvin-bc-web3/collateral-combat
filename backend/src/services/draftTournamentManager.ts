@@ -15,7 +15,7 @@ import {
 import * as db from '../db/draftDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import { coinMarketCapService } from './coinMarketCapService';
-import { progressionService } from './progressionService';
+
 import { balanceService } from './balanceService';
 import { DRAFT_FEE_PERCENT } from '../utils/fees';
 
@@ -178,7 +178,7 @@ class DraftTournamentManager {
   // Entry Management
   // ===================
 
-  async enterTournament(tournamentId: string, walletAddress: string, isFreeBet: boolean = false): Promise<DraftEntry> {
+  async enterTournament(tournamentId: string, walletAddress: string): Promise<DraftEntry> {
     const tournament = db.getTournament(tournamentId);
     if (!tournament) {
       throw new Error('Tournament not found');
@@ -194,53 +194,39 @@ class DraftTournamentManager {
       throw new Error('Already entered this tournament');
     }
 
-    // CRITICAL FIX: Actually collect entry fee from PDA balance!
+    // Collect entry fee from PDA balance
     const entryFeeLamports = tournament.entryFeeLamports;
 
     let lockTx: string | null = null;
 
-    // For free bets, skip balance check and on-chain transfer (platform covers it)
-    if (!isFreeBet) {
-      // SECURITY: Atomic balance verification and fund locking
-      // This prevents TOCTOU race conditions where user could withdraw between check and lock
-      try {
-        const lockResult = await balanceService.verifyAndLockBalance(
-          walletAddress,
-          entryFeeLamports,
-          'draft',
-          tournamentId
-        );
-        lockTx = lockResult.txId;
-      } catch (error: any) {
-        // Check for insufficient balance error
-        if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
-          const available = await balanceService.getAvailableBalance(walletAddress);
-          throw new Error(`Insufficient balance. Need ${entryFeeLamports / 1_000_000_000} SOL, have ${available / 1_000_000_000} SOL`);
-        }
-        throw new Error('Failed to lock entry fee on-chain. Please try again.');
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    try {
+      const lockResult = await balanceService.verifyAndLockBalance(
+        walletAddress,
+        entryFeeLamports,
+        'draft',
+        tournamentId
+      );
+      lockTx = lockResult.txId;
+    } catch (error: any) {
+      // Check for insufficient balance error
+      if (error.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        throw new Error(`Insufficient balance. Need ${entryFeeLamports / 1_000_000_000} SOL, have ${available / 1_000_000_000} SOL`);
       }
-    } else {
-      console.log(`[Draft] Processing free bet for ${walletAddress.slice(0, 8)}... (skipping balance check)`);
+      throw new Error('Failed to lock entry fee on-chain. Please try again.');
     }
 
-    // Create entry in database with free bet flag
-    const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports, isFreeBet);
+    // Create entry in database
+    const entry = db.createEntry(tournamentId, walletAddress, entryFeeLamports);
 
     // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
     // Update prize pool
     db.incrementPrizePool(tournamentId, entryFeeLamports);
 
-    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament${isFreeBet ? ' (free bet)' : ''}. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL. Lock TX: ${lockTx}`);
-
-    // Award XP for entering: 50 XP
-    progressionService.awardXp(
-      walletAddress,
-      50,
-      'draft',
-      entry.id,
-      `Entered ${tournament.tier} tournament`
-    );
+    console.log(`[Draft] User ${walletAddress} entered ${tournament.tier} tournament. Entry fee: ${entryFeeLamports / 1_000_000_000} SOL. Lock TX: ${lockTx}`);
 
     // Notify
     this.notify('entry_created', entry);
@@ -633,9 +619,6 @@ class DraftTournamentManager {
     // Distribute payouts and credit winners on-chain
     await this.distributePayouts(rankedEntries, topCount, prizePoolLamports, tournamentId);
 
-    // Award XP based on placement
-    this.awardTournamentXp(rankedEntries, topCount, tournament);
-
     // Mark tournament as settled
     db.settleTournament(tournamentId);
 
@@ -742,49 +725,6 @@ class DraftTournamentManager {
   private getEntryFeeForTournament(tournamentId: string): number {
     const tournament = db.getTournament(tournamentId);
     return tournament ? tournament.entryFeeLamports / 1_000_000_000 : 0;
-  }
-
-  // Award XP based on tournament placement
-  private awardTournamentXp(
-    rankedEntries: DraftEntry[],
-    topCount: number,
-    tournament: DraftTournament
-  ): void {
-    // Convert lamports to SOL for XP calculation (XP based on SOL value)
-    const entryFeeSOL = tournament.entryFeeLamports / 1_000_000_000;
-
-    for (let i = 0; i < rankedEntries.length; i++) {
-      const entry = rankedEntries[i];
-      const rank = i + 1;
-
-      let xpAmount: number;
-      let description: string;
-
-      if (rank === 1) {
-        // Winner: 1000 XP + (entrySOL × 1000)
-        xpAmount = 1000 + Math.floor(entryFeeSOL * 1000);
-        description = 'Won tournament!';
-      } else if (rank <= 3) {
-        // Top 3: 500 XP + (entrySOL × 500)
-        xpAmount = 500 + Math.floor(entryFeeSOL * 500);
-        description = `Top 3 finish (#${rank})`;
-      } else if (rank <= topCount) {
-        // Top 10%: 200 XP + (entrySOL × 200)
-        xpAmount = 200 + Math.floor(entryFeeSOL * 200);
-        description = `Top 10% finish (#${rank})`;
-      } else {
-        // Participated but didn't place: minimal XP (already got 50 XP for entering)
-        continue; // No additional XP for non-placing entries
-      }
-
-      progressionService.awardXp(
-        entry.walletAddress,
-        xpAmount,
-        'draft',
-        entry.id,
-        description
-      );
-    }
   }
 
   // ===================

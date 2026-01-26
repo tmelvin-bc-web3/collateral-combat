@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0a0a20"/>
+      <stop offset="100%" stop-color="#000008"/>
+    </radialGradient>
+    <radialGradient id="moonsurf" cx="40%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#f5f0d0"/>
+      <stop offset="100%" stop-color="#d4c890"/>
+    </radialGradient>
+    <filter id="moonglow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#space)"/>
+  <!-- Stars -->
+  <circle cx="30" cy="30" r="1.5" fill="#fff" opacity="0.8"/>
+  <circle cx="160" cy="25" r="1" fill="#fff" opacity="0.6"/>
+  <circle cx="45" cy="160" r="1" fill="#fff" opacity="0.5"/>
+  <circle cx="170" cy="140" r="1.5" fill="#fff" opacity="0.7"/>
+  <circle cx="20" cy="90" r="1" fill="#fff" opacity="0.4"/>
+  <circle cx="175" cy="80" r="1" fill="#fff" opacity="0.5"/>
+  <circle cx="80" cy="20" r="1" fill="#fff" opacity="0.6"/>
+  <circle cx="140" cy="170" r="1" fill="#fff" opacity="0.4"/>
+  <!-- Moon glow -->
+  <circle cx="100" cy="85" r="50" fill="#f5f0d0" opacity="0.15" filter="url(#moonglow)"/>
+  <!-- Moon -->
+  <circle cx="100" cy="85" r="42" fill="url(#moonsurf)"/>
+  <!-- Craters -->
+  <circle cx="85" cy="75" r="8" fill="#c4b870" opacity="0.5"/>
+  <circle cx="115" cy="90" r="6" fill="#c4b870" opacity="0.4"/>
+  <circle cx="95" cy="100" r="5" fill="#c4b870" opacity="0.3"/>
+  <circle cx="110" cy="72" r="4" fill="#c4b870" opacity="0.4"/>
+  <!-- Rocket -->
+  <polygon points="100,155 94,175 106,175" fill="#ddd" stroke="#aaa" stroke-width="1"/>
+  <rect x="95" y="160" width="10" height="18" fill="#ddd" rx="2"/>
+  <polygon points="100,155 95,162 105,162" fill="#ff2200"/>
+  <!-- Flames -->
+  <polygon points="97,178 100,190 103,178" fill="#ff5500" opacity="0.9"/>
+  <polygon points="98,178 100,185 102,178" fill="#ffcc00" opacity="0.8"/>
+  <!-- TO THE text -->
+  <text x="100" y="148" font-family="monospace" font-size="10" fill="#888" text-anchor="middle" opacity="0.7">TO THE</text>
+</svg>

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useSessionBetting } from '@/hooks/useSessionBetting';
 
 export function BalanceBar() {
+  const pathname = usePathname();
   const { publicKey } = useWallet();
   const {
     balanceInSol,
@@ -32,6 +34,9 @@ export function BalanceBar() {
     }
   };
 
+  // Don't render on homepage
+  if (pathname === '/') return null;
+
   // Don't render if no wallet connected
   if (!publicKey) return null;
 
@@ -55,13 +60,14 @@ export function BalanceBar() {
 
       {/* Deposit Modal */}
       {showDepositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="Deposit SOL" onKeyDown={(e) => { if (e.key === 'Escape') setShowDepositModal(false); }}>
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-white">Deposit SOL</h3>
               <button
                 onClick={() => setShowDepositModal(false)}
                 className="text-white/40 hover:text-white transition-colors"
+                aria-label="Close deposit modal"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

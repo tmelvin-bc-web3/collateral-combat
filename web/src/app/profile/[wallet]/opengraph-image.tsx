@@ -9,7 +9,7 @@ interface ProfileData {
   wallet: string;
   wins: number;
   losses: number;
-  elo: number;
+  dr: number;
   tier: string;
   currentStreak: number;
   totalBattles: number;
@@ -31,8 +31,8 @@ export default async function OGImage({ params }: { params: Promise<{ wallet: st
         wallet,
         wins: stats.wins || 0,
         losses: stats.losses || 0,
-        elo: stats.elo || 1000,
-        tier: stats.tier || 'bronze',
+        dr: stats.dr || stats.elo || 1000,
+        tier: stats.tier || 'retail',
         currentStreak: stats.currentStreak || 0,
         totalBattles: stats.totalBattles || 0,
       };
@@ -42,8 +42,8 @@ export default async function OGImage({ params }: { params: Promise<{ wallet: st
         wallet,
         wins: 0,
         losses: 0,
-        elo: 1000,
-        tier: 'bronze',
+        dr: 1000,
+        tier: 'retail',
         currentStreak: 0,
         totalBattles: 0,
       };
@@ -100,7 +100,7 @@ export default async function OGImage({ params }: { params: Promise<{ wallet: st
           {/* Fighter info */}
           <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '20px' }}>
             <span style={{ color: '#e8dfd4', fontSize: '36px', fontWeight: 700 }}>{displayName}</span>
-            <span style={{ color: '#666', fontSize: '14px' }}>ELO: {profileData.elo}</span>
+            <span style={{ color: '#666', fontSize: '14px' }}>DR: {profileData.dr}</span>
           </div>
 
           {/* Stats */}

@@ -57,7 +57,6 @@ export interface TWBetRecord {
   amountLamports: number;
   payoutLamports: number;
   status: 'pending' | 'won' | 'lost' | 'refunded';
-  isFreeBet: boolean;
   createdAt: number;
   settledAt: number | null;
 }
@@ -112,7 +111,6 @@ db.exec(`
     amount_lamports INTEGER NOT NULL,
     payout_lamports INTEGER DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
-    is_free_bet INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL,
     settled_at INTEGER,
     FOREIGN KEY (battle_id) REFERENCES tw_battles(id),
@@ -186,14 +184,14 @@ const stmts = {
 
   // Bets
   insertBet: db.prepare(`
-    INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, is_free_bet, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+    INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
   `),
   // Atomic upsert: Insert new bet or add to existing bet amount
   // This prevents race conditions where concurrent requests could both try to update
   upsertBet: db.prepare(`
-    INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, is_free_bet, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+    INSERT INTO tw_bets (id, battle_id, wallet_address, side, amount_lamports, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
     ON CONFLICT(battle_id, wallet_address) DO UPDATE SET
       amount_lamports = amount_lamports + excluded.amount_lamports
     RETURNING *
@@ -400,8 +398,7 @@ export function placeBet(
   battleId: string,
   walletAddress: string,
   side: TWBetSide,
-  amountLamports: number,
-  isFreeBet: boolean = false
+  amountLamports: number
 ): TWBetRecord {
   const id = `twbet_${uuidv4()}`;
   const now = Date.now();
@@ -420,7 +417,7 @@ export function placeBet(
     // Atomic upsert: either insert new bet or add to existing amount
     // ON CONFLICT will atomically add the new amount to existing amount
     const row = stmts.upsertBet.get(
-      id, battleId, walletAddress, side, amountLamports, isFreeBet ? 1 : 0, now
+      id, battleId, walletAddress, side, amountLamports, now
     ) as any;
 
     return rowToBet(row);
@@ -485,7 +482,6 @@ function rowToBet(row: any): TWBetRecord {
     amountLamports: row.amount_lamports,
     payoutLamports: row.payout_lamports,
     status: row.status,
-    isFreeBet: row.is_free_bet === 1,
     createdAt: row.created_at,
     settledAt: row.settled_at,
   };

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useProfileContext } from '@/contexts/ProfileContext';
 import { getPresetById } from '@/data/presetPFPs';
@@ -7,7 +8,7 @@ import { resolveImageUrl } from '@/lib/nftApi';
 
 interface UserAvatarProps {
   walletAddress: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   className?: string;
   onClick?: () => void;
   showName?: boolean;
@@ -18,6 +19,8 @@ const sizeMap = {
   md: 32,
   lg: 40,
   xl: 56,
+  '2xl': 80,
+  '3xl': 96,
 };
 
 const sizeClassMap = {
@@ -25,6 +28,8 @@ const sizeClassMap = {
   md: 'w-8 h-8',
   lg: 'w-10 h-10',
   xl: 'w-14 h-14',
+  '2xl': 'w-20 h-20',
+  '3xl': 'w-24 h-24',
 };
 
 // Generate a consistent gradient based on wallet address
@@ -54,6 +59,7 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const { getProfileForWallet } = useProfileContext();
   const profile = getProfileForWallet(walletAddress);
+  const [imgError, setImgError] = useState(false);
 
   const pixelSize = sizeMap[size];
   const sizeClass = sizeClassMap[size];
@@ -69,6 +75,8 @@ export function UserAvatar({
     }
   } else if (profile?.pfpType === 'nft' && profile.nftImageUrl) {
     imageSrc = resolveImageUrl(profile.nftImageUrl);
+  } else if (profile?.pfpType === 'twitter' && profile.twitterHandle && !imgError) {
+    imageSrc = `https://unavatar.io/twitter/${profile.twitterHandle}`;
   }
 
   const baseClasses = `${sizeClass} rounded-full overflow-hidden flex-shrink-0 ${className}`;
@@ -83,6 +91,7 @@ export function UserAvatar({
         height={pixelSize}
         className="object-cover w-full h-full"
         unoptimized
+        onError={() => setImgError(true)}
       />
     </div>
   ) : (

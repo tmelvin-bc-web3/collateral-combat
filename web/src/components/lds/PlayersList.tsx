@@ -2,7 +2,6 @@
 
 import { User, Flame } from 'lucide-react';
 import { LDSPlayer } from './types';
-import { LevelBadge } from '@/components/progression/LevelBadge';
 
 interface PlayersListProps {
   players: LDSPlayer[];
@@ -40,10 +39,6 @@ export function PlayersList({ players, maxPlayers, minPlayers, currentWallet, pr
                 isNewJoin ? 'animate-slide-in bg-warning/20' : 'bg-[#333]'
               } ${isCurrentUser ? 'border border-warning/50' : ''}`}
             >
-              {/* Level Badge */}
-              {player.level && (
-                <LevelBadge level={player.level} size="xs" />
-              )}
               {player.avatar ? (
                 <img
                   src={player.avatar}

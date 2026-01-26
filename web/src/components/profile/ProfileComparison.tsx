@@ -1,14 +1,14 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { EloTierBadge, EloTier } from './EloTierBadge';
+import { DRTierBadge, DrTier } from './EloTierBadge';
 import { RecentFormIndicator } from './RecentFormIndicator';
 
 interface FighterData {
   wallet: string;
   displayName: string;
   elo: number;
-  tier: EloTier;
+  tier: DrTier;
   battleCount: number;
   wins: number;
   losses: number;
@@ -90,7 +90,7 @@ export function ProfileComparison({ fighter1, fighter2 }: ProfileComparisonProps
             </svg>
           </div>
           <h3 className="text-xl font-bold mb-2">{fighter1.displayName || formatWallet(fighter1.wallet)}</h3>
-          <EloTierBadge tier={fighter1.tier} elo={fighter1.elo} showElo />
+          <DRTierBadge tier={fighter1.tier} dr={fighter1.elo} showDr />
         </div>
 
         {/* VS Divider */}
@@ -108,7 +108,7 @@ export function ProfileComparison({ fighter1, fighter2 }: ProfileComparisonProps
             </svg>
           </div>
           <h3 className="text-xl font-bold mb-2">{fighter2.displayName || formatWallet(fighter2.wallet)}</h3>
-          <EloTierBadge tier={fighter2.tier} elo={fighter2.elo} showElo />
+          <DRTierBadge tier={fighter2.tier} dr={fighter2.elo} showDr />
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export function ProfileComparison({ fighter1, fighter2 }: ProfileComparisonProps
         </h4>
 
         <ComparisonStat
-          label="ELO Rating"
+          label="DR Rating"
           value1={fighter1.elo}
           value2={fighter2.elo}
         />

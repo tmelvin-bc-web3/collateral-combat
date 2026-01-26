@@ -154,10 +154,12 @@ export function getReferralStats(walletAddress: string): {
 }
 
 // Earnings Queries
+// Progression system removed - will be replaced with ELO
+// Removed 'xp_bonus' earning type - XP rewards no longer exist
 export function insertEarning(
   referrerWallet: string,
   referredWallet: string,
-  earningType: 'xp_bonus' | 'rake_kickback',
+  earningType: 'rake_kickback',
   amount: number,
   source: string,
   sourceId: string | null
@@ -174,15 +176,14 @@ export function getEarningsByReferrer(walletAddress: string): ReferralEarningRow
   return db.prepare('SELECT * FROM referral_earnings WHERE referrer_wallet = ? ORDER BY created_at DESC LIMIT 100').all(walletAddress) as ReferralEarningRow[];
 }
 
+// Progression system removed - will be replaced with ELO
+// Removed totalXpEarned - XP rewards no longer exist
 export function getTotalEarnings(walletAddress: string): {
-  totalXpEarned: number;
   totalRakeEarned: number;
 } {
   const db = getReferralDb();
-  const xp = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM referral_earnings WHERE referrer_wallet = ? AND earning_type = ?').get(walletAddress, 'xp_bonus') as { total: number };
   const rake = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM referral_earnings WHERE referrer_wallet = ? AND earning_type = ?').get(walletAddress, 'rake_kickback') as { total: number };
   return {
-    totalXpEarned: xp.total,
     totalRakeEarned: rake.total
   };
 }

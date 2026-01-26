@@ -5,7 +5,6 @@ import { WalletProvider } from '@/components/WalletProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { FirstBetProvider } from '@/contexts/FirstBetContext';
-import { ProgressionProvider } from '@/contexts/ProgressionContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BalanceBar } from '@/components/BalanceBar';
@@ -75,17 +74,15 @@ export default function RootLayout({
             <AuthProvider>
               <ProfileProvider>
                 <FirstBetProvider>
-                  <ProgressionProvider>
-                    <Header />
-                    <main className="pt-24 pb-32 md:pb-24 px-4 min-h-screen relative z-10">
-                      <div className="max-w-7xl mx-auto">{children}</div>
-                    </main>
-                    <Footer />
-                    <BottomNavBar />
-                    <BalanceBar />
-                    <ProfileSetupWrapper />
-                    <OnboardingTourWrapper />
-                  </ProgressionProvider>
+                  <Header />
+                  <main className="pt-24 pb-32 md:pb-24 px-4 min-h-screen relative z-10">
+                    <div className="max-w-7xl mx-auto">{children}</div>
+                  </main>
+                  <Footer />
+                  <BottomNavBar />
+                  <BalanceBar />
+                  <ProfileSetupWrapper />
+                  <OnboardingTourWrapper />
                 </FirstBetProvider>
               </ProfileProvider>
             </AuthProvider>

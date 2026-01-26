@@ -3,7 +3,6 @@
  */
 
 import * as userStatsDb from '../db/userStatsDatabase';
-import * as progressionDb from '../db/progressionDatabase';
 import * as balanceDb from '../db/balanceDatabase';
 import { predictionService } from './predictionService';
 import { priceService } from './priceService';
@@ -36,10 +35,6 @@ export interface OverviewStats {
     volumeToday: number;
     feesToday: number;
   };
-  progression: {
-    totalXpAwarded: number;
-    freeBetsIssued: number;
-  };
   health: {
     status: 'healthy' | 'degraded' | 'down';
     activeConnections: number;
@@ -48,8 +43,6 @@ export interface OverviewStats {
 
 export interface UserListEntry {
   walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
   totalWagered: number;
   totalProfitLoss: number;
   lastActivity: number | null;
@@ -91,19 +84,6 @@ export interface OracleRound {
   winner?: string;
 }
 
-export interface ProgressionStatsOverview {
-  totalXpAwarded: number;
-  averageLevel: number;
-  levelDistribution: Record<string, number>;
-  totalFreeBetsIssued: number;
-  totalPerksUnlocked: number;
-}
-
-export interface XpLeaderboardEntry {
-  walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
-}
 
 export interface HealthStatus {
   backend: {
@@ -145,17 +125,15 @@ export function setActiveConnections(count: number): void {
 // ===================
 
 export async function getOverviewStats(): Promise<OverviewStats> {
-  const [users, games, progression, health] = await Promise.all([
+  const [users, games, health] = await Promise.all([
     getUserSummary(),
     getGameSummary(),
-    getProgressionSummary(),
     getHealthSummary(),
   ]);
 
   return {
     users,
     games,
-    progression,
     health,
   };
 }
@@ -167,23 +145,17 @@ async function getUserSummary(): Promise<OverviewStats['users']> {
 
   if (pool) {
     try {
-      // Total users with progression data
-      const totalResult = await pool.query('SELECT COUNT(*) as count FROM user_progression');
+      // Total users from user stats
+      const totalResult = await pool.query('SELECT COUNT(*) as count FROM user_stats');
       total = parseInt(totalResult.rows[0]?.count || '0');
 
       // Users active in last 24h
       const last24h = Date.now() - 24 * 60 * 60 * 1000;
       const activeResult = await pool.query(
-        'SELECT COUNT(*) as count FROM user_progression WHERE updated_at >= $1',
+        'SELECT COUNT(*) as count FROM user_stats WHERE last_wager_at >= $1',
         [last24h]
       );
       active24h = parseInt(activeResult.rows[0]?.count || '0');
-
-      // Users with free bet balance
-      const balanceResult = await pool.query(
-        'SELECT COUNT(*) as count FROM free_bet_credits WHERE balance > 0'
-      );
-      withBalance = parseInt(balanceResult.rows[0]?.count || '0');
     } catch (error) {
       console.error('[AdminService] getUserSummary error:', error);
     }
@@ -214,27 +186,6 @@ async function getGameSummary(): Promise<OverviewStats['games']> {
     volumeToday,
     feesToday,
   };
-}
-
-async function getProgressionSummary(): Promise<OverviewStats['progression']> {
-  let totalXpAwarded = 0;
-  let freeBetsIssued = 0;
-
-  if (pool) {
-    try {
-      // Total XP awarded
-      const xpResult = await pool.query('SELECT COALESCE(SUM(xp_amount), 0) as total FROM xp_history');
-      totalXpAwarded = parseInt(xpResult.rows[0]?.total || '0');
-
-      // Total free bets issued
-      const fbResult = await pool.query('SELECT COALESCE(SUM(lifetime_earned), 0) as total FROM free_bet_credits');
-      freeBetsIssued = parseInt(fbResult.rows[0]?.total || '0');
-    } catch (error) {
-      console.error('[AdminService] getProgressionSummary error:', error);
-    }
-  }
-
-  return { totalXpAwarded, freeBetsIssued };
 }
 
 async function getHealthSummary(): Promise<OverviewStats['health']> {
@@ -290,39 +241,18 @@ export async function getUserList(limit: number = 50, offset: number = 0): Promi
   const users: UserListEntry[] = [];
   let total = 0;
 
-  if (pool) {
-    try {
-      // Get total count
-      const countResult = await pool.query('SELECT COUNT(*) as count FROM user_progression');
-      total = parseInt(countResult.rows[0]?.count || '0');
+  // Use userStatsDb for user list (progression tables removed)
+  const leaderboard = userStatsDb.getStatsLeaderboard('volume', 1000);
+  total = leaderboard.length;
 
-      // Get users with their stats
-      const result = await pool.query(
-        `SELECT
-          p.wallet_address,
-          p.total_xp,
-          p.current_level,
-          p.updated_at as last_activity
-        FROM user_progression p
-        ORDER BY p.total_xp DESC
-        LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-
-      for (const row of result.rows) {
-        const stats = userStatsDb.getUserStats(row.wallet_address);
-        users.push({
-          walletAddress: row.wallet_address,
-          totalXp: row.total_xp,
-          currentLevel: row.current_level,
-          totalWagered: stats.totalWagered,
-          totalProfitLoss: stats.totalProfitLoss,
-          lastActivity: parseInt(row.last_activity) || null,
-        });
-      }
-    } catch (error) {
-      console.error('[AdminService] getUserList error:', error);
-    }
+  const sliced = leaderboard.slice(offset, offset + limit);
+  for (const entry of sliced) {
+    users.push({
+      walletAddress: entry.walletAddress,
+      totalWagered: entry.totalWagered,
+      totalProfitLoss: entry.totalProfitLoss,
+      lastActivity: null,
+    });
   }
 
   return { users, total };
@@ -385,88 +315,6 @@ export function getRecentOracleRounds(limit: number = 20): OracleRound[] {
     totalPool: r.totalPool,
     winner: r.winner,
   }));
-}
-
-// ===================
-// Progression Stats
-// ===================
-
-export async function getProgressionStats(): Promise<ProgressionStatsOverview> {
-  let totalXpAwarded = 0;
-  let averageLevel = 1;
-  const levelDistribution: Record<string, number> = {};
-  let totalFreeBetsIssued = 0;
-  let totalPerksUnlocked = 0;
-
-  if (pool) {
-    try {
-      // Total XP awarded
-      const xpResult = await pool.query('SELECT COALESCE(SUM(xp_amount), 0) as total FROM xp_history');
-      totalXpAwarded = parseInt(xpResult.rows[0]?.total || '0');
-
-      // Average level and distribution
-      const levelResult = await pool.query(
-        `SELECT current_level, COUNT(*) as count FROM user_progression GROUP BY current_level ORDER BY current_level`
-      );
-
-      let totalLevels = 0;
-      let userCount = 0;
-      for (const row of levelResult.rows) {
-        const level = row.current_level;
-        const count = parseInt(row.count);
-        levelDistribution[`${level}`] = count;
-        totalLevels += level * count;
-        userCount += count;
-      }
-      averageLevel = userCount > 0 ? Math.round((totalLevels / userCount) * 10) / 10 : 1;
-
-      // Total free bets
-      const fbResult = await pool.query('SELECT COALESCE(SUM(lifetime_earned), 0) as total FROM free_bet_credits');
-      totalFreeBetsIssued = parseInt(fbResult.rows[0]?.total || '0');
-
-      // Total perks unlocked
-      const perkResult = await pool.query('SELECT COUNT(*) as count FROM user_perks');
-      totalPerksUnlocked = parseInt(perkResult.rows[0]?.count || '0');
-    } catch (error) {
-      console.error('[AdminService] getProgressionStats error:', error);
-    }
-  }
-
-  return {
-    totalXpAwarded,
-    averageLevel,
-    levelDistribution,
-    totalFreeBetsIssued,
-    totalPerksUnlocked,
-  };
-}
-
-export async function getXpLeaderboard(limit: number = 50): Promise<XpLeaderboardEntry[]> {
-  const entries: XpLeaderboardEntry[] = [];
-
-  if (pool) {
-    try {
-      const result = await pool.query(
-        `SELECT wallet_address, total_xp, current_level
-         FROM user_progression
-         ORDER BY total_xp DESC
-         LIMIT $1`,
-        [limit]
-      );
-
-      for (const row of result.rows) {
-        entries.push({
-          walletAddress: row.wallet_address,
-          totalXp: row.total_xp,
-          currentLevel: row.current_level,
-        });
-      }
-    } catch (error) {
-      console.error('[AdminService] getXpLeaderboard error:', error);
-    }
-  }
-
-  return entries;
 }
 
 // ===================

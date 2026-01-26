@@ -249,7 +249,6 @@ Close Round (+1 hour)
 | Program | Address | Network |
 |---------|---------|---------|
 | Session Betting | `4EMMUfMMx61ynFq53fi8nsXBdDRcB1KuDuAmjsYMAKAA` | Devnet |
-| Battle Program | `GJPVHcvCAwbaCNXuiADj8a5AjeFy9LQuJeU4G8kpBiA9` | Mainnet |
 
 ## Roadmap
 

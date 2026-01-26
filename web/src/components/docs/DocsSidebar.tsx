@@ -19,7 +19,6 @@ const NAV_ITEMS: NavItem[] = [
   { title: 'Draft', href: '/docs/draft', icon: '🎯' },
   { title: 'Spectate', href: '/docs/spectate', icon: '👁️' },
   { title: 'Session Wagering', href: '/docs/session-betting', icon: '⚡' },
-  { title: 'Progression', href: '/docs/progression', icon: '📈' },
   { title: 'Security', href: '/docs/security', icon: '🔒' },
   { title: 'FAQ', href: '/docs/faq', icon: '❓' },
 ];

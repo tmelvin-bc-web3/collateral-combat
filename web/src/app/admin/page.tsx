@@ -81,8 +81,6 @@ function AdminPageContent() {
     userList,
     gameStats,
     oracleRounds,
-    progressionStats,
-    xpLeaderboard,
     health,
     isLoading,
     error: dataError,
@@ -91,8 +89,6 @@ function AdminPageContent() {
     fetchUserList,
     fetchGameStats,
     fetchOracleRounds,
-    fetchProgressionStats,
-    fetchXpLeaderboard,
     fetchHealth,
     refresh,
   } = useAdminData({ autoRefresh, refreshInterval: 30000 });
@@ -181,10 +177,6 @@ function AdminPageContent() {
       case 'games':
         fetchGameStats();
         fetchOracleRounds();
-        break;
-      case 'progression':
-        fetchProgressionStats();
-        fetchXpLeaderboard();
         break;
       case 'system':
         fetchHealth();
@@ -396,7 +388,6 @@ function AdminPageContent() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="games">Games</TabsTrigger>
-            <TabsTrigger value="progression">Progression</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
             <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
           </TabsList>
@@ -414,15 +405,6 @@ function AdminPageContent() {
           {/* Games Tab */}
           <TabsContent value="games">
             <GamesTab gameStats={gameStats} oracleRounds={oracleRounds} isLoading={isLoading} />
-          </TabsContent>
-
-          {/* Progression Tab */}
-          <TabsContent value="progression">
-            <ProgressionTab
-              progressionStats={progressionStats}
-              xpLeaderboard={xpLeaderboard}
-              isLoading={isLoading}
-            />
           </TabsContent>
 
           {/* System Tab */}
@@ -477,11 +459,6 @@ function OverviewTab({ overview, health }: { overview: any; health: any }) {
           sublabel={`${(overview.games.volumeToday / 1e9).toFixed(2)} SOL volume`}
         />
         <StatCard
-          label="Total XP Awarded"
-          value={overview.progression.totalXpAwarded}
-          sublabel={`${overview.progression.freeBetsIssued} free bets issued`}
-        />
-        <StatCard
           label="System Status"
           value={
             <HealthBadge
@@ -528,8 +505,6 @@ function UsersTab({ userStats, userList, isLoading }: { userStats: any; userList
         {item.walletAddress.slice(0, 4)}...{item.walletAddress.slice(-4)}
       </span>
     )},
-    { key: 'currentLevel', header: 'Level', sortable: true },
-    { key: 'totalXp', header: 'XP', sortable: true },
     { key: 'totalWagered', header: 'Volume', sortable: true, render: (item) => (
       <span>{(item.totalWagered / 1e9).toFixed(2)} SOL</span>
     )},
@@ -649,78 +624,6 @@ function GamesTab({ gameStats, oracleRounds, isLoading }: { gameStats: any; orac
         isLoading={isLoading}
         emptyMessage="No oracle rounds found"
         pageSize={10}
-      />
-    </div>
-  );
-}
-
-function ProgressionTab({
-  progressionStats,
-  xpLeaderboard,
-  isLoading,
-}: {
-  progressionStats: any;
-  xpLeaderboard: any[];
-  isLoading: boolean;
-}) {
-  const leaderboardColumns: Column<any>[] = [
-    { key: 'rank', header: '#', render: (_, index) => (
-      <span className="font-bold">{index + 1}</span>
-    )},
-    { key: 'walletAddress', header: 'Wallet', render: (item) => (
-      <span className="font-mono text-white/60">
-        {item.walletAddress.slice(0, 4)}...{item.walletAddress.slice(-4)}
-      </span>
-    )},
-    { key: 'currentLevel', header: 'Level', sortable: true },
-    { key: 'totalXp', header: 'Total XP', sortable: true },
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Stats */}
-      {progressionStats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Total XP Awarded"
-            value={progressionStats.totalXpAwarded.toLocaleString()}
-            variant="warning"
-          />
-          <StatCard label="Average Level" value={progressionStats.averageLevel} />
-          <StatCard label="Free Bets Issued" value={progressionStats.totalFreeBetsIssued} />
-          <StatCard label="Perks Unlocked" value={progressionStats.totalPerksUnlocked} />
-        </div>
-      )}
-
-      {/* Level Distribution */}
-      {progressionStats?.levelDistribution && (
-        <div className="bg-black/60 border border-white/10 rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">Level Distribution</h3>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(progressionStats.levelDistribution)
-              .sort(([a], [b]) => parseInt(a) - parseInt(b))
-              .map(([level, count]) => (
-                <div
-                  key={level}
-                  className="px-3 py-1 bg-white/10 rounded-lg text-sm"
-                >
-                  <span className="text-warning">Lv{level}</span>
-                  <span className="text-white/60 ml-2">{count as number}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* XP Leaderboard */}
-      <h3 className="text-lg font-semibold">XP Leaderboard</h3>
-      <AdminTable
-        columns={leaderboardColumns}
-        data={xpLeaderboard}
-        keyExtractor={(item) => item.walletAddress}
-        isLoading={isLoading}
-        emptyMessage="No users found"
-        pageSize={20}
       />
     </div>
   );

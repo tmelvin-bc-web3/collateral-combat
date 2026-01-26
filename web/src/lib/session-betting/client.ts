@@ -583,11 +583,13 @@ export class SessionBettingClient {
    * @param userWallet The wallet address of the user whose balance to debit
    * @param amountLamports Amount to transfer in lamports
    * @param authorityKeypair The authority keypair (backend's keypair)
+   * @param gameType The game type (defaults to Oracle)
    */
   async transferToGlobalVault(
     userWallet: PublicKey,
     amountLamports: BN | number,
-    authorityKeypair: Keypair
+    authorityKeypair: Keypair,
+    gameType: GameType = GameType.Oracle
   ): Promise<string> {
     const amount = typeof amountLamports === 'number' ? new BN(amountLamports) : amountLamports;
     const [gameStatePDA] = this.getGameStatePDA();
@@ -598,7 +600,7 @@ export class SessionBettingClient {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const methods = this.program.methods as any;
     const tx = await methods
-      .transferToGlobalVault(amount)
+      .transferToGlobalVault(amount, gameTypeToProgram(gameType))
       .accounts({
         gameState: gameStatePDA,
         authority: authorityKeypair.publicKey,

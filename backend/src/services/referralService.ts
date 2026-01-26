@@ -14,10 +14,9 @@ import {
   ReferralRow,
   ReferralCodeRow,
 } from '../db/referralDatabase';
-import { Referral, ReferralCode, ReferralStats, XpSource } from '../types';
+import { Referral, ReferralCode, ReferralStats } from '../types';
 
 // Constants
-const REFERRAL_XP_PERCENT = 0.10;      // 10% of referral's XP
 const REFERRAL_RAKE_PERCENT = 0.10;    // 10% of rake paid (effectively 1% of transaction)
 const DISCOUNT_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const DISCOUNT_RAKE = 9;               // 9% rake for referred users (1% discount)
@@ -161,38 +160,6 @@ class ReferralService {
   }
 
   /**
-   * Award XP bonus to referrer when referred user earns XP
-   */
-  awardReferralXp(
-    referredWallet: string,
-    xpAmount: number,
-    source: XpSource,
-    sourceId: string | null
-  ): number {
-    getReferralDb();
-
-    const referral = getReferralByReferred(referredWallet);
-    if (!referral || referral.status !== 'active') {
-      return 0;
-    }
-
-    const bonusXp = Math.floor(xpAmount * REFERRAL_XP_PERCENT);
-    if (bonusXp <= 0) return 0;
-
-    insertEarning(
-      referral.referrer_wallet,
-      referredWallet,
-      'xp_bonus',
-      bonusXp,
-      source,
-      sourceId
-    );
-
-    console.log(`[Referral] Awarded ${bonusXp} XP bonus to ${referral.referrer_wallet} from referral ${referredWallet}`);
-    return bonusXp;
-  }
-
-  /**
    * Award rake kickback to referrer when referred user pays rake
    */
   awardRakeKickback(
@@ -259,13 +226,13 @@ class ReferralService {
 
   /**
    * Get effective rake rate for a user (checks referral discount)
-   * Note: Should be called BEFORE checking progression perks
+   * Returns the referral discount rake rate, or null if no discount
    */
   getReferralRakeDiscount(walletAddress: string): number | null {
     if (this.hasActiveRakeDiscount(walletAddress)) {
       return DISCOUNT_RAKE;
     }
-    return null; // No referral discount, use default or perk-based rake
+    return null; // No referral discount, use default rake
   }
 
   /**
@@ -287,7 +254,6 @@ class ReferralService {
     return {
       totalReferrals: stats.totalReferrals,
       activeReferrals: stats.activeReferrals,
-      totalXpEarned: earnings.totalXpEarned,
       totalRakeEarned: earnings.totalRakeEarned,
       myCode: code.code,
       referrals,

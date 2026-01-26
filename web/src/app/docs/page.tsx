@@ -144,9 +144,6 @@ export default function DocsOverview() {
           <a href="/docs/security" className="text-accent hover:underline text-sm">
             → Security & Trust
           </a>
-          <a href="/docs/progression" className="text-accent hover:underline text-sm">
-            → Progression System
-          </a>
           <a href="/docs/faq" className="text-accent hover:underline text-sm">
             → FAQ
           </a>

@@ -10,7 +10,14 @@ interface ProfilePickerPresetsProps {
   onSelect: (preset: PresetPFP) => void;
 }
 
-type Category = 'all' | 'solana' | 'crypto';
+type Category = 'all' | 'solana' | 'crypto' | 'degen';
+
+const CATEGORY_LABELS: Record<Category, string> = {
+  all: 'All',
+  solana: 'Solana',
+  crypto: 'Crypto',
+  degen: 'Degen',
+};
 
 export function ProfilePickerPresets({
   selectedId,
@@ -21,13 +28,13 @@ export function ProfilePickerPresets({
   const presets =
     category === 'all'
       ? PRESET_PFPS
-      : getPresetsByCategory(category as 'solana' | 'crypto');
+      : getPresetsByCategory(category as 'solana' | 'crypto' | 'degen');
 
   return (
     <div>
       {/* Category filter */}
       <div className="flex gap-2 mb-4">
-        {(['all', 'solana', 'crypto'] as Category[]).map((cat) => (
+        {(['all', 'solana', 'crypto', 'degen'] as Category[]).map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
@@ -37,7 +44,7 @@ export function ProfilePickerPresets({
                 : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
             }`}
           >
-            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            {CATEGORY_LABELS[cat]}
           </button>
         ))}
       </div>

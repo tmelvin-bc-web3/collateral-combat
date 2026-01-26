@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Flame, Swords, Crown } from 'lucide-react';
-import { LeaderboardEntry, getRankTierBgColor, getRankTierColor } from './types';
+import { LeaderboardEntry } from './types';
+import { DRTierBadge } from '@/components/profile';
 
 interface TopThreePodiumProps {
   leaders: LeaderboardEntry[];
@@ -105,20 +106,19 @@ function PodiumSpot({ player, place, onView, onChallenge, isFirst }: PodiumSpotP
             </span>
           </div>
         )}
-        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-warning rounded-full flex items-center justify-center text-[10px] font-bold text-black border-2 border-[#1a1a1a]">
-          {player.level}
-        </div>
       </div>
-
-      {/* Rank Badge */}
-      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase border mb-1 ${getRankTierBgColor(player.rankTier)} ${getRankTierColor(player.rankTier)}`}>
-        {player.rankTitle}
-      </span>
 
       {/* Name */}
       <span className={`block font-semibold ${isFirst ? 'text-base' : 'text-sm'}`}>
         {player.username}
       </span>
+
+      {/* DR Badge */}
+      {player.tier && (
+        <div className="mt-2">
+          <DRTierBadge tier={player.tier} division={player.division} dr={player.dr} size="sm" showDr />
+        </div>
+      )}
 
       {/* Stats */}
       <div className="flex justify-center gap-4 mt-3">

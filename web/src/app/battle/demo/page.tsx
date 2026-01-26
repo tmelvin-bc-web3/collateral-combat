@@ -228,8 +228,6 @@ export default function BattleDemoPage() {
     walletAddress: player1.walletAddress,
     username: 'DemoTrader',
     avatar: null,
-    level: 15,
-    title: 'Warrior',
     pnlPercent: userPnL.percent,
     pnlDollar: userPnL.dollar,
     positions: positionsWithLivePnL.map(p => ({
@@ -247,8 +245,6 @@ export default function BattleDemoPage() {
     walletAddress: player2.walletAddress,
     username: 'CryptoChad',
     avatar: null,
-    level: 22,
-    title: 'Veteran',
     pnlPercent: opponentPnL.percent,
     pnlDollar: opponentPnL.dollar,
     positions: [],

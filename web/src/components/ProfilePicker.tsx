@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useProfileContext } from '@/contexts/ProfileContext';
-import { useProgressionContext } from '@/contexts/ProgressionContext';
 import { ProfilePickerPresets } from './ProfilePickerPresets';
 import { ProfilePickerNFTs } from './ProfilePickerNFTs';
-import { ProgressionStats } from './progression';
+import { ProfilePickerTwitter } from './ProfilePickerTwitter';
 import { UserAvatar } from './UserAvatar';
 import { PresetPFP, NFTAsset } from '@/types';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -18,27 +17,18 @@ interface ProfilePickerProps {
   onClose: () => void;
 }
 
-type Tab = 'presets' | 'nfts' | 'stats';
+type Tab = 'presets' | 'nfts' | 'twitter';
 
 export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || '';
   const { ownProfile, updateProfile, error: profileError } = useProfileContext();
-  const {
-    progression,
-    perks,
-    cosmetics,
-    xpHistory,
-    activeRake,
-    isLoading: progressionLoading,
-    fetchXpHistory,
-    activatePerk,
-  } = useProgressionContext();
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('presets');
   const [selectedPreset, setSelectedPreset] = useState<PresetPFP | null>(null);
   const [selectedNFT, setSelectedNFT] = useState<NFTAsset | null>(null);
+  const [selectedTwitterHandle, setSelectedTwitterHandle] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -56,6 +46,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
     if (isOpen) {
       setSelectedPreset(null);
       setSelectedNFT(null);
+      setSelectedTwitterHandle(null);
       setUsername(ownProfile?.username || '');
       setUsernameError(null);
       setSaveError(null);
@@ -63,6 +54,8 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
       // Set active tab based on current profile
       if (ownProfile?.pfpType === 'nft') {
         setActiveTab('nfts');
+      } else if (ownProfile?.pfpType === 'twitter') {
+        setActiveTab('twitter');
       } else {
         setActiveTab('presets');
       }
@@ -126,11 +119,19 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const handlePresetSelect = (preset: PresetPFP) => {
     setSelectedPreset(preset);
     setSelectedNFT(null);
+    setSelectedTwitterHandle(null);
   };
 
   const handleNFTSelect = (nft: NFTAsset) => {
     setSelectedNFT(nft);
     setSelectedPreset(null);
+    setSelectedTwitterHandle(null);
+  };
+
+  const handleTwitterSelect = (handle: string) => {
+    setSelectedTwitterHandle(handle);
+    setSelectedPreset(null);
+    setSelectedNFT(null);
   };
 
   // Early return AFTER all hooks
@@ -139,7 +140,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   const handleSave = async () => {
     // Can save if we have a selection OR if username changed
     const usernameChanged = username !== (ownProfile?.username || '');
-    if (!selectedPreset && !selectedNFT && !usernameChanged) return;
+    if (!selectedPreset && !selectedNFT && !selectedTwitterHandle && !usernameChanged) return;
 
     if (usernameError) return;
 
@@ -161,6 +162,12 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           nftImageUrl: selectedNFT.image,
           username: username || undefined,
         });
+      } else if (selectedTwitterHandle) {
+        result = await updateProfile({
+          pfpType: 'twitter',
+          twitterHandle: selectedTwitterHandle,
+          username: username || undefined,
+        });
       } else {
         // Just updating username
         result = await updateProfile({
@@ -168,6 +175,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           presetId: ownProfile?.presetId,
           nftMint: ownProfile?.nftMint,
           nftImageUrl: ownProfile?.nftImageUrl,
+          twitterHandle: ownProfile?.twitterHandle,
           username: username || undefined,
         });
       }
@@ -198,16 +206,17 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
   };
 
 
-  const hasSelection = selectedPreset || selectedNFT;
+  const hasSelection = selectedPreset || selectedNFT || selectedTwitterHandle;
   const usernameChanged = username !== (ownProfile?.username || '');
   const canSave = (hasSelection || usernameChanged) && !usernameError && !isCheckingUsername;
 
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Choose profile picture" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal */}
@@ -218,6 +227,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
           <button
             onClick={onClose}
             className="p-1 rounded-lg hover:bg-bg-tertiary transition-colors"
+            aria-label="Close profile picker"
           >
             <svg
               className="w-5 h-5 text-text-tertiary"
@@ -297,14 +307,14 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
             My NFTs
           </button>
           <button
-            onClick={() => setActiveTab('stats')}
+            onClick={() => setActiveTab('twitter')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'stats'
+              activeTab === 'twitter'
                 ? 'text-accent border-b-2 border-accent'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Stats
+            Twitter
           </button>
         </div>
 
@@ -321,22 +331,15 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
               onSelect={handleNFTSelect}
             />
           ) : (
-            <ProgressionStats
-              progression={progression}
-              perks={perks}
-              cosmetics={cosmetics}
-              xpHistory={xpHistory}
-              activeRake={activeRake}
-              isLoading={progressionLoading}
-              onActivatePerk={activatePerk}
-              onFetchHistory={fetchXpHistory}
+            <ProfilePickerTwitter
+              selectedHandle={selectedTwitterHandle || (ownProfile?.pfpType === 'twitter' ? ownProfile.twitterHandle ?? null : null)}
+              onSelect={handleTwitterSelect}
             />
           )}
         </div>
 
-        {/* Footer - hide on stats tab */}
-        {activeTab !== 'stats' && (
-          <div className="border-t border-border-primary bg-bg-tertiary/50">
+        {/* Footer */}
+        <div className="border-t border-border-primary bg-bg-tertiary/50">
             {/* Error message */}
             {saveError && (
               <div className="px-4 pt-3 pb-0">
@@ -361,8 +364,7 @@ export function ProfilePicker({ isOpen, onClose }: ProfilePickerProps) {
                 {isSaving ? 'Saving...' : isCheckingUsername ? 'Checking...' : 'Save'}
               </button>
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

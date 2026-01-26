@@ -49,7 +49,6 @@ export interface LDSPlayerRecord {
   eliminatedAtRound: number | null;
   placement: number | null;
   payoutLamports: number;
-  isFreeBet: boolean;
   joinedAt: number;
 }
 
@@ -118,7 +117,6 @@ db.exec(`
     eliminated_at_round INTEGER,
     placement INTEGER,
     payout_lamports INTEGER DEFAULT 0,
-    is_free_bet INTEGER DEFAULT 0,
     joined_at INTEGER NOT NULL,
     FOREIGN KEY (game_id) REFERENCES lds_games(id),
     UNIQUE(game_id, wallet_address)
@@ -191,8 +189,8 @@ const stmts = {
 
   // Players
   insertPlayer: db.prepare(`
-    INSERT INTO lds_players (id, game_id, wallet_address, status, payout_lamports, is_free_bet, joined_at)
-    VALUES (?, ?, ?, 'alive', 0, ?, ?)
+    INSERT INTO lds_players (id, game_id, wallet_address, status, payout_lamports, joined_at)
+    VALUES (?, ?, ?, 'alive', 0, ?)
   `),
   getPlayer: db.prepare(`SELECT * FROM lds_players WHERE game_id = ? AND wallet_address = ?`),
   getPlayers: db.prepare(`SELECT * FROM lds_players WHERE game_id = ?`),
@@ -391,13 +389,13 @@ function rowToGame(row: any): LDSGameRecord {
 // Player Functions
 // ============================================
 
-export function addPlayer(gameId: string, walletAddress: string, entryFeeLamports: number, isFreeBet: boolean = false): LDSPlayerRecord {
+export function addPlayer(gameId: string, walletAddress: string, entryFeeLamports: number): LDSPlayerRecord {
   const id = `ldsp_${uuidv4()}`;
   const now = Date.now();
 
   // Use transaction for atomicity
   const addPlayerTx = db.transaction(() => {
-    stmts.insertPlayer.run(id, gameId, walletAddress, isFreeBet ? 1 : 0, now);
+    stmts.insertPlayer.run(id, gameId, walletAddress, now);
     stmts.incrementPlayerCount.run(entryFeeLamports, gameId);
   });
 
@@ -411,7 +409,6 @@ export function addPlayer(gameId: string, walletAddress: string, entryFeeLamport
     eliminatedAtRound: null,
     placement: null,
     payoutLamports: 0,
-    isFreeBet,
     joinedAt: now,
   };
 }
@@ -493,7 +490,6 @@ function rowToPlayer(row: any): LDSPlayerRecord {
     eliminatedAtRound: row.eliminated_at_round,
     placement: row.placement,
     payoutLamports: row.payout_lamports,
-    isFreeBet: row.is_free_bet === 1,
     joinedAt: row.joined_at,
   };
 }

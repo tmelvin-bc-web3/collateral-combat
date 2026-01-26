@@ -213,15 +213,6 @@ export const spectatorBetDatabase = {
   },
 
   /**
-   * Set the on-chain battle ID for bets
-   */
-  setOnChainBattleId(battleId: string, onChainBattleId: string): void {
-    db.prepare(
-      'UPDATE spectator_bets SET on_chain_battle_id = ? WHERE battle_id = ?'
-    ).run(onChainBattleId, battleId);
-  },
-
-  /**
    * Set transaction signature for a bet
    */
   setTxSignature(id: string, txSignature: string): void {

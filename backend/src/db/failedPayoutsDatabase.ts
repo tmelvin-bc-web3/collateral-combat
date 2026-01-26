@@ -37,7 +37,6 @@ export interface FailedPayoutRecord {
   reason: string;
   status: FailedPayoutStatus;
   retryCount: number;
-  isFreeBet: boolean;
   createdAt: number;
   lastRetryAt: number | null;
   recoveredAt: number | null;
@@ -59,7 +58,6 @@ db.exec(`
     reason TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     retry_count INTEGER DEFAULT 0,
-    is_free_bet INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL,
     last_retry_at INTEGER,
     recovered_at INTEGER,
@@ -80,9 +78,9 @@ const stmts = {
   insert: db.prepare(`
     INSERT INTO failed_payouts (
       id, game_type, game_id, wallet_address, amount_lamports, payout_type,
-      reason, status, retry_count, is_free_bet, created_at
+      reason, status, retry_count, created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
   `),
 
   getById: db.prepare(`SELECT * FROM failed_payouts WHERE id = ?`),
@@ -160,15 +158,14 @@ export function addFailedPayout(
   amountLamports: number,
   payoutType: PayoutType,
   reason: string,
-  retryCount: number = 0,
-  isFreeBet: boolean = false
+  retryCount: number = 0
 ): FailedPayoutRecord {
   const id = `fp_${uuidv4()}`;
   const now = Date.now();
 
   stmts.insert.run(
     id, gameType, gameId, walletAddress, amountLamports, payoutType,
-    reason, retryCount, isFreeBet ? 1 : 0, now
+    reason, retryCount, now
   );
 
   console.log(`[FailedPayouts] Added to recovery queue: ${walletAddress.slice(0, 8)}... ${amountLamports} lamports (${gameType}/${gameId})`);
@@ -183,7 +180,6 @@ export function addFailedPayout(
     reason,
     status: 'pending',
     retryCount,
-    isFreeBet,
     createdAt: now,
     lastRetryAt: null,
     recoveredAt: null,
@@ -281,7 +277,6 @@ function rowToRecord(row: any): FailedPayoutRecord {
     reason: row.reason,
     status: row.status,
     retryCount: row.retry_count,
-    isFreeBet: row.is_free_bet === 1,
     createdAt: row.created_at,
     lastRetryAt: row.last_retry_at,
     recoveredAt: row.recovered_at,

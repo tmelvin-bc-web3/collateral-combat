@@ -9,9 +9,6 @@ import dynamic from 'next/dynamic';
 import { UserAvatar } from './UserAvatar';
 import { ProfilePicker } from './ProfilePicker';
 import { WalletBalance } from './WalletBalance';
-import { LevelBadge } from './progression';
-import { useProgressionContext } from '@/contexts/ProgressionContext';
-import { Flame, AlertTriangle } from 'lucide-react';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -23,20 +20,28 @@ const WalletMultiButton = dynamic(
   }
 );
 
-// All game modes - shown in Games dropdown
+// Game modes - shown in Games dropdown under "Game Modes"
 const GAME_MODES_NAV = [
   { href: '/predict', label: 'Oracle', icon: 'predict', description: '30s price predictions' },
   { href: '/lds', label: 'Last Degen Standing', icon: 'lds', description: 'Elimination battle royale' },
   { href: '/token-wars', label: 'Token Wars', icon: 'token-wars', description: 'Head-to-head token battles' },
-  { href: '/battle', label: 'Arena', icon: 'battle', description: '1v1 leveraged trading' },
   { href: '/draft', label: 'Draft', icon: 'draft', description: 'Weekly memecoin tournaments' },
-  { href: '/spectate', label: 'Spectate', icon: 'spectate', description: 'Watch & wager on battles' },
 ];
 
-// Utility nav - direct links
-const UTILITY_NAV = [
-  { href: '/leaderboard', label: 'Ranks', icon: 'leaderboard' },
-  { href: '/docs', label: 'Docs', icon: 'docs' },
+// Extra items - shown in Games dropdown under "More"
+const DROPDOWN_MORE_NAV = [
+  { href: '/events', label: 'Fight Cards', icon: 'events', description: 'Scheduled event nights' },
+  { href: '/leaderboard', label: 'Ranks', icon: 'leaderboard', description: 'Leaderboards & rankings' },
+];
+
+// All dropdown items combined (for active-state detection)
+const ALL_DROPDOWN_NAV = [...GAME_MODES_NAV, ...DROPDOWN_MORE_NAV];
+
+// Primary nav - direct links in the top bar
+const PRIMARY_NAV = [
+  { href: '/watch', label: 'Watch', icon: 'watch', description: 'Watch & bet on live battles' },
+  { href: '/battle', label: 'Battle', icon: 'battle', description: '1v1 leveraged trading' },
+  { href: '/tournaments', label: 'Tournaments', icon: 'tournaments', description: 'Bracket competitions' },
 ];
 
 const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
@@ -104,6 +109,25 @@ const NavIcon = ({ type, active }: { type: string; active: boolean }) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
         </svg>
       );
+    case 'events':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+    case 'tournaments':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+      );
+    case 'watch':
+      return (
+        <svg className={`w-4 h-4 ${color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -118,8 +142,6 @@ export function Header() {
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const walletAddress = publicKey?.toBase58();
-  const { progression, streak } = useProgressionContext();
-
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -139,8 +161,8 @@ export function Header() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Check if any game mode is active
-  const isGameActive = GAME_MODES_NAV.some(link => pathname === link.href);
+  // Check if any dropdown item is active
+  const isGameActive = ALL_DROPDOWN_NAV.some(link => pathname === link.href);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-sm border-b border-rust/30">
@@ -222,12 +244,38 @@ export function Header() {
                     </Link>
                   );
                 })}
+                <div className="p-2 border-t border-rust/20">
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider px-2">More</div>
+                </div>
+                {DROPDOWN_MORE_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                      className={`flex items-start gap-3 px-4 py-3 min-h-[44px] transition-all touch-manipulation active:scale-[0.98] ${
+                        isActive
+                          ? 'bg-rust/20 text-fire'
+                          : 'hover:bg-rust/10 active:bg-rust/20 text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <div className="mt-0.5">
+                        <NavIcon type={link.icon} active={isActive} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{link.label}</div>
+                        <div className="text-xs text-text-tertiary">{link.description}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Utility nav items */}
-          {UTILITY_NAV.map((link) => {
+          {/* Primary nav items - Watch & Battle */}
+          {PRIMARY_NAV.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
@@ -244,6 +292,7 @@ export function Header() {
               </Link>
             );
           })}
+
         </nav>
 
         {/* Mobile hamburger button */}
@@ -269,6 +318,36 @@ export function Header() {
           {isMobileMenuOpen && (
             <div className="absolute top-full left-0 right-0 bg-bg-secondary border-b border-rust/30 shadow-xl z-50">
               <div className="max-w-7xl mx-auto px-4 py-3 space-y-1">
+                {/* Primary nav - Watch, Battle, Tournaments */}
+                <div className="px-4 py-2">
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider">Featured</div>
+                </div>
+                {PRIMARY_NAV.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-start gap-3 px-4 py-3.5 min-h-[48px] rounded-lg transition-all touch-manipulation active:scale-[0.98] ${
+                        isActive
+                          ? 'bg-rust/20 text-fire'
+                          : 'hover:bg-rust/10 active:bg-rust/20 text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <div className="mt-0.5">
+                        <NavIcon type={link.icon} active={isActive} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{link.label}</div>
+                        <div className="text-xs text-text-tertiary">{link.description}</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+
+                {/* Divider */}
+                <div className="h-px bg-rust/20 my-2" />
+
                 {/* Game modes section */}
                 <div className="px-4 py-2">
                   <div className="text-[10px] text-text-tertiary uppercase tracking-wider">Game Modes</div>
@@ -299,21 +378,29 @@ export function Header() {
                 {/* Divider */}
                 <div className="h-px bg-rust/20 my-2" />
 
-                {/* Utility nav items */}
-                {UTILITY_NAV.map((link) => {
+                {/* More section - Fight Cards, Ranks */}
+                <div className="px-4 py-2">
+                  <div className="text-[10px] text-text-tertiary uppercase tracking-wider">More</div>
+                </div>
+                {DROPDOWN_MORE_NAV.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`flex items-center gap-3 px-4 py-3.5 min-h-[48px] rounded-lg text-sm font-bold uppercase tracking-wider transition-all touch-manipulation active:scale-[0.98] ${
+                      className={`flex items-start gap-3 px-4 py-3.5 min-h-[48px] rounded-lg transition-all touch-manipulation active:scale-[0.98] ${
                         isActive
-                          ? 'text-fire bg-rust/20 border border-rust/40'
-                          : 'text-text-secondary hover:text-fire hover:bg-rust/10 active:bg-rust/20 border border-transparent'
+                          ? 'bg-rust/20 text-fire'
+                          : 'hover:bg-rust/10 active:bg-rust/20 text-text-secondary hover:text-text-primary'
                       }`}
                     >
-                      <NavIcon type={link.icon} active={isActive} />
-                      {link.label}
+                      <div className="mt-0.5">
+                        <NavIcon type={link.icon} active={isActive} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{link.label}</div>
+                        <div className="text-xs text-text-tertiary">{link.description}</div>
+                      </div>
                     </Link>
                   );
                 })}
@@ -324,37 +411,9 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-3 justify-self-end">
-          {/* Level Badge, Streak & Profile Avatar with Name */}
+          {/* Profile Avatar with Name */}
           {walletAddress && (
             <div className="flex items-center gap-2">
-              {progression && (
-                <Link href="/leaderboard" title="View Ranks">
-                  <LevelBadge
-                    level={progression.currentLevel}
-                    size="sm"
-                    className="cursor-pointer hover:scale-110 transition-transform"
-                  />
-                </Link>
-              )}
-              {/* Streak Display */}
-              {streak && streak.currentStreak > 0 && (
-                <Link
-                  href="/leaderboard"
-                  title={`${streak.currentStreak} day streak${streak.bonusPercent > 0 ? ` (+${streak.bonusPercent}% XP)` : ''}`}
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-bg-secondary/80 border border-fire/30 hover:border-fire/50 transition-all"
-                >
-                  <Flame className="w-4 h-4 text-fire" />
-                  <span className="text-fire font-bold text-xs">{streak.currentStreak}</span>
-                  {streak.bonusPercent > 0 && (
-                    <span className="text-[10px] text-accent font-medium">+{streak.bonusPercent}%</span>
-                  )}
-                  {streak.atRisk && (
-                    <span title="Wager today to keep your streak!">
-                      <AlertTriangle className="w-3 h-3 text-yellow-500" />
-                    </span>
-                  )}
-                </Link>
-              )}
               <UserAvatar
                 walletAddress={walletAddress}
                 size="md"

@@ -52,9 +52,11 @@ export const corsOptions = {
     // Allow no-origin only in development (for tools like curl, Postman)
     if (!origin) {
       if (IS_PRODUCTION) {
-        // In production, only allow no-origin for health checks etc
-        // Most legitimate browser requests will have an origin
-        callback(null, true); // Still allow for mobile apps, but log it
+        // SECURITY: Reject no-origin requests in production
+        // Legitimate browser requests always include Origin header
+        // This prevents programmatic CORS bypass via scripts/bots
+        console.warn('[CORS] Blocked no-origin request in production');
+        callback(new Error('Origin header required'));
       } else {
         callback(null, true);
       }

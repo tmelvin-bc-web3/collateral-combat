@@ -59,6 +59,13 @@ export interface StandsData {
   };
 }
 
+export interface EventsData {
+  upcomingEvents: number;
+  upcomingTournaments: number;
+  nextEventName?: string;
+  nextEventTime?: number;
+}
+
 export interface ActivityItem {
   id: string;
   type: 'win' | 'big_win' | 'join' | 'elimination' | 'streak' | 'victory';
@@ -96,6 +103,7 @@ export interface HomepageData {
   tokenWars: TokenWarsData;
   warParty: WarPartyData;
   stands: StandsData;
+  events: EventsData;
   recentActivity: ActivityItem[];
   platformStats: PlatformStats;
 }

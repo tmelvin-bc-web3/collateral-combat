@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Clock, Coins, Users, Eye, TrendingUp, TrendingDown, Crown, Swords, Trophy, Scale, Clapperboard, Flame } from 'lucide-react';
+import { Clock, Coins, Users, Eye, TrendingUp, TrendingDown, Crown, Swords, Trophy, Scale, Clapperboard, Flame, Calendar, Award } from 'lucide-react';
 
 interface GameCardProps {
   id: string;
@@ -18,7 +18,7 @@ interface GameCardProps {
     value: string;
   }[];
   liveData?: {
-    type: 'arena' | 'lds' | 'token-wars' | 'draft' | 'spectate';
+    type: 'arena' | 'lds' | 'token-wars' | 'draft' | 'spectate' | 'events';
     data: any;
   };
   highlight?: boolean;
@@ -246,6 +246,25 @@ function LiveDataSection({ liveData }: { liveData: GameCardProps['liveData'] }) 
         </div>
       );
 
+    case 'events':
+      const { upcomingEvents, nextTournament } = liveData.data;
+      return (
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white/[0.03] rounded-lg p-2 text-center">
+              <Calendar className="w-4 h-4 mx-auto mb-1 text-warning" />
+              <div className="text-lg font-bold text-white">{upcomingEvents}</div>
+              <div className="text-[10px] text-white/40 uppercase">Events</div>
+            </div>
+            <div className="bg-white/[0.03] rounded-lg p-2 text-center">
+              <Award className="w-4 h-4 mx-auto mb-1 text-success" />
+              <div className="text-lg font-bold text-white">{nextTournament}</div>
+              <div className="text-[10px] text-white/40 uppercase">Tournaments</div>
+            </div>
+          </div>
+        </div>
+      );
+
     default:
       return null;
   }
@@ -258,4 +277,6 @@ export const GameIcons = {
   'token-wars': <Scale className="w-6 h-6" />,
   draft: <Trophy className="w-6 h-6" />,
   spectate: <Clapperboard className="w-6 h-6" />,
+  events: <Calendar className="w-6 h-6" />,
+  tournaments: <Award className="w-6 h-6" />,
 };

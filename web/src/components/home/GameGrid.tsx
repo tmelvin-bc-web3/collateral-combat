@@ -1,7 +1,7 @@
 'use client';
 
 import { GameCard, GameIcons } from './GameCard';
-import { ArenaData, LDSData, TokenWarsData, WarPartyData, StandsData } from './types';
+import { ArenaData, LDSData, TokenWarsData, WarPartyData, StandsData, EventsData } from './types';
 
 interface GameGridProps {
   arena: ArenaData;
@@ -9,19 +9,19 @@ interface GameGridProps {
   tokenWars: TokenWarsData;
   warParty: WarPartyData;
   stands: StandsData;
+  events: EventsData;
 }
 
-export function GameGrid({ arena, lds, tokenWars, warParty, stands }: GameGridProps) {
+export function GameGrid({ arena, lds, tokenWars, warParty, stands, events }: GameGridProps) {
   return (
     <section className="mb-14">
-      {/* Section Header */}
+      {/* Hero pair — The two flagship experiences */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-white/60">All Games</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-white/60">The Main Event</h2>
       </div>
 
-      {/* Games Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* The Arena */}
+      <div className="grid md:grid-cols-2 gap-4 mb-10">
+        {/* The Arena — Compete */}
         <GameCard
           id="arena"
           href="/battle"
@@ -42,9 +42,42 @@ export function GameGrid({ arena, lds, tokenWars, warParty, stands }: GameGridPr
               totalInPools: arena.totalInPools.toFixed(1),
             },
           }}
+          highlight={true}
           ctaText="Enter Arena"
         />
 
+        {/* The Stands — Watch */}
+        <GameCard
+          id="spectate"
+          href="/watch"
+          title="The Stands"
+          subtitle="Watch & Wager"
+          description="Watch live Arena battles. Bet on your champion. Collect the spoils."
+          icon={GameIcons.spectate}
+          isLive={stands.liveBattles > 0}
+          statusText={`${stands.watchersCount} watching`}
+          stats={[
+            { label: 'Live Battles', value: String(stands.liveBattles) },
+            { label: 'Min Wager', value: '0.1 SOL' },
+          ]}
+          liveData={{
+            type: 'spectate',
+            data: {
+              liveBattles: stands.liveBattles,
+              featuredBattle: stands.featuredBattle,
+            },
+          }}
+          highlight={true}
+          ctaText="Watch Now"
+        />
+      </div>
+
+      {/* Remaining games */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-white/60">More Games</h2>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Last Degen Standing */}
         <GameCard
           id="lds"
@@ -63,7 +96,6 @@ export function GameGrid({ arena, lds, tokenWars, warParty, stands }: GameGridPr
             type: 'lds',
             data: lds.currentLobby,
           }}
-          highlight={true}
           ctaText={`Join Lobby (${lds.currentLobby.playerCount}/${lds.currentLobby.maxPlayers})`}
         />
 
@@ -73,7 +105,7 @@ export function GameGrid({ arena, lds, tokenWars, warParty, stands }: GameGridPr
           href="/token-wars"
           title="Token Wars"
           subtitle="Head-to-Head"
-          description="Two tokens enter the ring. Pick the one with better gains. Winner takes all."
+          description="Two tokens enter the ring. Pick the one with better gains."
           icon={GameIcons['token-wars']}
           isLive={true}
           statusText={`${tokenWars.currentBattle.tokenA.symbol} vs ${tokenWars.currentBattle.tokenB.symbol}`}
@@ -112,29 +144,28 @@ export function GameGrid({ arena, lds, tokenWars, warParty, stands }: GameGridPr
           ctaText="Draft Your Team"
         />
 
-        {/* The Stands */}
+        {/* Events & Tournaments */}
         <GameCard
-          id="spectate"
-          href="/spectate"
-          title="The Stands"
-          subtitle="Watch & Wager"
-          description="Watch live Arena battles. Bet on your champion. Collect the spoils."
-          icon={GameIcons.spectate}
-          isLive={stands.liveBattles > 0}
-          statusText={`${stands.watchersCount} watching`}
+          id="events"
+          href="/events"
+          title="Fight Cards"
+          subtitle="Events & Tournaments"
+          description="Scheduled event nights and bracket tournaments. Compete for prize pools."
+          icon={GameIcons.events}
+          isLive={events.upcomingEvents > 0 || events.upcomingTournaments > 0}
+          statusText={events.nextEventName || 'Events scheduled'}
           stats={[
-            { label: 'Live Battles', value: String(stands.liveBattles) },
-            { label: 'Min Wager', value: '0.1 SOL' },
+            { label: 'Events', value: String(events.upcomingEvents) },
+            { label: 'Tournaments', value: String(events.upcomingTournaments) },
           ]}
           liveData={{
-            type: 'spectate',
+            type: 'events',
             data: {
-              liveBattles: stands.liveBattles,
-              featuredBattle: stands.featuredBattle,
+              upcomingEvents: events.upcomingEvents,
+              nextTournament: events.upcomingTournaments,
             },
           }}
-          variant="spectate"
-          ctaText="Watch Now"
+          ctaText="View Schedule"
         />
       </div>
     </section>

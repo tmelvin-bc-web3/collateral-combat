@@ -40,6 +40,7 @@ async function initializeDatabase(): Promise<void> {
         preset_id TEXT,
         nft_mint TEXT,
         nft_image_url TEXT,
+        twitter_handle TEXT,
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL
       );
@@ -48,6 +49,13 @@ async function initializeDatabase(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_profiles_username_lower
       ON user_profiles (LOWER(username));
     `);
+
+    // Migration: add twitter_handle column if it doesn't exist
+    await pool.query(`
+      ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS twitter_handle TEXT;
+    `).catch(() => {
+      // Column may already exist
+    });
 
     console.log('[ProfilesDB] Database initialized successfully');
   } catch (error) {
@@ -67,7 +75,7 @@ initializeDatabase();
 // Types
 // ===================
 
-export type ProfilePictureType = 'preset' | 'nft' | 'default';
+export type ProfilePictureType = 'preset' | 'nft' | 'twitter' | 'default';
 
 export interface UserProfile {
   walletAddress: string;
@@ -76,6 +84,7 @@ export interface UserProfile {
   presetId?: string;
   nftMint?: string;
   nftImageUrl?: string;
+  twitterHandle?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -92,6 +101,7 @@ function rowToProfile(row: any): UserProfile {
     presetId: row.preset_id || undefined,
     nftMint: row.nft_mint || undefined,
     nftImageUrl: row.nft_image_url || undefined,
+    twitterHandle: row.twitter_handle || undefined,
     createdAt: parseInt(row.created_at),
     updatedAt: parseInt(row.updated_at),
   };
@@ -153,21 +163,23 @@ export async function upsertProfile(
     const presetId = profile.presetId !== undefined ? profile.presetId : (existing?.presetId || null);
     const nftMint = profile.nftMint !== undefined ? profile.nftMint : (existing?.nftMint || null);
     const nftImageUrl = profile.nftImageUrl !== undefined ? profile.nftImageUrl : (existing?.nftImageUrl || null);
+    const twitterHandle = profile.twitterHandle !== undefined ? profile.twitterHandle : (existing?.twitterHandle || null);
     const createdAt = existing?.createdAt || now;
 
     const result = await pool.query(
       `INSERT INTO user_profiles (
-        wallet_address, username, pfp_type, preset_id, nft_mint, nft_image_url, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        wallet_address, username, pfp_type, preset_id, nft_mint, nft_image_url, twitter_handle, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (wallet_address) DO UPDATE SET
         username = EXCLUDED.username,
         pfp_type = EXCLUDED.pfp_type,
         preset_id = EXCLUDED.preset_id,
         nft_mint = EXCLUDED.nft_mint,
         nft_image_url = EXCLUDED.nft_image_url,
+        twitter_handle = EXCLUDED.twitter_handle,
         updated_at = EXCLUDED.updated_at
       RETURNING *`,
-      [profile.walletAddress, username, pfpType, presetId, nftMint, nftImageUrl, createdAt, now]
+      [profile.walletAddress, username, pfpType, presetId, nftMint, nftImageUrl, twitterHandle, createdAt, now]
     );
 
     return rowToProfile(result.rows[0]);

@@ -2,175 +2,285 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
-  YourProfileCard,
-  RanksTabs,
   RanksFiltersBar,
   GlobalStatsBar,
   TopThreePodium,
   LeaderboardTable,
-  ProgressionTab,
-  RanksTab,
   TimeFilter,
   GameMode,
   RankCategory,
-  UserRankStats,
   LeaderboardEntry,
   GlobalStats,
-  RankTier,
-  Achievement,
-  getRankTierFromLevel,
-  getRankNameFromLevel,
 } from '@/components/ranks';
-import { useProgressionContext } from '@/contexts/ProgressionContext';
 import { useProfileContext } from '@/contexts/ProfileContext';
+import { BACKEND_URL } from '@/config/api';
+import type { DrTier } from '@/components/profile';
 
 const ITEMS_PER_PAGE = 20;
 
-// Mock data generators
-function generateMockLeaderboard(multiplier: number, seed: number): LeaderboardEntry[] {
-  const seededRandom = (i: number) => {
-    const x = Math.sin(seed + i) * 10000;
-    return x - Math.floor(x);
+// ──────────────────────────────────────────────────────────
+// Toggle this to false to switch back to real API data
+const USE_MOCK_DATA = true;
+// ──────────────────────────────────────────────────────────
+
+// Mock data helpers
+const MOCK_WALLETS = [
+  'DGNx7v8K3P2tMBqAVFEJkR5mNQhz8osR1wpnFQo4pump',
+  'Ay1U9DWphDgc7hq58Yj1yHabt91zTzvV2YJbAWkPNbaK',
+  '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH',
+  '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+  'BRjpCHtyQLeSXwZuGERQBVQyNFT8hzmPAHbEZGPP7KGj',
+  'E3g1MBL4p6P7MmbFBAWP6B2tQJK2AP3X6EJ8fTnKY5Xd',
+  'FPn9eZZLAMpkhgLvMsqNE6wVfJTSnYBu5nMCHv6d7Dnk',
+  'GHj2qJp8VF7b8DHKvQiZdwHzRvCHfb5NR3nqXDwkUeYF',
+  'JKl3rMn9XG8c9EIKwSiAeIzStDCHgc6OR4oYZFxVfZGk',
+  'LMn4tOp0YH9d0FJLxTjBfJATuEDIhd7PS5pZaGyWgHLn',
+  'NPq5uQr1ZI0e1GKMyUkCgKBUvFEJie8QT6qaHzXhINo',
+  'QRs6vSt2AJ1f2HLNzVlDhLCVwGFKjf9RU7rbIAYiJPr',
+  'STu7wUv3BK2g3IMOaWmEiMDWxHGLkg0SV8scJBZjKQu',
+  'UVw8xWx4CL3h4JNPbXnFjNEXyIHMlh1TW9tdKCAkLRx',
+  'WXy9zYz5DM4i5KOQcYoGkOFZzJINmi2UX0ueLC8lMSA',
+  'YZa0ABa6EN5j6LPRdZpHlPGAaKJOni3VY1vfMD9mNTD',
+  '0Bc1CDc7FO6k7MQSe0qImpHBbLKPoj4WZ2wgNEAnOUG',
+  '2De2EFe8GP7l8NRTf1rJnqICcMLQpk5X03xhOFBoQVJ',
+  '4Fg3GHg9HQ8m9OSUg2sKorJDdNMRql6Y14yiPGCpRWM',
+  '6Hi4IJi0IR9n0PTVh3tLpsKEeONSrm7Z25zjQHDqSXP',
+  '8Jk5KLk1JS0o1QUWi4uMqtLFfPOTsn8026AkRIErTYS',
+  'ALm6MNm2KT1p2RVXj5vNruMGgQPUto9137BlSJFsTZV',
+  'CNn7OPo3LU2q3SWYk6wOsvNHhRQVup0248CmTKGtU0Y',
+  'EPp8QRq4MV3r4TXZl7xPtwOIiSRWvq1359DnULHuV1b',
+];
+
+const MOCK_NAMES = [
+  'SolMaxi', 'DumpETH', 'MoonBoy', 'PaperHandsPete', 'DiamondDegen',
+  'RugPullRick', 'WhaleWatch', 'ApeInAndy', 'YieldFarmer', 'GasGuzzler',
+  'BagHolder', 'FlipMaster', 'LiquidLarry', 'PumpItPaul', 'DegenDave',
+  'TokenTina', 'SwapSally', 'StakeSteve', 'MintMike', 'BurnBetty',
+  'HodlHank', 'FOMOFred', 'JeetJenny', 'AlphaAlex', 'SniperSam',
+];
+
+const MOCK_TIERS: { tier: DrTier; drRange: [number, number] }[] = [
+  { tier: 'the_apex', drRange: [2700, 3200] },
+  { tier: 'apex_elite', drRange: [2500, 2800] },
+  { tier: 'apex_predator', drRange: [2350, 2600] },
+  { tier: 'apex_contender', drRange: [2300, 2450] },
+  { tier: 'oracle', drRange: [2000, 2299] },
+  { tier: 'market_maker', drRange: [1700, 1999] },
+  { tier: 'whale', drRange: [1400, 1699] },
+  { tier: 'degen', drRange: [1100, 1399] },
+  { tier: 'retail', drRange: [800, 1099] },
+  { tier: 'paper_hands', drRange: [500, 799] },
+  { tier: 'liquidated', drRange: [0, 499] },
+];
+
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return s / 2147483647;
   };
+}
 
-  const usernames = [
-    'WarLord_Alpha', 'DegenKing99', 'CryptoNinja', 'SolanaSlayer', 'MoonHunter',
-    'ApeBrain420', 'DiamondHands', 'WhaleTamer', 'RektRevenge', 'BullRunner',
-    'FloorSweeper', 'GigaBrain', 'TokenHoarder', 'YieldFarmer', 'LiquidityKing',
-    'AlphaCaller', 'BetaTester', 'GammaRays', 'DeltaForce', 'OmegaWolf',
-    'SigmaGrind', 'ChainChamp', 'BlockBuster', 'HashHero', 'NodeNinja',
-    'ValidatorVic', 'StakerSteve', 'MinterMike', 'HodlHank', 'SwapSam',
-  ];
-
+function generateMockLeaderboard(count: number): { entries: LeaderboardEntry[]; stats: GlobalStats } {
+  const rand = seededRandom(42);
   const entries: LeaderboardEntry[] = [];
 
-  for (let i = 0; i < 75; i++) {
-    const baseWinRate = 80 - i * 0.5;
-    const wins = Math.floor((20 + seededRandom(i) * 40) * multiplier);
-    const losses = Math.floor(wins * (100 - baseWinRate) / baseWinRate);
-    const profit = (30 - i * 0.35 + seededRandom(i + 100) * 10) * multiplier;
-    // Level based on position - top players have higher levels
-    const level = Math.max(1, Math.floor(100 - i * 1.2 + seededRandom(i + 200) * 15));
-
-    // Get rank tier based on level (uses our new progression system)
-    const rankTier = getRankTierFromLevel(level);
-    const rankTitle = getRankNameFromLevel(level);
+  for (let i = 0; i < count; i++) {
+    // Higher-ranked players get better tiers
+    const tierIndex = Math.min(
+      Math.floor((i / count) * MOCK_TIERS.length),
+      MOCK_TIERS.length - 1
+    );
+    const { tier, drRange } = MOCK_TIERS[tierIndex];
+    const dr = Math.round(drRange[1] - rand() * (drRange[1] - drRange[0]));
+    const division = Math.floor(rand() * 4) + 1;
+    const wins = Math.round(20 + rand() * 200);
+    const losses = Math.round(10 + rand() * 150);
+    const totalBattles = wins + losses;
+    const winRate = Math.round((wins / totalBattles) * 1000) / 10;
+    const streak = rand() > 0.6 ? Math.round(rand() * 12) : 0;
+    const profit = (rand() - 0.3) * 50;
 
     entries.push({
-      id: `player-${i}`,
+      id: MOCK_WALLETS[i % MOCK_WALLETS.length],
       rank: i + 1,
-      rankChange: Math.floor(seededRandom(i + 300) * 6) - 3,
-      walletAddress: `${Math.random().toString(36).substring(2, 6)}...${Math.random().toString(36).substring(2, 6)}`.toUpperCase(),
-      username: usernames[i] || `Warrior${i + 1}`,
-      level,
-      rankTier,
-      rankTitle,
+      rankChange: Math.round((rand() - 0.5) * 6),
+      walletAddress: MOCK_WALLETS[i % MOCK_WALLETS.length],
+      username: MOCK_NAMES[i % MOCK_NAMES.length],
       wins,
       losses,
-      winRate: Math.round(baseWinRate * 10) / 10,
+      winRate,
       profit: Math.round(profit * 100) / 100,
-      avgPnl: Math.round((3 - i * 0.03 + seededRandom(i + 400) * 0.5) * 100) / 100,
-      streak: seededRandom(i + 500) > 0.7 ? Math.floor(seededRandom(i + 600) * 8) : 0,
+      avgPnl: Math.round((profit / totalBattles) * 100) / 100,
+      streak,
       isUser: false,
+      dr,
+      tier,
+      division,
+      isApex: tier.startsWith('apex') || tier === 'the_apex',
+      isPlacement: false,
     });
   }
 
-  return entries.sort((a, b) => b.profit - a.profit).map((e, i) => ({ ...e, rank: i + 1 }));
+  // Sort by DR descending and re-assign ranks
+  entries.sort((a, b) => (b.dr || 0) - (a.dr || 0));
+  entries.forEach((e, i) => (e.rank = i + 1));
+
+  const stats: GlobalStats = {
+    totalBattles: 12847,
+    totalVolume: 45230,
+    activeWarriors: count,
+    longestStreak: 17,
+    biggestWin: 48.5,
+  };
+
+  return { entries, stats };
 }
 
-const MOCK_LEADERBOARDS: Record<TimeFilter, LeaderboardEntry[]> = {
-  weekly: generateMockLeaderboard(0.25, 1),
-  monthly: generateMockLeaderboard(0.5, 2),
-  all: generateMockLeaderboard(1, 3),
-};
+// API response types
+interface LeaderboardApiEntry {
+  rank: number;
+  wallet: string;
+  dr: number;
+  tier: DrTier;
+  division: number;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+  isPlacement: boolean;
+  peakDr: number;
+  currentStreak: number;
+}
 
-const MOCK_GLOBAL_STATS: GlobalStats = {
-  totalBattles: 2847,
-  totalVolume: 15234,
-  activeWarriors: 892,
-  longestStreak: 12,
-  biggestWin: 156.32,
-};
+interface LeaderboardApiResponse {
+  entries: LeaderboardApiEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
-const MOCK_ACHIEVEMENTS: Achievement[] = [
-  { id: '1', name: 'First Blood', description: 'Win your first battle', icon: '⚔️', rarity: 'common', category: 'battles', unlocked: true, unlockedDate: '2 days ago', reward: '50 XP' },
-  { id: '2', name: 'Triple Threat', description: 'Win 3 battles in a row', icon: '🔥', rarity: 'rare', category: 'streaks', unlocked: true, unlockedDate: '1 week ago', reward: '150 XP' },
-  { id: '3', name: 'Whale Watcher', description: 'Win a battle worth 10+ SOL', icon: '🐋', rarity: 'epic', category: 'profit', unlocked: false, progress: 65, progressText: '6.5 / 10 SOL', reward: '300 XP' },
-  { id: '4', name: 'Centurion', description: 'Win 100 battles', icon: '🏛️', rarity: 'legendary', category: 'wins', unlocked: false, progress: 47, progressText: '47 / 100', reward: '500 XP' },
-];
+interface GlobalStatsApiResponse {
+  totalPlayers: number;
+  avgDr: number;
+  maxDr: number;
+  totalMatches: number;
+  totalWins: number;
+}
 
 export default function LeaderboardPage() {
   const { publicKey, connected } = useWallet();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const walletAddress = publicKey?.toBase58();
 
-  // Get real progression data
-  const { progression, isLoading: progressionLoading } = useProgressionContext();
   const { ownProfile } = useProfileContext();
 
-  // Tab state - check URL param for initial tab
-  const initialTab = searchParams.get('tab') as RanksTab | null;
-  const [activeTab, setActiveTab] = useState<RanksTab>(
-    initialTab && ['leaderboard', 'progression', 'achievements', 'profile'].includes(initialTab)
-      ? initialTab
-      : 'leaderboard'
-  );
-
   // Filter states
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [gameMode, setGameMode] = useState<GameMode>('all');
-  const [category, setCategory] = useState<RankCategory>('profit');
+  const [category, setCategory] = useState<RankCategory>('dr');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // User stats from real progression data
-  const userStats: UserRankStats | null = useMemo(() => {
-    if (!connected || !walletAddress) return null;
+  // Data
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [totalPlayers, setTotalPlayers] = useState(0);
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({
+    totalBattles: 0,
+    totalVolume: 0,
+    activeWarriors: 0,
+    longestStreak: 0,
+    biggestWin: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    // Get data from progression context (uses API types)
-    const currentLevel = progression?.currentLevel || 1;
-    const xpProgress = progression?.xpProgress || 0;
-    const xpToNextLevel = progression?.xpToNextLevel || 100;
+  // Fetch leaderboard data (or use mock data)
+  useEffect(() => {
+    if (USE_MOCK_DATA) {
+      const { entries, stats } = generateMockLeaderboard(25);
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+      const page = entries.slice(offset, offset + ITEMS_PER_PAGE);
+      setLeaderboardData(page);
+      setTotalPlayers(entries.length);
+      setGlobalStats(stats);
+      setIsLoading(false);
+      return;
+    }
 
-    // Get rank from level
-    const rankTier = getRankTierFromLevel(currentLevel);
-    const rankTitle = progression?.title || getRankNameFromLevel(currentLevel);
+    const fetchLeaderboard = async () => {
+      setIsLoading(true);
+      setError(null);
 
-    // Get avatar URL based on profile type
-    const avatarUrl = ownProfile?.pfpType === 'nft' ? ownProfile.nftImageUrl : undefined;
+      try {
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        const [leaderboardRes, statsRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/api/rating/leaderboard?limit=${ITEMS_PER_PAGE}&offset=${offset}`),
+          fetch(`${BACKEND_URL}/api/rating/stats`),
+        ]);
 
-    return {
-      walletAddress,
-      username: ownProfile?.username,
-      avatar: avatarUrl,
-      level: currentLevel,
-      xp: Math.round(xpProgress * xpToNextLevel / 100), // Approx XP in current level
-      xpToNext: xpToNextLevel,
-      xpPercent: xpProgress,
-      rankTier,
-      rankTitle,
-      globalRank: 127, // Would come from leaderboard API
-      rankChange: 0, // Would come from leaderboard API
-      winRate: 0, // Would come from battle stats API
-      totalPnL: 0, // Would come from battle stats API
-      streak: 0, // Would come from battle stats API
-      wins: 0, // Would come from battle stats API
-      losses: 0, // Would come from battle stats API
-      totalBattles: 0, // Would come from battle stats API
-      recentAchievements: MOCK_ACHIEVEMENTS.filter(a => a.unlocked),
-      totalAchievements: 8,
+        if (leaderboardRes.ok) {
+          const data: LeaderboardApiResponse = await leaderboardRes.json();
+          const entries: LeaderboardEntry[] = data.entries.map((entry, index) => {
+            const totalBattles = entry.wins + entry.losses;
+            const winRate = totalBattles > 0 ? (entry.wins / totalBattles) * 100 : 0;
+
+            return {
+              id: entry.wallet,
+              rank: entry.rank,
+              rankChange: 0,
+              walletAddress: entry.wallet,
+              username: `${entry.wallet.slice(0, 4)}...${entry.wallet.slice(-4)}`,
+              wins: entry.wins,
+              losses: entry.losses,
+              winRate: Math.round(winRate * 10) / 10,
+              profit: 0, // Would need separate API for profit data
+              avgPnl: 0,
+              streak: entry.currentStreak > 0 ? entry.currentStreak : 0,
+              isUser: walletAddress === entry.wallet,
+              dr: entry.dr,
+              tier: entry.tier,
+              division: entry.division,
+              isApex: entry.tier.startsWith('apex') || entry.tier === 'the_apex',
+              isPlacement: entry.isPlacement,
+            };
+          });
+
+          setLeaderboardData(entries);
+          setTotalPlayers(data.total);
+        } else {
+          setError('Failed to load leaderboard');
+        }
+
+        if (statsRes.ok) {
+          const statsData: GlobalStatsApiResponse = await statsRes.json();
+          setGlobalStats({
+            totalBattles: statsData.totalMatches,
+            totalVolume: 0,
+            activeWarriors: statsData.totalPlayers,
+            longestStreak: 0,
+            biggestWin: 0,
+          });
+        }
+      } catch (err) {
+        console.error('[Leaderboard] Failed to fetch data:', err);
+        setError('Failed to connect to server');
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [connected, walletAddress, progression, ownProfile]);
 
-  // Filter and sort leaderboard
+    fetchLeaderboard();
+  }, [currentPage, walletAddress]);
+
+  // Filter and sort leaderboard (client-side for search/sort)
   const filteredLeaderboard = useMemo(() => {
-    let entries = [...MOCK_LEADERBOARDS[timeFilter]];
+    let entries = [...leaderboardData];
 
     // Search filter
     if (searchQuery.trim()) {
@@ -182,16 +292,11 @@ export default function LeaderboardPage() {
       );
     }
 
-    // Mark user's entry
-    if (walletAddress) {
-      entries = entries.map((e) => ({
-        ...e,
-        isUser: e.walletAddress === walletAddress,
-      }));
-    }
-
-    // Sort by category
+    // Sort by category (DR is default from API, apply client sort for other categories)
     switch (category) {
+      case 'dr':
+        entries.sort((a, b) => (b.dr || 0) - (a.dr || 0));
+        break;
       case 'profit':
         entries.sort((a, b) => b.profit - a.profit);
         break;
@@ -214,19 +319,15 @@ export default function LeaderboardPage() {
 
     // Re-assign ranks after sorting
     return entries.map((e, i) => ({ ...e, rank: i + 1 }));
-  }, [timeFilter, searchQuery, category, walletAddress]);
+  }, [leaderboardData, searchQuery, category]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredLeaderboard.length / ITEMS_PER_PAGE);
-  const paginatedLeaderboard = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredLeaderboard.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredLeaderboard, currentPage]);
+  const totalPages = Math.max(1, Math.ceil(totalPlayers / ITEMS_PER_PAGE));
 
   // Top 3 for podium (only on first page without search)
-  const showPodium = !searchQuery.trim() && currentPage === 1 && activeTab === 'leaderboard';
-  const top3 = showPodium ? paginatedLeaderboard.slice(0, 3) : [];
-  const tableEntries = showPodium ? paginatedLeaderboard.slice(3) : paginatedLeaderboard;
+  const showPodium = !searchQuery.trim() && currentPage === 1 && category === 'dr';
+  const top3 = showPodium ? filteredLeaderboard.slice(0, 3) : [];
+  const tableEntries = showPodium ? filteredLeaderboard.slice(3) : filteredLeaderboard;
 
   // Handlers
   const handleTimeFilterChange = useCallback((filter: TimeFilter) => {
@@ -252,7 +353,6 @@ export default function LeaderboardPage() {
   }, [totalPages]);
 
   const handleChallenge = useCallback((player: LeaderboardEntry) => {
-    // Navigate to battle page with challenge context
     router.push(`/battle?challenge=${player.walletAddress}`);
   }, [router]);
 
@@ -291,116 +391,71 @@ export default function LeaderboardPage() {
         </p>
       </div>
 
-      {/* Your Profile Card */}
-      <YourProfileCard stats={userStats} isLoading={progressionLoading && connected} />
-
-      {/* Tabs */}
-      <RanksTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        newAchievements={2}
+      {/* Filters */}
+      <RanksFiltersBar
+        gameMode={gameMode}
+        timeFilter={timeFilter}
+        category={category}
+        searchQuery={searchQuery}
+        onGameModeChange={setGameMode}
+        onTimeFilterChange={handleTimeFilterChange}
+        onCategoryChange={handleCategoryChange}
+        onSearchChange={handleSearchChange}
       />
 
-      {/* Content based on active tab */}
-      {activeTab === 'leaderboard' && (
-        <>
-          {/* Filters */}
-          <RanksFiltersBar
-            gameMode={gameMode}
-            timeFilter={timeFilter}
-            category={category}
-            searchQuery={searchQuery}
-            onGameModeChange={setGameMode}
-            onTimeFilterChange={handleTimeFilterChange}
-            onCategoryChange={handleCategoryChange}
-            onSearchChange={handleSearchChange}
-          />
+      {/* Global Stats */}
+      <GlobalStatsBar stats={globalStats} />
 
-          {/* Global Stats */}
-          <GlobalStatsBar stats={MOCK_GLOBAL_STATS} />
-
-          {/* Top 3 Podium */}
-          {showPodium && top3.length >= 3 && (
-            <TopThreePodium leaders={top3} onChallenge={handleChallenge} />
-          )}
-
-          {/* Leaderboard Table */}
-          <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
-            <LeaderboardTable
-              entries={tableEntries}
-              userPosition={userPosition}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              onChallenge={handleChallenge}
-            />
-          </div>
-
-          {/* Results Info */}
-          {filteredLeaderboard.length > 0 && (
-            <div className="text-center mt-4 text-sm text-white/40">
-              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredLeaderboard.length)} of{' '}
-              {filteredLeaderboard.length} warriors
-            </div>
-          )}
-
-          {/* No Results */}
-          {filteredLeaderboard.length === 0 && searchQuery && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-warning/10 flex items-center justify-center border border-warning/30">
-                <svg className="w-8 h-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-1 uppercase">No Warriors Found</h3>
-              <p className="text-white/50 text-sm">No warriors match &ldquo;{searchQuery}&rdquo;</p>
-            </div>
-          )}
-        </>
-      )}
-
-      {activeTab === 'progression' && (
-        <ProgressionTab userStats={userStats} />
-      )}
-
-      {activeTab === 'achievements' && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-warning/10 flex items-center justify-center border border-warning/30">
-            <svg className="w-8 h-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-8">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-danger/10 flex items-center justify-center border border-danger/30">
+            <svg className="w-8 h-8 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <h3 className="font-bold mb-1 uppercase">Achievements Coming Soon</h3>
-          <p className="text-white/50 text-sm">
-            Track your accomplishments and earn rewards. Stay tuned!
-          </p>
+          <h3 className="font-bold mb-1 uppercase text-danger">Connection Error</h3>
+          <p className="text-white/50 text-sm">{error}</p>
         </div>
       )}
 
-      {activeTab === 'profile' && (
+      {/* Top 3 Podium */}
+      {showPodium && top3.length >= 3 && (
+        <TopThreePodium leaders={top3} onChallenge={handleChallenge} />
+      )}
+
+      {/* Leaderboard Table */}
+      <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
+        <LeaderboardTable
+          entries={tableEntries}
+          userPosition={userPosition}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          onChallenge={handleChallenge}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Results Info */}
+      {filteredLeaderboard.length > 0 && (
+        <div className="text-center mt-4 text-sm text-white/40">
+          Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
+          {Math.min(currentPage * ITEMS_PER_PAGE, totalPlayers)} of{' '}
+          {totalPlayers} warriors
+        </div>
+      )}
+
+      {/* No Results */}
+      {!isLoading && filteredLeaderboard.length === 0 && searchQuery && (
         <div className="text-center py-12">
-          {connected ? (
-            <>
-              <p className="text-white/50 mb-4">View your full profile with detailed statistics.</p>
-              <button
-                onClick={() => router.push(`/profile/${walletAddress}`)}
-                className="px-6 py-3 bg-warning hover:bg-warning/90 text-black font-semibold rounded-lg transition-colors"
-              >
-                Go to My Profile
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-white/10 flex items-center justify-center border border-white/[0.06]">
-                <svg className="w-8 h-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-1 uppercase">Connect Wallet</h3>
-              <p className="text-white/50 text-sm">Connect your wallet to view your profile</p>
-            </>
-          )}
+          <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-warning/10 flex items-center justify-center border border-warning/30">
+            <svg className="w-8 h-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="font-bold mb-1 uppercase">No Warriors Found</h3>
+          <p className="text-white/50 text-sm">No warriors match &ldquo;{searchQuery}&rdquo;</p>
         </div>
       )}
     </div>

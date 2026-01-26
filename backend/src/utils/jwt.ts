@@ -1,13 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { getTokenVersion } from '../db/authDatabase';
 
-// JWT secret - MUST be set in production
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  console.error('[JWT] FATAL: JWT_SECRET not set in production!');
-  process.exit(1);
+// JWT secret - MUST be set in production and staging
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[JWT] FATAL: JWT_SECRET not set in production!');
+    process.exit(1);
+  }
+  console.warn('[JWT] WARNING: JWT_SECRET not set. Using insecure dev fallback. Set JWT_SECRET in all non-local environments.');
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-DO-NOT-USE-IN-ANY-DEPLOYMENT';
 const JWT_EXPIRY = '4h'; // Token valid for 4 hours (reduced from 24h for security)
 
 export interface JwtPayload {

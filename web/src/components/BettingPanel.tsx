@@ -8,7 +8,6 @@ import { Card } from './ui/Card';
 interface BettingPanelProps {
   battle: LiveBattle;
   walletAddress?: string;
-  onChainBattleId?: number; // For on-chain betting
   onPlaceBet?: (backedPlayer: 'creator' | 'opponent', amount: number) => Promise<string>; // Returns tx signature
 }
 
@@ -25,7 +24,7 @@ interface OddsLock {
   expiresAt: number;
 }
 
-export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBet }: BettingPanelProps) {
+export function BettingPanel({ battle, walletAddress, onPlaceBet }: BettingPanelProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [betAmount, setBetAmount] = useState(0.1);
   const [customAmount, setCustomAmount] = useState('');
@@ -205,7 +204,7 @@ export function BettingPanel({ battle, walletAddress, onChainBattleId, onPlaceBe
   };
 
   // Use on-chain flow if available, otherwise legacy
-  const handlePlaceBet = onPlaceBet && onChainBattleId ? handleRequestBet : handlePlaceBetLegacy;
+  const handlePlaceBet = onPlaceBet ? handleRequestBet : handlePlaceBetLegacy;
 
   const getOddsForPlayer = (playerWallet: string) => {
     if (!odds) return 2.0; // Default even odds

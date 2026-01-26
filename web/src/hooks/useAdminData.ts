@@ -19,10 +19,6 @@ export interface OverviewStats {
     volumeToday: number;
     feesToday: number;
   };
-  progression: {
-    totalXpAwarded: number;
-    freeBetsIssued: number;
-  };
   health: {
     status: 'healthy' | 'degraded' | 'down';
     activeConnections: number;
@@ -39,8 +35,6 @@ export interface UserStatsOverview {
 
 export interface UserListEntry {
   walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
   totalWagered: number;
   totalProfitLoss: number;
   lastActivity: number | null;
@@ -78,20 +72,6 @@ export interface OracleRound {
   endTime: number;
   totalPool: number;
   winner?: string;
-}
-
-export interface ProgressionStatsOverview {
-  totalXpAwarded: number;
-  averageLevel: number;
-  levelDistribution: Record<string, number>;
-  totalFreeBetsIssued: number;
-  totalPerksUnlocked: number;
-}
-
-export interface XpLeaderboardEntry {
-  walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
 }
 
 export type HealthStatus = 'healthy' | 'degraded' | 'down';
@@ -142,15 +122,12 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
   const [userList, setUserList] = useState<{ users: UserListEntry[]; total: number } | null>(null);
   const [gameStats, setGameStats] = useState<GameStatsOverview | null>(null);
   const [oracleRounds, setOracleRounds] = useState<OracleRound[]>([]);
-  const [progressionStats, setProgressionStats] = useState<ProgressionStatsOverview | null>(null);
-  const [xpLeaderboard, setXpLeaderboard] = useState<XpLeaderboardEntry[]>([]);
   const [health, setHealth] = useState<HealthData | null>(null);
 
   // Loading states
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingGames, setIsLoadingGames] = useState(false);
-  const [isLoadingProgression, setIsLoadingProgression] = useState(false);
   const [isLoadingHealth, setIsLoadingHealth] = useState(false);
 
   // Error state
@@ -245,40 +222,6 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
     }
   }, [isAuthenticated, authenticatedFetch]);
 
-  const fetchProgressionStats = useCallback(async () => {
-    if (!isAuthenticated) return;
-    setIsLoadingProgression(true);
-    setError(null);
-    try {
-      const res = await authenticatedFetch(`${BACKEND_URL}/api/admin/progression/stats`);
-      if (!res.ok) throw new Error('Failed to fetch progression stats');
-      const data = await res.json();
-      setProgressionStats(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoadingProgression(false);
-    }
-  }, [isAuthenticated, authenticatedFetch]);
-
-  const fetchXpLeaderboard = useCallback(async (limit = 50) => {
-    if (!isAuthenticated) return;
-    setIsLoadingProgression(true);
-    setError(null);
-    try {
-      const res = await authenticatedFetch(
-        `${BACKEND_URL}/api/admin/progression/leaderboard?limit=${limit}`
-      );
-      if (!res.ok) throw new Error('Failed to fetch XP leaderboard');
-      const data = await res.json();
-      setXpLeaderboard(data.leaderboard || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoadingProgression(false);
-    }
-  }, [isAuthenticated, authenticatedFetch]);
-
   const fetchHealth = useCallback(async () => {
     if (!isAuthenticated) return;
     setIsLoadingHealth(true);
@@ -306,8 +249,6 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
       fetchUserList(),
       fetchGameStats(),
       fetchOracleRounds(),
-      fetchProgressionStats(),
-      fetchXpLeaderboard(),
       fetchHealth(),
     ]);
   }, [
@@ -316,8 +257,6 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
     fetchUserList,
     fetchGameStats,
     fetchOracleRounds,
-    fetchProgressionStats,
-    fetchXpLeaderboard,
     fetchHealth,
   ]);
 
@@ -348,17 +287,14 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
     userList,
     gameStats,
     oracleRounds,
-    progressionStats,
-    xpLeaderboard,
     health,
 
     // Loading states
     isLoadingOverview,
     isLoadingUsers,
     isLoadingGames,
-    isLoadingProgression,
     isLoadingHealth,
-    isLoading: isLoadingOverview || isLoadingUsers || isLoadingGames || isLoadingProgression || isLoadingHealth,
+    isLoading: isLoadingOverview || isLoadingUsers || isLoadingGames || isLoadingHealth,
 
     // Error
     error,
@@ -369,8 +305,6 @@ export function useAdminData(options: UseAdminDataOptions = {}) {
     fetchUserList,
     fetchGameStats,
     fetchOracleRounds,
-    fetchProgressionStats,
-    fetchXpLeaderboard,
     fetchHealth,
     fetchAllData,
     refresh: fetchAllData,

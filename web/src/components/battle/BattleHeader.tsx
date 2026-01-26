@@ -2,8 +2,6 @@
 
 import { Clock, Trophy, Eye, Swords } from 'lucide-react';
 import { BattleHeaderProps, BattlePhase } from './types';
-import { LevelBadge } from '@/components/progression/LevelBadge';
-
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -18,8 +16,6 @@ function FighterCard({
     walletAddress: string;
     username: string;
     avatar: string | null;
-    level: number;
-    title: string;
     isCurrentUser: boolean;
   };
   side: 'left' | 'right';
@@ -36,9 +32,6 @@ function FighterCard({
         isLeft ? '' : 'flex-row-reverse text-right'
       }`}
     >
-      {/* Level Badge */}
-      <LevelBadge level={fighter.level} size="xs" />
-
       {/* Avatar */}
       <div className="relative flex-shrink-0">
         <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border-2 border-white/20">
@@ -60,7 +53,6 @@ function FighterCard({
         <div className="font-bold text-sm truncate max-w-[100px]">
           {fighter.username}
         </div>
-        <div className="text-[10px] text-white/50">{fighter.title}</div>
       </div>
     </div>
   );

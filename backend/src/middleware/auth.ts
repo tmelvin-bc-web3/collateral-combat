@@ -253,35 +253,12 @@ export function requireWalletOwnership(): RequestHandler {
 export const requireOwnWallet: RequestHandler[] = [requireAuth(), requireWalletOwnership()];
 
 /**
- * Simple middleware that just checks x-wallet-address header matches :wallet param.
- * Use for low-risk endpoints like profile updates where signature is excessive.
- * Security relies on CORS + rate limiting rather than cryptographic proof.
+ * @deprecated Use requireAuth() + requireWalletOwnership() instead.
+ * This middleware only checked that a client-supplied header matched a client-supplied
+ * URL param, providing no real security. Replaced with proper JWT/signature auth.
  */
-export function requireWalletHeader(): RequestHandler {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const walletHeader = req.headers['x-wallet-address'] as string;
-    const walletParam = req.params.wallet;
-
-    if (!walletHeader) {
-      res.status(401).json({
-        error: 'Wallet address required',
-        code: 'WALLET_REQUIRED',
-      });
-      return;
-    }
-
-    if (walletHeader !== walletParam) {
-      res.status(403).json({
-        error: 'Wallet mismatch',
-        code: 'WALLET_MISMATCH',
-      });
-      return;
-    }
-
-    // Attach wallet to request for downstream use
-    (req as any).walletAddress = walletHeader;
-    next();
-  };
+export function requireWalletHeader(): RequestHandler[] {
+  return [requireAuth(), requireWalletOwnership()];
 }
 
 /**

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a0533"/>
+      <stop offset="40%" stop-color="#ff5500"/>
+      <stop offset="70%" stop-color="#ff8844"/>
+      <stop offset="100%" stop-color="#ffcc66"/>
+    </linearGradient>
+    <filter id="sunGlow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#sky)"/>
+  <!-- Sun rays -->
+  <line x1="100" y1="80" x2="100" y2="40" stroke="#ffdd44" stroke-width="3" opacity="0.5"/>
+  <line x1="100" y1="80" x2="60" y2="50" stroke="#ffdd44" stroke-width="3" opacity="0.4"/>
+  <line x1="100" y1="80" x2="140" y2="50" stroke="#ffdd44" stroke-width="3" opacity="0.4"/>
+  <line x1="100" y1="80" x2="35" y2="75" stroke="#ffdd44" stroke-width="3" opacity="0.3"/>
+  <line x1="100" y1="80" x2="165" y2="75" stroke="#ffdd44" stroke-width="3" opacity="0.3"/>
+  <!-- Sun -->
+  <circle cx="100" cy="110" r="30" fill="#ffcc00" filter="url(#sunGlow)" opacity="0.9"/>
+  <circle cx="100" cy="110" r="22" fill="#ffdd44"/>
+  <!-- Horizon line -->
+  <rect x="0" y="110" width="200" height="90" fill="#111" rx="0"/>
+  <!-- Water reflection -->
+  <line x1="70" y1="125" x2="130" y2="125" stroke="#ffcc00" stroke-width="2" opacity="0.4"/>
+  <line x1="80" y1="135" x2="120" y2="135" stroke="#ffcc00" stroke-width="1.5" opacity="0.3"/>
+  <line x1="85" y1="145" x2="115" y2="145" stroke="#ffcc00" stroke-width="1" opacity="0.2"/>
+  <!-- GM text -->
+  <text x="100" y="178" font-family="Impact, sans-serif" font-size="36" fill="#ffcc00" text-anchor="middle" letter-spacing="8" opacity="0.95">GM</text>
+</svg>

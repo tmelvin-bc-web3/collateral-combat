@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { TrendingUp, TrendingDown, Flame, User, Swords, ChevronLeft, ChevronRight } from 'lucide-react';
-import { LeaderboardEntry, getRankTierBgColor, getRankTierColor } from './types';
-import { LevelBadge } from '@/components/progression/LevelBadge';
+import { LeaderboardEntry } from './types';
+import { DRTierBadge } from '@/components/profile';
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -49,10 +49,10 @@ export function LeaderboardTable({
       <div className="hidden md:grid grid-cols-12 gap-4 px-5 py-4 bg-white/[0.02] border-b border-white/[0.06] text-[11px] font-semibold text-white/40 uppercase tracking-wider">
         <div className="col-span-1">Rank</div>
         <div className="col-span-3">Warrior</div>
-        <div className="col-span-1 text-center">Level</div>
+        <div className="col-span-2 text-center">DR / Tier</div>
         <div className="col-span-2 text-center">Record</div>
         <div className="col-span-2 text-center">Win Rate</div>
-        <div className="col-span-2 text-right">Total Profit</div>
+        <div className="col-span-1 text-right">Profit</div>
         <div className="col-span-1 text-right">Streak</div>
       </div>
 
@@ -95,15 +95,16 @@ export function LeaderboardTable({
               )}
               <div>
                 <span className="block font-semibold">{player.username}</span>
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${getRankTierBgColor(player.rankTier)} ${getRankTierColor(player.rankTier)}`}>
-                  {player.rankTitle}
-                </span>
               </div>
             </div>
 
-            {/* Level */}
-            <div className="col-span-1 flex justify-center">
-              <LevelBadge level={player.level} size="sm" />
+            {/* DR / Tier */}
+            <div className="col-span-2 flex items-center justify-center gap-2">
+              {player.tier ? (
+                <DRTierBadge tier={player.tier} division={player.division} dr={player.dr} size="sm" showDr />
+              ) : (
+                <span className="text-white/30 text-sm">-</span>
+              )}
             </div>
 
             {/* Record */}
@@ -125,8 +126,8 @@ export function LeaderboardTable({
             </div>
 
             {/* Profit */}
-            <div className={`col-span-2 text-right font-mono font-semibold ${player.profit >= 0 ? 'text-success' : 'text-danger'}`}>
-              {player.profit >= 0 ? '+' : ''}{player.profit.toFixed(2)} SOL
+            <div className={`col-span-1 text-right font-mono font-semibold text-xs ${player.profit >= 0 ? 'text-success' : 'text-danger'}`}>
+              {player.profit >= 0 ? '+' : ''}{player.profit.toFixed(2)}
             </div>
 
             {/* Streak */}
@@ -194,12 +195,6 @@ export function LeaderboardTable({
               )}
               <div className="flex-1 min-w-0">
                 <span className="block font-semibold truncate">{player.username}</span>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${getRankTierBgColor(player.rankTier)} ${getRankTierColor(player.rankTier)}`}>
-                    {player.rankTitle}
-                  </span>
-                  <LevelBadge level={player.level} size="xs" />
-                </div>
               </div>
               {player.streak >= 3 && (
                 <div className="flex items-center gap-1 px-2 py-1 bg-danger/10 border border-danger/30 rounded">
@@ -208,6 +203,13 @@ export function LeaderboardTable({
                 </div>
               )}
             </div>
+
+            {/* DR Badge - Mobile */}
+            {player.tier && (
+              <div className="mb-3">
+                <DRTierBadge tier={player.tier} division={player.division} dr={player.dr} size="sm" showDr />
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-2 bg-white/5 rounded-lg">

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="diamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b8e6ff"/>
+      <stop offset="50%" stop-color="#7ec8e3"/>
+      <stop offset="100%" stop-color="#4facfe"/>
+    </linearGradient>
+    <radialGradient id="dbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0f1729"/>
+      <stop offset="100%" stop-color="#060b14"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#dbg)"/>
+  <!-- Diamond shape -->
+  <polygon points="100,30 135,70 100,120 65,70" fill="url(#diamond)" stroke="#fff" stroke-width="1.5" opacity="0.95"/>
+  <!-- Diamond facets -->
+  <line x1="100" y1="30" x2="100" y2="120" stroke="#fff" stroke-width="0.8" opacity="0.4"/>
+  <line x1="65" y1="70" x2="135" y2="70" stroke="#fff" stroke-width="0.8" opacity="0.4"/>
+  <line x1="100" y1="30" x2="65" y2="70" stroke="#fff" stroke-width="0.5" opacity="0.3"/>
+  <line x1="100" y1="30" x2="135" y2="70" stroke="#fff" stroke-width="0.5" opacity="0.3"/>
+  <!-- Hands holding diamond -->
+  <path d="M55 130 Q55 110 65 95 L65 70 L75 85 L75 130 Z" fill="#d4956a" stroke="#b8794e" stroke-width="1"/>
+  <path d="M145 130 Q145 110 135 95 L135 70 L125 85 L125 130 Z" fill="#d4956a" stroke="#b8794e" stroke-width="1"/>
+  <!-- Fingers -->
+  <path d="M60 130 L60 105 Q60 100 65 98" fill="none" stroke="#b8794e" stroke-width="1.5"/>
+  <path d="M140 130 L140 105 Q140 100 135 98" fill="none" stroke="#b8794e" stroke-width="1.5"/>
+  <!-- Sparkles -->
+  <text x="42" y="50" font-size="16" fill="#fff" opacity="0.7">✦</text>
+  <text x="148" y="55" font-size="12" fill="#fff" opacity="0.5">✦</text>
+  <text x="90" y="155" font-size="10" fill="#4facfe" opacity="0.6">✦</text>
+  <!-- HODL text -->
+  <text x="100" y="178" font-family="monospace" font-size="16" font-weight="bold" fill="#4facfe" text-anchor="middle" opacity="0.8">HODL</text>
+</svg>

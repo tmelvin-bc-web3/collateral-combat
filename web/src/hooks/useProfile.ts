@@ -56,6 +56,7 @@ export function useProfile(walletAddress: string | null) {
       presetId?: string;
       nftMint?: string;
       nftImageUrl?: string;
+      twitterHandle?: string;
       username?: string;
     }) => {
       if (!walletAddress) {

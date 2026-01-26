@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useBattleContext } from '@/contexts/BattleContext';
-import { useBattleOnChain } from '@/hooks/useBattleOnChain';
 import { useChallengeNotifications } from '@/hooks/useChallengeNotifications';
 import { BattleConfig } from '@/types';
 import { AssetIcon } from './AssetIcon';
@@ -139,12 +138,6 @@ export function BattleLobby() {
     requestPermission: requestNotificationPermission,
   } = useChallengeNotifications({ walletAddress, enabled: connected });
 
-  const {
-    createBattle: createOnChainBattle,
-    isLoading: isOnChainLoading,
-    error: onChainError,
-    isConnected: isOnChainReady,
-  } = useBattleOnChain();
 
   // Challenge modal state
   const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
@@ -173,7 +166,7 @@ export function BattleLobby() {
 
   // Don't show on-chain errors to user since we silently fall back to off-chain mode
   const combinedError = error;
-  const combinedLoading = isLoading || isOnChainLoading;
+  const combinedLoading = isLoading;
 
   // Loading state
   if (!mounted) {

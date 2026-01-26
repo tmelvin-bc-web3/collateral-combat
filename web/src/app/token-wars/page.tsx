@@ -76,27 +76,6 @@ export default function TokenWarsPage() {
   // Upcoming matchups
   const [upcomingMatchups, setUpcomingMatchups] = useState<UpcomingMatchup[]>([]);
 
-  // Free bet state
-  const [freeBetBalance, setFreeBetBalance] = useState(0);
-  const [useFreeBet, setUseFreeBet] = useState(false);
-
-  // Refetch free bet balance (used after placing a free bet)
-  const refetchFreeBetBalance = useCallback(async () => {
-    if (!publicKey) return;
-    try {
-      const walletAddress = publicKey.toBase58();
-      const res = await fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
-        headers: { 'x-wallet-address': walletAddress },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setFreeBetBalance(data.balance || 0);
-      }
-    } catch (e) {
-      console.error('Failed to fetch free bet balance:', e);
-    }
-  }, [publicKey]);
-
   // Refetch recent battles (used after battle ends)
   const refetchRecentBattles = useCallback(async () => {
     try {
@@ -184,7 +163,6 @@ export default function TokenWarsPage() {
     if (!publicKey) {
       setBetHistory([]);
       setPlayerStats(null);
-      setFreeBetBalance(0);
       return;
     }
 
@@ -193,16 +171,9 @@ export default function TokenWarsPage() {
     Promise.all([
       fetch(`${BACKEND_URL}/api/token-wars/player/${walletAddress}/history`),
       fetch(`${BACKEND_URL}/api/token-wars/player/${walletAddress}/stats`),
-      fetch(`${BACKEND_URL}/api/progression/${walletAddress}/free-bets`, {
-        headers: { 'x-wallet-address': walletAddress },
-      }),
-    ]).then(async ([historyRes, statsRes, freeBetRes]) => {
+    ]).then(async ([historyRes, statsRes]) => {
       if (historyRes.ok) setBetHistory(await historyRes.json());
       if (statsRes.ok) setPlayerStats(await statsRes.json());
-      if (freeBetRes.ok) {
-        const data = await freeBetRes.json();
-        setFreeBetBalance(data.balance || 0);
-      }
     }).catch(e => console.error('Failed to fetch user Token Wars data:', e));
   }, [publicKey]);
 
@@ -392,20 +363,12 @@ export default function TokenWarsPage() {
       return;
     }
 
-    const FREE_BET_AMOUNT_LAMPORTS = 10_000_000; // 0.01 SOL
-    const amountLamports = useFreeBet ? FREE_BET_AMOUNT_LAMPORTS : Math.floor(selectedAmount * LAMPORTS_PER_SOL);
+    const amountLamports = Math.floor(selectedAmount * LAMPORTS_PER_SOL);
 
-    if (!useFreeBet) {
-      if (balanceInSol < selectedAmount) {
-        setError(`Insufficient balance. Need ${selectedAmount} SOL`);
-        setShowDepositModal(true);
-        return;
-      }
-    } else {
-      if (freeBetBalance < 1) {
-        setError('No free bets available');
-        return;
-      }
+    if (balanceInSol < selectedAmount) {
+      setError(`Insufficient balance. Need ${selectedAmount} SOL`);
+      setShowDepositModal(true);
+      return;
     }
 
     setIsPlacingBet(true);
@@ -416,12 +379,7 @@ export default function TokenWarsPage() {
       wallet: publicKey.toBase58(),
       side,
       amountLamports,
-      useFreeBet,
     });
-
-    if (useFreeBet) {
-      setTimeout(() => refetchFreeBetBalance(), 1000);
-    }
   };
 
   const handleDeposit = async () => {
@@ -599,9 +557,6 @@ export default function TokenWarsPage() {
             phase={phase}
             selectedAmount={selectedAmount}
             onAmountChange={setSelectedAmount}
-            freeBetCount={freeBetBalance}
-            useFreeBet={useFreeBet}
-            onFreeBetToggle={() => setUseFreeBet(!useFreeBet)}
             isPlacingBet={isPlacingBet}
             hasBet={!!myBet}
           />

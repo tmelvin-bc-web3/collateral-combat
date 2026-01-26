@@ -3,6 +3,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { createDatabaseError } from '../utils/errors';
 import { DatabaseErrorCode } from '../types/errors';
 
@@ -97,7 +98,7 @@ function saveBalanceData(data: BalanceData): void {
 }
 
 function generateId(): string {
-  return `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `txn_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
 }
 
 /**

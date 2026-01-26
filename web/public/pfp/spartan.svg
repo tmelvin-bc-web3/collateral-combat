@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="spbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a0800"/>
+      <stop offset="100%" stop-color="#0a0400"/>
+    </radialGradient>
+    <linearGradient id="bronze" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cd7f32"/>
+      <stop offset="50%" stop-color="#b8860b"/>
+      <stop offset="100%" stop-color="#8b6914"/>
+    </linearGradient>
+    <linearGradient id="crest" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#cc2200"/>
+      <stop offset="100%" stop-color="#880000"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#spbg)"/>
+  <!-- Helmet body -->
+  <path d="M45 110 Q45 45 100 35 Q155 45 155 110 L155 130 Q155 140 145 140 L140 140 L140 120 Q140 70 100 55 Q60 70 60 120 L60 140 L55 140 Q45 140 45 130 Z" fill="url(#bronze)" stroke="#8b6914" stroke-width="1.5"/>
+  <!-- Plume/crest -->
+  <path d="M100 35 Q100 5 105 5 Q115 5 115 20 Q115 28 110 35 Q107 15 100 15 Q93 15 90 35 Q85 28 85 20 Q85 5 95 5 Q100 5 100 35" fill="url(#crest)"/>
+  <path d="M100 5 Q100 -5 100 5" fill="none"/>
+  <rect x="92" y="5" width="16" height="35" rx="8" fill="url(#crest)" opacity="0.9"/>
+  <!-- Eye slit -->
+  <rect x="60" y="95" width="80" height="12" fill="#0a0400" rx="2"/>
+  <!-- Eyes in slit -->
+  <circle cx="82" cy="101" r="3" fill="#ff5500" opacity="0.8"/>
+  <circle cx="118" cy="101" r="3" fill="#ff5500" opacity="0.8"/>
+  <!-- Nose guard -->
+  <rect x="97" y="85" width="6" height="35" fill="url(#bronze)" rx="2"/>
+  <!-- Mouth guard lines -->
+  <line x1="70" y1="120" x2="70" y2="140" stroke="#8b6914" stroke-width="2"/>
+  <line x1="82" y1="118" x2="82" y2="140" stroke="#8b6914" stroke-width="2"/>
+  <line x1="118" y1="118" x2="118" y2="140" stroke="#8b6914" stroke-width="2"/>
+  <line x1="130" y1="120" x2="130" y2="140" stroke="#8b6914" stroke-width="2"/>
+  <!-- DEGEN text -->
+  <text x="100" y="175" font-family="Impact, sans-serif" font-size="18" fill="#cd7f32" text-anchor="middle" letter-spacing="4" opacity="0.85">DEGEN</text>
+</svg>

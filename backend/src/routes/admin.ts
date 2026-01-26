@@ -98,35 +98,6 @@ router.get('/games/rounds', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/admin/progression/stats
- * XP totals, level distribution
- */
-router.get('/progression/stats', async (req: Request, res: Response) => {
-  try {
-    const stats = await adminService.getProgressionStats();
-    res.json(stats);
-  } catch (error: any) {
-    console.error('[AdminRoutes] /progression/stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch progression stats' });
-  }
-});
-
-/**
- * GET /api/admin/progression/leaderboard
- * Top users by XP
- */
-router.get('/progression/leaderboard', async (req: Request, res: Response) => {
-  try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const leaderboard = await adminService.getXpLeaderboard(limit);
-    res.json({ leaderboard });
-  } catch (error: any) {
-    console.error('[AdminRoutes] /progression/leaderboard error:', error);
-    res.status(500).json({ error: 'Failed to fetch XP leaderboard' });
-  }
-});
-
-/**
  * GET /api/admin/health
  * System status, RPC health, errors
  */

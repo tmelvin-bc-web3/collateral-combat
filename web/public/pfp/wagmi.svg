@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="wbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#001a00"/>
+      <stop offset="100%" stop-color="#000a00"/>
+    </radialGradient>
+    <filter id="wglow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#wbg)"/>
+  <!-- Green candle (bullish) -->
+  <rect x="88" y="30" width="24" height="100" fill="#00cc44" rx="2"/>
+  <!-- Candle wick -->
+  <line x1="100" y1="15" x2="100" y2="30" stroke="#00cc44" stroke-width="3"/>
+  <line x1="100" y1="130" x2="100" y2="140" stroke="#00cc44" stroke-width="3"/>
+  <!-- Green glow -->
+  <rect x="88" y="30" width="24" height="100" fill="#00ff55" opacity="0.2" rx="2" filter="url(#wglow)"/>
+  <!-- Up arrow -->
+  <path d="M100 22 L92 32 L96 32 L96 30 L104 30 L104 32 L108 32 Z" fill="#00ff55" filter="url(#wglow)"/>
+  <!-- Uptrend line behind -->
+  <path d="M20 160 L60 130 L80 140 L120 80 L160 50 L180 30" fill="none" stroke="#00cc44" stroke-width="2" opacity="0.3"/>
+  <!-- WAGMI text -->
+  <text x="100" y="175" font-family="Impact, sans-serif" font-size="28" fill="#00cc44" text-anchor="middle" letter-spacing="4" filter="url(#wglow)">WAGMI</text>
+</svg>

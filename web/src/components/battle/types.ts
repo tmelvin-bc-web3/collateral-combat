@@ -4,8 +4,6 @@ export interface FighterData {
   walletAddress: string;
   username: string;
   avatar: string | null;
-  level: number;
-  title: string;
   pnlPercent: number;
   pnlDollar: number;
   positions: PositionDisplay[];

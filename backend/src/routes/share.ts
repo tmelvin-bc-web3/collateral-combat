@@ -12,8 +12,8 @@
 import { Router, Request, Response } from 'express';
 import { imageService, BattleResultData, FighterProfileData } from '../services/imageService';
 import { battleManager } from '../services/battleManager';
-import * as eloDb from '../db/eloDatabase';
-import * as eloService from '../services/eloService';
+import * as ratingDb from '../db/ratingDatabase';
+import * as ratingService from '../services/ratingService';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 
 export const shareRouter = Router();
@@ -133,19 +133,15 @@ shareRouter.get('/fighter/:wallet/image', async (req: Request, res: Response): P
   try {
     const { wallet } = req.params;
 
-    // Get fighter ELO data
-    const eloData = await eloDb.getEloData(wallet);
+    // Get fighter rating data
+    const rating = ratingDb.getOrCreatePlayerRating(wallet);
+    const tierInfo = ratingService.resolveApexTier(wallet, rating.dr);
 
-    // Calculate stats (use defaults if no data)
-    const wins = eloData?.wins || 0;
-    const losses = eloData?.losses || 0;
+    // Calculate stats
+    const wins = rating.wins;
+    const losses = rating.losses;
     const totalBattles = wins + losses;
     const winRate = totalBattles > 0 ? (wins / totalBattles) * 100 : 0;
-    const elo = eloData?.elo || 1200;
-    const battleCount = eloData?.battleCount || 0;
-
-    // Get display tier
-    const tier = eloService.getDisplayTier(elo, battleCount);
 
     // Build profile data for image generation
     const profileData: FighterProfileData = {
@@ -154,8 +150,8 @@ shareRouter.get('/fighter/:wallet/image', async (req: Request, res: Response): P
       wins,
       losses,
       winRate,
-      elo,
-      tier,
+      elo: rating.dr,
+      tier: tierInfo.tier,
       bestStreak: 0, // Would need to track separately
       totalPnl: 0, // Would need to aggregate from battle history
     };

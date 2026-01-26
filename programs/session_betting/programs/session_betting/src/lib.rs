@@ -40,7 +40,7 @@ pub const MAX_PRICE_AGE_SECONDS: u64 = 60;
 /// Unclaimed winnings are forfeited to the protocol
 pub const CLAIM_GRACE_PERIOD_SECONDS: i64 = 60 * 60;
 
-/// Price feed ID for BTC/USD (Pyth mainnet)
+/// Price feed ID for SOL/USD (Pyth)
 /// Can be updated via set_price_feed instruction
 pub const DEFAULT_PRICE_FEED_ID: [u8; 32] = [
     0xe6, 0x2d, 0xf6, 0xc8, 0xb4, 0xa8, 0x5f, 0xe1,
@@ -83,12 +83,6 @@ pub mod session_betting {
         let round = &mut ctx.accounts.round;
         let pool = &mut ctx.accounts.pool;
 
-        // SECURITY: Validate authority
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         // SECURITY: Game not paused
         require!(!game_state.is_paused, SessionBettingError::GamePaused);
 
@@ -127,15 +121,9 @@ pub mod session_betting {
     /// Lock the round with price from Pyth oracle - AUTHORITY ONLY
     /// Uses Pyth oracle for tamper-proof price data
     pub fn lock_round(ctx: Context<LockRound>) -> Result<()> {
-        let game_state = &ctx.accounts.game_state;
         let round = &mut ctx.accounts.round;
         let price_account = &ctx.accounts.price_feed;
-
-        // SECURITY: Authority only - prevents griefing attacks
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
+        let game_state = &ctx.accounts.game_state;
 
         // SECURITY: Round must be open
         require!(round.status == RoundStatus::Open, SessionBettingError::RoundNotOpen);
@@ -274,14 +262,7 @@ pub mod session_betting {
     /// AUTHORITY ONLY - can only be called after grace period
     /// Any unclaimed winnings are forfeited to the protocol
     pub fn close_round(ctx: Context<CloseRound>) -> Result<()> {
-        let game_state = &ctx.accounts.game_state;
         let round = &ctx.accounts.round;
-
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
 
         // SECURITY: Round must be settled
         require!(
@@ -310,12 +291,6 @@ pub mod session_betting {
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
 
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         game_state.is_paused = paused;
 
         // Emit audit event
@@ -333,12 +308,6 @@ pub mod session_betting {
     pub fn set_price_feed(ctx: Context<SetPriceFeed>, price_feed_id: [u8; 32]) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
 
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         game_state.price_feed_id = price_feed_id;
         Ok(())
     }
@@ -351,12 +320,6 @@ pub mod session_betting {
     /// SECURITY: Two-step transfer prevents accidental lockout
     pub fn propose_authority_transfer(ctx: Context<ProposeAuthorityTransfer>, new_authority: Pubkey) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
-
-        // SECURITY: Current authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
 
         // SECURITY: New authority cannot be zero address
         require!(
@@ -404,12 +367,6 @@ pub mod session_betting {
     pub fn cancel_authority_transfer(ctx: Context<CancelAuthorityTransfer>) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
 
-        // SECURITY: Current authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         // SECURITY: Must have a pending authority to cancel
         require!(
             game_state.pending_authority.is_some(),
@@ -428,12 +385,6 @@ pub mod session_betting {
     /// SECURITY: Authority only, tracks withdrawal amount
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         let game_state = &mut ctx.accounts.game_state;
-
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
 
         // SECURITY: Amount must be positive
         require!(amount > 0, SessionBettingError::AmountTooSmall);
@@ -485,15 +436,7 @@ pub mod session_betting {
     /// Transfer lamports from user's vault to global vault
     /// Used when user loses a game - their entry fee/bet goes to the pool
     /// AUTHORITY ONLY - backend calls this during settlement
-    pub fn transfer_to_global_vault(ctx: Context<TransferToGlobalVault>, amount: u64) -> Result<()> {
-        let game_state = &ctx.accounts.game_state;
-
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
+    pub fn transfer_to_global_vault(ctx: Context<TransferToGlobalVault>, amount: u64, game_type: GameType) -> Result<()> {
         // SECURITY: User must have sufficient balance
         let user_balance = &mut ctx.accounts.user_balance;
         require!(
@@ -530,7 +473,7 @@ pub mod session_betting {
         emit!(FundsLocked {
             user: ctx.accounts.owner.key(),
             amount,
-            game_mode: GameType::Battle, // Default to Battle, backend should track actual game mode
+            game_mode: game_type,
             timestamp: clock.unix_timestamp,
         });
 
@@ -545,14 +488,6 @@ pub mod session_betting {
         game_type: GameType,
         game_id: [u8; 32],
     ) -> Result<()> {
-        let game_state = &ctx.accounts.game_state;
-
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         // SECURITY: Amount must be positive
         require!(amount > 0, SessionBettingError::AmountTooSmall);
 
@@ -602,14 +537,6 @@ pub mod session_betting {
     /// Fund the global vault (authority deposits funds for payouts)
     /// AUTHORITY ONLY
     pub fn fund_global_vault(ctx: Context<FundGlobalVault>, amount: u64) -> Result<()> {
-        let game_state = &ctx.accounts.game_state;
-
-        // SECURITY: Authority only
-        require!(
-            ctx.accounts.authority.key() == game_state.authority,
-            SessionBettingError::Unauthorized
-        );
-
         let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             Transfer {
@@ -1048,7 +975,8 @@ pub struct StartRound<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1080,7 +1008,8 @@ pub struct StartRound<'info> {
 pub struct LockRound<'info> {
     #[account(
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1153,7 +1082,8 @@ pub struct SettleRound<'info> {
 pub struct CloseRound<'info> {
     #[account(
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1182,7 +1112,8 @@ pub struct SetPaused<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1194,7 +1125,8 @@ pub struct SetPriceFeed<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1207,7 +1139,8 @@ pub struct ProposeAuthorityTransfer<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1234,7 +1167,8 @@ pub struct CancelAuthorityTransfer<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1247,7 +1181,8 @@ pub struct WithdrawFees<'info> {
     #[account(
         mut,
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1463,7 +1398,8 @@ pub struct ClaimWinnings<'info> {
 pub struct TransferToGlobalVault<'info> {
     #[account(
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1504,7 +1440,8 @@ pub struct TransferToGlobalVault<'info> {
 pub struct CreditWinnings<'info> {
     #[account(
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 
@@ -1545,7 +1482,8 @@ pub struct CreditWinnings<'info> {
 pub struct FundGlobalVault<'info> {
     #[account(
         seeds = [b"game"],
-        bump = game_state.bump
+        bump = game_state.bump,
+        has_one = authority
     )]
     pub game_state: Account<'info, GameState>,
 

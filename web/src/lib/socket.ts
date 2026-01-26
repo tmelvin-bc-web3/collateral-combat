@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, UserProgression, XpGainEvent, LevelUpEvent, UserPerk, RebateReceivedEvent, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification, ChatMessage } from '@/types';
+import { Battle, BattleConfig, PerpPosition, TradeRecord, PositionSide, Leverage, LiveBattle, BattleOdds, SpectatorBet, PredictionRound, PredictionBet, PredictionSide, DraftTournament, DraftSession, DraftRound, DraftPick, DraftEntry, DraftLeaderboardEntry, Memecoin, PowerUpUsage, OddsLock, SignedTradePayload, ReadyCheckResponse, ReadyCheckUpdate, ReadyCheckCancelled, ChallengeAcceptedNotification, ChatMessage } from '@/types';
 import { ScheduledMatch } from '@/types/scheduled';
 import { BACKEND_URL } from '@/config/api';
 
@@ -43,14 +43,6 @@ interface ServerToClientEvents {
   powerup_used: (usage: PowerUpUsage) => void;
   memecoin_prices_update: (prices: Record<string, number>) => void;
   draft_error: (message: string) => void;
-  // Progression events
-  progression_update: (progression: UserProgression) => void;
-  xp_gained: (data: XpGainEvent) => void;
-  level_up: (data: LevelUpEvent) => void;
-  perk_activated: (perk: UserPerk) => void;
-  perk_expired: (data: { perkId: number }) => void;
-  // Rebate events
-  rebate_received: (data: RebateReceivedEvent) => void;
   // Ready check events
   match_found: (data: ReadyCheckResponse) => void;
   ready_check_update: (data: ReadyCheckUpdate) => void;
@@ -89,7 +81,7 @@ interface ClientToServerEvents {
   join_battle: (battleId: string, walletAddress: string) => void;
   create_battle: (config: BattleConfig, walletAddress: string) => void;
   queue_matchmaking: (config: BattleConfig, walletAddress: string) => void;
-  start_solo_practice: (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => void;
+  start_solo_practice: (data: { config: BattleConfig; wallet: string }) => void;
   open_position: (battleId: string, asset: string, side: PositionSide, leverage: Leverage, size: number) => void;
   close_position: (battleId: string, positionId: string) => void;
   open_position_signed: (payload: SignedTradePayload) => void;
@@ -118,7 +110,7 @@ interface ClientToServerEvents {
   subscribe_prediction: (asset: string) => void;
   unsubscribe_prediction: (asset: string) => void;
   place_prediction: (asset: string, side: PredictionSide, amount: number, walletAddress: string) => void;
-  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string; useFreeBet?: boolean }) => void;
+  place_prediction_bet: (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => void;
   // Draft events
   start_draft: (entryId: string) => void;
   make_draft_pick: (entryId: string, roundNumber: number, coinId: string) => void;
@@ -128,9 +120,6 @@ interface ClientToServerEvents {
   use_powerup_freeze: (entryId: string, pickId: string) => void;
   subscribe_draft_tournament: (tournamentId: string) => void;
   unsubscribe_draft_tournament: (tournamentId: string) => void;
-  // Progression events
-  subscribe_progression: (walletAddress: string) => void;
-  unsubscribe_progression: (walletAddress: string) => void;
   // LDS (Last Degen Standing) events
   subscribe_lds: () => void;
   unsubscribe_lds: () => void;
@@ -140,7 +129,7 @@ interface ClientToServerEvents {
   // Token Wars events
   subscribe_token_wars: () => void;
   unsubscribe_token_wars: () => void;
-  token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => void;
+  token_wars_place_bet: (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => void;
   // Battle Chat events
   send_chat_message: (data: { battleId: string; content: string }) => void;
   load_chat_history: (battleId: string) => void;

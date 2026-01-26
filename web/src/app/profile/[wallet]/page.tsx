@@ -4,12 +4,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
-import { LevelBadge } from '@/components/progression/LevelBadge';
-import { EloTierBadge, RecentFormIndicator, EloTier } from '@/components/profile';
+import { DRTierBadge, RecentFormIndicator, DrTier } from '@/components/profile';
 import { getCachedProfile, setCachedProfile } from '@/lib/profileStorage';
 import { PageLoading } from '@/components/ui/skeleton';
 import { ProfileShareButton } from '@/components/ProfileShareButton';
-import { UserProfile, UserProgression, UserStreak, RakeRebate, RebateSummary } from '@/types';
+import { UserProfile } from '@/types';
 import Link from 'next/link';
 import { BACKEND_URL } from '@/config/api';
 
@@ -46,22 +45,6 @@ interface UserRankData {
   rank: number | null;
   totalProfitLoss: number;
   totalWagers: number;
-}
-
-// Level tier data
-const LEVEL_TIERS = [
-  { minLevel: 1, maxLevel: 5, title: 'Rookie', color: 'text-gray-400' },
-  { minLevel: 6, maxLevel: 10, title: 'Contender', color: 'text-green-400' },
-  { minLevel: 11, maxLevel: 20, title: 'Warrior', color: 'text-blue-400' },
-  { minLevel: 21, maxLevel: 35, title: 'Veteran', color: 'text-red-400' },
-  { minLevel: 36, maxLevel: 50, title: 'Champion', color: 'text-cyan-400' },
-  { minLevel: 51, maxLevel: 75, title: 'Legend', color: 'text-amber-400' },
-  { minLevel: 76, maxLevel: 100, title: 'Immortan', color: 'text-violet-400' },
-];
-
-function getTierForLevel(level: number): { title: string; color: string } {
-  const tier = LEVEL_TIERS.find(t => level >= t.minLevel && level <= t.maxLevel);
-  return tier || { title: 'Rookie', color: 'text-gray-400' };
 }
 
 // Format wallet address
@@ -188,14 +171,10 @@ export default function ProfilePage() {
   const isOwnProfile = connected && publicKey?.toBase58() === walletAddress;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [progression, setProgression] = useState<UserProgression | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [rankData, setRankData] = useState<UserRankData | null>(null);
   const [wagerHistory, setWagerHistory] = useState<UserWager[]>([]);
-  const [streak, setStreak] = useState<UserStreak | null>(null);
-  const [rebateHistory, setRebateHistory] = useState<RakeRebate[]>([]);
-  const [rebateSummary, setRebateSummary] = useState<RebateSummary | null>(null);
-  const [battleStats, setBattleStats] = useState<{ wins: number; losses: number; elo: number; tier: string } | null>(null);
+  const [battleStats, setBattleStats] = useState<{ wins: number; losses: number; dr: number; tier: string; division: number; isPlacement: boolean; placementMatches: number } | null>(null);
   const [recentForm, setRecentForm] = useState<Array<{ result: 'win' | 'loss' | 'tie'; pnlPercent: number; endedAt: number }>>([]);
   const [battleStreaks, setBattleStreaks] = useState<{ currentStreak: number; bestStreak: number } | null>(null);
   const [roi, setRoi] = useState<{ roi: number; totalWagered: number; totalPayout: number } | null>(null);
@@ -221,15 +200,11 @@ export default function ProfilePage() {
         }
 
         // Fetch all data in parallel
-        const [profileRes, progressionRes, statsRes, rankRes, historyRes, streakRes, rebatesRes, rebateSummaryRes, battleStatsRes, formRes, styleRes, favoritesRes] = await Promise.all([
+        const [profileRes, statsRes, rankRes, historyRes, battleStatsRes, formRes, styleRes, favoritesRes] = await Promise.all([
           fetch(`${BACKEND_URL}/api/profile/${walletAddress}`),
-          fetch(`${BACKEND_URL}/api/progression/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/stats/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/stats/${walletAddress}/rank`),
           fetch(`${BACKEND_URL}/api/predictions/history/${walletAddress}?limit=50`),
-          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/streak`),
-          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates`),
-          fetch(`${BACKEND_URL}/api/progression/${walletAddress}/rebates/summary`),
           fetch(`${BACKEND_URL}/api/battles/stats/${walletAddress}`),
           fetch(`${BACKEND_URL}/api/battles/form/${walletAddress}?limit=5`),
           fetch(`${BACKEND_URL}/api/battles/style/${walletAddress}`),
@@ -241,12 +216,6 @@ export default function ProfilePage() {
           const profileData = await profileRes.json();
           setProfile(profileData);
           setCachedProfile(profileData);
-        }
-
-        // Process progression
-        if (progressionRes.ok) {
-          const progressionData = await progressionRes.json();
-          setProgression(progressionData);
         }
 
         // Process stats
@@ -267,32 +236,17 @@ export default function ProfilePage() {
           setWagerHistory(historyData.bets || []);
         }
 
-        // Process streak
-        if (streakRes.ok) {
-          const streakData = await streakRes.json();
-          setStreak(streakData);
-        }
-
-        // Process rebate history
-        if (rebatesRes.ok) {
-          const rebatesData = await rebatesRes.json();
-          setRebateHistory(rebatesData.rebates || rebatesData || []);
-        }
-
-        // Process rebate summary
-        if (rebateSummaryRes.ok) {
-          const summaryData = await rebateSummaryRes.json();
-          setRebateSummary(summaryData);
-        }
-
         // Process battle stats for share button
         if (battleStatsRes.ok) {
           const battleStatsData = await battleStatsRes.json();
           setBattleStats({
             wins: battleStatsData.wins || 0,
             losses: battleStatsData.losses || 0,
-            elo: battleStatsData.elo || 1000,
-            tier: battleStatsData.tier || 'bronze',
+            dr: battleStatsData.dr || battleStatsData.elo || 1000,
+            tier: battleStatsData.tier || 'retail',
+            division: battleStatsData.division || 4,
+            isPlacement: battleStatsData.isPlacement ?? true,
+            placementMatches: battleStatsData.placementMatches || 0,
           });
 
           // Calculate ROI from battle stats
@@ -312,8 +266,11 @@ export default function ProfilePage() {
           setBattleStats({
             wins: 0,
             losses: 0,
-            elo: 1000,
-            tier: 'bronze',
+            dr: 1000,
+            tier: 'retail',
+            division: 4,
+            isPlacement: true,
+            placementMatches: 0,
           });
         }
 
@@ -377,9 +334,6 @@ export default function ProfilePage() {
     return Math.max(...wins.map(w => w.profitLoss));
   }, [wagerHistory]);
 
-  // Get tier info
-  const tierInfo = getTierForLevel(progression?.currentLevel || 1);
-
   if (loading) {
     return <PageLoading message="Loading profile..." />;
   }
@@ -420,15 +374,13 @@ export default function ProfilePage() {
                   {profile?.username || formatWallet(walletAddress)}
                 </h1>
                 <div className="flex items-center gap-2">
-                  {progression && (
-                    <LevelBadge level={progression.currentLevel} size="lg" showTitle title={tierInfo.title} />
-                  )}
                   {battleStats && (
-                    <EloTierBadge
-                      tier={battleStats.tier as EloTier}
-                      elo={battleStats.elo}
+                    <DRTierBadge
+                      tier={battleStats.tier as DrTier}
+                      division={battleStats.division}
+                      dr={battleStats.dr}
                       size="lg"
-                      showElo
+                      showDr
                     />
                   )}
                 </div>
@@ -447,26 +399,6 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* XP Progress Bar */}
-              {progression && (
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-text-tertiary uppercase tracking-wider">Level {progression.currentLevel} Progress</span>
-                    <span className="font-mono text-text-secondary">{progression.xpProgress}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-bg-tertiary overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-accent to-fire rounded-full transition-all duration-500"
-                      style={{ width: `${progression.xpProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] sm:text-xs mt-1">
-                    <span className="text-text-tertiary">{progression.totalXp.toLocaleString()} XP total</span>
-                    <span className="text-text-tertiary">{progression.xpToNextLevel.toLocaleString()} XP to next level</span>
-                  </div>
-                </div>
-              )}
-
               {/* Quick Stats Row */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4">
                 {rankData?.rank && (
@@ -482,25 +414,12 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
-                {streak && streak.currentStreak > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-6 h-6 rounded bg-fire/20 flex items-center justify-center">
-                      <svg className="w-3.5 h-3.5 text-fire" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                      </svg>
-                    </div>
-                    <span className="text-sm">
-                      <span className="font-bold text-fire">{streak.currentStreak}</span>
-                      <span className="text-text-tertiary"> day streak</span>
-                    </span>
-                  </div>
-                )}
                 {isOwnProfile && (
                   <Link
-                    href="/leaderboard?tab=progression"
+                    href="/leaderboard"
                     className="text-sm text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
                   >
-                    <span>View Ranks</span>
+                    <span>View Leaderboard</span>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
@@ -512,7 +431,7 @@ export default function ProfilePage() {
                     displayName={profile?.username || formatWallet(walletAddress)}
                     wins={battleStats.wins}
                     losses={battleStats.losses}
-                    elo={battleStats.elo}
+                    elo={battleStats.dr}
                     tier={battleStats.tier}
                     referralCode={isOwnProfile ? referralCode : undefined}
                   />
@@ -900,157 +819,6 @@ export default function ProfilePage() {
           </>
         )}
       </div>
-
-      {/* Rebate Summary & History */}
-      {(rebateSummary || rebateHistory.length > 0) && (
-        <div className="card mt-6 border border-success/30">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-success/20 flex items-center justify-center border border-success/30">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">Rake Rebates</h2>
-                <p className="text-text-tertiary text-[10px] sm:text-xs">SOL refunded from reduced rake</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Rebate Summary Stats */}
-          {rebateSummary && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-              {/* Total Rebates Earned */}
-              <div className="p-3 rounded-lg bg-success/10 border border-success/20">
-                <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider mb-1">Total Rebates</div>
-                <div className="text-lg sm:text-xl font-black text-success font-mono">
-                  {(rebateSummary.totalRebatesEarned / 1e9).toFixed(4)} SOL
-                </div>
-              </div>
-
-              {/* Effective Rake Rate */}
-              <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider mb-1">Effective Rake</div>
-                <div className="text-lg sm:text-xl font-black text-accent">
-                  {(rebateSummary.effectiveRakeBps / 100).toFixed(1)}%
-                </div>
-                {rebateSummary.perkType && (
-                  <div className="text-[10px] text-text-tertiary mt-0.5">
-                    via {rebateSummary.perkType.replace('_', ' ')} perk
-                  </div>
-                )}
-              </div>
-
-              {/* Rebate Count */}
-              <div className="p-3 rounded-lg bg-bg-tertiary border border-border-primary col-span-2 md:col-span-1">
-                <div className="text-[10px] sm:text-xs text-text-tertiary uppercase tracking-wider mb-1">Rebate Count</div>
-                <div className="text-lg sm:text-xl font-black">
-                  {rebateSummary.totalRebateCount}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rebate History Table */}
-          {rebateHistory.length === 0 ? (
-            <div className="text-center py-6 sm:py-8">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 rounded-lg bg-success/10 flex items-center justify-center border border-success/30">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-success/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold mb-1 uppercase text-sm">No Rebates Yet</h3>
-              <p className="text-text-secondary text-xs">Activate an Oracle rake reduction perk to earn rebates</p>
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-success/20 text-text-tertiary text-xs uppercase tracking-wider">
-                      <th className="text-left py-3 px-4">Round</th>
-                      <th className="text-left py-3 px-4">Gross Win</th>
-                      <th className="text-left py-3 px-4">Effective Rate</th>
-                      <th className="text-right py-3 px-4">Rebate</th>
-                      <th className="text-right py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rebateHistory.map((rebate) => (
-                      <tr key={rebate.id} className="border-b border-border-primary hover:bg-bg-tertiary/50 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className="font-mono text-sm">#{rebate.roundId}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="font-mono font-medium">{(rebate.grossWinningsLamports / 1e9).toFixed(4)} SOL</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-accent font-medium">{(rebate.effectiveFeeBps / 100).toFixed(1)}%</span>
-                          {rebate.perkType && (
-                            <span className="ml-1 text-[10px] text-text-tertiary">({rebate.perkType.replace('_', ' ')})</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="font-mono font-bold text-success">+{(rebate.rebateLamports / 1e9).toFixed(4)} SOL</span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className={cn(
-                            'inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border',
-                            rebate.status === 'sent' ? 'bg-success/20 border-success/30 text-success' :
-                            rebate.status === 'pending' ? 'bg-warning/20 border-warning/30 text-warning' :
-                            'bg-danger/20 border-danger/30 text-danger'
-                          )}>
-                            {rebate.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right text-text-tertiary text-sm">
-                          {formatDate(rebate.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Cards */}
-              <div className="md:hidden space-y-2">
-                {rebateHistory.map((rebate) => (
-                  <div key={rebate.id} className="p-3 rounded-lg bg-bg-tertiary border border-border-primary">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-sm text-text-secondary">Round #{rebate.roundId}</span>
-                      <span className={cn(
-                        'inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border',
-                        rebate.status === 'sent' ? 'bg-success/20 border-success/30 text-success' :
-                        rebate.status === 'pending' ? 'bg-warning/20 border-warning/30 text-warning' :
-                        'bg-danger/20 border-danger/30 text-danger'
-                      )}>
-                        {rebate.status}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mb-1">
-                      <div>
-                        <span className="text-text-tertiary text-xs">Gross Win: </span>
-                        <span className="font-mono text-sm">{(rebate.grossWinningsLamports / 1e9).toFixed(4)} SOL</span>
-                      </div>
-                      <div>
-                        <span className="text-text-tertiary text-xs">Rate: </span>
-                        <span className="text-accent font-medium text-sm">{(rebate.effectiveFeeBps / 100).toFixed(1)}%</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-success text-sm">+{(rebate.rebateLamports / 1e9).toFixed(4)} SOL</span>
-                      <span className="text-[10px] text-text-tertiary">{formatDate(rebate.createdAt)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* Footer spacer */}
       <div className="h-8" />

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="sbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a0a0a"/>
+      <stop offset="100%" stop-color="#0a0505"/>
+    </radialGradient>
+    <filter id="sglow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#sbg)"/>
+  <!-- Skull -->
+  <ellipse cx="100" cy="85" rx="48" ry="52" fill="#e8dcc8" stroke="#c4b89c" stroke-width="1.5"/>
+  <!-- Eye sockets -->
+  <ellipse cx="80" cy="78" rx="14" ry="16" fill="#1a0a0a"/>
+  <ellipse cx="120" cy="78" rx="14" ry="16" fill="#1a0a0a"/>
+  <!-- Red eye glow -->
+  <circle cx="80" cy="80" r="5" fill="#ff2200" opacity="0.8" filter="url(#sglow)"/>
+  <circle cx="120" cy="80" r="5" fill="#ff2200" opacity="0.8" filter="url(#sglow)"/>
+  <!-- Nose -->
+  <path d="M95 95 L100 105 L105 95" fill="#1a0a0a"/>
+  <!-- Teeth -->
+  <rect x="82" y="115" width="8" height="12" rx="1" fill="#e8dcc8" stroke="#c4b89c" stroke-width="0.8"/>
+  <rect x="92" y="115" width="8" height="12" rx="1" fill="#e8dcc8" stroke="#c4b89c" stroke-width="0.8"/>
+  <rect x="102" y="115" width="8" height="12" rx="1" fill="#e8dcc8" stroke="#c4b89c" stroke-width="0.8"/>
+  <rect x="112" y="115" width="8" height="12" rx="1" fill="#e8dcc8" stroke="#c4b89c" stroke-width="0.8"/>
+  <!-- Jaw line -->
+  <path d="M78 112 Q100 130 122 112" fill="none" stroke="#c4b89c" stroke-width="1.5"/>
+  <!-- Crossbones -->
+  <line x1="40" y1="155" x2="160" y2="180" stroke="#e8dcc8" stroke-width="6" stroke-linecap="round"/>
+  <line x1="160" y1="155" x2="40" y2="180" stroke="#e8dcc8" stroke-width="6" stroke-linecap="round"/>
+</svg>

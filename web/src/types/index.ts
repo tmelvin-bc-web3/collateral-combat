@@ -98,9 +98,6 @@ export interface Battle {
   prizePool: number;
   spectatorCount?: number;
   totalBetPool?: number;
-  // On-chain tracking
-  onChainBattleId?: string;
-  onChainSettled?: boolean;
 }
 
 // Spectator Betting Types
@@ -205,7 +202,7 @@ export interface PredictionStats {
 }
 
 // Profile Picture Types
-export type ProfilePictureType = 'preset' | 'nft' | 'default';
+export type ProfilePictureType = 'preset' | 'nft' | 'twitter' | 'default';
 
 export interface UserProfile {
   walletAddress: string;
@@ -214,13 +211,14 @@ export interface UserProfile {
   presetId?: string;
   nftMint?: string;
   nftImageUrl?: string;
+  twitterHandle?: string;
   updatedAt: number;
 }
 
 export interface PresetPFP {
   id: string;
   name: string;
-  category: 'solana' | 'crypto';
+  category: 'solana' | 'crypto' | 'degen';
   image: string;
 }
 
@@ -335,167 +333,7 @@ export interface DraftLeaderboardEntry {
   payout?: number;
 }
 
-// ===================
-// Progression System Types
-// ===================
-
-export type XpSource = 'battle' | 'prediction' | 'draft' | 'spectator';
-export type ProgressionPerkType = 'rake_9' | 'rake_8' | 'rake_7' | 'oracle_4_5' | 'oracle_4' | 'oracle_3_5';
-export type CosmeticType = 'border' | 'pfp' | 'title';
-
-export interface UserProgression {
-  walletAddress: string;
-  totalXp: number;
-  currentLevel: number;
-  xpToNextLevel: number;
-  xpProgress: number; // percentage 0-100
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface XpHistoryEntry {
-  id: number;
-  walletAddress: string;
-  xpAmount: number;
-  source: XpSource;
-  sourceId: string;
-  description: string;
-  createdAt: number;
-}
-
-export interface UserPerk {
-  id: number;
-  walletAddress: string;
-  perkType: ProgressionPerkType;
-  unlockLevel: number;
-  isUsed: boolean;
-  activatedAt: number | null;
-  expiresAt: number | null;
-  createdAt: number;
-}
-
-export interface UserCosmetic {
-  id: number;
-  walletAddress: string;
-  cosmeticType: CosmeticType;
-  cosmeticId: string;
-  unlockLevel: number;
-  createdAt: number;
-}
-
-export interface LevelUpResult {
-  previousLevel: number;
-  newLevel: number;
-  unlockedPerks: UserPerk[];
-  unlockedCosmetics: UserCosmetic[];
-  newTitle: string | null;
-  freeBetsEarned?: number;
-}
-
-export interface XpGainEvent {
-  amount: number;
-  newTotal: number;
-  source: XpSource;
-  description: string;
-}
-
-export interface LevelUpEvent {
-  previousLevel: number;
-  newLevel: number;
-  newTitle: string | null;
-  unlockedPerks: UserPerk[];
-  unlockedCosmetics: UserCosmetic[];
-  freeBetsEarned?: number;
-}
-
-// Free Bet types
-export type FreeBetTransactionType = 'earned' | 'used';
 export type GameMode = 'oracle' | 'battle' | 'draft' | 'spectator';
-
-export interface FreeBetBalance {
-  walletAddress: string;
-  balance: number;
-  lifetimeEarned: number;
-  lifetimeUsed: number;
-  updatedAt: number;
-}
-
-export interface FreeBetTransaction {
-  id: number;
-  walletAddress: string;
-  amount: number;
-  transactionType: FreeBetTransactionType;
-  gameMode?: GameMode;
-  description?: string;
-  createdAt: number;
-}
-
-// Streak types
-export interface UserStreak {
-  walletAddress: string;
-  currentStreak: number;
-  longestStreak: number;
-  lastActivityDate: string | null;
-  updatedAt: number;
-  bonusPercent: number;
-  atRisk: boolean;
-}
-
-// Streak bonus thresholds
-export const STREAK_BONUSES = [
-  { minDays: 31, bonus: 100 },
-  { minDays: 15, bonus: 75 },
-  { minDays: 8, bonus: 50 },
-  { minDays: 4, bonus: 25 },
-  { minDays: 2, bonus: 10 },
-] as const;
-
-// Free Bet Position types (escrow-based)
-export type FreeBetPositionStatus = 'pending' | 'won' | 'lost' | 'claimed' | 'settled';
-
-export interface FreeBetPosition {
-  id: number;
-  walletAddress: string;
-  roundId: number;
-  side: PredictionSide;
-  amountLamports: number;
-  status: FreeBetPositionStatus;
-  payoutLamports?: number;
-  txSignatureBet?: string;
-  txSignatureClaim?: string;
-  txSignatureSettlement?: string;
-  createdAt: number;
-}
-
-// Rake Rebate types
-export type RakeRebateStatus = 'pending' | 'sent' | 'failed';
-
-export interface RakeRebate {
-  id: number;
-  walletAddress: string;
-  roundId: number;
-  grossWinningsLamports: number;
-  effectiveFeeBps: number;
-  perkType: ProgressionPerkType | null;
-  rebateLamports: number;
-  status: RakeRebateStatus;
-  claimTxSignature: string;
-  rebateTxSignature?: string;
-  createdAt: number;
-}
-
-export interface RebateSummary {
-  totalRebatesEarned: number;
-  totalRebateCount: number;
-  effectiveRakeBps: number;
-  perkType: ProgressionPerkType | null;
-}
-
-export interface RebateReceivedEvent {
-  rebate: RakeRebate;
-  newTotal: number;
-}
 
 // ===================
 // Ready Check Types
@@ -548,7 +386,7 @@ export interface ChatMessage {
   battleId: string;
   senderWallet: string;
   senderDisplayName: string;
-  senderLevel: number;
+  senderLevel?: number; // Deprecated - progression system removed
   senderRole: SenderRole;
   content: string;
   wasFiltered: boolean;

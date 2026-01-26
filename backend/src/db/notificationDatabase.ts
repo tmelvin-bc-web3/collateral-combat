@@ -38,18 +38,13 @@ db.exec(`
 // Type Definitions
 // ===================
 
+// Progression system removed - will be replaced with ELO
+// Removed notification types: 'level_up', 'perk_unlocked', 'perk_expiring', 'streak_bonus', 'streak_lost', 'achievement_unlocked'
 export type NotificationType =
   | 'wager_won'
   | 'wager_lost'
   | 'wager_push'
-  | 'level_up'
-  | 'perk_unlocked'
-  | 'perk_expiring'
-  | 'streak_bonus'
-  | 'streak_lost'
-  | 'free_wager_earned'
   | 'leaderboard_rank_change'
-  | 'achievement_unlocked'
   | 'tournament_match_ready'
   | 'event_starting'
   | 'system';
@@ -243,72 +238,8 @@ export function notifyWagerLost(
   });
 }
 
-export function notifyLevelUp(
-  walletAddress: string,
-  previousLevel: number,
-  newLevel: number,
-  newTitle: string
-): Notification {
-  return createNotification({
-    walletAddress,
-    type: 'level_up',
-    title: 'Level Up!',
-    message: `You reached Level ${newLevel}! New title: ${newTitle}`,
-    data: { previousLevel, newLevel, newTitle },
-  });
-}
-
-export function notifyPerkUnlocked(
-  walletAddress: string,
-  perkName: string,
-  perkDescription: string
-): Notification {
-  return createNotification({
-    walletAddress,
-    type: 'perk_unlocked',
-    title: 'New Perk Unlocked!',
-    message: `You unlocked: ${perkName} - ${perkDescription}`,
-    data: { perkName, perkDescription },
-  });
-}
-
-export function notifyStreakBonus(
-  walletAddress: string,
-  streakDays: number,
-  bonusPercent: number
-): Notification {
-  return createNotification({
-    walletAddress,
-    type: 'streak_bonus',
-    title: `${streakDays}-Day Streak!`,
-    message: `Your ${streakDays}-day streak gives you +${bonusPercent}% XP bonus!`,
-    data: { streakDays, bonusPercent },
-  });
-}
-
-export function notifyStreakLost(walletAddress: string, previousStreak: number): Notification {
-  return createNotification({
-    walletAddress,
-    type: 'streak_lost',
-    title: 'Streak Lost',
-    message: `Your ${previousStreak}-day streak has been reset. Start a new one today!`,
-    data: { previousStreak },
-  });
-}
-
-export function notifyFreeWagerEarned(
-  walletAddress: string,
-  count: number,
-  reason: string
-): Notification {
-  return createNotification({
-    walletAddress,
-    type: 'free_wager_earned',
-    title: 'Free Wager Earned!',
-    message: `You earned ${count} free wager${count > 1 ? 's' : ''}: ${reason}`,
-    data: { count, reason },
-  });
-}
+// Progression system removed - will be replaced with ELO
+// Removed: notifyLevelUp, notifyPerkUnlocked, notifyStreakBonus, notifyStreakLost
 
 export function notifyRankChange(
   walletAddress: string,

@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   ReactNode,
 } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -30,6 +31,7 @@ interface ProfileContextValue {
     presetId?: string;
     nftMint?: string;
     nftImageUrl?: string;
+    twitterHandle?: string;
     username?: string;
   }) => Promise<UserProfile | null>;
   resetProfile: () => Promise<void>;
@@ -95,11 +97,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [walletAddress]);
 
   // Cache for other users' profiles (in-memory for quick access)
-  const [profileCache, setProfileCache] = useState<Record<string, UserProfile>>(
-    {}
-  );
+  // Using ref to avoid stale closures and re-render loops
+  const profileCacheRef = useRef<Record<string, UserProfile>>({});
+  const [profileCacheVersion, setProfileCacheVersion] = useState(0);
 
   // Get profile for any wallet (own or other)
+  // SECURITY FIX: No longer calls setState during render (was causing infinite re-renders)
   const getProfileForWallet = useCallback(
     (wallet: string): UserProfile | null => {
       // If it's our own wallet, return our profile
@@ -107,31 +110,32 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         return ownProfile;
       }
 
-      // Check memory cache first
-      if (profileCache[wallet]) {
-        return profileCache[wallet];
+      // Check memory cache first (ref-based, no re-render)
+      if (profileCacheRef.current[wallet]) {
+        return profileCacheRef.current[wallet];
       }
 
-      // Check localStorage cache
+      // Check localStorage cache - populate ref without triggering re-render
       const cached = getCachedProfile(wallet);
       if (cached) {
-        setProfileCache((prev) => ({ ...prev, [wallet]: cached }));
+        profileCacheRef.current[wallet] = cached;
         return cached;
       }
 
       return null;
     },
-    [walletAddress, ownProfile, profileCache]
+    [walletAddress, ownProfile, profileCacheVersion]
   );
 
   // Batch fetch profiles for multiple wallets
+  // SECURITY FIX: Uses ref instead of state in dependency array to prevent infinite loops
   const fetchProfilesForWallets = useCallback(
     async (walletAddresses: string[]) => {
       // Filter out wallets we already have cached
       const uncached = walletAddresses.filter(
         (addr) =>
           addr !== walletAddress &&
-          !profileCache[addr] &&
+          !profileCacheRef.current[addr] &&
           !getCachedProfile(addr)
       );
 
@@ -144,12 +148,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const profiles: UserProfile[] = await res.json();
 
-          // Update memory cache
-          const newCache: Record<string, UserProfile> = {};
+          // Update memory cache (ref)
           for (const profile of profiles) {
-            newCache[profile.walletAddress] = profile;
+            profileCacheRef.current[profile.walletAddress] = profile;
           }
-          setProfileCache((prev) => ({ ...prev, ...newCache }));
+          // Bump version to notify consumers of new data
+          setProfileCacheVersion((v) => v + 1);
 
           // Update localStorage cache
           setCachedProfiles(profiles);
@@ -158,7 +162,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         // Failed to fetch profiles
       }
     },
-    [walletAddress, profileCache]
+    [walletAddress]
   );
 
   return (

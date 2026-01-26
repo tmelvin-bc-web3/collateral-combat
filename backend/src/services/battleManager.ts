@@ -19,10 +19,8 @@ import {
   ReadyCheckCancelled,
 } from '../types';
 import { priceService } from './priceService';
-import { progressionService } from './progressionService';
 import { balanceService } from './balanceService';
 import { chatService } from './chatService';
-import { addFreeBetCredit } from '../db/progressionDatabase';
 import * as userStatsDb from '../db/userStatsDatabase';
 import * as battleHistoryDb from '../db/battleHistoryDatabase';
 import { PublicKey } from '@solana/web3.js';
@@ -30,8 +28,8 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { PLATFORM_FEE_PERCENT } from '../utils/fees';
 import { toApiError } from '../utils/errors';
-import * as eloDatabase from '../db/eloDatabase';
-import * as eloService from './eloService';
+import * as ratingDb from '../db/ratingDatabase';
+import * as ratingService from './ratingService';
 
 // Lamports per SOL for entry fee conversion
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -109,7 +107,7 @@ class BattleManager {
   }
 
   // Create a new battle
-  async createBattle(config: BattleConfig, creatorWallet: string, isFreeBet: boolean = false): Promise<Battle> {
+  async createBattle(config: BattleConfig, creatorWallet: string): Promise<Battle> {
     const battle: Battle = {
       id: uuidv4(),
       config,
@@ -120,14 +118,14 @@ class BattleManager {
     };
 
     this.battles.set(battle.id, battle);
-    await this.joinBattle(battle.id, creatorWallet, isFreeBet);
+    await this.joinBattle(battle.id, creatorWallet);
 
-    console.log(`Battle ${battle.id} created by ${creatorWallet}${isFreeBet ? ' (free bet)' : ''}`);
+    console.log(`Battle ${battle.id} created by ${creatorWallet}`);
     return battle;
   }
 
   // Join an existing battle
-  async joinBattle(battleId: string, walletAddress: string, isFreeBet: boolean = false): Promise<Battle | null> {
+  async joinBattle(battleId: string, walletAddress: string): Promise<Battle | null> {
     const battle = this.battles.get(battleId);
     if (!battle) {
       throw new Error('Battle not found');
@@ -160,36 +158,24 @@ class BattleManager {
     let pendingId: string | null = null;
     let lockTx: string | null = null;
 
-    // For free bets, skip balance check and on-chain transfer (platform covers it)
-    if (!isFreeBet) {
-      // SECURITY: Atomic balance verification and fund locking
-      // This prevents TOCTOU race conditions where user could withdraw between check and lock
-      try {
-        const lockResult = await balanceService.verifyAndLockBalance(
-          walletAddress,
-          entryFeeLamports,
-          'battle',
-          battleId
-        );
-        lockTx = lockResult.txId;
-      } catch (error) {
-        const apiError = toApiError(error);
-        // Check for insufficient balance error
-        if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
-          const available = await balanceService.getAvailableBalance(walletAddress);
-          throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
-        }
-        throw new Error('Failed to lock entry fee on-chain. Please try again.');
+    // SECURITY: Atomic balance verification and fund locking
+    // This prevents TOCTOU race conditions where user could withdraw between check and lock
+    try {
+      const lockResult = await balanceService.verifyAndLockBalance(
+        walletAddress,
+        entryFeeLamports,
+        'battle',
+        battleId
+      );
+      lockTx = lockResult.txId;
+    } catch (error) {
+      const apiError = toApiError(error);
+      // Check for insufficient balance error
+      if (apiError.code === 'BAL_INSUFFICIENT_BALANCE') {
+        const available = await balanceService.getAvailableBalance(walletAddress);
+        throw new Error(`Insufficient balance. Need ${battle.config.entryFee} SOL, have ${(available / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
       }
-    } else {
-      // SECURITY FIX: Validate and atomically deduct free bet credit
-      // This prevents clients from spoofing isFreeBet=true without actually having credits
-      console.log(`[Battle] Validating free bet credit for ${walletAddress.slice(0, 8)}...`);
-      const freeBetResult = await progressionService.useFreeBetCredit(walletAddress, 'battle', `Battle ${battleId} entry`);
-      if (!freeBetResult.success) {
-        throw new Error('No free bet credits available. Please deposit SOL to play.');
-      }
-      console.log(`[Battle] Free bet credit validated for ${walletAddress.slice(0, 8)}... (balance: ${freeBetResult.balance.balance})`);
+      throw new Error('Failed to lock entry fee on-chain. Please try again.');
     }
 
     // Create player with starting account
@@ -199,7 +185,6 @@ class BattleManager {
       trades: [],
       pendingDebitId: pendingId || undefined, // Track pending debit for refunds if needed
       lockTx: lockTx || undefined, // Track the lock transaction
-      isFreeBet, // Track if this was a free bet entry
     };
 
     battle.players.push(player);
@@ -208,7 +193,7 @@ class BattleManager {
 
     // Note: verifyAndLockBalance already handles pending transaction tracking internally
 
-    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL${isFreeBet ? ' (free bet)' : ''}. Lock TX: ${lockTx}`);
+    console.log(`[Battle] ${walletAddress} joined battle ${battleId}. Entry fee: ${battle.config.entryFee} SOL. Lock TX: ${lockTx}`);
 
     // Start battle if full
     if (battle.players.length === battle.config.maxPlayers) {
@@ -857,19 +842,17 @@ class BattleManager {
     if (isTie) {
       // Tie handling: refund both players their entry fee
       for (const player of battle.players) {
-        if (!player.isFreeBet) {
-          const refundLamports = Math.floor(entryFee * LAMPORTS_PER_SOL);
-          try {
-            await balanceService.creditWinnings(
-              player.walletAddress,
-              refundLamports,
-              'battle',
-              battleId
-            );
-            console.log(`[Battle] Tie refund ${refundLamports / LAMPORTS_PER_SOL} SOL to ${player.walletAddress}`);
-          } catch (error) {
-            console.error(`[Battle] Failed to refund tie to ${player.walletAddress}:`, error);
-          }
+        const refundLamports = Math.floor(entryFee * LAMPORTS_PER_SOL);
+        try {
+          await balanceService.creditWinnings(
+            player.walletAddress,
+            refundLamports,
+            'battle',
+            battleId
+          );
+          console.log(`[Battle] Tie refund ${refundLamports / LAMPORTS_PER_SOL} SOL to ${player.walletAddress}`);
+        } catch (error) {
+          console.error(`[Battle] Failed to refund tie to ${player.walletAddress}:`, error);
         }
       }
     } else if (battle.winnerId && battle.prizePool > 0) {
@@ -945,16 +928,13 @@ class BattleManager {
 
     this.notifyListeners(battle);
 
-    // Award XP to participants
-    this.awardBattleXp(battle);
-
-    // Update ELO ratings for both players
-    this.updateBattleElo(battle);
+    // Update DR ratings for both players
+    this.updateBattleRating(battle);
   }
 
-  // Update ELO ratings after a 1v1 battle
-  private async updateBattleElo(battle: Battle): Promise<void> {
-    // Only update ELO for 1v1 battles with a winner
+  // Update DR ratings after a 1v1 battle
+  private updateBattleRating(battle: Battle): void {
+    // Only update DR for 1v1 battles with a winner
     if (battle.players.length !== 2 || !battle.winnerId) {
       return;
     }
@@ -963,61 +943,19 @@ class BattleManager {
     const loser = battle.players.find(p => p.walletAddress !== battle.winnerId);
 
     if (!winner || !loser) {
-      console.error(`[Battle] Cannot update ELO - winner or loser not found in battle ${battle.id}`);
+      console.error(`[Battle] Cannot update DR - winner or loser not found in battle ${battle.id}`);
       return;
     }
 
     try {
-      const winnerElo = await eloDatabase.getElo(winner.walletAddress);
-      const loserElo = await eloDatabase.getElo(loser.walletAddress);
-      const winnerBattleCount = await eloDatabase.getBattleCount(winner.walletAddress);
-
-      const { winnerGain, loserLoss } = eloService.calculateEloChange(winnerElo, loserElo, winnerBattleCount);
-
-      // Update both players' ELO ratings
-      await eloDatabase.updateElo(winner.walletAddress, winnerElo + winnerGain, true);
-      await eloDatabase.updateElo(loser.walletAddress, Math.max(0, loserElo - loserLoss), false);
-
-      console.log(`[Battle] ELO updated - ${winner.walletAddress.slice(0, 8)}...: ${winnerElo} -> ${winnerElo + winnerGain} (+${winnerGain}), ${loser.walletAddress.slice(0, 8)}...: ${loserElo} -> ${loserElo - loserLoss} (-${loserLoss})`);
+      ratingService.processMatch(winner.walletAddress, loser.walletAddress, battle.id);
     } catch (error) {
-      console.error(`[Battle] Failed to update ELO for battle ${battle.id}:`, error);
-      // Continue - ELO update failure shouldn't break battle completion
+      console.error(`[Battle] Failed to update DR for battle ${battle.id}:`, error);
+      // Continue - DR update failure shouldn't break battle completion
     }
   }
 
-  // Award XP based on battle results
-  private awardBattleXp(battle: Battle): void {
-    const wager = battle.config.entryFee;
 
-    battle.players.forEach(player => {
-      const isWinner = player.rank === 1;
-      const opponent = battle.players.find(p => p.walletAddress !== player.walletAddress);
-      const opponentWallet = opponent?.walletAddress || 'opponent';
-      const truncatedOpponent = opponentWallet.slice(0, 4) + '...' + opponentWallet.slice(-4);
-
-      if (isWinner) {
-        // Winner: 100 XP + (wager × 0.1)
-        const xpAmount = 100 + Math.floor(wager * 0.1);
-        progressionService.awardXp(
-          player.walletAddress,
-          xpAmount,
-          'battle',
-          battle.id,
-          `Won battle vs ${truncatedOpponent}`
-        );
-      } else {
-        // Loser: 25 XP + (wager × 0.05)
-        const xpAmount = 25 + Math.floor(wager * 0.05);
-        progressionService.awardXp(
-          player.walletAddress,
-          xpAmount,
-          'battle',
-          battle.id,
-          `Battle vs ${truncatedOpponent}`
-        );
-      }
-    });
-  }
 
   // Queue for matchmaking (async to support ELO-based tier lookup)
   async queueForMatchmaking(config: BattleConfig, walletAddress: string): Promise<void> {
@@ -1086,28 +1024,23 @@ class BattleManager {
   }
 
   /**
-   * Generate matchmaking key including ELO tier for skill-based matching
+   * Generate matchmaking key including DR tier for skill-based matching
    *
    * CRITICAL for MATCH-05 compliance:
-   * - Protected players get queue key ending in `-protected`
-   * - Non-protected players get queue key ending in their ELO tier (bronze/silver/etc.)
+   * - Placement players get queue key ending in `-placement`
+   * - Non-placement players get queue key ending in their DR tier
    * - Matchmaking only pairs players with IDENTICAL queue keys
-   * - Therefore protected players can NEVER be matched with non-protected players
+   * - Therefore placement players can NEVER be matched with non-placement players
    */
   private async getMatchmakingKey(config: BattleConfig, walletAddress: string): Promise<string> {
     try {
-      const battleCount = await eloDatabase.getBattleCount(walletAddress);
-      if (eloService.shouldProtectPlayer(battleCount)) {
-        // CRITICAL: Protected players get their own queue key
-        // This ensures they ONLY match with other protected players
-        return `${config.entryFee}-${config.duration}-${config.mode}-protected`;
+      const { tier, isPlacement } = ratingService.getMatchmakingTier(walletAddress);
+      if (isPlacement) {
+        return `${config.entryFee}-${config.duration}-${config.mode}-placement`;
       }
-      const elo = await eloDatabase.getElo(walletAddress);
-      const tier = eloService.getEloTier(elo);
       return `${config.entryFee}-${config.duration}-${config.mode}-${tier}`;
     } catch (error) {
-      // Fallback to tier-less key if ELO lookup fails (backward compatible)
-      console.error(`[Matchmaking] Failed to get ELO tier for ${walletAddress.slice(0, 8)}..., using fallback key`, error);
+      console.error(`[Matchmaking] Failed to get DR tier for ${walletAddress.slice(0, 8)}..., using fallback key`, error);
       return `${config.entryFee}-${config.duration}-${config.mode}`;
     }
   }
@@ -1158,7 +1091,7 @@ class BattleManager {
   }
 
   // Create a solo practice battle (no opponent needed)
-  createSoloPractice(config: BattleConfig, walletAddress: string, onChainBattleId?: string): Battle {
+  createSoloPractice(config: BattleConfig, walletAddress: string): Battle {
     const battle: Battle = {
       id: uuidv4(),
       config: { ...config, maxPlayers: 1 },
@@ -1166,8 +1099,6 @@ class BattleManager {
       players: [],
       createdAt: Date.now(),
       prizePool: 0,
-      onChainBattleId,
-      onChainSettled: false,
     };
 
     this.battles.set(battle.id, battle);
@@ -1185,7 +1116,7 @@ class BattleManager {
     // Start immediately
     this.startBattle(battle.id);
 
-    console.log(`Solo practice ${battle.id} started by ${walletAddress}${onChainBattleId ? ` (on-chain: ${onChainBattleId})` : ''}`);
+    console.log(`Solo practice ${battle.id} started by ${walletAddress}`);
     return battle;
   }
 
@@ -1530,7 +1461,6 @@ class BattleManager {
       battle.status = 'cancelled';
 
       // SECURITY FIX: Refund both players' locked entry fees
-      // Free bet players get a free bet credit instead of SOL refund
       const entryFeeLamports = Math.floor(battle.config.entryFee * LAMPORTS_PER_SOL);
       if (entryFeeLamports > 0) {
         console.log(`[BattleManager] Refunding entry fees for cancelled battle ${battleId}`);
@@ -1538,14 +1468,6 @@ class BattleManager {
         // Refund both players in parallel
         const refundPromises = battle.players.map(async (player) => {
           try {
-            // Free bet players get a free bet credit instead of SOL
-            if (player.isFreeBet) {
-              addFreeBetCredit(player.walletAddress, 1, `Battle ${battleId} cancelled refund`);
-              console.log(`[BattleManager] Credited free bet to ${player.walletAddress.slice(0, 8)}... for cancelled battle ${battleId}`);
-              return 'free_bet_credited';
-            }
-
-            // Regular SOL refund
             const refundTx = await balanceService.refundFromGlobalVault(
               player.walletAddress,
               entryFeeLamports,

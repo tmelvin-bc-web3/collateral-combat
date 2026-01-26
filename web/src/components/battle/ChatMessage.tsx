@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LevelBadge } from '@/components/progression/LevelBadge';
 
 // Allowed emojis matching backend ALLOWED_EMOJIS
 const ALLOWED_EMOJIS = ['fire', 'skull', 'rocket', 'money', 'clown', '100', 'cry', 'laugh'] as const;
@@ -22,7 +21,7 @@ interface ChatMessageProps {
   senderWallet: string;
   senderDisplayName: string;
   senderRole: 'spectator' | 'fighter_1' | 'fighter_2';
-  senderLevel: number;
+  senderLevel?: number;
   content: string;
   wasFiltered: boolean;
   reactions: Record<string, string[]>;
@@ -119,9 +118,6 @@ export function ChatMessage({
     >
       {/* Message header */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        {/* Level badge */}
-        <LevelBadge level={senderLevel} size="xs" />
-
         {/* Fighter role badge */}
         {config.badge && (
           <span className={cn('px-1 py-0.5 rounded text-[10px] font-bold', config.badgeClass)}>

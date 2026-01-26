@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="gbbg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0a0520"/>
+      <stop offset="100%" stop-color="#050210"/>
+    </radialGradient>
+    <filter id="brainGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="brainG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff88cc"/>
+      <stop offset="100%" stop-color="#cc4488"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#gbbg)"/>
+  <!-- Enlarged brain/head -->
+  <ellipse cx="100" cy="65" rx="55" ry="50" fill="url(#brainG)" opacity="0.9"/>
+  <!-- Brain folds -->
+  <path d="M65 50 Q80 35 95 50 Q110 35 125 50" fill="none" stroke="#ff66aa" stroke-width="2" opacity="0.6"/>
+  <path d="M55 65 Q70 50 85 65 Q100 50 115 65 Q130 50 145 65" fill="none" stroke="#ff66aa" stroke-width="2" opacity="0.6"/>
+  <path d="M60 80 Q75 65 90 80 Q105 65 120 80 Q135 65 140 80" fill="none" stroke="#ff66aa" stroke-width="2" opacity="0.5"/>
+  <!-- Brain glow -->
+  <ellipse cx="100" cy="60" rx="30" ry="25" fill="#ff88ff" opacity="0.15" filter="url(#brainGlow)"/>
+  <!-- Small face at bottom -->
+  <ellipse cx="100" cy="120" rx="22" ry="18" fill="#e8c8a0"/>
+  <!-- Tiny eyes looking up -->
+  <circle cx="92" cy="116" r="3" fill="#222"/>
+  <circle cx="108" cy="116" r="3" fill="#222"/>
+  <circle cx="93" cy="115" r="1" fill="#fff"/>
+  <circle cx="109" cy="115" r="1" fill="#fff"/>
+  <!-- Small mouth (awe) -->
+  <ellipse cx="100" cy="128" rx="4" ry="3" fill="#333"/>
+  <!-- Lightning bolts around brain -->
+  <path d="M40 40 L48 50 L42 50 L50 62" fill="none" stroke="#ffdd00" stroke-width="2" filter="url(#brainGlow)"/>
+  <path d="M160 40 L152 50 L158 50 L150 62" fill="none" stroke="#ffdd00" stroke-width="2" filter="url(#brainGlow)"/>
+  <!-- 5000 IQ -->
+  <text x="100" y="170" font-family="monospace" font-size="14" font-weight="bold" fill="#ff88cc" text-anchor="middle" opacity="0.85">5000 IQ</text>
+</svg>

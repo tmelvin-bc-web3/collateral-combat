@@ -17,10 +17,7 @@ import { battleSimulator } from './services/battleSimulator';
 import { predictionService } from './services/predictionService';
 import { coinMarketCapService } from './services/coinMarketCapService';
 import { draftTournamentManager } from './services/draftTournamentManager';
-import { progressionService } from './services/progressionService';
-import { freeBetEscrowService } from './services/freeBetEscrowService';
-import { rakeRebateService } from './services/rakeRebateService';
-import { battleSettlementService } from './services/battleSettlementService';
+// progressionService removed - progression system deprecated
 import { challengeNotificationService } from './services/challengeNotificationService';
 import { ldsManager, LDSEvent } from './services/ldsManager';
 import { tokenWarsManager, TWEvent } from './services/tokenWarsManager';
@@ -38,14 +35,13 @@ import { alertService } from './services/alertService';
 import { getProfile, upsertProfile, getProfiles, deleteProfile, isUsernameTaken, ProfilePictureType } from './db/database';
 import * as userStatsDb from './db/userStatsDatabase';
 import * as notificationDb from './db/notificationDatabase';
-import * as achievementDb from './db/achievementDatabase';
-import * as progressionDb from './db/progressionDatabase';
+// achievementDatabase and progressionDatabase removed - progression system deprecated
 import * as waitlistDb from './db/waitlistDatabase';
 import * as sharesDb from './db/sharesDatabase';
 import * as challengesDb from './db/challengesDatabase';
 import * as battleHistoryDb from './db/battleHistoryDatabase';
-import * as eloDb from './db/eloDatabase';
-import * as eloService from './services/eloService';
+import * as ratingDb from './db/ratingDatabase';
+import * as ratingService from './services/ratingService';
 import * as fighterStatsService from './services/fighterStatsService';
 import * as tournamentDb from './db/tournamentDatabase';
 import { ensureTokenVersion } from './db/authDatabase';
@@ -193,18 +189,17 @@ function getAuthenticatedWallet(socket: any, clientWallet?: string): string {
     return socket.data.authenticatedWallet;
   }
 
-  // Fallback: If no JWT auth, require wallet parameter
-  // This maintains backwards compatibility but logs a warning
-  if (clientWallet) {
-    socketLogger.warn('Unauthenticated socket using wallet - consider requiring JWT', { wallet: clientWallet });
-    return clientWallet;
-  }
-
+  // SECURITY: No fallback - require JWT authentication for all socket operations
+  // Previously allowed unauthenticated wallet parameter for backwards compatibility
   throw new Error('Not authenticated - please sign in first');
 }
 
-// SECURITY: Freeze Object prototype to prevent prototype pollution attacks
-Object.freeze(Object.prototype);
+// SECURITY: Prototype pollution protection via __proto__ blocking
+// Note: Object.freeze(Object.prototype) was removed as it breaks third-party libs
+// Instead, we rely on express.json() which ignores __proto__ by default in Express 4.x+
+
+// SECURITY: Trust proxy headers (required for correct IP-based rate limiting behind load balancers)
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({
@@ -257,9 +252,9 @@ app.get('/readyz', async (req, res) => {
       timestamp: Date.now()
     });
   } catch (error: any) {
+    console.error('[Health] Readiness check failed:', error.message);
     res.status(503).json({
       status: 'not ready',
-      error: error.message,
       timestamp: Date.now()
     });
   }
@@ -502,9 +497,9 @@ app.get('/api/profile/:wallet', async (req, res) => {
 
 app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, async (req: Request, res: Response) => {
   try {
-    const { pfpType, presetId, nftMint, nftImageUrl, username } = req.body;
+    const { pfpType, presetId, nftMint, nftImageUrl, twitterHandle, username } = req.body;
 
-    if (!pfpType || !['preset', 'nft', 'default'].includes(pfpType)) {
+    if (!pfpType || !['preset', 'nft', 'twitter', 'default'].includes(pfpType)) {
       return res.status(400).json({ error: 'Invalid pfpType' });
     }
 
@@ -514,6 +509,16 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, async (req: R
 
     if (pfpType === 'nft' && (!nftMint || !nftImageUrl)) {
       return res.status(400).json({ error: 'nftMint and nftImageUrl required for nft type' });
+    }
+
+    if (pfpType === 'twitter') {
+      if (!twitterHandle || typeof twitterHandle !== 'string') {
+        return res.status(400).json({ error: 'twitterHandle required for twitter type' });
+      }
+      const sanitized = twitterHandle.replace(/^@/, '');
+      if (!/^[a-zA-Z0-9_]{1,15}$/.test(sanitized)) {
+        return res.status(400).json({ error: 'Invalid Twitter handle. Must be 1-15 characters: letters, numbers, underscores only.' });
+      }
     }
 
     // SECURITY: Validate NFT image URL
@@ -568,11 +573,13 @@ app.put('/api/profile/:wallet', requireOwnWallet, standardLimiter, async (req: R
       presetId: pfpType === 'preset' ? presetId : undefined,
       nftMint: pfpType === 'nft' ? nftMint : undefined,
       nftImageUrl: pfpType === 'nft' ? nftImageUrl : undefined,
+      twitterHandle: pfpType === 'twitter' ? twitterHandle.replace(/^@/, '') : undefined,
     });
 
     res.json(profile);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('[API] Profile update error:', error.message);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 
@@ -582,7 +589,7 @@ app.get('/api/profiles', async (req, res) => {
     return res.status(400).json({ error: 'wallets query parameter required' });
   }
 
-  const wallets = walletsParam.split(',').filter(w => w.length > 0);
+  const wallets = walletsParam.split(',').filter(w => w.length > 0).slice(0, 50);
   if (wallets.length === 0) {
     return res.json([]);
   }
@@ -597,43 +604,114 @@ app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, async (req: 
 });
 
 // ===================
-// ELO Rating Endpoints
+// Rating (DR) Endpoints
 // ===================
 
 /**
- * GET /api/elo/:wallet
- * Get ELO rating data for a wallet
- *
- * Returns:
- * - wallet: Wallet address
- * - elo: Current ELO rating (default 1200)
- * - battleCount: Total battles played
- * - tier: Current tier (protected/bronze/silver/gold/platinum/diamond)
- * - wins: Total wins
- * - losses: Total losses
+ * GET /api/rating/:wallet
+ * Get DR rating data for a wallet
  */
-app.get('/api/elo/:wallet', standardLimiter, async (req: Request, res: Response) => {
+app.get('/api/rating/:wallet', standardLimiter, (req: Request, res: Response) => {
   const wallet = req.params.wallet;
 
   try {
-    const elo = await eloDb.getElo(wallet);
-    const battleCount = await eloDb.getBattleCount(wallet);
-    const wins = await eloDb.getWins(wallet);
-    const losses = await eloDb.getLosses(wallet);
-    const isProtected = eloService.shouldProtectPlayer(battleCount);
-    const tier = isProtected ? 'protected' : eloService.getEloTier(elo);
+    const rating = ratingDb.getOrCreatePlayerRating(wallet);
+    const tierInfo = ratingService.resolveApexTier(wallet, rating.dr);
+    const rank = ratingDb.getPlayerRank(wallet);
 
     res.json({
-      wallet,
-      elo,
-      battleCount,
-      tier,
-      wins,
-      losses,
+      wallet: rating.wallet,
+      dr: rating.dr,
+      tier: tierInfo.tier,
+      division: tierInfo.division,
+      matchesPlayed: rating.matchesPlayed,
+      wins: rating.wins,
+      losses: rating.losses,
+      isPlacement: rating.isPlacement,
+      placementMatches: rating.placementMatches,
+      divisionShield: rating.divisionShield,
+      tierShield: rating.tierShield,
+      peakDr: rating.peakDr,
+      currentStreak: rating.currentStreak,
+      rank,
     });
   } catch (error) {
-    apiLogger.error('Failed to fetch ELO', { wallet, error });
-    res.status(500).json({ error: 'Failed to fetch ELO data' });
+    apiLogger.error('Failed to fetch rating', { wallet, error });
+    res.status(500).json({ error: 'Failed to fetch rating data' });
+  }
+});
+
+/**
+ * GET /api/rating/:wallet/history
+ * Get DR change history for a wallet
+ */
+app.get('/api/rating/:wallet/history', standardLimiter, (req: Request, res: Response) => {
+  const wallet = req.params.wallet;
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+  try {
+    const history = ratingDb.getDrHistory(wallet, limit);
+    res.json({ history });
+  } catch (error) {
+    apiLogger.error('Failed to fetch rating history', { wallet, error });
+    res.status(500).json({ error: 'Failed to fetch rating history' });
+  }
+});
+
+/**
+ * GET /api/rating/leaderboard
+ * Get paginated leaderboard sorted by DR
+ */
+app.get('/api/rating/leaderboard', standardLimiter, (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+    const tier = req.query.tier as string | undefined;
+
+    const players = ratingDb.getLeaderboard(limit, offset, tier);
+    const totalPlayers = ratingDb.getPlayerCount();
+
+    // Enrich with apex tier resolution and rank
+    const entries = players.map((player, index) => {
+      const tierInfo = ratingService.resolveApexTier(player.wallet, player.dr);
+      return {
+        rank: offset + index + 1,
+        wallet: player.wallet,
+        dr: player.dr,
+        tier: tierInfo.tier,
+        division: tierInfo.division,
+        matchesPlayed: player.matchesPlayed,
+        wins: player.wins,
+        losses: player.losses,
+        isPlacement: player.isPlacement,
+        peakDr: player.peakDr,
+        currentStreak: player.currentStreak,
+      };
+    });
+
+    res.json({
+      entries,
+      total: totalPlayers,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    apiLogger.error('Failed to fetch leaderboard', { error });
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+/**
+ * GET /api/rating/stats
+ * Get global rating statistics
+ */
+app.get('/api/rating/stats', standardLimiter, (req: Request, res: Response) => {
+  try {
+    const stats = ratingDb.getGlobalStats();
+    res.json(stats);
+  } catch (error) {
+    apiLogger.error('Failed to fetch rating stats', { error });
+    res.status(500).json({ error: 'Failed to fetch rating stats' });
   }
 });
 
@@ -973,7 +1051,8 @@ app.post('/api/waitlist/join', waitlistLimiter, async (req: Request, res: Respon
         });
       }
     }
-    res.status(400).json({ error: error.message || 'Failed to join waitlist' });
+    console.error('[API] Waitlist join error:', error.message);
+    res.status(400).json({ error: 'Failed to join waitlist' });
   }
 });
 
@@ -1038,7 +1117,8 @@ app.put('/api/waitlist/wallet', strictLimiter, async (req: Request, res: Respons
 
     res.json({ success: true });
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'Failed to update wallet' });
+    console.error('[API] Update wallet error:', error.message);
+    res.status(400).json({ error: 'Failed to update wallet' });
   }
 });
 
@@ -1065,7 +1145,8 @@ app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (r
 
     res.json(data);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch entries' });
+    console.error('[API] Fetch entries error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch entries' });
   }
 });
 
@@ -1075,10 +1156,7 @@ app.get('/api/waitlist/admin/entries', requireAdmin(), standardLimiter, async (r
 
 import { verifyShareSignature } from './utils/signatureVerification';
 
-const SHARE_XP_REWARD = 25;
-const BIG_WIN_THRESHOLD_LAMPORTS = 3_000_000_000; // 3 SOL - bypasses cooldown
-
-// Track a share event and award XP
+// Track a share event
 app.post('/api/shares/track', standardLimiter, async (req: Request, res: Response) => {
   try {
     const { walletAddress, gameMode, roundId, platform, signature, timestamp } = req.body;
@@ -1118,63 +1196,33 @@ app.post('/api/shares/track', standardLimiter, async (req: Request, res: Respons
       apiLogger.warn('Unverified share attempt', { wallet: walletAddress, roundId, gameMode });
       return res.status(400).json({
         success: false,
-        xpEarned: 0,
         error: 'No verified win found for this round',
       });
     }
 
     // Check if already shared on this platform for this round
     if (sharesDb.hasShared(walletAddress, roundId, platform)) {
-      return res.json({ success: true, xpEarned: 0, message: 'Already shared' });
+      return res.json({ success: true, message: 'Already shared' });
     }
 
-    // Only award XP for Twitter shares (can't verify other platforms)
-    let xpEarned = 0;
-    let cooldownMessage: string | undefined;
-
-    if (platform === 'twitter') {
-      // Use verified win amount, not client-provided
-      const isBigWin = verifiedWinLamports >= BIG_WIN_THRESHOLD_LAMPORTS;
-      const isOnCooldown = sharesDb.isOnShareXpCooldown(walletAddress);
-
-      // Big wins (>= 3 SOL) bypass cooldown, smaller wins have 24h cooldown
-      if (isBigWin || !isOnCooldown) {
-        const xpEvent = await progressionService.awardXp(
-          walletAddress,
-          SHARE_XP_REWARD,
-          'share',
-          `${roundId}-${platform}`,
-          `Shared ${gameMode} win on ${platform}`
-        );
-        xpEarned = xpEvent.amount;
-      } else {
-        // On cooldown for smaller wins
-        const cooldownRemaining = sharesDb.getShareXpCooldownRemaining(walletAddress);
-        const hoursRemaining = Math.ceil(cooldownRemaining / (60 * 60 * 1000));
-        cooldownMessage = `Share XP on cooldown (~${hoursRemaining}h remaining). Win 3+ SOL to bypass!`;
-      }
-    }
-
-    // Record the share with verified amount (for analytics, even if no XP)
+    // Record the share with verified amount (for analytics)
     sharesDb.recordShare({
       walletAddress,
       gameMode,
       winAmountLamports: verifiedWinLamports,
       roundId,
       platform,
-      xpAwarded: xpEarned,
+      xpAwarded: 0,
     });
 
     res.json({
       success: true,
-      xpEarned,
-      message: xpEarned > 0
-        ? `+${xpEarned} XP for sharing!`
-        : cooldownMessage || 'Share recorded',
+      message: 'Share recorded',
     });
   } catch (error: any) {
     apiLogger.error('Share tracking error', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to track share' });
+    console.error('[API] Track share error:', error.message);
+    res.status(500).json({ error: 'Failed to track share' });
   }
 });
 
@@ -1185,25 +1233,8 @@ app.get('/api/shares/stats/:wallet', standardLimiter, async (req: Request, res: 
     const stats = sharesDb.getShareStats(wallet);
     res.json(stats);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to get share stats' });
-  }
-});
-
-// Get share XP cooldown status for a wallet
-app.get('/api/shares/cooldown/:wallet', standardLimiter, async (req: Request, res: Response) => {
-  try {
-    const { wallet } = req.params;
-    const isOnCooldown = sharesDb.isOnShareXpCooldown(wallet);
-    const cooldownRemainingMs = sharesDb.getShareXpCooldownRemaining(wallet);
-
-    res.json({
-      isOnCooldown,
-      cooldownRemainingMs,
-      cooldownRemainingHours: Math.ceil(cooldownRemainingMs / (60 * 60 * 1000)),
-      bigWinBypassThreshold: BIG_WIN_THRESHOLD_LAMPORTS / 1_000_000_000, // In SOL
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to get cooldown status' });
+    console.error('[API] Share stats error:', error.message);
+    res.status(500).json({ error: 'Failed to get share stats' });
   }
 });
 
@@ -1298,85 +1329,6 @@ app.get('/api/predictions/round/:roundId', (req, res) => {
   };
 
   res.json(summary);
-});
-
-// ===================
-// Free Bet Position Endpoints (Escrow-based)
-// ===================
-
-// Place a free bet using escrow service (requires auth, rate limited)
-app.post('/api/prediction/free-bet', requireAuth(), strictLimiter, async (req: Request, res: Response) => {
-  try {
-    const { walletAddress, roundId, side } = req.body;
-    const authenticatedWallet = req.headers['x-wallet-address'] as string;
-
-    if (!walletAddress) {
-      return res.status(400).json({ error: 'walletAddress required' });
-    }
-
-    // Verify wallet ownership
-    if (walletAddress !== authenticatedWallet) {
-      return res.status(403).json({ error: 'Wallet mismatch - can only place free bets for your own wallet' });
-    }
-
-    if (!roundId || typeof roundId !== 'number') {
-      return res.status(400).json({ error: 'Valid roundId required' });
-    }
-
-    if (!side || !['long', 'short'].includes(side)) {
-      return res.status(400).json({ error: 'side must be "long" or "short"' });
-    }
-
-    // Check if user has available free bet credits
-    const balance = await progressionService.getFreeBetBalance(walletAddress);
-    if (balance.balance < 1) {
-      return res.status(400).json({ error: 'No free bets available', balance });
-    }
-
-    // Check if user already has a pending/placed bet for this round
-    const existingPosition = await progressionDb.getFreeBetPositionForWalletAndRound(walletAddress, roundId);
-    if (existingPosition && ['pending', 'placed', 'active'].includes(existingPosition.status)) {
-      return res.status(400).json({ error: 'Already have a free bet for this round', position: existingPosition });
-    }
-
-    // Place bet on-chain via escrow service
-    const result = await freeBetEscrowService.placeFreeBet(walletAddress, roundId, side as 'long' | 'short');
-    if (!result.success) {
-      return res.status(500).json({ error: result.error || 'Failed to place free bet on-chain' });
-    }
-
-    // Deduct free bet credit only after successful on-chain bet
-    const useResult = await progressionService.useFreeBetCredit(walletAddress, 'oracle', `Free bet on round ${roundId}`);
-    if (!useResult.success) {
-      apiLogger.warn('Failed to deduct free bet credit after successful bet', { wallet: walletAddress });
-    }
-
-    res.json({
-      success: true,
-      position: result.position,
-      txSignature: result.txSignature,
-      remainingFreeBets: useResult.success ? useResult.balance.balance : balance.balance - 1,
-    });
-  } catch (error: any) {
-    apiLogger.error('Free bet placement error', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to place free bet' });
-  }
-});
-
-// Get user's free bet positions
-app.get('/api/prediction/:wallet/free-bet-positions', async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-  const offset = parseInt(req.query.offset as string) || 0;
-
-  // For pagination we need to implement it - for now just get with limit
-  const positions = await progressionDb.getFreeBetPositionsForWallet(req.params.wallet, limit);
-
-  res.json({
-    positions,
-    total: positions.length,
-    limit,
-    offset,
-  });
 });
 
 // ===================
@@ -1546,155 +1498,6 @@ app.get('/api/draft/memecoins/prices', (req, res) => {
 });
 
 // ===================
-// Progression Endpoints
-// ===================
-
-// Get user progression (level, XP, title)
-app.get('/api/progression/:wallet', async (req, res) => {
-  const progression = await progressionService.getProgression(req.params.wallet);
-  res.json(progression);
-});
-
-// Get XP history
-app.get('/api/progression/:wallet/history', async (req, res) => {
-  const limit = parseInt(req.query.limit as string) || 20;
-  const history = await progressionService.getXpHistory(req.params.wallet, limit);
-  res.json(history);
-});
-
-// Get available & active perks
-app.get('/api/progression/:wallet/perks', async (req, res) => {
-  const perks = await progressionService.getAvailablePerks(req.params.wallet);
-  res.json(perks);
-});
-
-// Activate a perk (requires wallet ownership)
-app.post('/api/progression/:wallet/perks/:id/activate', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
-  try {
-    const perkId = parseInt(req.params.id);
-    if (isNaN(perkId)) {
-      return res.status(400).json({ error: 'Invalid perk ID' });
-    }
-    const perk = await progressionService.activatePerk(req.params.wallet, perkId);
-    if (!perk) {
-      return res.status(404).json({ error: 'Perk not found or already used' });
-    }
-    res.json(perk);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ error: message });
-  }
-});
-
-// Get unlocked cosmetics
-app.get('/api/progression/:wallet/cosmetics', async (req, res) => {
-  const cosmetics = await progressionService.getUnlockedCosmetics(req.params.wallet);
-  res.json(cosmetics);
-});
-
-// Get current rake % for user (returns both Draft and Oracle rates)
-app.get('/api/progression/:wallet/rake', async (req, res) => {
-  const draftRake = await progressionService.getActiveRakeReduction(req.params.wallet);
-  const oracleRake = await progressionService.getActiveOracleRakeReduction(req.params.wallet);
-  res.json({
-    rakePercent: draftRake,  // Legacy: Draft rake
-    draftRakePercent: draftRake,
-    oracleRakePercent: oracleRake
-  });
-});
-
-// ============= Free Bet Endpoints =============
-
-// Get free bet balance (public read-only - just shows count)
-app.get('/api/progression/:wallet/free-bets', standardLimiter, async (req: Request, res: Response) => {
-  const balance = await progressionService.getFreeBetBalance(req.params.wallet);
-  res.json(balance);
-});
-
-// Get free bet transaction history (requires wallet ownership - sensitive data)
-app.get('/api/progression/:wallet/free-bets/history', requireOwnWallet, async (req: Request, res: Response) => {
-  const limit = parseInt(req.query.limit as string) || 50;
-  const history = await progressionService.getFreeBetTransactionHistory(req.params.wallet, limit);
-  res.json(history);
-});
-
-// Use free bet credit (requires wallet ownership)
-app.post('/api/progression/:wallet/free-bets/use', requireOwnWallet, strictLimiter, async (req: Request, res: Response) => {
-  const { gameMode, description } = req.body;
-
-  if (!gameMode || !['oracle', 'battle', 'draft', 'spectator'].includes(gameMode)) {
-    return res.status(400).json({ error: 'Invalid game mode' });
-  }
-
-  const result = await progressionService.useFreeBetCredit(
-    req.params.wallet,
-    gameMode,
-    description
-  );
-
-  if (!result.success) {
-    return res.status(400).json({ error: 'No free bets available', balance: result.balance });
-  }
-
-  res.json({ success: true, balance: result.balance });
-});
-
-// ===================
-// Rake Rebate Endpoints
-// ===================
-
-// Get rebate history (requires wallet ownership - sensitive data)
-app.get('/api/progression/:wallet/rebates', requireOwnWallet, async (req: Request, res: Response) => {
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-  const offset = parseInt(req.query.offset as string) || 0;
-
-  const rebates = await progressionDb.getRakeRebatesForWallet(req.params.wallet, limit);
-
-  res.json({
-    rebates,
-    total: rebates.length,
-    limit,
-    offset,
-  });
-});
-
-// Get rebate summary (total earned, pending, etc.)
-app.get('/api/progression/:wallet/rebates/summary', requireOwnWallet, async (req: Request, res: Response) => {
-  const summary = await progressionDb.getRakeRebateSummary(req.params.wallet);
-
-  // Convert lamports to SOL for display
-  const LAMPORTS_PER_SOL = 1_000_000_000;
-
-  res.json({
-    walletAddress: req.params.wallet,
-    totalRebates: summary.totalRebates,
-    totalRebateLamports: summary.totalRebateLamports,
-    totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
-    sentRebateLamports: summary.sentRebateLamports,
-    sentRebateSol: summary.sentRebateLamports / LAMPORTS_PER_SOL,
-    pendingRebateLamports: summary.pendingRebateLamports,
-    pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
-  });
-});
-
-// ===================
-// Streak Endpoints
-// ===================
-
-// Get user streak info
-app.get('/api/progression/:wallet/streak', async (req, res) => {
-  const streak = await progressionService.getStreak(req.params.wallet);
-  const bonusPercent = Math.round(progressionService.getStreakBonus(streak.currentStreak) * 100);
-  const atRisk = await progressionService.isStreakAtRisk(req.params.wallet);
-
-  res.json({
-    ...streak,
-    bonusPercent,
-    atRisk,
-  });
-});
-
-// ===================
 // User Stats Endpoints
 // ===================
 
@@ -1825,79 +1628,6 @@ app.delete('/api/notifications/:wallet/:id', requireOwnWallet, (req: Request, re
   }
 
   res.json({ success: true });
-});
-
-// ===================
-// Achievement Endpoints
-// ===================
-
-// Get all achievements with user progress
-app.get('/api/achievements/:wallet', (req, res) => {
-  const progress = achievementDb.getAchievementProgress(req.params.wallet);
-  const totalUnlocked = progress.filter(p => p.isUnlocked).length;
-
-  res.json({
-    achievements: progress,
-    totalUnlocked,
-    totalAchievements: progress.length,
-  });
-});
-
-// Get only unlocked achievements for a user
-app.get('/api/achievements/:wallet/unlocked', (req, res) => {
-  const unlocked = achievementDb.getUserUnlockedAchievements(req.params.wallet);
-  res.json({
-    achievements: unlocked,
-    count: unlocked.length,
-  });
-});
-
-// Get unnotified achievements (for toast notifications - requires wallet ownership)
-app.get('/api/achievements/:wallet/unnotified', requireOwnWallet, (req: Request, res: Response) => {
-  const unnotified = achievementDb.getUnnotified(req.params.wallet);
-  res.json({
-    achievements: unnotified,
-    count: unnotified.length,
-  });
-});
-
-// Mark achievement as notified (requires wallet ownership)
-app.post('/api/achievements/:wallet/:id/notified', requireOwnWallet, (req: Request, res: Response) => {
-  const success = achievementDb.markAsNotified(req.params.wallet, req.params.id);
-  res.json({ success });
-});
-
-// Check and update achievements based on stats (requires wallet ownership)
-app.post('/api/achievements/:wallet/check', requireOwnWallet, (req: Request, res: Response) => {
-  const { totalWagers, totalWins, currentStreak, level, totalProfit } = req.body;
-
-  const unlocked = achievementDb.checkAndUpdateAchievements(req.params.wallet, {
-    totalWagers,
-    totalWins,
-    currentStreak,
-    level,
-    totalProfit,
-  });
-
-  // Create notifications for newly unlocked achievements
-  for (const achievement of unlocked) {
-    notificationDb.createNotification({
-      walletAddress: req.params.wallet,
-      type: 'achievement_unlocked',
-      title: 'Achievement Unlocked!',
-      message: `You earned "${achievement.name}" - ${achievement.description}`,
-      data: {
-        achievementId: achievement.id,
-        xpReward: achievement.xpReward,
-        rarity: achievement.rarity,
-      },
-    });
-  }
-
-  res.json({
-    newlyUnlocked: unlocked,
-    count: unlocked.length,
-  });
 });
 
 // WebSocket handling
@@ -2067,16 +1797,17 @@ io.on('connection', (socket) => {
   });
 
   // Start solo practice
-  socket.on('start_solo_practice', (data: { config: BattleConfig; wallet: string; onChainBattleId?: string }) => {
+  socket.on('start_solo_practice', (data: { config: BattleConfig; wallet: string }) => {
     try {
-      const { config, wallet, onChainBattleId } = data;
-      walletAddress = wallet;
-      const battle = battleManager.createSoloPractice(config, wallet, onChainBattleId);
+      const { config, wallet } = data;
+      // SECURITY: Authenticate wallet before creating practice battle
+      walletAddress = getAuthenticatedWallet(socket, wallet);
+      const battle = battleManager.createSoloPractice(config, walletAddress);
       currentBattleId = battle.id;
       socket.join(battle.id);
       socket.emit('battle_update', battle);
       socket.emit('battle_started', battle);
-      battleLogger.info('Solo practice started', { battleId: battle.id, onChainBattleId: onChainBattleId || 'none' });
+      battleLogger.info('Solo practice started', { battleId: battle.id });
     } catch (error: any) {
       battleLogger.error('Solo practice error', { error: String(error) });
       socket.emit('error', error.message);
@@ -2278,7 +2009,7 @@ io.on('connection', (socket) => {
   });
 
   // New handler using PDA balance or free bet
-  socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string; useFreeBet?: boolean }) => {
+  socket.on('place_prediction_bet', async (data: { asset: string; side: PredictionSide; amount: number; bettor: string }) => {
     try {
       // SECURITY: Validate side parameter
       if (data.side !== 'long' && data.side !== 'short') {
@@ -2293,8 +2024,7 @@ io.on('connection', (socket) => {
       }
       // SECURITY: Use authenticated wallet, not client-provided
       const authenticatedWallet = getAuthenticatedWallet(socket, data.bettor);
-      const isFreeBet = data.useFreeBet === true;
-      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, authenticatedWallet, isFreeBet);
+      const bet = await predictionService.placeBet(data.asset, data.side, data.amount, authenticatedWallet);
       socket.emit('prediction_bet_result', { success: true, bet });
       socket.emit('prediction_bet_placed', bet);
     } catch (error: any) {
@@ -2405,31 +2135,6 @@ io.on('connection', (socket) => {
   });
 
   // ===================
-  // Progression Events
-  // ===================
-
-  socket.on('subscribe_progression', async (wallet: string) => {
-    try {
-      // SECURITY: Use authenticated wallet to prevent data exposure
-      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
-      walletAddress = authenticatedWallet;
-      socket.join(`progression_${authenticatedWallet}`);
-      // Send current progression state
-      const progression = await progressionService.getProgression(authenticatedWallet);
-      socket.emit('progression_update' as any, progression);
-    } catch (error: any) {
-      socket.emit('error', 'Authentication required to view progression');
-    }
-  });
-
-  socket.on('unsubscribe_progression', (wallet: string) => {
-    // Only leave room for authenticated wallet
-    if (socket.data.authenticatedWallet) {
-      socket.leave(`progression_${socket.data.authenticatedWallet}`);
-    }
-  });
-
-  // ===================
   // Notification Events
   // ===================
 
@@ -2450,37 +2155,6 @@ io.on('connection', (socket) => {
     // Only leave room for authenticated wallet
     if (socket.data.authenticatedWallet) {
       socket.leave(`notifications_${socket.data.authenticatedWallet}`);
-    }
-  });
-
-  // ===================
-  // Rebate Events
-  // ===================
-
-  socket.on('subscribe_rebates', async (wallet: string) => {
-    try {
-      // SECURITY: Use authenticated wallet to prevent financial data exposure
-      const authenticatedWallet = getAuthenticatedWallet(socket, wallet);
-      socket.join(`rebates_${authenticatedWallet}`);
-      // Send current rebate summary
-      const summary = await progressionDb.getRakeRebateSummary(authenticatedWallet);
-      const LAMPORTS_PER_SOL = 1_000_000_000;
-      socket.emit('rebate_summary' as any, {
-        totalRebates: summary.totalRebates,
-        totalRebateLamports: summary.totalRebateLamports,
-        totalRebateSol: summary.totalRebateLamports / LAMPORTS_PER_SOL,
-        pendingRebateLamports: summary.pendingRebateLamports,
-        pendingRebateSol: summary.pendingRebateLamports / LAMPORTS_PER_SOL,
-      });
-    } catch (error: any) {
-      socket.emit('error', 'Authentication required to view rebates');
-    }
-  });
-
-  socket.on('unsubscribe_rebates', (wallet: string) => {
-    // Only leave room for authenticated wallet
-    if (socket.data.authenticatedWallet) {
-      socket.leave(`rebates_${socket.data.authenticatedWallet}`);
     }
   });
 
@@ -2827,7 +2501,7 @@ io.on('connection', (socket) => {
     socketLogger.debug('TokenWars unsubscription', { socketId: socket.id });
   });
 
-  socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number; useFreeBet?: boolean }) => {
+  socket.on('token_wars_place_bet', async (data: { wallet: string; side: 'token_a' | 'token_b'; amountLamports: number }) => {
     // SECURITY: Validate side parameter
     if (data.side !== 'token_a' && data.side !== 'token_b') {
       socket.emit('token_wars_bet_error' as any, { error: 'Invalid side - must be "token_a" or "token_b"' });
@@ -2843,27 +2517,11 @@ io.on('connection', (socket) => {
     try {
       // SECURITY: Use authenticated wallet, not client-provided
       const authenticatedWallet = getAuthenticatedWallet(socket, data.wallet);
-      let isFreeBet = false;
 
-      // If user wants to use a free bet, check and deduct from their balance
-      if (data.useFreeBet) {
-        const useResult = await progressionService.useFreeBetCredit(authenticatedWallet, 'token_wars', `Token Wars free bet`);
-        if (!useResult.success) {
-          socket.emit('token_wars_bet_error' as any, { error: 'No free bets available' });
-          return;
-        }
-        isFreeBet = true;
-        socketLogger.info('TokenWars free bet used', { wallet: authenticatedWallet });
-      }
-
-      const result = await tokenWarsManager.placeBet(authenticatedWallet, data.side, data.amountLamports, isFreeBet);
+      const result = await tokenWarsManager.placeBet(authenticatedWallet, data.side, data.amountLamports);
       if (result.success) {
         socket.emit('token_wars_bet_success' as any, { bet: result.bet });
       } else {
-        // Refund free bet credit if bet placement failed
-        if (isFreeBet) {
-          await progressionService.addFreeBetCredit(authenticatedWallet, 1, 'Token Wars bet failed refund');
-        }
         socket.emit('token_wars_bet_error' as any, { error: result.error });
       }
     } catch (error: any) {
@@ -3059,11 +2717,10 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Get user profile for display name and progression for level
+      // Get user profile for display name
       const profile = await getProfile(authenticatedWallet);
-      const progression = await progressionService.getProgression(authenticatedWallet);
       const displayName = profile?.username || undefined;
-      const level = progression?.currentLevel || 1;
+      const level = 1;
 
       const result = await chatService.sendMessage(
         data.battleId,
@@ -3174,29 +2831,6 @@ battleManager.subscribe(async (battle) => {
     io.to(battle.id).emit('battle_ended', battle);
 
     // Trigger on-chain settlement if this battle has an on-chain ID and hasn't been settled yet
-    if (battle.onChainBattleId && !battle.onChainSettled && battle.winnerId) {
-      battleLogger.info('Triggering on-chain settlement', { battleId: battle.id });
-
-      // Determine if winner is creator (for solo practice, always true)
-      const isCreator = battle.players.length === 1 ||
-        battle.players[0]?.walletAddress === battle.winnerId;
-
-      const txSig = await battleSettlementService.settleBattle(
-        battle.onChainBattleId,
-        battle.winnerId,
-        isCreator
-      );
-
-      if (txSig) {
-        // Mark as settled and notify clients
-        battle.onChainSettled = true;
-        io.to(battle.id).emit('battle_settled' as any, {
-          battleId: battle.id,
-          txSignature: txSig,
-          winnerId: battle.winnerId,
-        });
-      }
-    }
   }
 });
 
@@ -3359,48 +2993,6 @@ coinMarketCapService.subscribe((prices) => {
   io.to('draft_prices').emit('memecoin_prices_update' as any, prices);
 });
 
-// Subscribe to progression events and broadcast to user
-progressionService.subscribe((event, data) => {
-  switch (event) {
-    case 'xp_gained':
-      // Broadcast to the specific user's progression room
-      io.to(`progression_${data.walletAddress}`).emit('xp_gained' as any, {
-        amount: data.amount,
-        newTotal: data.newTotal,
-        source: data.source,
-        description: data.description
-      });
-      break;
-    case 'level_up':
-      // Broadcast level up celebration to the specific user
-      io.to(`progression_${data.walletAddress}`).emit('level_up' as any, {
-        previousLevel: data.previousLevel,
-        newLevel: data.newLevel,
-        newTitle: data.newTitle,
-        unlockedPerks: data.unlockedPerks,
-        unlockedCosmetics: data.unlockedCosmetics
-      });
-      // Create and broadcast notification for level up
-      const levelUpNotification = notificationDb.notifyLevelUp(
-        data.walletAddress,
-        data.previousLevel,
-        data.newLevel,
-        data.newTitle
-      );
-      io.to(`notifications_${data.walletAddress}`).emit('notification' as any, levelUpNotification);
-      io.to(`notifications_${data.walletAddress}`).emit('notification_count' as any, {
-        count: notificationDb.getUnreadCount(data.walletAddress)
-      });
-      break;
-    case 'perk_activated':
-      io.to(`progression_${data.walletAddress}`).emit('perk_activated' as any, data.perk);
-      break;
-    case 'perk_expired':
-      io.to(`progression_${data.walletAddress}`).emit('perk_expired' as any, { perkId: data.perkId });
-      break;
-  }
-});
-
 // ==================== BATTLE CHALLENGES ====================
 
 // Get user's challenges (must be before /:code route)
@@ -3420,7 +3012,8 @@ app.get('/api/challenges/mine', requireAuth(), standardLimiter, async (req: Requ
     });
   } catch (error: any) {
     challengeLogger.error('Error getting challenges', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to get challenges' });
+    console.error('[API] Get challenges error:', error.message);
+    res.status(500).json({ error: 'Failed to get challenges' });
   }
 });
 
@@ -3430,7 +3023,8 @@ app.get('/api/challenges/stats', standardLimiter, async (req: Request, res: Resp
     const stats = challengesDb.getChallengeStats();
     res.json(stats);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to get challenge stats' });
+    console.error('[API] Challenge stats error:', error.message);
+    res.status(500).json({ error: 'Failed to get challenge stats' });
   }
 });
 
@@ -3585,7 +3179,8 @@ app.post('/api/challenges/create', requireAuth(), standardLimiter, async (req: R
     });
   } catch (error: any) {
     challengeLogger.error('Error creating challenge', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to create challenge' });
+    console.error('[API] Create challenge error:', error.message);
+    res.status(500).json({ error: 'Failed to create challenge' });
   }
 });
 
@@ -3645,7 +3240,8 @@ app.get('/api/challenges/:code', standardLimiter, async (req: Request, res: Resp
     });
   } catch (error: any) {
     challengeLogger.error('Error getting challenge', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to get challenge' });
+    console.error('[API] Get challenge error:', error.message);
+    res.status(500).json({ error: 'Failed to get challenge' });
   }
 });
 
@@ -3713,7 +3309,8 @@ app.post('/api/challenges/:code/accept', requireAuth(), standardLimiter, async (
     });
   } catch (error: any) {
     challengeLogger.error('Error accepting challenge', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to accept challenge' });
+    console.error('[API] Accept challenge error:', error.message);
+    res.status(500).json({ error: 'Failed to accept challenge' });
   }
 });
 
@@ -3736,7 +3333,8 @@ app.delete('/api/challenges/:id', requireAuth(), standardLimiter, async (req: Re
     res.json({ success: true });
   } catch (error: any) {
     challengeLogger.error('Error cancelling challenge', { error: String(error) });
-    res.status(500).json({ error: error.message || 'Failed to cancel challenge' });
+    console.error('[API] Cancel challenge error:', error.message);
+    res.status(500).json({ error: 'Failed to cancel challenge' });
   }
 });
 
@@ -4057,8 +3655,8 @@ const PORT = process.env.PORT || 3001;
 
 async function start() {
   // Start price service
-  // 5s API fetches from Pyth Hermes (free, no rate limits) for near real-time prices
-  await priceService.start(5000);
+  // 3s API fetches from Pyth Hermes (free, no rate limits) for near real-time prices
+  await priceService.start(3000);
 
   // Start CoinMarketCap service for memecoins
   await coinMarketCapService.start();
@@ -4066,42 +3664,6 @@ async function start() {
   // Start draft tournament manager
   draftTournamentManager.start();
 
-  // Initialize and start free bet escrow service
-  const escrowInitialized = await freeBetEscrowService.init();
-  if (escrowInitialized) {
-    freeBetEscrowService.startProcessing();
-    logger.info('Free bet escrow service started');
-  } else {
-    logger.warn('Free bet escrow service not initialized (missing ESCROW_WALLET_PRIVATE_KEY)');
-  }
-
-  // Initialize and start rake rebate service
-  const rebateInitialized = await rakeRebateService.initialize();
-  if (rebateInitialized) {
-    rakeRebateService.startPolling();
-    logger.info('Rake rebate service started');
-
-    // Subscribe to rebate events for WebSocket notifications
-    rakeRebateService.subscribe((event, data: any) => {
-      if (event === 'rebate_sent' && data.walletAddress) {
-        // Emit to the user's room
-        io.to(data.walletAddress).emit('rebate_received' as any, {
-          rebate: data.rebate,
-          txSignature: data.txSignature,
-        });
-      }
-    });
-  } else {
-    logger.warn('Rake rebate service not initialized (missing REBATE_WALLET_PRIVATE_KEY)');
-  }
-
-  // Initialize battle settlement service for on-chain settlements
-  const settlementInitialized = battleSettlementService.initialize();
-  if (settlementInitialized) {
-    logger.info('Battle settlement service started');
-  } else {
-    logger.warn('Battle settlement service not initialized (missing BATTLE_AUTHORITY_PRIVATE_KEY)');
-  }
 
   // Initialize LDS (Last Degen Standing) manager
   ldsManager.initialize();

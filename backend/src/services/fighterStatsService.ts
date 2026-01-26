@@ -6,8 +6,8 @@
  */
 
 import * as battleHistoryDb from '../db/battleHistoryDatabase';
-import * as eloDb from '../db/eloDatabase';
-import { getDisplayTier } from './eloService';
+import * as ratingDb from '../db/ratingDatabase';
+import * as ratingService from './ratingService';
 
 // ===================
 // Type Definitions
@@ -196,8 +196,8 @@ export async function getComparison(wallet1: string, wallet2: string): Promise<F
  * Get complete fighter profile.
  */
 async function getFighterProfile(wallet: string): Promise<FighterProfile> {
-  const [eloData, stats, streaks, roi, tradingStyle, favoriteAssets] = await Promise.all([
-    eloDb.getEloData(wallet),
+  const [rating, stats, streaks, roi, tradingStyle, favoriteAssets] = await Promise.all([
+    Promise.resolve(ratingDb.getOrCreatePlayerRating(wallet)),
     Promise.resolve(battleHistoryDb.getPlayerStats(wallet)),
     Promise.resolve(battleHistoryDb.getBattleStreaks(wallet)),
     Promise.resolve(battleHistoryDb.getBattleROI(wallet)),
@@ -205,14 +205,12 @@ async function getFighterProfile(wallet: string): Promise<FighterProfile> {
     Promise.resolve(getFavoriteAssets(wallet)),
   ]);
 
-  const elo = eloData?.elo ?? 1200;
-  const battleCount = eloData?.battleCount ?? 0;
-  const tier = getDisplayTier(elo, battleCount);
+  const tierInfo = ratingService.resolveApexTier(wallet, rating.dr);
 
   return {
     wallet,
-    elo,
-    tier,
+    elo: rating.dr,
+    tier: tierInfo.tier,
     battleCount: stats.totalBattles,
     wins: stats.wins,
     losses: stats.losses,

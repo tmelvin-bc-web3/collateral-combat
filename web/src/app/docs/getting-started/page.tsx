@@ -141,20 +141,13 @@ export default function GettingStartedPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center font-bold">6</div>
-          <h2 className="text-xl font-semibold">Level Up & Earn Perks</h2>
+          <h2 className="text-xl font-semibold">Climb the Leaderboard</h2>
         </div>
         <div className="ml-11">
           <p className="text-text-secondary mb-4">
-            Every wager you make earns you XP. As you level up, you unlock:
-          </p>
-          <ul className="list-disc list-inside space-y-2 text-text-secondary">
-            <li><strong>Reduced Fees</strong> - Lower platform fee on winnings</li>
-            <li><strong>Free Wagers</strong> - Earned at level milestones</li>
-            <li><strong>Cosmetics</strong> - Profile borders and avatars</li>
-            <li><strong>Titles</strong> - Show off your rank to others</li>
-          </ul>
-          <p className="text-text-secondary mt-4">
-            Check the <a href="/docs/progression" className="text-accent hover:underline">Progression</a> page for full details.
+            Compete against other players and climb the rankings. Check the{' '}
+            <a href="/leaderboard" className="text-accent hover:underline">Leaderboard</a>{' '}
+            to see where you stand.
           </p>
         </div>
       </div>
