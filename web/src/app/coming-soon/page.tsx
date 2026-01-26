@@ -48,8 +48,13 @@ export default function ComingSoon() {
       .catch(() => {});
   }, []);
 
+  // Track redirect errors to show feedback
+  const [redirectError, setRedirectError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   // Redirect whitelisted users to the full app (with secure verification)
   // Uses AuthContext for single signature - JWT proves identity
+  // Waits for isAuthenticated or triggers signIn only once auto sign-in settles
   useEffect(() => {
     if (!hasAccess || !mounted || !walletAddress || hasAttemptedWhitelistFlow.current) {
       return;
@@ -57,6 +62,8 @@ export default function ComingSoon() {
 
     const verifyAndRedirect = async () => {
       hasAttemptedWhitelistFlow.current = true;
+      setIsRedirecting(true);
+      setRedirectError(null);
 
       try {
         // Step 1: If not authenticated, sign in via AuthContext (ONE signature)
@@ -64,8 +71,9 @@ export default function ComingSoon() {
         if (!isAuthenticated) {
           const success = await signIn();
           if (!success) {
-            console.error('Sign in failed or rejected');
-            hasAttemptedWhitelistFlow.current = false; // Allow retry
+            setRedirectError('Sign in failed or was rejected. Please try again.');
+            hasAttemptedWhitelistFlow.current = false;
+            setIsRedirecting(false);
             return;
           }
           // Get the token from localStorage since state might not update immediately
@@ -73,8 +81,9 @@ export default function ComingSoon() {
         }
 
         if (!currentToken) {
-          console.error('No token available after sign in');
+          setRedirectError('No auth token received. Please try again.');
           hasAttemptedWhitelistFlow.current = false;
+          setIsRedirecting(false);
           return;
         }
 
@@ -90,16 +99,22 @@ export default function ComingSoon() {
           // Cookie is set by the API - now redirect
           window.location.href = '/predict';
         } else {
-          console.error('Failed to set whitelist cookie');
+          const data = await response.json().catch(() => ({}));
+          setRedirectError(data.error || 'Failed to set access cookie. Please try again.');
           hasAttemptedWhitelistFlow.current = false;
+          setIsRedirecting(false);
         }
       } catch (error) {
-        console.error('Error during whitelist verification:', error);
+        setRedirectError('Network error during verification. Please try again.');
         hasAttemptedWhitelistFlow.current = false;
+        setIsRedirecting(false);
       }
     };
 
-    verifyAndRedirect();
+    // Delay slightly to let AuthContext auto sign-in settle first,
+    // avoiding double signature prompts
+    const timeout = setTimeout(verifyAndRedirect, 800);
+    return () => clearTimeout(timeout);
   }, [hasAccess, mounted, walletAddress, isAuthenticated, signIn, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -321,10 +336,24 @@ export default function ComingSoon() {
               </p>
             )}
 
-            {connected && hasAccess && (
+            {connected && hasAccess && !redirectError && (
               <div className="flex items-center justify-center gap-2 mt-4 text-[#7fba00]">
                 <div className="w-5 h-5 border-2 border-[#7fba00] border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm font-semibold">Loading DegenDome...</span>
+              </div>
+            )}
+            {connected && hasAccess && redirectError && (
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <span className="text-sm text-red-400">{redirectError}</span>
+                <button
+                  onClick={() => {
+                    setRedirectError(null);
+                    hasAttemptedWhitelistFlow.current = false;
+                  }}
+                  className="px-4 py-2 bg-[#ff5500] text-white text-sm font-semibold rounded hover:bg-[#ff5500]/80 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             )}
           </div>

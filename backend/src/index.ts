@@ -608,59 +608,9 @@ app.delete('/api/profile/:wallet', requireOwnWallet, strictLimiter, async (req: 
 // ===================
 
 /**
- * GET /api/rating/:wallet
- * Get DR rating data for a wallet
- */
-app.get('/api/rating/:wallet', standardLimiter, (req: Request, res: Response) => {
-  const wallet = req.params.wallet;
-
-  try {
-    const rating = ratingDb.getOrCreatePlayerRating(wallet);
-    const tierInfo = ratingService.resolveApexTier(wallet, rating.dr);
-    const rank = ratingDb.getPlayerRank(wallet);
-
-    res.json({
-      wallet: rating.wallet,
-      dr: rating.dr,
-      tier: tierInfo.tier,
-      division: tierInfo.division,
-      matchesPlayed: rating.matchesPlayed,
-      wins: rating.wins,
-      losses: rating.losses,
-      isPlacement: rating.isPlacement,
-      placementMatches: rating.placementMatches,
-      divisionShield: rating.divisionShield,
-      tierShield: rating.tierShield,
-      peakDr: rating.peakDr,
-      currentStreak: rating.currentStreak,
-      rank,
-    });
-  } catch (error) {
-    apiLogger.error('Failed to fetch rating', { wallet, error });
-    res.status(500).json({ error: 'Failed to fetch rating data' });
-  }
-});
-
-/**
- * GET /api/rating/:wallet/history
- * Get DR change history for a wallet
- */
-app.get('/api/rating/:wallet/history', standardLimiter, (req: Request, res: Response) => {
-  const wallet = req.params.wallet;
-  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-
-  try {
-    const history = ratingDb.getDrHistory(wallet, limit);
-    res.json({ history });
-  } catch (error) {
-    apiLogger.error('Failed to fetch rating history', { wallet, error });
-    res.status(500).json({ error: 'Failed to fetch rating history' });
-  }
-});
-
-/**
  * GET /api/rating/leaderboard
  * Get paginated leaderboard sorted by DR
+ * NOTE: Static routes must be defined before :wallet param route
  */
 app.get('/api/rating/leaderboard', standardLimiter, (req: Request, res: Response) => {
   try {
@@ -712,6 +662,57 @@ app.get('/api/rating/stats', standardLimiter, (req: Request, res: Response) => {
   } catch (error) {
     apiLogger.error('Failed to fetch rating stats', { error });
     res.status(500).json({ error: 'Failed to fetch rating stats' });
+  }
+});
+
+/**
+ * GET /api/rating/:wallet
+ * Get DR rating data for a wallet
+ */
+app.get('/api/rating/:wallet', standardLimiter, (req: Request, res: Response) => {
+  const wallet = req.params.wallet;
+
+  try {
+    const rating = ratingDb.getOrCreatePlayerRating(wallet);
+    const tierInfo = ratingService.resolveApexTier(wallet, rating.dr);
+    const rank = ratingDb.getPlayerRank(wallet);
+
+    res.json({
+      wallet: rating.wallet,
+      dr: rating.dr,
+      tier: tierInfo.tier,
+      division: tierInfo.division,
+      matchesPlayed: rating.matchesPlayed,
+      wins: rating.wins,
+      losses: rating.losses,
+      isPlacement: rating.isPlacement,
+      placementMatches: rating.placementMatches,
+      divisionShield: rating.divisionShield,
+      tierShield: rating.tierShield,
+      peakDr: rating.peakDr,
+      currentStreak: rating.currentStreak,
+      rank,
+    });
+  } catch (error) {
+    apiLogger.error('Failed to fetch rating', { wallet, error });
+    res.status(500).json({ error: 'Failed to fetch rating data' });
+  }
+});
+
+/**
+ * GET /api/rating/:wallet/history
+ * Get DR change history for a wallet
+ */
+app.get('/api/rating/:wallet/history', standardLimiter, (req: Request, res: Response) => {
+  const wallet = req.params.wallet;
+  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+  try {
+    const history = ratingDb.getDrHistory(wallet, limit);
+    res.json({ history });
+  } catch (error) {
+    apiLogger.error('Failed to fetch rating history', { wallet, error });
+    res.status(500).json({ error: 'Failed to fetch rating history' });
   }
 });
 

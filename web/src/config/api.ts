@@ -9,7 +9,7 @@ const getBackendUrl = (): string => {
   const url = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   if (url) {
-    return url;
+    return url.trim();
   }
 
   // In production, we should never fall back to localhost
