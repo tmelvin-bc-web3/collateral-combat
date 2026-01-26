@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { WHITELISTED_WALLETS } from '@/config/whitelist';
 
 // Coming soon mode - uses env var, defaults to true in production
-const COMING_SOON_MODE = process.env.NEXT_PUBLIC_COMING_SOON !== 'false';
+const COMING_SOON_MODE = (process.env.NEXT_PUBLIC_COMING_SOON || '').trim() !== 'false';
 
 // Secret for verifying signed tokens - MUST match the API route
 const WHITELIST_SECRET = process.env.WHITELIST_SECRET || 'dev-secret-change-in-production';
