@@ -49,23 +49,26 @@ export function FirstBetProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Default values for when context is not available (graceful fallback)
+const defaultContextValue: FirstBetContextValue = {
+  hasPlacedFirstBet: true,
+  showCelebration: false,
+  isFirstBetUser: false,
+  initialized: false,
+  recordFirstBet: () => {},
+  dismissCelebration: () => {},
+};
+
 /**
  * Hook to consume first bet context
  *
- * Must be used within a FirstBetProvider.
- *
- * @example
- * const { isFirstBetUser, recordFirstBet, showCelebration } = useFirstBetContext();
- *
- * @throws Error if used outside of FirstBetProvider
+ * Returns default values if used outside of FirstBetProvider (graceful degradation).
  */
 export function useFirstBetContext(): FirstBetContextValue {
   const context = useContext(FirstBetContext);
 
   if (!context) {
-    throw new Error(
-      'useFirstBetContext must be used within a FirstBetProvider'
-    );
+    return defaultContextValue;
   }
 
   return context;
