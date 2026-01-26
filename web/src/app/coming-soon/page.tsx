@@ -52,51 +52,28 @@ export default function ComingSoon() {
   const [redirectError, setRedirectError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect whitelisted users to the full app (with secure verification)
-  // Uses AuthContext for single signature - JWT proves identity
-  // Waits for isAuthenticated or triggers signIn only once auto sign-in settles
+  // Once authenticated (from AuthContext auto sign-in), set whitelist cookie and redirect.
+  // This avoids calling signIn() here, which would race with AuthContext's auto sign-in
+  // and cause double wallet signature popups.
   useEffect(() => {
-    if (!hasAccess || !mounted || !walletAddress || hasAttemptedWhitelistFlow.current) {
+    if (!hasAccess || !mounted || !walletAddress || !isAuthenticated || !token || hasAttemptedWhitelistFlow.current) {
       return;
     }
 
-    const verifyAndRedirect = async () => {
+    const setCookieAndRedirect = async () => {
       hasAttemptedWhitelistFlow.current = true;
       setIsRedirecting(true);
       setRedirectError(null);
 
       try {
-        // Step 1: If not authenticated, sign in via AuthContext (ONE signature)
-        let currentToken = token;
-        if (!isAuthenticated) {
-          const success = await signIn();
-          if (!success) {
-            setRedirectError('Sign in failed or was rejected. Please try again.');
-            hasAttemptedWhitelistFlow.current = false;
-            setIsRedirecting(false);
-            return;
-          }
-          // Get the token from localStorage since state might not update immediately
-          currentToken = localStorage.getItem('degendome_auth_token');
-        }
-
-        if (!currentToken) {
-          setRedirectError('No auth token received. Please try again.');
-          hasAttemptedWhitelistFlow.current = false;
-          setIsRedirecting(false);
-          return;
-        }
-
-        // Step 2: Set the whitelist cookie using JWT (no additional signature)
         const response = await fetch('/api/auth/set-whitelist-cookie', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${currentToken}`,
+            'Authorization': `Bearer ${token}`,
           },
         });
 
         if (response.ok) {
-          // Cookie is set by the API - now redirect
           window.location.href = '/predict';
         } else {
           const data = await response.json().catch(() => ({}));
@@ -111,11 +88,20 @@ export default function ComingSoon() {
       }
     };
 
-    // Delay slightly to let AuthContext auto sign-in settle first,
-    // avoiding double signature prompts
-    const timeout = setTimeout(verifyAndRedirect, 800);
-    return () => clearTimeout(timeout);
-  }, [hasAccess, mounted, walletAddress, isAuthenticated, signIn, token]);
+    setCookieAndRedirect();
+  }, [hasAccess, mounted, walletAddress, isAuthenticated, token]);
+
+  // Manual sign-in handler for when auto sign-in was rejected or failed
+  const handleManualSignIn = async () => {
+    setRedirectError(null);
+    setIsRedirecting(true);
+    const success = await signIn();
+    if (!success) {
+      setRedirectError('Sign in failed or was rejected.');
+      setIsRedirecting(false);
+    }
+    // If successful, the isAuthenticated/token change will trigger the useEffect above
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,10 +332,7 @@ export default function ComingSoon() {
               <div className="flex flex-col items-center gap-2 mt-4">
                 <span className="text-sm text-red-400">{redirectError}</span>
                 <button
-                  onClick={() => {
-                    setRedirectError(null);
-                    hasAttemptedWhitelistFlow.current = false;
-                  }}
+                  onClick={handleManualSignIn}
                   className="px-4 py-2 bg-[#ff5500] text-white text-sm font-semibold rounded hover:bg-[#ff5500]/80 transition-colors"
                 >
                   Retry
